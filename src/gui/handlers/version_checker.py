@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class VersionChecker:
     """Handles version checking and comparison"""
     
-    def __init__(self, current_version: str, github_repo: str = "benjaled/water_levels_monitoring"):
+    def __init__(self, current_version: str, github_repo: str = "benjaled/CASER_water_levels_monitoring_system"):
         """
         Initialize version checker
         
