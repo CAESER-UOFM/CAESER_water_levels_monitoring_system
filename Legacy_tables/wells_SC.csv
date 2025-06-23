@@ -1,0 +1,3 @@
+well_number,cae_number,latitude,longitude,top_of_casing,aquifer,min_distance_to_stream,well_field,cluster,county,picture_path,picture_updated_at,data_source,url,user_flag,baro_status,level_status,parking_instructions,access_requirements,safety_notes,special_instructions,created_at
+TN113_000059,SC-MW1,35.638109,-88.810317,428.97,MEM,,,,,default_well.jpg,,transducer,,unchecked,has_non_master,no_default,,,,Previously name SC3,2025-04-30 01:46:20
+TN113_000060,SC-MW3,35.631678,-88.830201,370.17,MEM,,,,,default_well.jpg,,transducer,,unchecked,has_non_master,default_level,,,,Prevously SC4,2025-04-30 01:48:08

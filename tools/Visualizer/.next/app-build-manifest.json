@@ -1,0 +1,58 @@
+{
+  "pages": {
+    "/_not-found/page": [
+      "static/chunks/webpack-e08da262b32814b6.js",
+      "static/chunks/fd9d1056-75cf72efde7f5d1e.js",
+      "static/chunks/117-d2cb3a2751ca827c.js",
+      "static/chunks/main-app-676ac57c1dfacc6f.js",
+      "static/chunks/app/_not-found/page-4c19e378e114d366.js"
+    ],
+    "/layout": [
+      "static/chunks/webpack-e08da262b32814b6.js",
+      "static/chunks/fd9d1056-75cf72efde7f5d1e.js",
+      "static/chunks/117-d2cb3a2751ca827c.js",
+      "static/chunks/main-app-676ac57c1dfacc6f.js",
+      "static/css/c6890ab396e4fc38.css",
+      "static/chunks/app/layout-425dac989e9a5541.js"
+    ],
+    "/page": [
+      "static/chunks/webpack-e08da262b32814b6.js",
+      "static/chunks/fd9d1056-75cf72efde7f5d1e.js",
+      "static/chunks/117-d2cb3a2751ca827c.js",
+      "static/chunks/main-app-676ac57c1dfacc6f.js",
+      "static/chunks/aaea2bcf-8b4a4bc44e92607b.js",
+      "static/chunks/17-eeeb001c5fce2ec5.js",
+      "static/chunks/app/page-33fa574f29af4446.js"
+    ],
+    "/wells/[id]/page": [
+      "static/chunks/webpack-e08da262b32814b6.js",
+      "static/chunks/fd9d1056-75cf72efde7f5d1e.js",
+      "static/chunks/117-d2cb3a2751ca827c.js",
+      "static/chunks/main-app-676ac57c1dfacc6f.js",
+      "static/chunks/aaea2bcf-8b4a4bc44e92607b.js",
+      "static/chunks/17-eeeb001c5fce2ec5.js",
+      "static/chunks/app/wells/[id]/page-af9c36375c94fe6f.js"
+    ],
+    "/wells/[id]/plot/[wellNumber]/page": [
+      "static/chunks/webpack-e08da262b32814b6.js",
+      "static/chunks/fd9d1056-75cf72efde7f5d1e.js",
+      "static/chunks/117-d2cb3a2751ca827c.js",
+      "static/chunks/main-app-676ac57c1dfacc6f.js",
+      "static/chunks/aaea2bcf-8b4a4bc44e92607b.js",
+      "static/chunks/17-eeeb001c5fce2ec5.js",
+      "static/chunks/856-121d6e4495f44a37.js",
+      "static/chunks/957-4f020b10a204d25f.js",
+      "static/chunks/app/wells/[id]/plot/[wellNumber]/page-71d540ad69595ee7.js"
+    ],
+    "/wells/[id]/recharge/[wellNumber]/page": [
+      "static/chunks/webpack-e08da262b32814b6.js",
+      "static/chunks/fd9d1056-75cf72efde7f5d1e.js",
+      "static/chunks/117-d2cb3a2751ca827c.js",
+      "static/chunks/main-app-676ac57c1dfacc6f.js",
+      "static/chunks/aaea2bcf-8b4a4bc44e92607b.js",
+      "static/chunks/17-eeeb001c5fce2ec5.js",
+      "static/chunks/957-4f020b10a204d25f.js",
+      "static/chunks/app/wells/[id]/recharge/[wellNumber]/page-a4923deb337bf531.js"
+    ]
+  }
+}
