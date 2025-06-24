@@ -8,10 +8,6 @@ REM Uses VBScript for GUI instead of PowerShell (works on all Windows)
 REM No PowerShell execution policy issues!
 REM ================================================================
 
-REM Auto-unblock this file to prevent SmartScreen issues
-echo [*] Checking file blocking status...
-powershell -ExecutionPolicy Bypass -Command "try { Unblock-File -Path '%~f0' -ErrorAction SilentlyContinue; Write-Host 'File unblocked successfully' } catch { Write-Host 'Could not unblock file (this is normal)' }" 2>nul
-
 cls
 echo.
 echo    ===============================================================================
@@ -184,7 +180,7 @@ set "VENV_DIR=%INSTALL_DIR%\venv"
 set "BACKUP_DIR=%INSTALL_DIR%\backups"
 
 REM Create installation directory structure
-echo    [*] [1/8] Creating installation directories...
+echo    📁 [1/8] Creating installation directories...
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 if not exist "%BACKUP_DIR%" mkdir "%BACKUP_DIR%"
 
@@ -195,7 +191,7 @@ set "GET_PIP_URL=https://bootstrap.pypa.io/get-pip.py"
 
 REM Download and install Python if not already installed
 if not exist "%PYTHON_DIR%\python.exe" (
-    echo    [*] [2/8] Installing fresh Python %PYTHON_VERSION% for this application...
+    echo    🐍 [2/8] Installing fresh Python %PYTHON_VERSION% for this application...
     
     REM Download Python using built-in Windows tools
     echo Downloading Python %PYTHON_VERSION%...
@@ -233,36 +229,85 @@ if not exist "%PYTHON_DIR%\python.exe" (
     "%PYTHON_DIR%\python.exe" "%INSTALL_DIR%\get-pip.py" --no-warn-script-location
     if exist "%INSTALL_DIR%\get-pip.py" del "%INSTALL_DIR%\get-pip.py"
     
-    echo    [+] Python installation complete.
+    echo    ✅ Python installation complete.
 ) else (
-    echo    [+] [2/8] Using existing Python installation.
+    echo    ✅ [2/8] Using existing Python installation.
 )
 
 REM Install virtualenv
-echo    [*] [3/8] Installing virtualenv...
+echo    🔧 [3/8] Installing virtualenv...
 "%PYTHON_DIR%\python.exe" -m pip install --no-warn-script-location setuptools virtualenv
 
 REM Create virtual environment
 if exist "%VENV_DIR%" (
-    echo    [*] Removing existing virtual environment...
+    echo    🗑️  Removing existing virtual environment...
     rmdir /s /q "%VENV_DIR%"
 )
 
-echo    [*] [4/8] Creating virtual environment...
+echo    🏗️  [4/8] Creating virtual environment...
 "%PYTHON_DIR%\python.exe" -m virtualenv "%VENV_DIR%"
 
 REM Install dependencies
-echo    [*] [5/8] Installing dependencies...
+echo    📦 [5/8] Installing dependencies...
 call "%VENV_DIR%\Scripts\activate.bat"
+
+echo        [*] Upgrading pip...
 python -m pip install --upgrade pip
-python -m pip install numpy pandas matplotlib
+if %ERRORLEVEL% NEQ 0 (
+    echo        [!] Failed to upgrade pip, continuing...
+)
+
+echo        [*] Installing core packages...
+python -m pip install numpy
+if %ERRORLEVEL% NEQ 0 (
+    echo        [!] Failed to install numpy
+    pause
+    exit /b 1
+)
+
+python -m pip install pandas matplotlib
+if %ERRORLEVEL% NEQ 0 (
+    echo        [!] Failed to install pandas/matplotlib
+    pause
+    exit /b 1
+)
+
+echo        [*] Installing utility packages...
 python -m pip install requests packaging
+if %ERRORLEVEL% NEQ 0 (
+    echo        [!] Failed to install requests/packaging
+    pause
+    exit /b 1
+)
+
+echo        [*] Installing Google API packages...
 python -m pip install google-api-python-client google-auth-oauthlib --upgrade
+if %ERRORLEVEL% NEQ 0 (
+    echo        [!] Failed to install Google API packages
+    pause
+    exit /b 1
+)
+
+echo        [*] Installing PyQt5 packages...
 python -m pip install PyQt5==5.15.10 PyQt5_sip==12.13.0 PyQtWebEngine==5.15.6
+if %ERRORLEVEL% NEQ 0 (
+    echo        [!] Failed to install PyQt5 packages
+    pause
+    exit /b 1
+)
+
+echo        [*] Installing scientific packages...
 python -m pip install scipy folium branca pillow psutil --upgrade
+if %ERRORLEVEL% NEQ 0 (
+    echo        [!] Failed to install scientific packages
+    pause
+    exit /b 1
+)
+
+echo        [+] All dependencies installed successfully!
 
 REM Copy application files
-echo    [*] [6/8] Copying application files...
+echo    📋 [6/8] Copying application files...
 xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y >nul
 xcopy "%CODE_DIR%\main.py" "%INSTALL_DIR%\" /Y >nul
 xcopy "%CODE_DIR%\Requirements.txt" "%INSTALL_DIR%\" /Y >nul
@@ -272,7 +317,7 @@ if exist "%CODE_DIR%\assets" xcopy "%CODE_DIR%\assets" "%INSTALL_DIR%\assets\" /
 if exist "%CODE_DIR%\Legacy_tables" xcopy "%CODE_DIR%\Legacy_tables" "%INSTALL_DIR%\Legacy_tables\" /E /I /Y >nul
 
 REM Create version file
-echo    [*] Creating version file...
+echo    📄 Creating version file...
 (
     echo {
     echo   "version": "1.0.0-beta",
@@ -289,7 +334,7 @@ echo    [*] Creating version file...
 ) > "%INSTALL_DIR%\version.json"
 
 REM Create launchers
-echo    [*] [7/8] Creating launchers...
+echo    🚀 [7/8] Creating launchers...
 
 set "LAUNCHER=%INSTALL_DIR%\water_levels_app.bat"
 (
@@ -321,59 +366,56 @@ set "VISUALIZER_LAUNCHER=%INSTALL_DIR%\water_level_visualizer_app.bat"
 
 REM Create desktop shortcuts if requested
 if "%CREATE_DESKTOP%"=="True" (
-    echo    [*] [8/8] Creating desktop shortcuts...
+    echo    🖥️  [8/8] Creating desktop shortcuts...
     
-    REM Set desktop path with fallback
-    set "DESKTOP_PATH=%USERPROFILE%\Desktop"
+    REM Try to get the actual desktop path from registry
+    for /f "usebackq tokens=3*" %%A in (`reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders" /v Desktop 2^>nul`) do set "DESKTOP_PATH=%%A %%B"
+    if not defined DESKTOP_PATH set "DESKTOP_PATH=%USERPROFILE%\Desktop"
     
     echo    [*] Desktop path: %DESKTOP_PATH%
-    echo    [*] Creating shortcuts using PowerShell method...
     
-    REM Use PowerShell to create shortcuts (more reliable than VBScript)
-    powershell -ExecutionPolicy Bypass -Command ^
-    "$WshShell = New-Object -comObject WScript.Shell; ^
-    $Shortcut = $WshShell.CreateShortcut('%DESKTOP_PATH%\CAESER Water Levels Monitoring.lnk'); ^
-    $Shortcut.TargetPath = '%LAUNCHER%'; ^
-    $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; ^
-    $Shortcut.Description = 'CAESER Water Levels Monitoring Application'; ^
-    $Shortcut.Save(); ^
-    Write-Host 'Main shortcut created'"
+    REM Create VBScript for shortcuts with better error handling
+    set "SHORTCUT_VBS=%TEMP%\create_shortcuts_%RANDOM%.vbs"
+    (
+        echo Set WshShell = CreateObject("WScript.Shell"^)
+        echo Set fso = CreateObject("Scripting.FileSystemObject"^)
+        echo.
+        echo ' Create main application shortcut
+        echo Set oShellLink = WshShell.CreateShortcut("%DESKTOP_PATH%\CAESER Water Levels Monitoring.lnk"^)
+        echo oShellLink.TargetPath = "%LAUNCHER%"
+        echo oShellLink.WorkingDirectory = "%INSTALL_DIR%"
+        echo oShellLink.Description = "CAESER Water Levels Monitoring Application"
+        REM Note: PNG icons don't work well for shortcuts, using default for now
+        echo oShellLink.Save
+        echo.
+        echo ' Create visualizer shortcut
+        echo Set oShellLink2 = WshShell.CreateShortcut("%DESKTOP_PATH%\CAESER Water Level Visualizer.lnk"^)
+        echo oShellLink2.TargetPath = "%VISUALIZER_LAUNCHER%"
+        echo oShellLink2.WorkingDirectory = "%INSTALL_DIR%\tools\Visualizer"
+        echo oShellLink2.Description = "CAESER Water Level Data Visualizer"
+        REM Note: PNG icons don't work well for shortcuts, using default for now
+        echo oShellLink2.Save
+        echo.
+        echo WScript.Echo "Shortcuts created successfully"
+    ) > "%SHORTCUT_VBS%"
     
-    powershell -ExecutionPolicy Bypass -Command ^
-    "$WshShell = New-Object -comObject WScript.Shell; ^
-    $Shortcut = $WshShell.CreateShortcut('%DESKTOP_PATH%\CAESER Water Level Visualizer.lnk'); ^
-    $Shortcut.TargetPath = '%VISUALIZER_LAUNCHER%'; ^
-    $Shortcut.WorkingDirectory = '%INSTALL_DIR%\tools\Visualizer'; ^
-    $Shortcut.Description = 'CAESER Water Level Data Visualizer'; ^
-    $Shortcut.Save(); ^
-    Write-Host 'Visualizer shortcut created'"
+    REM Run VBScript and capture output for debugging
+    for /f "delims=" %%i in ('cscript //nologo "%SHORTCUT_VBS%" 2^>^&1') do (
+        echo    [*] Shortcut creation: %%i
+    )
+    del "%SHORTCUT_VBS%" 2>nul
     
     REM Verify shortcuts were created
-    timeout /t 2 /nobreak >nul
     if exist "%DESKTOP_PATH%\CAESER Water Levels Monitoring.lnk" (
         echo    [+] Main app shortcut created successfully
     ) else (
         echo    [!] Warning: Main app shortcut not found on desktop
-        echo    [*] Trying alternative method...
-        
-        REM Fallback: Create batch file shortcuts
-        copy "%LAUNCHER%" "%DESKTOP_PATH%\CAESER Water Levels Monitoring.bat" >nul 2>&1
-        if exist "%DESKTOP_PATH%\CAESER Water Levels Monitoring.bat" (
-            echo    [+] Created batch file shortcut instead
-        )
     )
     
     if exist "%DESKTOP_PATH%\CAESER Water Level Visualizer.lnk" (
         echo    [+] Visualizer shortcut created successfully
     ) else (
         echo    [!] Warning: Visualizer shortcut not found on desktop
-        echo    [*] Trying alternative method...
-        
-        REM Fallback: Create batch file shortcuts
-        copy "%VISUALIZER_LAUNCHER%" "%DESKTOP_PATH%\CAESER Water Level Visualizer.bat" >nul 2>&1
-        if exist "%DESKTOP_PATH%\CAESER Water Level Visualizer.bat" (
-            echo    [+] Created batch file shortcut instead
-        )
     )
 )
 
@@ -435,31 +477,23 @@ pause
 
 REM Handle source deletion
 if "%DELETE_SOURCE%"=="True" (
-    echo.
-    echo ===============================================================================
-    echo #                           SOURCE CLEANUP                                   #
-    echo ===============================================================================
-    echo.
     echo The installer will now attempt to delete the source folder.
     echo This is safe since everything has been copied to: %INSTALL_DIR%
     echo.
-    echo Source folder: %CODE_DIR%
-    echo.
-    set /p final_confirm="Are you sure you want to delete the source folder? (y/N): "
-    if /i "!final_confirm!"=="y" (
-        echo.
-        echo Deleting source folder...
-        cd /d "%USERPROFILE%" 2>nul
-        if exist "%CODE_DIR%" (
-            rmdir /s /q "%CODE_DIR%" 2>nul
-            if exist "%CODE_DIR%" (
-                echo Could not delete source folder. You may need to delete it manually.
-            ) else (
-                echo Source folder deleted successfully.
-            )
+    pause
+    
+    REM Determine original source directory
+    set "ORIGINAL_CODE_DIR=%~dp0"
+    if "%ORIGINAL_CODE_DIR:~-1%"=="\" set "ORIGINAL_CODE_DIR=%ORIGINAL_CODE_DIR:~0,-1%"
+    
+    cd /d "%USERPROFILE%" 2>nul
+    if exist "%ORIGINAL_CODE_DIR%" (
+        rmdir /s /q "%ORIGINAL_CODE_DIR%" 2>nul
+        if exist "%ORIGINAL_CODE_DIR%" (
+            echo Could not delete source folder. You may need to delete it manually.
+        ) else (
+            echo Source folder deleted successfully.
         )
-    ) else (
-        echo Source folder kept.
     )
 )
 
