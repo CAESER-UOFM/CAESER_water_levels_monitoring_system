@@ -180,7 +180,7 @@ set "VENV_DIR=%INSTALL_DIR%\venv"
 set "BACKUP_DIR=%INSTALL_DIR%\backups"
 
 REM Create installation directory structure
-echo    📁 [1/8] Creating installation directories...
+echo    [*] [1/8] Creating installation directories...
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 if not exist "%BACKUP_DIR%" mkdir "%BACKUP_DIR%"
 
@@ -191,7 +191,7 @@ set "GET_PIP_URL=https://bootstrap.pypa.io/get-pip.py"
 
 REM Download and install Python if not already installed
 if not exist "%PYTHON_DIR%\python.exe" (
-    echo    🐍 [2/8] Installing fresh Python %PYTHON_VERSION% for this application...
+    echo    [*] [2/8] Installing fresh Python %PYTHON_VERSION% for this application...
     
     REM Download Python using built-in Windows tools
     echo Downloading Python %PYTHON_VERSION%...
@@ -229,26 +229,26 @@ if not exist "%PYTHON_DIR%\python.exe" (
     "%PYTHON_DIR%\python.exe" "%INSTALL_DIR%\get-pip.py" --no-warn-script-location
     if exist "%INSTALL_DIR%\get-pip.py" del "%INSTALL_DIR%\get-pip.py"
     
-    echo    ✅ Python installation complete.
+    echo    [+] Python installation complete.
 ) else (
-    echo    ✅ [2/8] Using existing Python installation.
+    echo    [+] [2/8] Using existing Python installation.
 )
 
 REM Install virtualenv
-echo    🔧 [3/8] Installing virtualenv...
+echo    [*] [3/8] Installing virtualenv...
 "%PYTHON_DIR%\python.exe" -m pip install --no-warn-script-location setuptools virtualenv
 
 REM Create virtual environment
 if exist "%VENV_DIR%" (
-    echo    🗑️  Removing existing virtual environment...
+    echo    [*] Removing existing virtual environment...
     rmdir /s /q "%VENV_DIR%"
 )
 
-echo    🏗️  [4/8] Creating virtual environment...
+echo    [*] [4/8] Creating virtual environment...
 "%PYTHON_DIR%\python.exe" -m virtualenv "%VENV_DIR%"
 
 REM Install dependencies
-echo    📦 [5/8] Installing dependencies...
+echo    [*] [5/8] Installing dependencies...
 call "%VENV_DIR%\Scripts\activate.bat"
 
 echo        [*] Upgrading pip...
@@ -307,7 +307,7 @@ if %ERRORLEVEL% NEQ 0 (
 echo        [+] All dependencies installed successfully!
 
 REM Copy application files
-echo    📋 [6/8] Copying application files...
+echo    [*] [6/8] Copying application files...
 xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y >nul
 xcopy "%CODE_DIR%\main.py" "%INSTALL_DIR%\" /Y >nul
 xcopy "%CODE_DIR%\Requirements.txt" "%INSTALL_DIR%\" /Y >nul
@@ -317,7 +317,7 @@ if exist "%CODE_DIR%\assets" xcopy "%CODE_DIR%\assets" "%INSTALL_DIR%\assets\" /
 if exist "%CODE_DIR%\Legacy_tables" xcopy "%CODE_DIR%\Legacy_tables" "%INSTALL_DIR%\Legacy_tables\" /E /I /Y >nul
 
 REM Create version file
-echo    📄 Creating version file...
+echo    [*] Creating version file...
 (
     echo {
     echo   "version": "1.0.0-beta",
@@ -334,7 +334,7 @@ echo    📄 Creating version file...
 ) > "%INSTALL_DIR%\version.json"
 
 REM Create launchers
-echo    🚀 [7/8] Creating launchers...
+echo    [*] [7/8] Creating launchers...
 
 set "LAUNCHER=%INSTALL_DIR%\water_levels_app.bat"
 (
@@ -366,62 +366,41 @@ set "VISUALIZER_LAUNCHER=%INSTALL_DIR%\water_level_visualizer_app.bat"
 
 REM Create desktop shortcuts if requested
 if "%CREATE_DESKTOP%"=="True" (
-    echo    🖥️  [8/8] Creating desktop shortcuts...
+    echo    [*] [8/8] Creating desktop shortcuts...
     
-    REM Set desktop path with fallback
-    set "DESKTOP_PATH=%USERPROFILE%\Desktop"
+    REM Use PowerShell to create shortcuts (more reliable than VBScript)
+    echo    [*] Creating main application shortcut...
+    powershell -ExecutionPolicy Bypass -Command ^
+    "$WshShell = New-Object -comObject WScript.Shell; ^
+    $Desktop = [System.Environment]::GetFolderPath('Desktop'); ^
+    $Shortcut = $WshShell.CreateShortcut(\"$Desktop\CAESER Water Levels Monitoring.lnk\"); ^
+    $Shortcut.TargetPath = '%LAUNCHER%'; ^
+    $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; ^
+    $Shortcut.Description = 'CAESER Water Levels Monitoring Application'; ^
+    $Shortcut.Save(); ^
+    Write-Host 'Main shortcut created'"
     
-    REM Try to get the actual desktop path from registry
-    for /f "usebackq tokens=3*" %%A in (`reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders" /v Desktop 2^>nul`) do (
-        if not "%%A %%B"==" " set "DESKTOP_PATH=%%A %%B"
-    )
-    
-    REM Remove any quotes from the path
-    set "DESKTOP_PATH=%DESKTOP_PATH:"=%"
-    
-    echo    [*] Desktop path: %DESKTOP_PATH%
-    
-    REM Create VBScript for shortcuts with better error handling
-    set "SHORTCUT_VBS=%TEMP%\create_shortcuts_%RANDOM%.vbs"
-    (
-        echo Set objShell = CreateObject("WScript.Shell"^)
-        echo strDesktop = objShell.SpecialFolders("Desktop"^)
-        echo.
-        echo ' Create main application shortcut
-        echo Set objShortcut1 = objShell.CreateShortcut(strDesktop ^& "\CAESER Water Levels Monitoring.lnk"^)
-        echo objShortcut1.TargetPath = "%LAUNCHER%"
-        echo objShortcut1.WorkingDirectory = "%INSTALL_DIR%"
-        echo objShortcut1.Description = "CAESER Water Levels Monitoring Application"
-        echo objShortcut1.Save
-        echo.
-        echo ' Create visualizer shortcut
-        echo Set objShortcut2 = objShell.CreateShortcut(strDesktop ^& "\CAESER Water Level Visualizer.lnk"^)
-        echo objShortcut2.TargetPath = "%VISUALIZER_LAUNCHER%"
-        echo objShortcut2.WorkingDirectory = "%INSTALL_DIR%\tools\Visualizer"
-        echo objShortcut2.Description = "CAESER Water Level Data Visualizer"
-        echo objShortcut2.Save
-        echo.
-        echo WScript.Echo "Desktop shortcuts created successfully"
-    ) > "%SHORTCUT_VBS%"
-    
-    REM Run VBScript and capture output
-    cscript //nologo "%SHORTCUT_VBS%"
-    if %ERRORLEVEL% EQU 0 (
-        echo    [+] Desktop shortcuts created successfully
-    ) else (
-        echo    [!] Warning: Failed to create desktop shortcuts
-    )
-    del "%SHORTCUT_VBS%" 2>nul
+    echo    [*] Creating visualizer shortcut...
+    powershell -ExecutionPolicy Bypass -Command ^
+    "$WshShell = New-Object -comObject WScript.Shell; ^
+    $Desktop = [System.Environment]::GetFolderPath('Desktop'); ^
+    $Shortcut = $WshShell.CreateShortcut(\"$Desktop\CAESER Water Level Visualizer.lnk\"); ^
+    $Shortcut.TargetPath = '%VISUALIZER_LAUNCHER%'; ^
+    $Shortcut.WorkingDirectory = '%INSTALL_DIR%\tools\Visualizer'; ^
+    $Shortcut.Description = 'CAESER Water Level Data Visualizer'; ^
+    $Shortcut.Save(); ^
+    Write-Host 'Visualizer shortcut created'"
     
     REM Verify shortcuts were created
+    set "DESKTOP_PATH=%USERPROFILE%\Desktop"
     if exist "%DESKTOP_PATH%\CAESER Water Levels Monitoring.lnk" (
-        echo    [+] Main app shortcut verified
+        echo    [+] Main app shortcut created successfully
     ) else (
         echo    [!] Warning: Main app shortcut not found
     )
     
     if exist "%DESKTOP_PATH%\CAESER Water Level Visualizer.lnk" (
-        echo    [+] Visualizer shortcut verified
+        echo    [+] Visualizer shortcut created successfully  
     ) else (
         echo    [!] Warning: Visualizer shortcut not found
     )
