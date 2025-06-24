@@ -339,11 +339,11 @@ if "%CREATE_DESKTOP%"=="True" (
         REM Note: PNG icons don't work well for shortcuts, using default for now
         echo oShellLink.Save
         echo.
-        echo ' Create debug shortcut
-        echo Set oShellLink2 = WshShell.CreateShortcut("%DESKTOP_PATH%\CAESER Water Levels Monitoring (Debug).lnk"^)
-        echo oShellLink2.TargetPath = "%DEBUG_LAUNCHER%"
-        echo oShellLink2.WorkingDirectory = "%INSTALL_DIR%"
-        echo oShellLink2.Description = "CAESER Water Levels Monitoring - Debug Mode"
+        echo ' Create visualizer shortcut
+        echo Set oShellLink2 = WshShell.CreateShortcut("%DESKTOP_PATH%\CAESER Water Level Visualizer.lnk"^)
+        echo oShellLink2.TargetPath = "%VISUALIZER_LAUNCHER%"
+        echo oShellLink2.WorkingDirectory = "%INSTALL_DIR%\tools\Visualizer"
+        echo oShellLink2.Description = "CAESER Water Level Data Visualizer"
         REM Note: PNG icons don't work well for shortcuts, using default for now
         echo oShellLink2.Save
         echo.
@@ -358,15 +358,15 @@ if "%CREATE_DESKTOP%"=="True" (
     
     REM Verify shortcuts were created
     if exist "%DESKTOP_PATH%\CAESER Water Levels Monitoring.lnk" (
-        echo    [+] Main shortcut created successfully
+        echo    [+] Main app shortcut created successfully
     ) else (
-        echo    [!] Warning: Main shortcut not found on desktop
+        echo    [!] Warning: Main app shortcut not found on desktop
     )
     
-    if exist "%DESKTOP_PATH%\CAESER Water Levels Monitoring (Debug).lnk" (
-        echo    [+] Debug shortcut created successfully
+    if exist "%DESKTOP_PATH%\CAESER Water Level Visualizer.lnk" (
+        echo    [+] Visualizer shortcut created successfully
     ) else (
-        echo    [!] Warning: Debug shortcut not found on desktop
+        echo    [!] Warning: Visualizer shortcut not found on desktop
     )
 )
 
@@ -395,7 +395,7 @@ if "%CREATE_DESKTOP%"=="True" (
     echo.
     echo    [+] Desktop shortcuts created:
     echo        [*] CAESER Water Levels Monitoring
-    echo        [*] CAESER Water Levels Monitoring (Debug)
+    echo        [*] CAESER Water Level Visualizer
 )
 
 echo.
