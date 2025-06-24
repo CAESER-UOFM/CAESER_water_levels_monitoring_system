@@ -1,8 +1,13 @@
 @echo off
 setlocal enabledelayedexpansion
 
-REM Enhanced Setup Script for Water Levels Monitoring Application
-REM Includes auto-update system and improved directory structure
+REM ================================================================
+REM CAESER Water Levels Monitoring Application - User Installer
+REM ================================================================
+REM This installer does NOT require administrator rights!
+REM Everything installs to your user profile directory.
+REM Safe for university/corporate computers with limited permissions.
+REM ================================================================
 
 REM Determine Project Code Directory (where this script resides)
 set "CODE_DIR=%~dp0"
@@ -17,7 +22,7 @@ Add-Type -AssemblyName System.Drawing
 
 # Create main form
 $form = New-Object System.Windows.Forms.Form
-$form.Text = 'Water Levels Monitoring - Installation Setup'
+$form.Text = 'Water Levels Monitoring - User Installation (No Admin Required)'
 $form.Size = New-Object System.Drawing.Size(520, 445)
 $form.StartPosition = 'CenterScreen'
 $form.FormBorderStyle = 'FixedDialog'
@@ -105,7 +110,7 @@ $warningTitle.Size = New-Object System.Drawing.Size(200, 25)
 $warningPanel.Controls.Add($warningTitle)
 
 $warningText = New-Object System.Windows.Forms.Label
-$warningText.Text = 'The application will be copied to the installation directory. After successful installation, you will have the option to delete this source folder to avoid duplicates.'
+$warningText.Text = 'This installer works without administrator rights - everything installs to your user folder. The application will be copied to your personal directory. After successful installation, you can optionally delete this source folder.'
 $warningText.Font = New-Object System.Drawing.Font('Segoe UI', 9)
 $warningText.Location = New-Object System.Drawing.Point(10, 40)
 $warningText.Size = New-Object System.Drawing.Size(440, 60)

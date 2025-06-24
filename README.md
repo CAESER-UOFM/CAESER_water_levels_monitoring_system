@@ -15,6 +15,8 @@ Built for groundwater professionals, researchers, and environmental consultants,
    - **Windows:** Double-click `setup.bat` (shows professional installation dialog)
    - **macOS/Linux:** Open terminal, navigate to folder, run `chmod +x setup.sh && ./setup.sh`
 
+   > **🏛️ University/Corporate Users:** If Windows shows a SmartScreen warning, click **"More info"** → **"Run anyway"**. The installer doesn't require administrator rights and installs only to your user profile.
+
 3. **Launch the application:**
    - Use the launchers created in your installation directory
    - **Windows:** `water_levels_app.bat` (or `water_levels_app_debug.bat` for troubleshooting)
@@ -47,6 +49,17 @@ Built for groundwater professionals, researchers, and environmental consultants,
 - **RAM:** 4GB+ recommended
 - **Storage:** 2GB+ free space
 - **Internet:** Required for updates and cloud features (optional)
+
+## 🏛️ University/Corporate Installation
+
+**Perfect for institutional environments with security restrictions:**
+
+- ✅ **No administrator rights required** - installs to user profile only
+- ✅ **No system modifications** - doesn't touch Program Files or registry  
+- ✅ **Portable installation** - contained within user directory
+- ✅ **SmartScreen warning is normal** - click "More info" → "Run anyway"
+- ✅ **Safe for IT policies** - no elevated permissions needed
+- ✅ **Easy removal** - just delete the installation folder
 
 ## 📊 Future Access Levels
 
