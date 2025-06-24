@@ -8,6 +8,10 @@ REM Uses VBScript for GUI instead of PowerShell (works on all Windows)
 REM No PowerShell execution policy issues!
 REM ================================================================
 
+REM Auto-unblock this file to prevent SmartScreen issues
+echo [*] Checking file blocking status...
+powershell -ExecutionPolicy Bypass -Command "try { Unblock-File -Path '%~f0' -ErrorAction SilentlyContinue; Write-Host 'File unblocked successfully' } catch { Write-Host 'Could not unblock file (this is normal)' }" 2>nul
+
 cls
 echo.
 echo    ===============================================================================
@@ -322,56 +326,54 @@ if "%CREATE_DESKTOP%"=="True" (
     REM Set desktop path with fallback
     set "DESKTOP_PATH=%USERPROFILE%\Desktop"
     
-    REM Try to get actual desktop path from registry
-    for /f "usebackq skip=2 tokens=3*" %%A in (`reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders" /v Desktop 2^>nul`) do (
-        set "DESKTOP_PATH=%%A %%B"
-    )
-    
     echo    [*] Desktop path: %DESKTOP_PATH%
+    echo    [*] Creating shortcuts using PowerShell method...
     
-    REM Create VBScript for shortcuts with better error handling
-    set "SHORTCUT_VBS=%TEMP%\create_shortcuts_%RANDOM%.vbs"
+    REM Use PowerShell to create shortcuts (more reliable than VBScript)
+    powershell -ExecutionPolicy Bypass -Command ^
+    "$WshShell = New-Object -comObject WScript.Shell; ^
+    $Shortcut = $WshShell.CreateShortcut('%DESKTOP_PATH%\CAESER Water Levels Monitoring.lnk'); ^
+    $Shortcut.TargetPath = '%LAUNCHER%'; ^
+    $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; ^
+    $Shortcut.Description = 'CAESER Water Levels Monitoring Application'; ^
+    $Shortcut.Save(); ^
+    Write-Host 'Main shortcut created'"
     
-    echo Set WshShell = CreateObject("WScript.Shell") > "%SHORTCUT_VBS%"
-    echo Set fso = CreateObject("Scripting.FileSystemObject") >> "%SHORTCUT_VBS%"
-    echo. >> "%SHORTCUT_VBS%"
-    echo ' Create main application shortcut >> "%SHORTCUT_VBS%"
-    echo Set oShellLink = WshShell.CreateShortcut("%DESKTOP_PATH%\CAESER Water Levels Monitoring.lnk") >> "%SHORTCUT_VBS%"
-    echo oShellLink.TargetPath = "%LAUNCHER%" >> "%SHORTCUT_VBS%"
-    echo oShellLink.WorkingDirectory = "%INSTALL_DIR%" >> "%SHORTCUT_VBS%"
-    echo oShellLink.Description = "CAESER Water Levels Monitoring Application" >> "%SHORTCUT_VBS%"
-    echo oShellLink.Save >> "%SHORTCUT_VBS%"
-    echo. >> "%SHORTCUT_VBS%"
-    echo ' Create visualizer shortcut >> "%SHORTCUT_VBS%"
-    echo Set oShellLink2 = WshShell.CreateShortcut("%DESKTOP_PATH%\CAESER Water Level Visualizer.lnk") >> "%SHORTCUT_VBS%"
-    echo oShellLink2.TargetPath = "%VISUALIZER_LAUNCHER%" >> "%SHORTCUT_VBS%"
-    echo oShellLink2.WorkingDirectory = "%INSTALL_DIR%\tools\Visualizer" >> "%SHORTCUT_VBS%"
-    echo oShellLink2.Description = "CAESER Water Level Data Visualizer" >> "%SHORTCUT_VBS%"
-    echo oShellLink2.Save >> "%SHORTCUT_VBS%"
-    echo. >> "%SHORTCUT_VBS%"
-    echo WScript.Echo "Shortcuts created successfully" >> "%SHORTCUT_VBS%"
-    
-    REM Run VBScript and capture output for debugging
-    if exist "%SHORTCUT_VBS%" (
-        for /f "delims=" %%i in ('cscript //nologo "%SHORTCUT_VBS%" 2^>^&1') do (
-            echo    [*] Shortcut creation: %%i
-        )
-        del "%SHORTCUT_VBS%" 2>nul
-    ) else (
-        echo    [!] Error: Could not create VBScript file
-    )
+    powershell -ExecutionPolicy Bypass -Command ^
+    "$WshShell = New-Object -comObject WScript.Shell; ^
+    $Shortcut = $WshShell.CreateShortcut('%DESKTOP_PATH%\CAESER Water Level Visualizer.lnk'); ^
+    $Shortcut.TargetPath = '%VISUALIZER_LAUNCHER%'; ^
+    $Shortcut.WorkingDirectory = '%INSTALL_DIR%\tools\Visualizer'; ^
+    $Shortcut.Description = 'CAESER Water Level Data Visualizer'; ^
+    $Shortcut.Save(); ^
+    Write-Host 'Visualizer shortcut created'"
     
     REM Verify shortcuts were created
+    timeout /t 2 /nobreak >nul
     if exist "%DESKTOP_PATH%\CAESER Water Levels Monitoring.lnk" (
         echo    [+] Main app shortcut created successfully
     ) else (
         echo    [!] Warning: Main app shortcut not found on desktop
+        echo    [*] Trying alternative method...
+        
+        REM Fallback: Create batch file shortcuts
+        copy "%LAUNCHER%" "%DESKTOP_PATH%\CAESER Water Levels Monitoring.bat" >nul 2>&1
+        if exist "%DESKTOP_PATH%\CAESER Water Levels Monitoring.bat" (
+            echo    [+] Created batch file shortcut instead
+        )
     )
     
     if exist "%DESKTOP_PATH%\CAESER Water Level Visualizer.lnk" (
         echo    [+] Visualizer shortcut created successfully
     ) else (
         echo    [!] Warning: Visualizer shortcut not found on desktop
+        echo    [*] Trying alternative method...
+        
+        REM Fallback: Create batch file shortcuts
+        copy "%VISUALIZER_LAUNCHER%" "%DESKTOP_PATH%\CAESER Water Level Visualizer.bat" >nul 2>&1
+        if exist "%DESKTOP_PATH%\CAESER Water Level Visualizer.bat" (
+            echo    [+] Created batch file shortcut instead
+        )
     )
 )
 

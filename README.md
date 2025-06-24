@@ -15,7 +15,11 @@ Built for groundwater professionals, researchers, and environmental consultants,
    - **Windows:** Double-click `setup.bat` (shows professional installation dialog)
    - **macOS/Linux:** Open terminal, navigate to folder, run `chmod +x setup.sh && ./setup.sh`
 
-   > **🏛️ University/Corporate Users:** If Windows shows a SmartScreen warning, click **"More info"** → **"Run anyway"**. The installer doesn't require administrator rights and installs only to your user profile.
+   > **🏛️ University/Corporate Users:** If Windows shows a SmartScreen warning:
+   > 1. Click **"More info"** → **"Run anyway"**
+   > 2. Or right-click `setup.bat` → **Properties** → Check **"Unblock"** → Click **OK**
+   > 
+   > The installer doesn't require administrator rights and installs only to your user profile.
 
 3. **Launch the application:**
    - Use the launchers created in your installation directory
