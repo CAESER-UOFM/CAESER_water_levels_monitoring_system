@@ -36,9 +36,12 @@ echo    [*] Ready to install Water Levels Monitoring System
 echo.
 
 REM Default installation directory
-set "DEFAULT_PATH=%USERPROFILE%\WaterLevelsApp"
+set "DEFAULT_PATH=%USERPROFILE%\CAESER_Water_levels_monitoring_system"
 
-echo Installation Directory Options:
+echo.
+echo    ===============================================================================
+echo    #                        INSTALLATION DIRECTORY                              #
+echo    ===============================================================================
 echo.
 echo   Default location: %DEFAULT_PATH%
 echo.
@@ -57,7 +60,7 @@ if /i "%path_choice%"=="c" (
     set "FOLDER_VBS=%TEMP%\folder_browser.vbs"
     (
         echo Set objShell = CreateObject("WScript.Shell"^)
-        echo Set objFolder = objShell.BrowseForFolder(0, "Select installation directory (WaterLevelsApp folder will be created inside):", 0^)
+        echo Set objFolder = objShell.BrowseForFolder(0, "Select installation directory (CAESER_Water_levels_monitoring_system folder will be created inside):", 0^)
         echo If objFolder Is Nothing Then
         echo     WScript.Echo "CANCELLED"
         echo Else
@@ -79,7 +82,7 @@ if /i "%path_choice%"=="c" (
         echo Using default location instead.
         set "INSTALL_DIR=%DEFAULT_PATH%"
     ) else (
-        set "INSTALL_DIR=%CUSTOM_PATH%\WaterLevelsApp"
+        set "INSTALL_DIR=%CUSTOM_PATH%\CAESER_Water_levels_monitoring_system"
     )
 ) else (
     set "INSTALL_DIR=%DEFAULT_PATH%"
@@ -91,7 +94,10 @@ echo.
 
 REM Ask about desktop shortcuts
 echo.
-echo Desktop Shortcuts:
+echo    ===============================================================================
+echo    #                           DESKTOP SHORTCUTS                                #
+echo    ===============================================================================
+echo.
 echo   ^> Create desktop shortcuts (Press ENTER)
 echo     Skip desktop shortcuts (Type 'n' and ENTER)
 echo.
@@ -104,7 +110,10 @@ if /i "%create_shortcuts%"=="n" (
 
 REM Ask about source deletion
 echo.
-echo Source Folder Cleanup:
+echo    ===============================================================================
+echo    #                          SOURCE FOLDER CLEANUP                             #
+echo    ===============================================================================
+echo.
 echo   ^> Delete source folder after installation (Press ENTER)
 echo     Keep source folder (Type 'k' and ENTER)
 echo.
@@ -116,7 +125,10 @@ if /i "%delete_source%"=="k" (
 )
 
 echo.
-echo Installation Summary:
+echo    ===============================================================================
+echo    #                          INSTALLATION SUMMARY                              #
+echo    ===============================================================================
+echo.
 echo - Installation directory: %INSTALL_DIR%
 echo - Create desktop shortcuts: %CREATE_DESKTOP%
 echo - Delete source after install: %DELETE_SOURCE%
@@ -361,6 +373,30 @@ if "%CREATE_DESKTOP%"=="True" (
 echo.
 echo    [+] You can now launch the application!
 echo.
+echo    ===============================================================================
+echo    #                         INSTALLATION COMPLETED                             #
+echo    ===============================================================================
+echo.
+echo    [+] What was installed:
+echo        - Python 3.11.6 (embedded version)
+echo        - Virtual environment with all dependencies
+echo        - CAESER Water Levels Monitoring System
+echo        - Application launchers (main app, debug, visualizer)
+if "%CREATE_DESKTOP%"=="True" (
+    echo        - Desktop shortcuts for easy access
+)
+echo.
+echo    [+] Installation location: %INSTALL_DIR%
+echo.
+echo    [+] To start using the application:
+if "%CREATE_DESKTOP%"=="True" (
+    echo        - Double-click the desktop shortcuts, OR
+)
+echo        - Run: %INSTALL_DIR%\water_levels_app.bat
+echo.
+echo    [*] For troubleshooting, use the debug launcher
+echo.
+pause
 
 REM Handle source deletion
 if "%DELETE_SOURCE%"=="True" (
@@ -384,7 +420,4 @@ if "%DELETE_SOURCE%"=="True" (
     )
 )
 
-echo.
-echo Installation complete! Press any key to exit...
-pause
 endlocal
