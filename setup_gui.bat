@@ -8,105 +8,95 @@ REM Uses VBScript for GUI instead of PowerShell (works on all Windows)
 REM No PowerShell execution policy issues!
 REM ================================================================
 
-echo Loading installation dialog...
-
-REM Create temporary VBScript for GUI dialog
-set "TEMP_VBS=%TEMP%\water_levels_installer.vbs"
-
-(
-echo Set objShell = CreateObject("WScript.Shell"^)
-echo Set objFSO = CreateObject("Scripting.FileSystemObject"^)
-echo.
-echo ' Default installation path
-echo strDefaultPath = objShell.ExpandEnvironmentStrings("%%USERPROFILE%%"^) ^& "\WaterLevelsApp"
-echo.
-echo ' Create dialog
-echo strTitle = "CAESER Water Levels Monitoring - Installation Setup"
-echo strMessage = "Choose installation directory:" ^& vbCrLf ^& vbCrLf ^& _
-echo              "Default: " ^& strDefaultPath ^& vbCrLf ^& vbCrLf ^& _
-echo              "This installer does NOT require administrator rights!" ^& vbCrLf ^& _
-echo              "Everything installs to your user profile." ^& vbCrLf ^& vbCrLf ^& _
-echo              "Click OK to use default location, or Cancel to choose custom path."
-echo.
-echo intResult = MsgBox(strMessage, vbOKCancel + vbInformation + vbDefaultButton1, strTitle^)
-echo.
-echo If intResult = vbOK Then
-echo     strInstallPath = strDefaultPath
-echo Else
-echo     ' Show folder browser for custom path
-echo     Set objFolder = objShell.BrowseForFolder(0, "Select installation directory:", 0^)
-echo     If objFolder Is Nothing Then
-echo         WScript.Echo "CANCELLED"
-echo         WScript.Quit
-echo     Else
-echo         strInstallPath = objFolder.Self.Path ^& "\WaterLevelsApp"
-echo     End If
-echo End If
-echo.
-echo ' Ask about desktop shortcuts
-echo intShortcuts = MsgBox("Create desktop shortcuts for easy access?" ^& vbCrLf ^& vbCrLf ^& _
-echo                       "Recommended for most users.", _
-echo                       vbYesNo + vbQuestion + vbDefaultButton1, strTitle^)
-echo.
-echo ' Ask about source deletion
-echo intDeleteSource = MsgBox("Delete source folder after installation?" ^& vbCrLf ^& vbCrLf ^& _
-echo                           "This avoids having duplicate files." ^& vbCrLf ^& _
-echo                           "Recommended if you downloaded this as a ZIP file.", _
-echo                           vbYesNo + vbQuestion + vbDefaultButton1, strTitle^)
-echo.
-echo ' Output results
-echo strOutput = strInstallPath ^& "|"
-echo If intDeleteSource = vbYes Then
-echo     strOutput = strOutput ^& "True|"
-echo Else
-echo     strOutput = strOutput ^& "False|"
-echo End If
-echo If intShortcuts = vbYes Then
-echo     strOutput = strOutput ^& "True"
-echo Else
-echo     strOutput = strOutput ^& "False"
-echo End If
-echo.
-echo WScript.Echo strOutput
-) > "%TEMP_VBS%"
-
-REM Run the VBScript and capture output
-for /f "delims=" %%a in ('cscript //nologo "%TEMP_VBS%" 2^>nul') do set "DIALOG_RESULT=%%a"
-
-REM Clean up temp file
-del "%TEMP_VBS%" 2>nul
-
-REM Check if user cancelled
-if "%DIALOG_RESULT%"=="CANCELLED" (
-    echo Installation cancelled by user.
-    pause
-    exit /b 0
-)
-
-if "%DIALOG_RESULT%"=="" (
-    echo Error: Could not display installation dialog.
-    echo This may be due to corporate security restrictions.
-    echo.
-    echo Please use setup_simple.bat for text-based installation.
-    pause
-    exit /b 1
-)
-
-REM Parse the results
-for /f "tokens=1,2,3 delims=|" %%a in ("%DIALOG_RESULT%") do (
-    set "INSTALL_DIR=%%a"
-    set "DELETE_SOURCE=%%b"
-    set "CREATE_DESKTOP=%%c"
-)
-
 echo ===============================================
 echo CAESER Water Levels Monitoring Application
 echo Professional Installation (No Admin Required)
 echo ===============================================
 echo.
-echo Installation directory: %INSTALL_DIR%
-echo Delete source after install: %DELETE_SOURCE%
-echo Create desktop shortcuts: %CREATE_DESKTOP%
+
+REM Default installation directory
+set "DEFAULT_PATH=%USERPROFILE%\WaterLevelsApp"
+
+echo Installation Directory Options:
+echo.
+echo   Default location: %DEFAULT_PATH%
+echo.
+echo   This installer does NOT require administrator rights!
+echo   Everything installs to your user profile directory.
+echo.
+
+set /p path_choice="Use default location? (Y/n): "
+if /i "%path_choice%"=="n" (
+    echo.
+    echo Opening folder browser to select custom installation directory...
+    
+    REM Create VBScript for folder browser
+    set "FOLDER_VBS=%TEMP%\folder_browser.vbs"
+    (
+        echo Set objShell = CreateObject("WScript.Shell"^)
+        echo Set objFolder = objShell.BrowseForFolder(0, "Select installation directory (WaterLevelsApp folder will be created inside):", 0^)
+        echo If objFolder Is Nothing Then
+        echo     WScript.Echo "CANCELLED"
+        echo Else
+        echo     WScript.Echo objFolder.Self.Path
+        echo End If
+    ) > "%FOLDER_VBS%"
+    
+    for /f "delims=" %%a in ('cscript //nologo "%FOLDER_VBS%" 2^>nul') do set "CUSTOM_PATH=%%a"
+    del "%FOLDER_VBS%" 2>nul
+    
+    if "%CUSTOM_PATH%"=="CANCELLED" (
+        echo Installation cancelled by user.
+        pause
+        exit /b 0
+    )
+    
+    if "%CUSTOM_PATH%"=="" (
+        echo Error: Could not open folder browser.
+        echo Using default location instead.
+        set "INSTALL_DIR=%DEFAULT_PATH%"
+    ) else (
+        set "INSTALL_DIR=%CUSTOM_PATH%\WaterLevelsApp"
+    )
+) else (
+    set "INSTALL_DIR=%DEFAULT_PATH%"
+)
+
+echo.
+echo Selected installation directory: %INSTALL_DIR%
+echo.
+
+REM Ask about desktop shortcuts
+set /p create_shortcuts="Create desktop shortcuts for easy access? (Y/n): "
+if /i "%create_shortcuts%"=="n" (
+    set "CREATE_DESKTOP=False"
+) else (
+    set "CREATE_DESKTOP=True"
+)
+
+REM Ask about source deletion
+set /p delete_source="Delete source folder after installation? (Y/n): "
+if /i "%delete_source%"=="n" (
+    set "DELETE_SOURCE=False"
+) else (
+    set "DELETE_SOURCE=True"
+)
+
+echo.
+echo Installation Summary:
+echo - Installation directory: %INSTALL_DIR%
+echo - Create desktop shortcuts: %CREATE_DESKTOP%
+echo - Delete source after install: %DELETE_SOURCE%
+echo.
+set /p confirm="Continue with installation? (Y/n): "
+if /i "%confirm%"=="n" (
+    echo Installation cancelled by user.
+    pause
+    exit /b 0
+)
+
+echo.
+echo Starting installation...
 echo.
 
 REM Determine Project Code Directory (where this script resides)
