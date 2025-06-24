@@ -7,8 +7,8 @@ Built for groundwater professionals, researchers, and environmental consultants,
 ## 🚀 Quick Installation
 
 1. **Download the application:**
-   - Click the green **"Code"** button above
-   - Select **"Download ZIP"**
+   - **[📥 Download Latest Release](../../releases/latest)** (Recommended)
+   - Or click the green **"Code"** button above → **"Download ZIP"**
    - Extract to a folder on your computer
 
 2. **Run the installer:**
@@ -63,4 +63,4 @@ Built for groundwater professionals, researchers, and environmental consultants,
 
 ---
 
-**Ready to start monitoring?** Download the ZIP file above and run the installer!
+**Ready to start monitoring?** **[📥 Download the latest release](../../releases/latest)** and run the installer!
