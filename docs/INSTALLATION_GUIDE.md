@@ -30,8 +30,8 @@ This guide explains how to install the Water Level Monitoring System with the ne
 
 #### Windows
 1. Download or clone the repository
-2. Navigate to the `docs` folder
-3. Run `setup_enhanced.bat` as Administrator
+2. Navigate to the project root folder
+3. Run `setup.bat` as Administrator
 4. The installer will:
    - Create `%USERPROFILE%\WaterLevelsApp` directory
    - Download and install Python 3.11.6 (if needed)
@@ -43,9 +43,9 @@ This guide explains how to install the Water Level Monitoring System with the ne
 
 #### macOS/Linux
 1. Download or clone the repository
-2. Navigate to the `docs` folder
-3. Make the script executable: `chmod +x setup_enhanced.sh`
-4. Run: `./setup_enhanced.sh`
+2. Navigate to the project root folder
+3. Make the script executable: `chmod +x setup.sh`
+4. Run: `./setup.sh`
 5. The installer will:
    - Create `~/WaterLevelsApp` directory
    - Use system Python 3 (install if needed)
@@ -55,9 +55,9 @@ This guide explains how to install the Water Level Monitoring System with the ne
    - Create launchers
    - Set up auto-update system
 
-### Option 2: Original Installation
+### Option 2: Legacy Installation
 
-Use the existing `setup.bat` (Windows) or `setup.sh` (macOS/Linux) files in the root directory for a simpler installation without the enhanced features.
+If you need the older installation method, it has been deprecated in favor of the enhanced setup scripts above.
 
 ## Directory Structure After Installation
 

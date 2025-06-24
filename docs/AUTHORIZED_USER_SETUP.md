@@ -23,13 +23,13 @@ The application is split into two parts for security:
 ### Step 3: Install Application
 
 #### Windows:
-1. Double-click `docs/setup_enhanced.bat` in the main application folder
+1. Double-click `setup.bat` in the main application folder
 2. Wait for installation to complete
 3. When prompted for credentials during first run, use the setup dialog
 
 #### macOS/Linux:
 1. Open terminal and navigate to the application folder
-2. Run: `chmod +x docs/setup_enhanced.sh && ./docs/setup_enhanced.sh`
+2. Run: `chmod +x setup.sh && ./setup.sh`
 3. Wait for installation to complete
 4. When prompted for credentials during first run, use the setup dialog
 

@@ -15,6 +15,7 @@ import time
 import logging
 import pytz
 import os
+import tempfile
 import json
 import folium
 from folium import plugins
@@ -1260,8 +1261,10 @@ class WaterLevelRunsTab(QWidget):
             tiles='OpenStreetMap'
         )
         
-        # Save map to temporary HTML file
-        map_path = os.path.abspath('temp_map.html')
+        # Save map to temporary HTML file with unique name
+        temp_dir = tempfile.gettempdir()
+        timestamp = int(time.time())
+        map_path = os.path.join(temp_dir, f"water_level_map_{timestamp}.html")
         self.folium_map.save(map_path)
         
         # Connect loadFinished to ensure QWebChannel is loaded if needed
@@ -1457,9 +1460,12 @@ class WaterLevelRunsTab(QWidget):
                         icon=icon
                     ).add_to(self.folium_map)
                 
-                # Update the map view
-                self.folium_map.save('temp_map.html')
-                self.map_view.setUrl(QUrl.fromLocalFile(os.path.abspath('temp_map.html')))
+                # Update the map view with unique temp file
+                temp_dir = tempfile.gettempdir()
+                timestamp = int(time.time())
+                temp_map_path = os.path.join(temp_dir, f"water_level_map_{timestamp}.html")
+                self.folium_map.save(temp_map_path)
+                self.map_view.setUrl(QUrl.fromLocalFile(temp_map_path))
                 
         except Exception as e:
             logger.error(f"Error updating map markers: {e}")

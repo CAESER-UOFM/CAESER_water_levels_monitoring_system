@@ -7,7 +7,6 @@ Created on Fri Jan 24 11:30:57 2025
 
 import requests
 import pandas as pd
-import numpy as np
 
 def fetch_monet_data(username, password, url, verbose=False):
     """
@@ -71,18 +70,8 @@ def fetch_monet_data(username, password, url, verbose=False):
         # Convert milliseconds to naive UTC datetime (simpler conversion)
         df['Date_time'] = pd.to_datetime(df['Date_time'], unit='ms')  # This gives naive UTC
         
-        # Save debug CSV with timestamp info
-        df['original_timestamp_ms'] = df['Date_time'].astype(np.int64) // 10**6  # Keep original ms
-        
         # Handle NaT values before string conversion
         df = df.dropna(subset=['Date_time'])  # Remove rows with NaT timestamps
-        
-        # Convert timestamps to strings safely
-        df['timestamp_utc'] = df['Date_time'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if pd.notnull(x) else None)
-        df['timestamp_local'] = df['Date_time'].apply(
-            lambda x: x.tz_localize('UTC').tz_convert('America/Chicago').strftime('%Y-%m-%d %H:%M:%S %z') if pd.notnull(x) else None
-        )
-        df.to_csv('monet_raw_data.csv', index=False)
 
         # Format Date_time as string in UTC before grouping
         df['Date_time'] = df['Date_time'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if pd.notnull(x) else None)
