@@ -8,9 +8,14 @@ REM Uses VBScript for GUI instead of PowerShell (works on all Windows)
 REM No PowerShell execution policy issues!
 REM ================================================================
 
+REM Prevent early termination and add debugging
+echo [DEBUG] Installer starting...
+
 REM Auto-unblock this file to prevent SmartScreen issues
 echo [*] Checking file blocking status...
 powershell -ExecutionPolicy Bypass -Command "try { Unblock-File -Path '%~f0' -ErrorAction SilentlyContinue; Write-Host 'File unblocked successfully' } catch { Write-Host 'Could not unblock file (this is normal)' }" 2>nul
+
+echo [DEBUG] File unblock completed...
 
 cls
 echo.
@@ -250,16 +255,86 @@ if exist "%VENV_DIR%" (
 
 echo    [*] [4/8] Creating virtual environment...
 "%PYTHON_DIR%\python.exe" -m virtualenv "%VENV_DIR%"
+if %ERRORLEVEL% NEQ 0 (
+    echo    [!] Error: Failed to create virtual environment
+    pause
+    exit /b 1
+)
+echo [DEBUG] Virtual environment created successfully
 
 REM Install dependencies
 echo    [*] [5/8] Installing dependencies...
 call "%VENV_DIR%\Scripts\activate.bat"
+if %ERRORLEVEL% NEQ 0 (
+    echo    [!] Error: Could not activate virtual environment
+    pause
+    exit /b 1
+)
+
+echo    [*] Upgrading pip...
 python -m pip install --upgrade pip
+if %ERRORLEVEL% NEQ 0 (
+    echo    [!] Warning: Could not upgrade pip, continuing...
+)
+
+echo    [*] Installing core packages (numpy, pandas, matplotlib)...
 python -m pip install numpy pandas matplotlib
+if %ERRORLEVEL% NEQ 0 (
+    echo    [!] Error: Failed to install core packages
+    pause
+    exit /b 1
+)
+
+echo    [*] Installing requests and packaging...
 python -m pip install requests packaging
+if %ERRORLEVEL% NEQ 0 (
+    echo    [!] Error: Failed to install requests/packaging
+    pause
+    exit /b 1
+)
+
+echo    [*] Installing Google API packages...
 python -m pip install google-api-python-client google-auth-oauthlib --upgrade
+if %ERRORLEVEL% NEQ 0 (
+    echo    [!] Error: Failed to install Google API packages
+    pause
+    exit /b 1
+)
+
+echo    [*] Installing PyQt5 packages...
 python -m pip install PyQt5==5.15.10 PyQt5_sip==12.13.0 PyQtWebEngine==5.15.6
+if %ERRORLEVEL% NEQ 0 (
+    echo    [!] Error: Failed to install PyQt5 packages
+    pause
+    exit /b 1
+)
+echo [DEBUG] PyQt5 installation completed, waiting 3 seconds...
+timeout /t 3 /nobreak >nul
+
+echo    [*] Installing remaining packages (scipy, folium, etc.)...
 python -m pip install scipy folium branca pillow psutil --upgrade
+if %ERRORLEVEL% NEQ 0 (
+    echo    [!] Error: Failed to install remaining packages
+    echo    [*] Trying to install packages individually...
+    
+    python -m pip install scipy
+    if %ERRORLEVEL% NEQ 0 echo    [!] Warning: scipy installation failed
+    
+    python -m pip install folium
+    if %ERRORLEVEL% NEQ 0 echo    [!] Warning: folium installation failed
+    
+    python -m pip install branca
+    if %ERRORLEVEL% NEQ 0 echo    [!] Warning: branca installation failed
+    
+    python -m pip install pillow
+    if %ERRORLEVEL% NEQ 0 echo    [!] Warning: pillow installation failed
+    
+    python -m pip install psutil
+    if %ERRORLEVEL% NEQ 0 echo    [!] Warning: psutil installation failed
+)
+
+echo    [+] Dependency installation completed
+echo [DEBUG] Proceeding to file copying stage...
 
 REM Copy application files
 echo    [*] [6/8] Copying application files...
