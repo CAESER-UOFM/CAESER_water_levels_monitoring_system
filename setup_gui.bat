@@ -1,0 +1,352 @@
+@echo off
+setlocal enabledelayedexpansion
+
+REM ================================================================
+REM CAESER Water Levels Monitoring Application - GUI Installer
+REM ================================================================
+REM Uses VBScript for GUI instead of PowerShell (works on all Windows)
+REM No PowerShell execution policy issues!
+REM ================================================================
+
+echo Loading installation dialog...
+
+REM Create temporary VBScript for GUI dialog
+set "TEMP_VBS=%TEMP%\water_levels_installer.vbs"
+
+(
+echo Set objShell = CreateObject("WScript.Shell"^)
+echo Set objFSO = CreateObject("Scripting.FileSystemObject"^)
+echo.
+echo ' Default installation path
+echo strDefaultPath = objShell.ExpandEnvironmentStrings("%%USERPROFILE%%"^) ^& "\WaterLevelsApp"
+echo.
+echo ' Create dialog
+echo strTitle = "CAESER Water Levels Monitoring - Installation Setup"
+echo strMessage = "Choose installation directory:" ^& vbCrLf ^& vbCrLf ^& _
+echo              "Default: " ^& strDefaultPath ^& vbCrLf ^& vbCrLf ^& _
+echo              "This installer does NOT require administrator rights!" ^& vbCrLf ^& _
+echo              "Everything installs to your user profile." ^& vbCrLf ^& vbCrLf ^& _
+echo              "Click OK to use default location, or Cancel to choose custom path."
+echo.
+echo intResult = MsgBox(strMessage, vbOKCancel + vbInformation + vbDefaultButton1, strTitle^)
+echo.
+echo If intResult = vbOK Then
+echo     strInstallPath = strDefaultPath
+echo Else
+echo     ' Show folder browser for custom path
+echo     Set objFolder = objShell.BrowseForFolder(0, "Select installation directory:", 0^)
+echo     If objFolder Is Nothing Then
+echo         WScript.Echo "CANCELLED"
+echo         WScript.Quit
+echo     Else
+echo         strInstallPath = objFolder.Self.Path ^& "\WaterLevelsApp"
+echo     End If
+echo End If
+echo.
+echo ' Ask about desktop shortcuts
+echo intShortcuts = MsgBox("Create desktop shortcuts for easy access?" ^& vbCrLf ^& vbCrLf ^& _
+echo                       "Recommended for most users.", _
+echo                       vbYesNo + vbQuestion + vbDefaultButton1, strTitle^)
+echo.
+echo ' Ask about source deletion
+echo intDeleteSource = MsgBox("Delete source folder after installation?" ^& vbCrLf ^& vbCrLf ^& _
+echo                           "This avoids having duplicate files." ^& vbCrLf ^& _
+echo                           "Recommended if you downloaded this as a ZIP file.", _
+echo                           vbYesNo + vbQuestion + vbDefaultButton1, strTitle^)
+echo.
+echo ' Output results
+echo strOutput = strInstallPath ^& "|"
+echo If intDeleteSource = vbYes Then
+echo     strOutput = strOutput ^& "True|"
+echo Else
+echo     strOutput = strOutput ^& "False|"
+echo End If
+echo If intShortcuts = vbYes Then
+echo     strOutput = strOutput ^& "True"
+echo Else
+echo     strOutput = strOutput ^& "False"
+echo End If
+echo.
+echo WScript.Echo strOutput
+) > "%TEMP_VBS%"
+
+REM Run the VBScript and capture output
+for /f "delims=" %%a in ('cscript //nologo "%TEMP_VBS%" 2^>nul') do set "DIALOG_RESULT=%%a"
+
+REM Clean up temp file
+del "%TEMP_VBS%" 2>nul
+
+REM Check if user cancelled
+if "%DIALOG_RESULT%"=="CANCELLED" (
+    echo Installation cancelled by user.
+    pause
+    exit /b 0
+)
+
+if "%DIALOG_RESULT%"=="" (
+    echo Error: Could not display installation dialog.
+    echo This may be due to corporate security restrictions.
+    echo.
+    echo Please use setup_simple.bat for text-based installation.
+    pause
+    exit /b 1
+)
+
+REM Parse the results
+for /f "tokens=1,2,3 delims=|" %%a in ("%DIALOG_RESULT%") do (
+    set "INSTALL_DIR=%%a"
+    set "DELETE_SOURCE=%%b"
+    set "CREATE_DESKTOP=%%c"
+)
+
+echo ===============================================
+echo CAESER Water Levels Monitoring Application
+echo Professional Installation (No Admin Required)
+echo ===============================================
+echo.
+echo Installation directory: %INSTALL_DIR%
+echo Delete source after install: %DELETE_SOURCE%
+echo Create desktop shortcuts: %CREATE_DESKTOP%
+echo.
+
+REM Determine Project Code Directory (where this script resides)
+set "CODE_DIR=%~dp0"
+REM Remove trailing backslash
+if "%CODE_DIR:~-1%"=="\" set "CODE_DIR=%CODE_DIR:~0,-1%"
+
+REM Copy to local drive if running from UNC path
+echo %CODE_DIR% | findstr /C:"^\\\\" >nul
+if not errorlevel 1 (
+    echo Detected network drive installation. Copying to local temp directory...
+    set "LOCAL_TEMP=%TEMP%\CAESER_installer_%RANDOM%"
+    mkdir "!LOCAL_TEMP!"
+    xcopy "%CODE_DIR%" "!LOCAL_TEMP!" /E /I /Y >nul
+    set "CODE_DIR=!LOCAL_TEMP!"
+    set "CLEANUP_TEMP=True"
+) else (
+    set "CLEANUP_TEMP=False"
+)
+
+REM Define installation subdirectories
+set "PYTHON_DIR=%INSTALL_DIR%\python"
+set "VENV_DIR=%INSTALL_DIR%\venv"
+set "BACKUP_DIR=%INSTALL_DIR%\backups"
+
+REM Create installation directory structure
+echo Creating installation directories...
+if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
+if not exist "%BACKUP_DIR%" mkdir "%BACKUP_DIR%"
+
+REM Define Python version and URLs
+set "PYTHON_VERSION=3.11.6"
+set "PYTHON_URL=https://www.python.org/ftp/python/3.11.6/python-3.11.6-embed-amd64.zip"
+set "GET_PIP_URL=https://bootstrap.pypa.io/get-pip.py"
+
+REM Download and install Python if not already installed
+if not exist "%PYTHON_DIR%\python.exe" (
+    echo Installing fresh Python %PYTHON_VERSION% for this application...
+    
+    REM Download Python using built-in Windows tools
+    echo Downloading Python %PYTHON_VERSION%...
+    bitsadmin /transfer "PythonDownload" "%PYTHON_URL%" "%INSTALL_DIR%\python.zip" >nul
+    if %ERRORLEVEL% NEQ 0 (
+        echo Failed to download Python using bitsadmin. Trying alternative method...
+        powershell -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; try { Invoke-WebRequest -Uri '%PYTHON_URL%' -OutFile '%INSTALL_DIR%\python.zip' } catch { exit 1 }"
+        if !ERRORLEVEL! NEQ 0 (
+            echo Failed to download Python. Please check your internet connection.
+            pause
+            exit /b 1
+        )
+    )
+    
+    REM Extract Python using built-in Windows tools
+    echo Extracting Python...
+    powershell -ExecutionPolicy Bypass -Command "try { Expand-Archive -Path '%INSTALL_DIR%\python.zip' -DestinationPath '%PYTHON_DIR%' -Force } catch { exit 1 }"
+    if exist "%INSTALL_DIR%\python.zip" del "%INSTALL_DIR%\python.zip"
+    
+    REM Enable site-packages
+    echo Enabling site-packages...
+    for %%F in ("%PYTHON_DIR%\python*._pth") do (
+        type "%%F" > "%%F.temp"
+        echo import site >> "%%F.temp"
+        move /y "%%F.temp" "%%F"
+    )
+    
+    REM Download and install pip
+    echo Installing pip...
+    bitsadmin /transfer "PipDownload" "%GET_PIP_URL%" "%INSTALL_DIR%\get-pip.py" >nul
+    if %ERRORLEVEL% NEQ 0 (
+        powershell -ExecutionPolicy Bypass -Command "try { Invoke-WebRequest -Uri '%GET_PIP_URL%' -OutFile '%INSTALL_DIR%\get-pip.py' } catch { exit 1 }"
+    )
+    
+    "%PYTHON_DIR%\python.exe" "%INSTALL_DIR%\get-pip.py" --no-warn-script-location
+    if exist "%INSTALL_DIR%\get-pip.py" del "%INSTALL_DIR%\get-pip.py"
+    
+    echo Python installation complete.
+) else (
+    echo Using existing Python installation.
+)
+
+REM Install virtualenv
+echo Installing virtualenv...
+"%PYTHON_DIR%\python.exe" -m pip install --no-warn-script-location setuptools virtualenv
+
+REM Create virtual environment
+if exist "%VENV_DIR%" (
+    echo Removing existing virtual environment...
+    rmdir /s /q "%VENV_DIR%"
+)
+
+echo Creating virtual environment...
+"%PYTHON_DIR%\python.exe" -m virtualenv "%VENV_DIR%"
+
+REM Install dependencies
+echo Installing dependencies...
+call "%VENV_DIR%\Scripts\activate.bat"
+python -m pip install --upgrade pip
+python -m pip install numpy pandas matplotlib
+python -m pip install requests packaging
+python -m pip install google-api-python-client google-auth-oauthlib --upgrade
+python -m pip install PyQt5==5.15.10 PyQt5_sip==12.13.0 PyQtWebEngine==5.15.6
+python -m pip install scipy folium branca pillow psutil --upgrade
+
+REM Copy application files
+echo Copying application files...
+xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y >nul
+xcopy "%CODE_DIR%\main.py" "%INSTALL_DIR%\" /Y >nul
+xcopy "%CODE_DIR%\Requirements.txt" "%INSTALL_DIR%\" /Y >nul
+if exist "%CODE_DIR%\config" xcopy "%CODE_DIR%\config" "%INSTALL_DIR%\config\" /E /I /Y >nul
+if exist "%CODE_DIR%\tools" xcopy "%CODE_DIR%\tools" "%INSTALL_DIR%\tools\" /E /I /Y >nul
+if exist "%CODE_DIR%\assets" xcopy "%CODE_DIR%\assets" "%INSTALL_DIR%\assets\" /E /I /Y >nul
+if exist "%CODE_DIR%\Legacy_tables" xcopy "%CODE_DIR%\Legacy_tables" "%INSTALL_DIR%\Legacy_tables\" /E /I /Y >nul
+
+REM Create version file
+echo Creating version file...
+(
+    echo {
+    echo   "version": "1.0.0-beta",
+    echo   "release_date": "%DATE%",
+    echo   "description": "Water Level Monitoring System - GUI Installation",
+    echo   "github_repo": "CAESER-UOFM/CAESER_water_levels_monitoring_system",
+    echo   "auto_update": {
+    echo     "enabled": true,
+    echo     "check_on_startup": true,
+    echo     "backup_count": 3
+    echo   },
+    echo   "installation_path": "%INSTALL_DIR%"
+    echo }
+) > "%INSTALL_DIR%\version.json"
+
+REM Create launchers
+echo Creating launchers...
+
+set "LAUNCHER=%INSTALL_DIR%\water_levels_app.bat"
+(
+    echo @echo off
+    echo cd /d "%INSTALL_DIR%"
+    echo call "%VENV_DIR%\Scripts\activate.bat"
+    echo python "%INSTALL_DIR%\main.py"
+) > "%LAUNCHER%"
+
+set "DEBUG_LAUNCHER=%INSTALL_DIR%\water_levels_app_debug.bat"
+(
+    echo @echo off
+    echo echo CAESER Water Levels Monitoring - Debug Mode
+    echo echo ==========================================
+    echo cd /d "%INSTALL_DIR%"
+    echo call "%VENV_DIR%\Scripts\activate.bat"
+    echo python "%INSTALL_DIR%\main.py"
+    echo pause
+) > "%DEBUG_LAUNCHER%"
+
+set "VISUALIZER_LAUNCHER=%INSTALL_DIR%\water_level_visualizer_app.bat"
+(
+    echo @echo off
+    echo cd /d "%INSTALL_DIR%\tools\Visualizer"
+    echo call "%VENV_DIR%\Scripts\activate.bat"
+    echo python "%INSTALL_DIR%\tools\Visualizer\main.py"
+    echo pause
+) > "%VISUALIZER_LAUNCHER%"
+
+REM Create desktop shortcuts if requested
+if "%CREATE_DESKTOP%"=="True" (
+    echo Creating desktop shortcuts...
+    set "DESKTOP_PATH=%USERPROFILE%\Desktop"
+    
+    REM Create VBScript for shortcuts (more reliable than PowerShell)
+    set "SHORTCUT_VBS=%TEMP%\create_shortcuts.vbs"
+    (
+        echo Set WshShell = CreateObject("WScript.Shell"^)
+        echo Set oShellLink = WshShell.CreateShortcut("%DESKTOP_PATH%\Water Levels Monitoring.lnk"^)
+        echo oShellLink.TargetPath = "%LAUNCHER%"
+        echo oShellLink.WorkingDirectory = "%INSTALL_DIR%"
+        echo oShellLink.Description = "CAESER Water Levels Monitoring Application"
+        echo oShellLink.Save
+        echo Set oShellLink = WshShell.CreateShortcut("%DESKTOP_PATH%\Water Levels Monitoring (Debug).lnk"^)
+        echo oShellLink.TargetPath = "%DEBUG_LAUNCHER%"
+        echo oShellLink.WorkingDirectory = "%INSTALL_DIR%"
+        echo oShellLink.Description = "CAESER Water Levels Monitoring - Debug Mode"
+        echo oShellLink.Save
+    ) > "!SHORTCUT_VBS!"
+    
+    cscript //nologo "!SHORTCUT_VBS!" >nul 2>&1
+    del "!SHORTCUT_VBS!" 2>nul
+    
+    echo Desktop shortcuts created.
+)
+
+REM Cleanup temp directory if we copied from UNC
+if "%CLEANUP_TEMP%"=="True" (
+    echo Cleaning up temporary files...
+    rmdir /s /q "!LOCAL_TEMP!" 2>nul
+)
+
+echo.
+echo ===============================================
+echo Installation Complete!
+echo ===============================================
+echo.
+echo Installation directory: %INSTALL_DIR%
+echo.
+echo Launchers created:
+echo   Main app: %LAUNCHER%
+echo   Debug mode: %DEBUG_LAUNCHER%
+echo   Visualizer: %VISUALIZER_LAUNCHER%
+
+if "%CREATE_DESKTOP%"=="True" (
+    echo.
+    echo Desktop shortcuts created:
+    echo   - Water Levels Monitoring
+    echo   - Water Levels Monitoring (Debug)
+)
+
+echo.
+echo You can now launch the application!
+echo.
+
+REM Handle source deletion
+if "%DELETE_SOURCE%"=="True" (
+    echo The installer will now attempt to delete the source folder.
+    echo This is safe since everything has been copied to: %INSTALL_DIR%
+    echo.
+    pause
+    
+    REM Determine original source directory
+    set "ORIGINAL_CODE_DIR=%~dp0"
+    if "%ORIGINAL_CODE_DIR:~-1%"=="\" set "ORIGINAL_CODE_DIR=%ORIGINAL_CODE_DIR:~0,-1%"
+    
+    cd /d "%USERPROFILE%" 2>nul
+    if exist "%ORIGINAL_CODE_DIR%" (
+        rmdir /s /q "%ORIGINAL_CODE_DIR%" 2>nul
+        if exist "%ORIGINAL_CODE_DIR%" (
+            echo Could not delete source folder. You may need to delete it manually.
+        ) else (
+            echo Source folder deleted successfully.
+        )
+    )
+)
+
+echo.
+echo Installation complete! Press any key to exit...
+pause
+endlocal
