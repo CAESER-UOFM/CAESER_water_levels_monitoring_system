@@ -18,7 +18,7 @@ Add-Type -AssemblyName System.Drawing
 # Create main form
 $form = New-Object System.Windows.Forms.Form
 $form.Text = 'Water Levels Monitoring - Installation Setup'
-$form.Size = New-Object System.Drawing.Size(520, 420)
+$form.Size = New-Object System.Drawing.Size(520, 445)
 $form.StartPosition = 'CenterScreen'
 $form.FormBorderStyle = 'FixedDialog'
 $form.MaximizeBox = $false
@@ -111,11 +111,20 @@ $warningText.Location = New-Object System.Drawing.Point(10, 40)
 $warningText.Size = New-Object System.Drawing.Size(440, 60)
 $warningPanel.Controls.Add($warningText)
 
+# Desktop shortcuts checkbox
+$desktopCheckbox = New-Object System.Windows.Forms.CheckBox
+$desktopCheckbox.Text = 'Create desktop shortcuts for easy access (Recommended)'
+$desktopCheckbox.Font = New-Object System.Drawing.Font('Segoe UI', 9)
+$desktopCheckbox.Location = New-Object System.Drawing.Point(20, 300)
+$desktopCheckbox.Size = New-Object System.Drawing.Size(400, 25)
+$desktopCheckbox.Checked = $true
+$form.Controls.Add($desktopCheckbox)
+
 # Delete source checkbox
 $deleteCheckbox = New-Object System.Windows.Forms.CheckBox
 $deleteCheckbox.Text = 'Delete source folder after successful installation (Recommended)'
 $deleteCheckbox.Font = New-Object System.Drawing.Font('Segoe UI', 9)
-$deleteCheckbox.Location = New-Object System.Drawing.Point(20, 300)
+$deleteCheckbox.Location = New-Object System.Drawing.Point(20, 325)
 $deleteCheckbox.Size = New-Object System.Drawing.Size(400, 25)
 $deleteCheckbox.Checked = $true
 $form.Controls.Add($deleteCheckbox)
@@ -124,7 +133,7 @@ $form.Controls.Add($deleteCheckbox)
 $installButton = New-Object System.Windows.Forms.Button
 $installButton.Text = 'Install Application'
 $installButton.Font = New-Object System.Drawing.Font('Segoe UI', 10, [System.Drawing.FontStyle]::Bold)
-$installButton.Location = New-Object System.Drawing.Point(280, 340)
+$installButton.Location = New-Object System.Drawing.Point(280, 365)
 $installButton.Size = New-Object System.Drawing.Size(120, 35)
 $installButton.BackColor = [System.Drawing.Color]::FromArgb(34, 139, 34)
 $installButton.ForeColor = [System.Drawing.Color]::White
@@ -138,7 +147,7 @@ $form.Controls.Add($installButton)
 $cancelButton = New-Object System.Windows.Forms.Button
 $cancelButton.Text = 'Cancel'
 $cancelButton.Font = New-Object System.Drawing.Font('Segoe UI', 9)
-$cancelButton.Location = New-Object System.Drawing.Point(410, 340)
+$cancelButton.Location = New-Object System.Drawing.Point(410, 365)
 $cancelButton.Size = New-Object System.Drawing.Size(80, 35)
 $cancelButton.BackColor = [System.Drawing.Color]::FromArgb(220, 20, 60)
 $cancelButton.ForeColor = [System.Drawing.Color]::White
@@ -152,13 +161,14 @@ $form.Controls.Add($cancelButton)
 # Show dialog and return results
 $result = $form.ShowDialog()
 if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
-    Write-Output ($pathTextBox.Text + '|' + $deleteCheckbox.Checked)
+    Write-Output ($pathTextBox.Text + '|' + $deleteCheckbox.Checked + '|' + $desktopCheckbox.Checked)
 } else {
-    Write-Output 'CANCELLED|false'
+    Write-Output 'CANCELLED|false|false'
 }
 "') do (
     set "INSTALL_DIR=%%a"
     set "DELETE_SOURCE=%%b"
+    set "CREATE_DESKTOP=%%c"
 )
 
 REM Check if user cancelled
@@ -177,6 +187,7 @@ echo Enhanced Installation with Auto-Update System
 echo ===============================================
 echo Installation directory: %INSTALL_DIR%
 echo Delete source after install: %DELETE_SOURCE%
+echo Create desktop shortcuts: %CREATE_DESKTOP%
 echo.
 
 REM Define installation subdirectories
@@ -393,6 +404,48 @@ set "UNINSTALLER=%INSTALL_DIR%\uninstall.bat"
     echo pause
 ) > "%UNINSTALLER%"
 
+REM Create desktop shortcuts if requested
+if "%CREATE_DESKTOP%"=="True" (
+    echo Creating desktop shortcuts...
+    
+    REM Get desktop path
+    for /f "usebackq tokens=3*" %%A in (`reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders" /v Desktop 2^>nul`) do set "DESKTOP_PATH=%%A %%B"
+    if not defined DESKTOP_PATH set "DESKTOP_PATH=%USERPROFILE%\Desktop"
+    
+    REM Create main application shortcut
+    powershell -Command "
+        $WshShell = New-Object -comObject WScript.Shell
+        $Shortcut = $WshShell.CreateShortcut('%DESKTOP_PATH%\Water Levels Monitoring.lnk')
+        $Shortcut.TargetPath = '%LAUNCHER%'
+        $Shortcut.WorkingDirectory = '%INSTALL_DIR%'
+        $Shortcut.Description = 'CAESER Water Levels Monitoring Application'
+        $Shortcut.Save()
+    "
+    
+    REM Create debug shortcut
+    powershell -Command "
+        $WshShell = New-Object -comObject WScript.Shell
+        $Shortcut = $WshShell.CreateShortcut('%DESKTOP_PATH%\Water Levels Monitoring (Debug).lnk')
+        $Shortcut.TargetPath = '%DEBUG_LAUNCHER%'
+        $Shortcut.WorkingDirectory = '%INSTALL_DIR%'
+        $Shortcut.Description = 'CAESER Water Levels Monitoring - Debug Mode'
+        $Shortcut.Save()
+    "
+    
+    REM Create visualizer shortcut
+    powershell -Command "
+        $WshShell = New-Object -comObject WScript.Shell
+        $Shortcut = $WshShell.CreateShortcut('%DESKTOP_PATH%\Water Level Visualizer.lnk')
+        $Shortcut.TargetPath = '%VISUALIZER_LAUNCHER%'
+        $Shortcut.WorkingDirectory = '%INSTALL_DIR%\tools\Visualizer'
+        $Shortcut.Description = 'CAESER Water Level Data Visualizer'
+        $Shortcut.Save()
+    "
+    
+    echo Desktop shortcuts created successfully.
+    echo.
+)
+
 echo.
 echo ===============================================
 echo Setup Complete!
@@ -406,6 +459,13 @@ echo   Main app: %LAUNCHER%
 echo   Debug mode: %DEBUG_LAUNCHER%
 echo   Visualizer: %VISUALIZER_LAUNCHER%
 echo   Uninstaller: %UNINSTALLER%
+if "%CREATE_DESKTOP%"=="True" (
+    echo.
+    echo Desktop shortcuts created:
+    echo   📱 Water Levels Monitoring
+    echo   🐛 Water Levels Monitoring ^(Debug^)
+    echo   📊 Water Level Visualizer
+)
 echo.
 echo Features included:
 echo   ✓ Isolated Python environment
@@ -414,8 +474,15 @@ echo   ✓ Auto-update system enabled
 echo   ✓ Backup system for safe updates
 echo   ✓ Debug mode for troubleshooting
 echo   ✓ Easy uninstall option
+if "%CREATE_DESKTOP%"=="True" (
+    echo   ✓ Desktop shortcuts for easy access
+)
 echo.
-echo You can copy the launchers to your desktop for easy access.
+if "%CREATE_DESKTOP%"=="True" (
+    echo Desktop shortcuts are ready for immediate use.
+) else (
+    echo You can manually copy the launchers to your desktop for easy access.
+)
 echo The application will automatically check for updates on startup.
 echo.
 
