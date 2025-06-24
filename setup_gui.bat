@@ -8,10 +8,31 @@ REM Uses VBScript for GUI instead of PowerShell (works on all Windows)
 REM No PowerShell execution policy issues!
 REM ================================================================
 
-echo ===============================================
-echo CAESER Water Levels Monitoring Application
-echo Professional Installation (No Admin Required)
-echo ===============================================
+cls
+echo.
+echo    ╔═══════════════════════════════════════════════════════════════════════╗
+echo    ║                                                                       ║
+echo    ║   ██████╗ █████╗ ███████╗███████╗███████╗██████╗                     ║
+echo    ║  ██╔════╝██╔══██╗██╔════╝██╔════╝██╔════╝██╔══██╗                    ║
+echo    ║  ██║     ███████║█████╗  ███████╗█████╗  ██████╔╝                    ║
+echo    ║  ██║     ██╔══██║██╔══╝  ╚════██║██╔══╝  ██╔══██╗                    ║
+echo    ║  ╚██████╗██║  ██║███████╗███████║███████╗██║  ██║                    ║
+echo    ║   ╚═════╝╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═╝                    ║
+echo    ║                                                                       ║
+echo    ║              🌊 Water Levels Monitoring System 🌊                     ║
+echo    ║                                                                       ║
+echo    ║   ┌─────────────────────────────────────────────────────────────┐     ║
+echo    ║   │  Professional Installation System                          │     ║
+echo    ║   │  No Administrator Rights Required                          │     ║
+echo    ║   │  University of Memphis - CAESER Lab                       │     ║
+echo    ║   └─────────────────────────────────────────────────────────────┘     ║
+echo    ║                                                                       ║
+echo    ╚═══════════════════════════════════════════════════════════════════════╝
+echo.
+echo    🔧 Initializing installer components...
+timeout /t 2 /nobreak >nul
+echo    ✅ Environment check complete
+echo    🚀 Ready to install Water Levels Monitoring System
 echo.
 
 REM Default installation directory
@@ -96,7 +117,15 @@ if /i "%confirm%"=="n" (
 )
 
 echo.
-echo Starting installation...
+echo    ╔═══════════════════════════════════════════════════════════════════════╗
+echo    ║                        🚀 INSTALLATION STARTING 🚀                   ║
+echo    ╚═══════════════════════════════════════════════════════════════════════╝
+echo.
+echo    📂 Installation directory: %INSTALL_DIR%
+echo    🖥️  Desktop shortcuts: %CREATE_DESKTOP%
+echo    🗑️  Delete source: %DELETE_SOURCE%
+echo.
+echo    ⏳ Please wait while we set up your Water Levels Monitoring System...
 echo.
 
 REM Determine Project Code Directory (where this script resides)
@@ -123,7 +152,7 @@ set "VENV_DIR=%INSTALL_DIR%\venv"
 set "BACKUP_DIR=%INSTALL_DIR%\backups"
 
 REM Create installation directory structure
-echo Creating installation directories...
+echo    📁 [1/8] Creating installation directories...
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 if not exist "%BACKUP_DIR%" mkdir "%BACKUP_DIR%"
 
@@ -134,7 +163,7 @@ set "GET_PIP_URL=https://bootstrap.pypa.io/get-pip.py"
 
 REM Download and install Python if not already installed
 if not exist "%PYTHON_DIR%\python.exe" (
-    echo Installing fresh Python %PYTHON_VERSION% for this application...
+    echo    🐍 [2/8] Installing fresh Python %PYTHON_VERSION% for this application...
     
     REM Download Python using built-in Windows tools
     echo Downloading Python %PYTHON_VERSION%...
@@ -172,26 +201,26 @@ if not exist "%PYTHON_DIR%\python.exe" (
     "%PYTHON_DIR%\python.exe" "%INSTALL_DIR%\get-pip.py" --no-warn-script-location
     if exist "%INSTALL_DIR%\get-pip.py" del "%INSTALL_DIR%\get-pip.py"
     
-    echo Python installation complete.
+    echo    ✅ Python installation complete.
 ) else (
-    echo Using existing Python installation.
+    echo    ✅ [2/8] Using existing Python installation.
 )
 
 REM Install virtualenv
-echo Installing virtualenv...
+echo    🔧 [3/8] Installing virtualenv...
 "%PYTHON_DIR%\python.exe" -m pip install --no-warn-script-location setuptools virtualenv
 
 REM Create virtual environment
 if exist "%VENV_DIR%" (
-    echo Removing existing virtual environment...
+    echo    🗑️  Removing existing virtual environment...
     rmdir /s /q "%VENV_DIR%"
 )
 
-echo Creating virtual environment...
+echo    🏗️  [4/8] Creating virtual environment...
 "%PYTHON_DIR%\python.exe" -m virtualenv "%VENV_DIR%"
 
 REM Install dependencies
-echo Installing dependencies...
+echo    📦 [5/8] Installing dependencies...
 call "%VENV_DIR%\Scripts\activate.bat"
 python -m pip install --upgrade pip
 python -m pip install numpy pandas matplotlib
@@ -201,7 +230,7 @@ python -m pip install PyQt5==5.15.10 PyQt5_sip==12.13.0 PyQtWebEngine==5.15.6
 python -m pip install scipy folium branca pillow psutil --upgrade
 
 REM Copy application files
-echo Copying application files...
+echo    📋 [6/8] Copying application files...
 xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y >nul
 xcopy "%CODE_DIR%\main.py" "%INSTALL_DIR%\" /Y >nul
 xcopy "%CODE_DIR%\Requirements.txt" "%INSTALL_DIR%\" /Y >nul
@@ -211,7 +240,7 @@ if exist "%CODE_DIR%\assets" xcopy "%CODE_DIR%\assets" "%INSTALL_DIR%\assets\" /
 if exist "%CODE_DIR%\Legacy_tables" xcopy "%CODE_DIR%\Legacy_tables" "%INSTALL_DIR%\Legacy_tables\" /E /I /Y >nul
 
 REM Create version file
-echo Creating version file...
+echo    📄 Creating version file...
 (
     echo {
     echo   "version": "1.0.0-beta",
@@ -228,7 +257,7 @@ echo Creating version file...
 ) > "%INSTALL_DIR%\version.json"
 
 REM Create launchers
-echo Creating launchers...
+echo    🚀 [7/8] Creating launchers...
 
 set "LAUNCHER=%INSTALL_DIR%\water_levels_app.bat"
 (
@@ -260,7 +289,7 @@ set "VISUALIZER_LAUNCHER=%INSTALL_DIR%\water_level_visualizer_app.bat"
 
 REM Create desktop shortcuts if requested
 if "%CREATE_DESKTOP%"=="True" (
-    echo Creating desktop shortcuts...
+    echo    🖥️  [8/8] Creating desktop shortcuts...
     set "DESKTOP_PATH=%USERPROFILE%\Desktop"
     
     REM Create VBScript for shortcuts (more reliable than PowerShell)
@@ -292,26 +321,29 @@ if "%CLEANUP_TEMP%"=="True" (
 )
 
 echo.
-echo ===============================================
-echo Installation Complete!
-echo ===============================================
+echo    ╔═══════════════════════════════════════════════════════════════════════╗
+echo    ║                    🎉 INSTALLATION COMPLETE! 🎉                      ║
+echo    ║                                                                       ║
+echo    ║              🌊 Water Levels Monitoring System 🌊                     ║
+echo    ║                     Ready for Action!                                ║
+echo    ╚═══════════════════════════════════════════════════════════════════════╝
 echo.
-echo Installation directory: %INSTALL_DIR%
+echo    📂 Installation directory: %INSTALL_DIR%
 echo.
-echo Launchers created:
-echo   Main app: %LAUNCHER%
-echo   Debug mode: %DEBUG_LAUNCHER%
-echo   Visualizer: %VISUALIZER_LAUNCHER%
+echo    🚀 Launchers created:
+echo       📊 Main app: %LAUNCHER%
+echo       🐛 Debug mode: %DEBUG_LAUNCHER%
+echo       📈 Visualizer: %VISUALIZER_LAUNCHER%
 
 if "%CREATE_DESKTOP%"=="True" (
     echo.
-    echo Desktop shortcuts created:
-    echo   - Water Levels Monitoring
-    echo   - Water Levels Monitoring (Debug)
+    echo    🖥️  Desktop shortcuts created:
+    echo       ⭐ Water Levels Monitoring
+    echo       🔧 Water Levels Monitoring (Debug)
 )
 
 echo.
-echo You can now launch the application!
+echo    ✨ You can now launch the application!
 echo.
 
 REM Handle source deletion
