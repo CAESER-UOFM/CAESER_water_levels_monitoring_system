@@ -368,54 +368,62 @@ REM Create desktop shortcuts if requested
 if "%CREATE_DESKTOP%"=="True" (
     echo    🖥️  [8/8] Creating desktop shortcuts...
     
+    REM Set desktop path with fallback
+    set "DESKTOP_PATH=%USERPROFILE%\Desktop"
+    
     REM Try to get the actual desktop path from registry
-    for /f "usebackq tokens=3*" %%A in (`reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders" /v Desktop 2^>nul`) do set "DESKTOP_PATH=%%A %%B"
-    if not defined DESKTOP_PATH set "DESKTOP_PATH=%USERPROFILE%\Desktop"
+    for /f "usebackq tokens=3*" %%A in (`reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders" /v Desktop 2^>nul`) do (
+        if not "%%A %%B"==" " set "DESKTOP_PATH=%%A %%B"
+    )
+    
+    REM Remove any quotes from the path
+    set "DESKTOP_PATH=%DESKTOP_PATH:"=%"
     
     echo    [*] Desktop path: %DESKTOP_PATH%
     
     REM Create VBScript for shortcuts with better error handling
     set "SHORTCUT_VBS=%TEMP%\create_shortcuts_%RANDOM%.vbs"
     (
-        echo Set WshShell = CreateObject("WScript.Shell"^)
-        echo Set fso = CreateObject("Scripting.FileSystemObject"^)
+        echo Set objShell = CreateObject("WScript.Shell"^)
+        echo strDesktop = objShell.SpecialFolders("Desktop"^)
         echo.
         echo ' Create main application shortcut
-        echo Set oShellLink = WshShell.CreateShortcut("%DESKTOP_PATH%\CAESER Water Levels Monitoring.lnk"^)
-        echo oShellLink.TargetPath = "%LAUNCHER%"
-        echo oShellLink.WorkingDirectory = "%INSTALL_DIR%"
-        echo oShellLink.Description = "CAESER Water Levels Monitoring Application"
-        REM Note: PNG icons don't work well for shortcuts, using default for now
-        echo oShellLink.Save
+        echo Set objShortcut1 = objShell.CreateShortcut(strDesktop ^& "\CAESER Water Levels Monitoring.lnk"^)
+        echo objShortcut1.TargetPath = "%LAUNCHER%"
+        echo objShortcut1.WorkingDirectory = "%INSTALL_DIR%"
+        echo objShortcut1.Description = "CAESER Water Levels Monitoring Application"
+        echo objShortcut1.Save
         echo.
         echo ' Create visualizer shortcut
-        echo Set oShellLink2 = WshShell.CreateShortcut("%DESKTOP_PATH%\CAESER Water Level Visualizer.lnk"^)
-        echo oShellLink2.TargetPath = "%VISUALIZER_LAUNCHER%"
-        echo oShellLink2.WorkingDirectory = "%INSTALL_DIR%\tools\Visualizer"
-        echo oShellLink2.Description = "CAESER Water Level Data Visualizer"
-        REM Note: PNG icons don't work well for shortcuts, using default for now
-        echo oShellLink2.Save
+        echo Set objShortcut2 = objShell.CreateShortcut(strDesktop ^& "\CAESER Water Level Visualizer.lnk"^)
+        echo objShortcut2.TargetPath = "%VISUALIZER_LAUNCHER%"
+        echo objShortcut2.WorkingDirectory = "%INSTALL_DIR%\tools\Visualizer"
+        echo objShortcut2.Description = "CAESER Water Level Data Visualizer"
+        echo objShortcut2.Save
         echo.
-        echo WScript.Echo "Shortcuts created successfully"
+        echo WScript.Echo "Desktop shortcuts created successfully"
     ) > "%SHORTCUT_VBS%"
     
-    REM Run VBScript and capture output for debugging
-    for /f "delims=" %%i in ('cscript //nologo "%SHORTCUT_VBS%" 2^>^&1') do (
-        echo    [*] Shortcut creation: %%i
+    REM Run VBScript and capture output
+    cscript //nologo "%SHORTCUT_VBS%"
+    if %ERRORLEVEL% EQU 0 (
+        echo    [+] Desktop shortcuts created successfully
+    ) else (
+        echo    [!] Warning: Failed to create desktop shortcuts
     )
     del "%SHORTCUT_VBS%" 2>nul
     
     REM Verify shortcuts were created
     if exist "%DESKTOP_PATH%\CAESER Water Levels Monitoring.lnk" (
-        echo    [+] Main app shortcut created successfully
+        echo    [+] Main app shortcut verified
     ) else (
-        echo    [!] Warning: Main app shortcut not found on desktop
+        echo    [!] Warning: Main app shortcut not found
     )
     
     if exist "%DESKTOP_PATH%\CAESER Water Level Visualizer.lnk" (
-        echo    [+] Visualizer shortcut created successfully
+        echo    [+] Visualizer shortcut verified
     ) else (
-        echo    [!] Warning: Visualizer shortcut not found on desktop
+        echo    [!] Warning: Visualizer shortcut not found
     )
 )
 
