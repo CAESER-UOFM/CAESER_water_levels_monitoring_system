@@ -10,29 +10,29 @@ REM ================================================================
 
 cls
 echo.
-echo    ╔═══════════════════════════════════════════════════════════════════════╗
-echo    ║                                                                       ║
-echo    ║   ██████╗ █████╗ ███████╗███████╗███████╗██████╗                     ║
-echo    ║  ██╔════╝██╔══██╗██╔════╝██╔════╝██╔════╝██╔══██╗                    ║
-echo    ║  ██║     ███████║█████╗  ███████╗█████╗  ██████╔╝                    ║
-echo    ║  ██║     ██╔══██║██╔══╝  ╚════██║██╔══╝  ██╔══██╗                    ║
-echo    ║  ╚██████╗██║  ██║███████╗███████║███████╗██║  ██║                    ║
-echo    ║   ╚═════╝╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═╝                    ║
-echo    ║                                                                       ║
-echo    ║              🌊 Water Levels Monitoring System 🌊                     ║
-echo    ║                                                                       ║
-echo    ║   ┌─────────────────────────────────────────────────────────────┐     ║
-echo    ║   │  Professional Installation System                          │     ║
-echo    ║   │  No Administrator Rights Required                          │     ║
-echo    ║   │  University of Memphis - CAESER Lab                       │     ║
-echo    ║   └─────────────────────────────────────────────────────────────┘     ║
-echo    ║                                                                       ║
-echo    ╚═══════════════════════════════════════════════════════════════════════╝
+echo    ===============================================================================
+echo    #                                                                             #
+echo    #    #####     #    ######  #####  ###### ######                            #
+echo    #   #     #   # #   #       #    # #      #     #                           #
+echo    #   #        #   #  #####   #    # #####  ######                            #
+echo    #   #       #     # #       #####  #      #   #                             #
+echo    #   #     # ####### #       #   #  #      #    #                            #
+echo    #    #####  #     # ###### #    # ###### #     #                            #
+echo    #                                                                             #
+echo    #                    Water Levels Monitoring System                          #
+echo    #                                                                             #
+echo    #    +---------------------------------------------------------------+       #
+echo    #    ^  Professional Installation System                             ^       #
+echo    #    ^  No Administrator Rights Required                             ^       #
+echo    #    ^  University of Memphis - CAESER Lab                          ^       #
+echo    #    +---------------------------------------------------------------+       #
+echo    #                                                                             #
+echo    ===============================================================================
 echo.
-echo    🔧 Initializing installer components...
+echo    [*] Initializing installer components...
 timeout /t 2 /nobreak >nul
-echo    ✅ Environment check complete
-echo    🚀 Ready to install Water Levels Monitoring System
+echo    [+] Environment check complete
+echo    [*] Ready to install Water Levels Monitoring System
 echo.
 
 REM Default installation directory
@@ -45,9 +45,11 @@ echo.
 echo   This installer does NOT require administrator rights!
 echo   Everything installs to your user profile directory.
 echo.
-
-set /p path_choice="Use default location? (Y/n): "
-if /i "%path_choice%"=="n" (
+echo   [1] Use default location (Recommended)
+echo   [2] Choose custom location
+echo.
+set /p path_choice="Select option (1 or 2): "
+if "%path_choice%"=="2" (
     echo.
     echo Opening folder browser to select custom installation directory...
     
@@ -88,16 +90,26 @@ echo Selected installation directory: %INSTALL_DIR%
 echo.
 
 REM Ask about desktop shortcuts
-set /p create_shortcuts="Create desktop shortcuts for easy access? (Y/n): "
-if /i "%create_shortcuts%"=="n" (
+echo.
+echo Desktop Shortcuts:
+echo   [1] Create desktop shortcuts (Recommended)
+echo   [2] No desktop shortcuts
+echo.
+set /p create_shortcuts="Select option (1 or 2): "
+if "%create_shortcuts%"=="2" (
     set "CREATE_DESKTOP=False"
 ) else (
     set "CREATE_DESKTOP=True"
 )
 
 REM Ask about source deletion
-set /p delete_source="Delete source folder after installation? (Y/n): "
-if /i "%delete_source%"=="n" (
+echo.
+echo Source Folder Cleanup:
+echo   [1] Delete source folder after installation (Recommended)
+echo   [2] Keep source folder
+echo.
+set /p delete_source="Select option (1 or 2): "
+if "%delete_source%"=="2" (
     set "DELETE_SOURCE=False"
 ) else (
     set "DELETE_SOURCE=True"
@@ -109,23 +121,27 @@ echo - Installation directory: %INSTALL_DIR%
 echo - Create desktop shortcuts: %CREATE_DESKTOP%
 echo - Delete source after install: %DELETE_SOURCE%
 echo.
-set /p confirm="Continue with installation? (Y/n): "
-if /i "%confirm%"=="n" (
+echo Continue with installation?
+echo   [1] Yes, start installation
+echo   [2] No, cancel installation
+echo.
+set /p confirm="Select option (1 or 2): "
+if "%confirm%"=="2" (
     echo Installation cancelled by user.
     pause
     exit /b 0
 )
 
 echo.
-echo    ╔═══════════════════════════════════════════════════════════════════════╗
-echo    ║                        🚀 INSTALLATION STARTING 🚀                   ║
-echo    ╚═══════════════════════════════════════════════════════════════════════╝
+echo    ===============================================================================
+echo    #                           INSTALLATION STARTING                            #
+echo    ===============================================================================
 echo.
-echo    📂 Installation directory: %INSTALL_DIR%
-echo    🖥️  Desktop shortcuts: %CREATE_DESKTOP%
-echo    🗑️  Delete source: %DELETE_SOURCE%
+echo    [*] Installation directory: %INSTALL_DIR%
+echo    [*] Desktop shortcuts: %CREATE_DESKTOP%
+echo    [*] Delete source: %DELETE_SOURCE%
 echo.
-echo    ⏳ Please wait while we set up your Water Levels Monitoring System...
+echo    [*] Please wait while we set up your Water Levels Monitoring System...
 echo.
 
 REM Determine Project Code Directory (where this script resides)
@@ -321,29 +337,29 @@ if "%CLEANUP_TEMP%"=="True" (
 )
 
 echo.
-echo    ╔═══════════════════════════════════════════════════════════════════════╗
-echo    ║                    🎉 INSTALLATION COMPLETE! 🎉                      ║
-echo    ║                                                                       ║
-echo    ║              🌊 Water Levels Monitoring System 🌊                     ║
-echo    ║                     Ready for Action!                                ║
-echo    ╚═══════════════════════════════════════════════════════════════════════╝
+echo    ===============================================================================
+echo    #                        INSTALLATION COMPLETE!                              #
+echo    #                                                                             #
+echo    #                    Water Levels Monitoring System                          #
+echo    #                         Ready for Action!                                  #
+echo    ===============================================================================
 echo.
-echo    📂 Installation directory: %INSTALL_DIR%
+echo    [+] Installation directory: %INSTALL_DIR%
 echo.
-echo    🚀 Launchers created:
-echo       📊 Main app: %LAUNCHER%
-echo       🐛 Debug mode: %DEBUG_LAUNCHER%
-echo       📈 Visualizer: %VISUALIZER_LAUNCHER%
+echo    [+] Launchers created:
+echo        [*] Main app: %LAUNCHER%
+echo        [*] Debug mode: %DEBUG_LAUNCHER%
+echo        [*] Visualizer: %VISUALIZER_LAUNCHER%
 
 if "%CREATE_DESKTOP%"=="True" (
     echo.
-    echo    🖥️  Desktop shortcuts created:
-    echo       ⭐ Water Levels Monitoring
-    echo       🔧 Water Levels Monitoring (Debug)
+    echo    [+] Desktop shortcuts created:
+    echo        [*] Water Levels Monitoring
+    echo        [*] Water Levels Monitoring (Debug)
 )
 
 echo.
-echo    ✨ You can now launch the application!
+echo    [+] You can now launch the application!
 echo.
 
 REM Handle source deletion
