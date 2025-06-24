@@ -318,28 +318,56 @@ set "VISUALIZER_LAUNCHER=%INSTALL_DIR%\water_level_visualizer_app.bat"
 REM Create desktop shortcuts if requested
 if "%CREATE_DESKTOP%"=="True" (
     echo    🖥️  [8/8] Creating desktop shortcuts...
-    set "DESKTOP_PATH=%USERPROFILE%\Desktop"
     
-    REM Create VBScript for shortcuts (more reliable than PowerShell)
-    set "SHORTCUT_VBS=%TEMP%\create_shortcuts.vbs"
+    REM Try to get the actual desktop path from registry
+    for /f "usebackq tokens=3*" %%A in (`reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders" /v Desktop 2^>nul`) do set "DESKTOP_PATH=%%A %%B"
+    if not defined DESKTOP_PATH set "DESKTOP_PATH=%USERPROFILE%\Desktop"
+    
+    echo    [*] Desktop path: %DESKTOP_PATH%
+    
+    REM Create VBScript for shortcuts with better error handling
+    set "SHORTCUT_VBS=%TEMP%\create_shortcuts_%RANDOM%.vbs"
     (
         echo Set WshShell = CreateObject("WScript.Shell"^)
-        echo Set oShellLink = WshShell.CreateShortcut("%DESKTOP_PATH%\Water Levels Monitoring.lnk"^)
+        echo Set fso = CreateObject("Scripting.FileSystemObject"^)
+        echo.
+        echo ' Create main application shortcut
+        echo Set oShellLink = WshShell.CreateShortcut("%DESKTOP_PATH%\CAESER Water Levels Monitoring.lnk"^)
         echo oShellLink.TargetPath = "%LAUNCHER%"
         echo oShellLink.WorkingDirectory = "%INSTALL_DIR%"
         echo oShellLink.Description = "CAESER Water Levels Monitoring Application"
+        REM Note: PNG icons don't work well for shortcuts, using default for now
         echo oShellLink.Save
-        echo Set oShellLink = WshShell.CreateShortcut("%DESKTOP_PATH%\Water Levels Monitoring (Debug).lnk"^)
-        echo oShellLink.TargetPath = "%DEBUG_LAUNCHER%"
-        echo oShellLink.WorkingDirectory = "%INSTALL_DIR%"
-        echo oShellLink.Description = "CAESER Water Levels Monitoring - Debug Mode"
-        echo oShellLink.Save
-    ) > "!SHORTCUT_VBS!"
+        echo.
+        echo ' Create debug shortcut
+        echo Set oShellLink2 = WshShell.CreateShortcut("%DESKTOP_PATH%\CAESER Water Levels Monitoring (Debug).lnk"^)
+        echo oShellLink2.TargetPath = "%DEBUG_LAUNCHER%"
+        echo oShellLink2.WorkingDirectory = "%INSTALL_DIR%"
+        echo oShellLink2.Description = "CAESER Water Levels Monitoring - Debug Mode"
+        REM Note: PNG icons don't work well for shortcuts, using default for now
+        echo oShellLink2.Save
+        echo.
+        echo WScript.Echo "Shortcuts created successfully"
+    ) > "%SHORTCUT_VBS%"
     
-    cscript //nologo "!SHORTCUT_VBS!" >nul 2>&1
-    del "!SHORTCUT_VBS!" 2>nul
+    REM Run VBScript and capture output for debugging
+    for /f "delims=" %%i in ('cscript //nologo "%SHORTCUT_VBS%" 2^>^&1') do (
+        echo    [*] Shortcut creation: %%i
+    )
+    del "%SHORTCUT_VBS%" 2>nul
     
-    echo Desktop shortcuts created.
+    REM Verify shortcuts were created
+    if exist "%DESKTOP_PATH%\CAESER Water Levels Monitoring.lnk" (
+        echo    [+] Main shortcut created successfully
+    ) else (
+        echo    [!] Warning: Main shortcut not found on desktop
+    )
+    
+    if exist "%DESKTOP_PATH%\CAESER Water Levels Monitoring (Debug).lnk" (
+        echo    [+] Debug shortcut created successfully
+    ) else (
+        echo    [!] Warning: Debug shortcut not found on desktop
+    )
 )
 
 REM Cleanup temp directory if we copied from UNC
@@ -366,8 +394,8 @@ echo        [*] Visualizer: %VISUALIZER_LAUNCHER%
 if "%CREATE_DESKTOP%"=="True" (
     echo.
     echo    [+] Desktop shortcuts created:
-    echo        [*] Water Levels Monitoring
-    echo        [*] Water Levels Monitoring (Debug)
+    echo        [*] CAESER Water Levels Monitoring
+    echo        [*] CAESER Water Levels Monitoring (Debug)
 )
 
 echo.
