@@ -249,29 +249,8 @@ class WaterLevelTab(QWidget):
         main_layout = QGridLayout(self)
         main_layout.setSpacing(5)  # Reduced from 10
         
-        # --- Header Section ---
-        header_frame = QFrame()
-        header_frame.setStyleSheet("""
-            QFrame {
-                background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
-                border-radius: 8px;
-                padding: 15px;
-            }
-        """)
-        header_layout = QHBoxLayout(header_frame)
-        
-        # Title
-        title_label = QLabel("Water Level Data Management")
-        title_label.setStyleSheet("font-weight: bold; font-size: 16px; color: #495057;")
-        
-        header_layout.addWidget(title_label)
-        
-        # Add header to grid (span across both columns)
-        main_layout.addWidget(header_frame, 0, 0, 1, 2)
-        
-        # Add sections (shifted down one row)
-        main_layout.addWidget(self.create_well_list_section(), 1, 0)
+        # Add sections
+        main_layout.addWidget(self.create_well_list_section(), 0, 0)
         
         # Create right side layout
         right_side = QVBoxLayout()
@@ -429,7 +408,7 @@ class WaterLevelTab(QWidget):
         # Create widget to hold right side layout
         right_widget = QWidget()
         right_widget.setLayout(right_side)
-        main_layout.addWidget(right_widget, 1, 1)  # Updated row index for header
+        main_layout.addWidget(right_widget, 0, 1)
         
         # Set stretch factors
         main_layout.setColumnStretch(0, 1)

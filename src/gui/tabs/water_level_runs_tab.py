@@ -354,26 +354,6 @@ class WaterLevelRunsTab(QWidget):
     def setup_ui(self):
         layout = QVBoxLayout(self)
         
-        # --- Header Section ---
-        header_frame = QFrame()
-        header_frame.setStyleSheet("""
-            QFrame {
-                background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
-                border-radius: 8px;
-                padding: 15px;
-            }
-        """)
-        header_layout = QHBoxLayout(header_frame)
-        
-        # Title
-        title_label = QLabel("Water Level Monitoring Runs")
-        title_label.setStyleSheet("font-weight: bold; font-size: 16px; color: #495057;")
-        
-        header_layout.addWidget(title_label)
-        
-        layout.addWidget(header_frame)
-        
         # Form layout for run creation and selection with improved styling
         form_container = QFrame()
         form_container.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)

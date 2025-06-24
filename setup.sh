@@ -1,275 +1,380 @@
 #!/bin/bash
 
-# Enhanced Setup Script for Water Levels Monitoring Application
-# Includes auto-update system and improved directory structure
+# ================================================================
+# CAESER Water Levels Monitoring Application - Mac Installer
+# ================================================================
+# Uses bash and built-in macOS tools for installation
+# No administrator rights required!
+# ================================================================
 
-# Determine Project Code Directory (where this script resides)
-CODE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-# Define installation directories
-INSTALL_DIR="$HOME/WaterLevelsApp"
-VENV_DIR="$INSTALL_DIR/venv"
-APP_DIR="$INSTALL_DIR/app"
-BACKUP_DIR="$INSTALL_DIR/backups"
-
-echo "==============================================="
-echo "Water Levels Monitoring Application Setup"
-echo "Enhanced Installation with Auto-Update System"
-echo "==============================================="
-echo "Installation directory: $INSTALL_DIR"
+clear
+echo
+echo "    ==============================================================================="
+echo "    #                                                                             #"
+echo "    #      ####    ###   ######  ####  ###### #####                             #"
+echo "    #     #    #  #   #  #      #      #      #    #                            #"
+echo "    #     #       #   #  #####   ####  #####  #####                             #"
+echo "    #     #       #####  #           # #      #   #                             #"
+echo "    #     #    #  #   #  #      #    # #      #    #                            #"
+echo "    #      ####   #   #  ######  ####  ###### #    #                            #"
+echo "    #                                                                             #"
+echo "    #                      ~~~ Water Levels Monitoring ~~~                      #"
+echo "    #                                                                             #"
+echo "    #    +---------------------------------------------------------------+       #"
+echo "    #    |  Advanced Installation System                                 |       #"
+echo "    #    |  No Administrator Rights Required                             |       #"
+echo "    #    |  University of Memphis - CAESER Lab                          |       #"
+echo "    #    +---------------------------------------------------------------+       #"
+echo "    #                                                                             #"
+echo "    ==============================================================================="
 echo
 
-# Create installation directory structure
-echo "Creating installation directories..."
-mkdir -p "$INSTALL_DIR"
-mkdir -p "$APP_DIR"
-mkdir -p "$BACKUP_DIR"
+echo "    [*] Initializing installer components..."
+sleep 2
+echo "    [+] Environment check complete"
+echo "    [*] Ready to install Water Levels Monitoring System"
+echo
 
-# Check if Python is installed
-if ! command -v python3 &> /dev/null; then
-    echo "Python 3 is not installed. Please install Python 3 first:"
+# Default installation directory
+DEFAULT_PATH="$HOME/CAESER_Water_levels_monitoring_system"
+
+echo
+echo "    ==============================================================================="
+echo "    #                        INSTALLATION DIRECTORY                              #"
+echo "    ==============================================================================="
+echo
+echo "   Default location: $DEFAULT_PATH"
+echo
+echo "   This installer does NOT require administrator rights!"
+echo "   Everything installs to your user home directory."
+echo
+echo "   > Use default location (Press ENTER)"
+echo "     Choose custom location (Type 'c' and ENTER)"
+echo
+
+read -r -p "Choice (ENTER for default, 'c' for custom): " path_choice
+
+if [[ "$path_choice" == "c" || "$path_choice" == "C" ]]; then
     echo
-    echo "On macOS with Homebrew:"
-    echo "  brew install python@3.11"
+    echo "Opening folder selection dialog..."
+    
+    # Use osascript to show folder picker
+    custom_path=$(osascript -e 'tell application "Finder" to choose folder with prompt "Select installation directory (CAESER_Water_levels_monitoring_system folder will be created inside):" default location path to home folder' 2>/dev/null | sed 's/alias.*://' | sed 's/:/\//g')
+    
+    if [[ -z "$custom_path" ]]; then
+        echo "Installation cancelled by user."
+        exit 0
+    fi
+    
+    if [[ "$custom_path" == "" ]]; then
+        echo "Error: Could not open folder browser."
+        echo "Using default location instead."
+        INSTALL_DIR="$DEFAULT_PATH"
+    else
+        INSTALL_DIR="$custom_path/CAESER_Water_levels_monitoring_system"
+    fi
+else
+    INSTALL_DIR="$DEFAULT_PATH"
+fi
+
+echo
+echo "Selected installation directory: $INSTALL_DIR"
+echo
+
+# Ask about desktop shortcuts (aliases)
+echo
+echo "    ==============================================================================="
+echo "    #                           DESKTOP SHORTCUTS                                #"
+echo "    ==============================================================================="
+echo
+echo "   > Create desktop shortcuts (Press ENTER)"
+echo "     Skip desktop shortcuts (Type 'n' and ENTER)"
+echo
+
+read -r -p "Choice (ENTER for shortcuts, 'n' to skip): " create_shortcuts
+
+if [[ "$create_shortcuts" == "n" || "$create_shortcuts" == "N" ]]; then
+    CREATE_DESKTOP="False"
+else
+    CREATE_DESKTOP="True"
+fi
+
+# Ask about source deletion
+echo
+echo "    ==============================================================================="
+echo "    #                          SOURCE FOLDER CLEANUP                             #"
+echo "    ==============================================================================="
+echo
+echo "   > Delete source folder after installation (Press ENTER)"
+echo "     Keep source folder (Type 'k' and ENTER)"
+echo
+
+read -r -p "Choice (ENTER to delete, 'k' to keep): " delete_source
+
+if [[ "$delete_source" == "k" || "$delete_source" == "K" ]]; then
+    DELETE_SOURCE="False"
+else
+    DELETE_SOURCE="True"
+fi
+
+echo
+echo "    ==============================================================================="
+echo "    #                          INSTALLATION SUMMARY                              #"
+echo "    ==============================================================================="
+echo
+echo "- Installation directory: $INSTALL_DIR"
+echo "- Create desktop shortcuts: $CREATE_DESKTOP"
+echo "- Delete source after install: $DELETE_SOURCE"
+echo
+echo "Continue with installation?"
+echo "   > Yes, start installation (Press ENTER)"
+echo "     No, cancel installation (Type 'q' and ENTER)"
+echo
+
+read -r -p "Choice (ENTER to install, 'q' to quit): " confirm
+
+if [[ "$confirm" == "q" || "$confirm" == "Q" ]]; then
+    echo "Installation cancelled by user."
+    exit 0
+fi
+
+echo
+echo "    ==============================================================================="
+echo "    #                           INSTALLATION STARTING                            #"
+echo "    ==============================================================================="
+echo
+echo "    [*] Installation directory: $INSTALL_DIR"
+echo "    [*] Desktop shortcuts: $CREATE_DESKTOP"
+echo "    [*] Delete source: $DELETE_SOURCE"
+echo
+echo "    [*] Please wait while we set up your Water Levels Monitoring System..."
+echo
+
+# Determine Project Code Directory (where this script resides)
+CODE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Define installation subdirectories
+PYTHON_DIR="$INSTALL_DIR/python"
+VENV_DIR="$INSTALL_DIR/venv"
+BACKUP_DIR="$INSTALL_DIR/backups"
+
+# Create installation directory structure
+echo "    📁 [1/8] Creating installation directories..."
+mkdir -p "$INSTALL_DIR" "$BACKUP_DIR"
+
+# Check if Python 3 is available
+echo "    🐍 [2/8] Checking Python installation..."
+if command -v python3 >/dev/null 2>&1; then
+    PYTHON_CMD="python3"
+    echo "    ✅ Using system Python 3"
+elif command -v python >/dev/null 2>&1 && python --version 2>&1 | grep -q "Python 3"; then
+    PYTHON_CMD="python"
+    echo "    ✅ Using system Python 3"
+else
+    echo "    ❌ Python 3 not found. Please install Python 3 first:"
+    echo "        - Visit https://www.python.org/downloads/"
+    echo "        - Or install via Homebrew: brew install python3"
     echo
-    echo "On Ubuntu/Debian:"
-    echo "  sudo apt update && sudo apt install python3 python3-pip python3-venv"
-    echo
-    echo "On CentOS/RHEL:"
-    echo "  sudo yum install python3 python3-pip"
-    echo
+    read -n 1 -s -r -p "Press any key to exit..."
     exit 1
 fi
 
-# Remove existing virtual environment if it exists (for clean install)
-if [ -d "$VENV_DIR" ]; then
-    echo "Removing existing virtual environment for clean install..."
+# Install virtualenv if not available
+echo "    🔧 [3/8] Setting up virtual environment tools..."
+if ! $PYTHON_CMD -m venv --help >/dev/null 2>&1; then
+    echo "Installing virtualenv..."
+    $PYTHON_CMD -m pip install --user virtualenv
+fi
+
+# Create virtual environment
+if [[ -d "$VENV_DIR" ]]; then
+    echo "    🗑️  Removing existing virtual environment..."
     rm -rf "$VENV_DIR"
 fi
 
-# Create new virtual environment
-echo "Creating virtual environment in $VENV_DIR..."
-python3 -m venv "$VENV_DIR"
+echo "    🏗️  [4/8] Creating virtual environment..."
+$PYTHON_CMD -m venv "$VENV_DIR"
 
 # Install dependencies
-echo "Installing dependencies..."
+echo "    📦 [5/8] Installing dependencies..."
 source "$VENV_DIR/bin/activate"
-echo "Upgrading pip..."
-python -m pip install --upgrade pip
+pip install --upgrade pip
+pip install numpy pandas matplotlib
+pip install requests packaging
+pip install google-api-python-client google-auth-oauthlib --upgrade
+pip install PyQt5==5.15.10 PyQt5_sip==12.13.0 PyQtWebEngine==5.15.6
+pip install scipy folium branca pillow psutil --upgrade
 
-# Install core dependencies first with compatible versions
-echo "Installing core dependencies..."
-python -m pip install "pandas>=2.0.0" "numpy>=1.24.0" "matplotlib>=3.7.0"
+# Copy application files
+echo "    📋 [6/8] Copying application files..."
+cp -r "$CODE_DIR/src" "$INSTALL_DIR/"
+cp "$CODE_DIR/main.py" "$INSTALL_DIR/"
+cp "$CODE_DIR/Requirements.txt" "$INSTALL_DIR/"
+[[ -d "$CODE_DIR/config" ]] && cp -r "$CODE_DIR/config" "$INSTALL_DIR/"
+[[ -d "$CODE_DIR/tools" ]] && cp -r "$CODE_DIR/tools" "$INSTALL_DIR/"
+[[ -d "$CODE_DIR/assets" ]] && cp -r "$CODE_DIR/assets" "$INSTALL_DIR/"
+[[ -d "$CODE_DIR/Legacy_tables" ]] && cp -r "$CODE_DIR/Legacy_tables" "$INSTALL_DIR/"
 
-# Install auto-update dependencies
-echo "Installing auto-update system dependencies..."
-python -m pip install "requests>=2.28.0" "packaging>=21.0"
-
-# Install PyQt5 and WebEngine components
-echo "Installing PyQt5 and WebEngine components..."
-python -m pip install "PyQt5>=5.15.11" "PyQtWebEngine>=5.15.6"
-
-# Create a temporary requirements file with compatible versions
-TEMP_REQUIREMENTS="$INSTALL_DIR/temp_requirements.txt"
-cat > "$TEMP_REQUIREMENTS" << EOF
-branca>=0.8.1
-folium>=0.19.4
-google-api-python-client>=2.161.0
-google-auth-oauthlib>=1.2.1
-scipy>=1.10.0
-pillow>=9.0.0
-psutil>=5.9.0
-EOF
-
-# Install remaining requirements
-echo "Installing remaining packages from temporary requirements..."
-python -m pip install -r "$TEMP_REQUIREMENTS"
-rm "$TEMP_REQUIREMENTS"
-
-# Copy application files to installation directory
-echo "Copying application files..."
-cp -r "$CODE_DIR/../src" "$APP_DIR/"
-cp "$CODE_DIR/../main.py" "$APP_DIR/"
-cp "$CODE_DIR/../Requirements.txt" "$APP_DIR/"
-if [ -d "$CODE_DIR/../config" ]; then
-    cp -r "$CODE_DIR/../config" "$APP_DIR/"
-fi
-if [ -d "$CODE_DIR/../tools" ]; then
-    cp -r "$CODE_DIR/../tools" "$APP_DIR/"
-fi
-
-# Create version.json file
-echo "Creating version file..."
-cat > "$APP_DIR/version.json" << EOF
+# Create version file
+echo "    📄 Creating version file..."
+cat > "$INSTALL_DIR/version.json" << EOF
 {
-  "version": "1.0.0",
-  "release_date": "$(date +%Y-%m-%d)",
-  "description": "Water Level Monitoring System - Initial Installation",
-  "github_repo": "benjaled/water_levels_monitoring_-for_external_edits-",
+  "version": "1.0.0-beta",
+  "release_date": "$(date)",
+  "description": "Water Level Monitoring System - Mac Installation",
+  "github_repo": "CAESER-UOFM/CAESER_water_levels_monitoring_system",
   "auto_update": {
     "enabled": true,
     "check_on_startup": true,
     "backup_count": 3
   },
-  "installation_path": "$APP_DIR"
+  "installation_path": "$INSTALL_DIR"
 }
 EOF
 
-# Create enhanced launcher script with auto-update check
-LAUNCHER="$INSTALL_DIR/water_levels_app.command"
+# Create launchers
+echo "    🚀 [7/8] Creating launchers..."
+
+# Main launcher
+LAUNCHER="$INSTALL_DIR/water_levels_app.sh"
 cat > "$LAUNCHER" << EOF
 #!/bin/bash
-# Water Levels Monitoring Application Launcher
-# With Auto-Update Support
-
-# Get the directory where this script is located
-SCRIPT_DIR="\$( cd "\$( dirname "\${BASH_SOURCE[0]}" )" && pwd )"
-
-# Change to the application directory
-cd "$APP_DIR"
-
-# Activate the virtual environment
+cd "$INSTALL_DIR"
 source "$VENV_DIR/bin/activate"
-
-# Check for missing dependencies and install if needed
-echo "Checking dependencies..."
-
-if ! python -c "import googleapiclient" 2>/dev/null; then
-    echo "Installing missing Google API packages. Please wait..."
-    python -m pip install google-api-python-client google-auth-oauthlib --upgrade
-fi
-
-if ! python -c "import pandas" 2>/dev/null; then
-    echo "Installing missing pandas package. Please wait..."
-    python -m pip install pandas matplotlib scipy --upgrade
-fi
-
-if ! python -c "import requests" 2>/dev/null; then
-    echo "Installing missing requests package for auto-update. Please wait..."
-    python -m pip install requests packaging --upgrade
-fi
-
-# Run the application
-python "$APP_DIR/main.py"
+python "$INSTALL_DIR/main.py"
 EOF
 chmod +x "$LAUNCHER"
 
-# Create debug launcher script
-DEBUG_LAUNCHER="$INSTALL_DIR/water_levels_app_debug.command"
+# Debug launcher
+DEBUG_LAUNCHER="$INSTALL_DIR/water_levels_app_debug.sh"
 cat > "$DEBUG_LAUNCHER" << EOF
 #!/bin/bash
-echo "Water Levels Monitoring Application - Debug Mode"
-echo "============================================="
-
-# Change to the application directory
-cd "$APP_DIR"
-
-# Activate the virtual environment
+echo "CAESER Water Levels Monitoring - Debug Mode"
+echo "=========================================="
+cd "$INSTALL_DIR"
 source "$VENV_DIR/bin/activate"
-
-echo
-echo "Python version:"
-python --version
-echo
-
-echo "Checking critical dependencies..."
-python -c "import pandas; print('pandas: OK')" 2>&1 || echo "pandas: MISSING"
-python -c "import matplotlib; print('matplotlib: OK')" 2>&1 || echo "matplotlib: MISSING"
-python -c "import PyQt5; print('PyQt5: OK')" 2>&1 || echo "PyQt5: MISSING"
-python -c "import requests; print('requests: OK')" 2>&1 || echo "requests: MISSING"
-python -c "import googleapiclient; print('Google API: OK')" 2>&1 || echo "Google API: MISSING"
-
-echo
-echo "Starting application..."
-python "$APP_DIR/main.py"
-
-echo
-echo "Application ended. Press Enter to close..."
-read
+python "$INSTALL_DIR/main.py"
+read -n 1 -s -r -p "Press any key to close..."
 EOF
 chmod +x "$DEBUG_LAUNCHER"
 
-# Create visualizer launcher script
-VISUALIZER_LAUNCHER="$INSTALL_DIR/water_level_visualizer_app.command"
+# Visualizer launcher
+VISUALIZER_LAUNCHER="$INSTALL_DIR/water_level_visualizer_app.sh"
 cat > "$VISUALIZER_LAUNCHER" << EOF
 #!/bin/bash
-# Change to the visualizer directory
-cd "$APP_DIR/tools/Visualizer"
-
-# Activate the virtual environment
+cd "$INSTALL_DIR/tools/Visualizer"
 source "$VENV_DIR/bin/activate"
-
-# Check for matplotlib
-if ! python -c "import matplotlib" 2>/dev/null; then
-    echo "Installing missing matplotlib package. Please wait..."
-    python -m pip install pandas matplotlib scipy --upgrade
-fi
-
-# Run the visualizer
-python "$APP_DIR/tools/Visualizer/main.py"
-echo "Press Enter to exit..."
-read
+python "$INSTALL_DIR/tools/Visualizer/main.py"
+read -n 1 -s -r -p "Press any key to close..."
 EOF
 chmod +x "$VISUALIZER_LAUNCHER"
 
-# Create uninstaller script
-UNINSTALLER="$INSTALL_DIR/uninstall.command"
-cat > "$UNINSTALLER" << EOF
+# Create desktop shortcuts if requested
+if [[ "$CREATE_DESKTOP" == "True" ]]; then
+    echo "    🖥️  [8/8] Creating desktop shortcuts..."
+    
+    DESKTOP_PATH="$HOME/Desktop"
+    echo "    [*] Desktop path: $DESKTOP_PATH"
+    
+    # Create main application shortcut
+    cat > "$DESKTOP_PATH/CAESER Water Levels Monitoring.command" << EOF
 #!/bin/bash
-echo "Water Levels Monitoring Application Uninstaller"
-echo "==============================================="
-echo
-echo "This will completely remove the Water Levels Monitoring application"
-echo "and all its data from your computer."
-echo
-echo "Installation directory: $INSTALL_DIR"
-echo
-
-read -p "Are you sure you want to uninstall? (y/N): " confirm
-if [[ \$confirm != [yY] ]]; then
-    echo "Uninstall cancelled."
-    exit 0
+cd "$INSTALL_DIR"
+source "$VENV_DIR/bin/activate"
+python "$INSTALL_DIR/main.py"
+EOF
+    chmod +x "$DESKTOP_PATH/CAESER Water Levels Monitoring.command"
+    
+    # Create visualizer shortcut
+    cat > "$DESKTOP_PATH/CAESER Water Level Visualizer.command" << EOF
+#!/bin/bash
+cd "$INSTALL_DIR/tools/Visualizer"
+source "$VENV_DIR/bin/activate"
+python "$INSTALL_DIR/tools/Visualizer/main.py"
+EOF
+    chmod +x "$DESKTOP_PATH/CAESER Water Level Visualizer.command"
+    
+    # Verify shortcuts were created
+    if [[ -f "$DESKTOP_PATH/CAESER Water Levels Monitoring.command" ]]; then
+        echo "    [+] Main app shortcut created successfully"
+    else
+        echo "    [!] Warning: Main app shortcut not found on desktop"
+    fi
+    
+    if [[ -f "$DESKTOP_PATH/CAESER Water Level Visualizer.command" ]]; then
+        echo "    [+] Visualizer shortcut created successfully"
+    else
+        echo "    [!] Warning: Visualizer shortcut not found on desktop"
+    fi
 fi
 
 echo
-echo "Removing application files..."
-cd "\$HOME"
-rm -rf "$INSTALL_DIR"
+echo "    ==============================================================================="
+echo "    #                        INSTALLATION COMPLETE!                              #"
+echo "    #                                                                             #"
+echo "    #                    Water Levels Monitoring System                          #"
+echo "    #                         Ready for Action!                                  #"
+echo "    ==============================================================================="
 echo
-echo "Uninstall complete."
-echo "Press Enter to close..."
-read
-EOF
-chmod +x "$UNINSTALLER"
+echo "    [+] Installation directory: $INSTALL_DIR"
+echo
+echo "    [+] Launchers created:"
+echo "        [*] Main app: $LAUNCHER"
+echo "        [*] Debug mode: $DEBUG_LAUNCHER"
+echo "        [*] Visualizer: $VISUALIZER_LAUNCHER"
 
-# Copy debug launcher to project folder for development
-cp "$DEBUG_LAUNCHER" "$CODE_DIR/../debug_launcher.command"
-chmod +x "$CODE_DIR/../debug_launcher.command"
+if [[ "$CREATE_DESKTOP" == "True" ]]; then
+    echo
+    echo "    [+] Desktop shortcuts created:"
+    echo "        [*] CAESER Water Levels Monitoring"
+    echo "        [*] CAESER Water Level Visualizer"
+fi
 
 echo
-echo "==============================================="
-echo "Setup Complete!"
-echo "==============================================="
+echo "    [+] You can now launch the application!"
 echo
-echo "Installation directory: $INSTALL_DIR"
-echo "Application files: $APP_DIR"
+echo "    ==============================================================================="
+echo "    #                         INSTALLATION COMPLETED                             #"
+echo "    ==============================================================================="
 echo
-echo "Launchers created:"
-echo "  Main app: $LAUNCHER"
-echo "  Debug mode: $DEBUG_LAUNCHER"
-echo "  Visualizer: $VISUALIZER_LAUNCHER"
-echo "  Uninstaller: $UNINSTALLER"
+echo "    [+] What was installed:"
+echo "        - Python virtual environment with all dependencies"
+echo "        - CAESER Water Levels Monitoring System"
+echo "        - Application launchers (main app, debug, visualizer)"
+if [[ "$CREATE_DESKTOP" == "True" ]]; then
+    echo "        - Desktop shortcuts for easy access"
+fi
 echo
-echo "Features included:"
-echo "  ✓ Isolated Python environment"
-echo "  ✓ All dependencies installed"
-echo "  ✓ Auto-update system enabled"
-echo "  ✓ Backup system for safe updates"
-echo "  ✓ Debug mode for troubleshooting"
-echo "  ✓ Easy uninstall option"
+echo "    [+] Installation location: $INSTALL_DIR"
 echo
-echo "You can create desktop shortcuts for these launchers for easy access."
-echo "The application will automatically check for updates on startup."
+echo "    [+] To start using the application:"
+if [[ "$CREATE_DESKTOP" == "True" ]]; then
+    echo "        - Double-click the desktop shortcuts, OR"
+fi
+echo "        - Run: $LAUNCHER"
 echo
-echo "For troubleshooting, use the debug launcher to see detailed error messages."
+echo "    [*] For troubleshooting, use the debug launcher"
 echo
+
+read -n 1 -s -r -p "Press any key to continue..."
+
+# Handle source deletion
+if [[ "$DELETE_SOURCE" == "True" ]]; then
+    echo
+    echo "The installer will now attempt to delete the source folder."
+    echo "This is safe since everything has been copied to: $INSTALL_DIR"
+    echo
+    read -n 1 -s -r -p "Press any key to continue..."
+    
+    if [[ -d "$CODE_DIR" ]]; then
+        rm -rf "$CODE_DIR" 2>/dev/null
+        if [[ -d "$CODE_DIR" ]]; then
+            echo "Could not delete source folder. You may need to delete it manually."
+        else
+            echo "Source folder deleted successfully."
+        fi
+    fi
+fi
+
+echo
+echo "Installation complete!"

@@ -153,30 +153,9 @@ class BarologgerTab(QWidget):
         main_layout = QGridLayout(self)
         main_layout.setSpacing(10)
 
-        # --- Header Section ---
-        header_frame = QFrame()
-        header_frame.setStyleSheet("""
-            QFrame {
-                background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
-                border-radius: 8px;
-                padding: 15px;
-            }
-        """)
-        header_layout = QHBoxLayout(header_frame)
-        
-        # Title
-        title_label = QLabel("Barometric Pressure Data Management")
-        title_label.setStyleSheet("font-weight: bold; font-size: 16px; color: #495057;")
-        
-        header_layout.addWidget(title_label)
-        
-        # Add header to grid
-        main_layout.addWidget(header_frame, 0, 0, 1, 2)  # Span across both columns
-
-        # Add sections (shifted down one row)
-        main_layout.addWidget(self.create_barologger_list_section(), 1, 0)
-        main_layout.addWidget(self.create_data_import_section(), 1, 1)
+        # Add sections
+        main_layout.addWidget(self.create_barologger_list_section(), 0, 0)
+        main_layout.addWidget(self.create_data_import_section(), 0, 1)
 
         # Set stretch factors
         main_layout.setColumnStretch(0, 1)
