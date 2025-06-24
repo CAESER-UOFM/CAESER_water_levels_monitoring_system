@@ -12,17 +12,17 @@ cls
 echo.
 echo    ===============================================================================
 echo    #                                                                             #
-echo    #    #####     #    ######  #####  ###### ######                            #
-echo    #   #     #   # #   #       #    # #      #     #                           #
-echo    #   #        #   #  #####   #    # #####  ######                            #
-echo    #   #       #     # #       #####  #      #   #                             #
-echo    #   #     # ####### #       #   #  #      #    #                            #
-echo    #    #####  #     # ###### #    # ###### #     #                            #
+echo    #      ####    ###   ######  ####  ###### #####                             #
+echo    #     #    #  #   #  #      #      #      #    #                            #
+echo    #     #       #   #  #####   ####  #####  #####                             #
+echo    #     #       #####  #           # #      #   #                             #
+echo    #     #    #  #   #  #      #    # #      #    #                            #
+echo    #      ####   #   #  ######  ####  ###### #    #                            #
 echo    #                                                                             #
-echo    #                    Water Levels Monitoring System                          #
+echo    #                      ~~~ Water Levels Monitoring ~~~                      #
 echo    #                                                                             #
 echo    #    +---------------------------------------------------------------+       #
-echo    #    ^  Professional Installation System                             ^       #
+echo    #    ^  Advanced Installation System                                 ^       #
 echo    #    ^  No Administrator Rights Required                             ^       #
 echo    #    ^  University of Memphis - CAESER Lab                          ^       #
 echo    #    +---------------------------------------------------------------+       #
@@ -45,11 +45,11 @@ echo.
 echo   This installer does NOT require administrator rights!
 echo   Everything installs to your user profile directory.
 echo.
-echo   [1] Use default location (Recommended)
-echo   [2] Choose custom location
+echo   ^> Use default location (Press ENTER)
+echo     Choose custom location (Type 'c' and ENTER)
 echo.
-set /p path_choice="Select option (1 or 2): "
-if "%path_choice%"=="2" (
+set /p path_choice="Choice (ENTER for default, 'c' for custom): "
+if /i "%path_choice%"=="c" (
     echo.
     echo Opening folder browser to select custom installation directory...
     
@@ -92,11 +92,11 @@ echo.
 REM Ask about desktop shortcuts
 echo.
 echo Desktop Shortcuts:
-echo   [1] Create desktop shortcuts (Recommended)
-echo   [2] No desktop shortcuts
+echo   ^> Create desktop shortcuts (Press ENTER)
+echo     Skip desktop shortcuts (Type 'n' and ENTER)
 echo.
-set /p create_shortcuts="Select option (1 or 2): "
-if "%create_shortcuts%"=="2" (
+set /p create_shortcuts="Choice (ENTER for shortcuts, 'n' to skip): "
+if /i "%create_shortcuts%"=="n" (
     set "CREATE_DESKTOP=False"
 ) else (
     set "CREATE_DESKTOP=True"
@@ -105,11 +105,11 @@ if "%create_shortcuts%"=="2" (
 REM Ask about source deletion
 echo.
 echo Source Folder Cleanup:
-echo   [1] Delete source folder after installation (Recommended)
-echo   [2] Keep source folder
+echo   ^> Delete source folder after installation (Press ENTER)
+echo     Keep source folder (Type 'k' and ENTER)
 echo.
-set /p delete_source="Select option (1 or 2): "
-if "%delete_source%"=="2" (
+set /p delete_source="Choice (ENTER to delete, 'k' to keep): "
+if /i "%delete_source%"=="k" (
     set "DELETE_SOURCE=False"
 ) else (
     set "DELETE_SOURCE=True"
@@ -122,11 +122,11 @@ echo - Create desktop shortcuts: %CREATE_DESKTOP%
 echo - Delete source after install: %DELETE_SOURCE%
 echo.
 echo Continue with installation?
-echo   [1] Yes, start installation
-echo   [2] No, cancel installation
+echo   ^> Yes, start installation (Press ENTER)
+echo     No, cancel installation (Type 'q' and ENTER)
 echo.
-set /p confirm="Select option (1 or 2): "
-if "%confirm%"=="2" (
+set /p confirm="Choice (ENTER to install, 'q' to quit): "
+if /i "%confirm%"=="q" (
     echo Installation cancelled by user.
     pause
     exit /b 0
