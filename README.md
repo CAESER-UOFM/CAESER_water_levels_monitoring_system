@@ -1,4 +1,4 @@
-# CASER Water Levels Monitoring System
+# CAESER Water Levels Monitoring System
 
 A comprehensive desktop application for water level data management and analysis. The system automatically imports Solinst XLE files, performs barometric pressure compensation, tracks transducer locations, and synchronizes data across multiple monitoring sites through Google Drive integration.
 
@@ -12,27 +12,28 @@ Built for groundwater professionals, researchers, and environmental consultants,
    - Extract to a folder on your computer
 
 2. **Run the installer:**
-   - **Windows:** Double-click `docs/setup_enhanced.bat`
-   - **macOS/Linux:** Open terminal, navigate to folder, run `chmod +x docs/setup_enhanced.sh && ./docs/setup_enhanced.sh`
+   - **Windows:** Double-click `setup.bat` (shows professional installation dialog)
+   - **macOS/Linux:** Open terminal, navigate to folder, run `chmod +x setup.sh && ./setup.sh`
 
 3. **Launch the application:**
-   - Use the desktop shortcuts created by the installer
-   - Or run from: `~/WaterLevelsApp/` directory
+   - Use the launchers created in your installation directory
+   - **Windows:** `water_levels_app.bat` (or `water_levels_app_debug.bat` for troubleshooting)
+   - **macOS/Linux:** `water_levels_app.command` (or `water_levels_app_debug.command` for troubleshooting)
 
 ## 🎯 Getting Started
 
-1. **Launch the application** using the installed shortcuts
+1. **Launch the application** using the launchers from your installation directory
 2. **Access the built-in help system** via the **❓ Help** button in the main window
 3. **Import your first XLE files** using the Water Level tab
 4. **Follow the guided workflows** for data processing and analysis
 
-## ☁️ Google Drive Sync (CASER Members)
+## ☁️ Google Drive Sync (CAESER Members)
 
-**For CASER team members with authorized access:**
+**For CAESER team members with authorized access:**
 - Full Google Drive synchronization capabilities
 - Shared databases across research sites
 - Automatic cloud backup and collaboration features
-- **Download credentials:** [CASER Google Drive Access](https://drive.google.com/file/d/1Qn4jAPXTrT7GBzU6JdG6W-KogT4yZBlR/view?usp=drive_link)
+- **Download credentials:** [CAESER Google Drive Access](https://drive.google.com/file/d/1Qn4jAPXTrT7GBzU6JdG6W-KogT4yZBlR/view?usp=drive_link)
 - Setup via: **Update** → **Setup Google Credentials** in the application
 
 **For independent researchers:**
@@ -51,14 +52,14 @@ Built for groundwater professionals, researchers, and environmental consultants,
 
 **Coming Soon - Multiple Access Tiers:**
 - **🏛️ Public Web Visualizer:** County-wide water levels, statistics, and recharge estimates
-- **🔬 CASER Researcher Access:** Advanced visualizer tools and collaborative features  
+- **🔬 CAESER Researcher Access:** Advanced visualizer tools and collaborative features  
 - **💻 Full Desktop Application:** Complete data management and analysis suite (this repository)
 
 ## 📞 Support
 
 - **Built-in Help:** Use the ❓ Help button in the application
 - **Issues:** [Report problems here](../../issues)
-- **CASER Members:** Contact repository maintainer for Google Drive access
+- **CAESER Members:** Contact repository maintainer for Google Drive access
 
 ---
 
