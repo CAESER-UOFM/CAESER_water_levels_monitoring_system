@@ -370,28 +370,53 @@ REM Create desktop shortcuts if requested
 if "%CREATE_DESKTOP%"=="True" (
     echo    [*] [8/8] Creating desktop shortcuts...
     
-    REM Use PowerShell to create shortcuts (more reliable than VBScript)
+    REM Use PowerShell to create shortcuts with error handling
     echo    [*] Creating main application shortcut...
-    powershell -ExecutionPolicy Bypass -Command ^
-    "$WshShell = New-Object -comObject WScript.Shell; ^
-    $Desktop = [System.Environment]::GetFolderPath('Desktop'); ^
-    $Shortcut = $WshShell.CreateShortcut(\"$Desktop\CAESER Water Levels Monitoring.lnk\"); ^
-    $Shortcut.TargetPath = '%LAUNCHER%'; ^
-    $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; ^
-    $Shortcut.Description = 'CAESER Water Levels Monitoring Application'; ^
-    $Shortcut.Save(); ^
-    Write-Host 'Main shortcut created'"
+    powershell -ExecutionPolicy Bypass -Command "$WshShell = New-Object -comObject WScript.Shell; $Desktop = [System.Environment]::GetFolderPath('Desktop'); $Shortcut = $WshShell.CreateShortcut('$Desktop\CAESER Water Levels Monitoring.lnk'); $Shortcut.TargetPath = '%LAUNCHER%'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Levels Monitoring Application'; $Shortcut.Save(); Write-Host 'Main shortcut created'" 2>nul
+    if %ERRORLEVEL% NEQ 0 (
+        echo    [!] PowerShell shortcut creation failed, trying VBScript fallback...
+        goto :create_shortcuts_vbs
+    )
     
     echo    [*] Creating visualizer shortcut...
-    powershell -ExecutionPolicy Bypass -Command ^
-    "$WshShell = New-Object -comObject WScript.Shell; ^
-    $Desktop = [System.Environment]::GetFolderPath('Desktop'); ^
-    $Shortcut = $WshShell.CreateShortcut(\"$Desktop\CAESER Water Level Visualizer.lnk\"); ^
-    $Shortcut.TargetPath = '%VISUALIZER_LAUNCHER%'; ^
-    $Shortcut.WorkingDirectory = '%INSTALL_DIR%\tools\Visualizer'; ^
-    $Shortcut.Description = 'CAESER Water Level Data Visualizer'; ^
-    $Shortcut.Save(); ^
-    Write-Host 'Visualizer shortcut created'"
+    powershell -ExecutionPolicy Bypass -Command "$WshShell = New-Object -comObject WScript.Shell; $Desktop = [System.Environment]::GetFolderPath('Desktop'); $Shortcut = $WshShell.CreateShortcut('$Desktop\CAESER Water Level Visualizer.lnk'); $Shortcut.TargetPath = '%VISUALIZER_LAUNCHER%'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%\tools\Visualizer'; $Shortcut.Description = 'CAESER Water Level Data Visualizer'; $Shortcut.Save(); Write-Host 'Visualizer shortcut created'" 2>nul
+    if %ERRORLEVEL% NEQ 0 (
+        echo    [!] PowerShell shortcut creation failed, trying VBScript fallback...
+        goto :create_shortcuts_vbs
+    )
+    goto :verify_shortcuts
+    
+    :create_shortcuts_vbs
+    echo    [*] Using VBScript fallback for shortcut creation...
+    
+    REM Create VBScript for main app shortcut
+    set "SHORTCUT_VBS=%TEMP%\create_shortcut.vbs"
+    (
+        echo Set objShell = CreateObject("WScript.Shell"^)
+        echo Set objDesktop = objShell.SpecialFolders("Desktop"^)
+        echo Set objShortCut = objShell.CreateShortcut(objDesktop ^& "\CAESER Water Levels Monitoring.lnk"^)
+        echo objShortCut.TargetPath = "%LAUNCHER%"
+        echo objShortCut.WorkingDirectory = "%INSTALL_DIR%"
+        echo objShortCut.Description = "CAESER Water Levels Monitoring Application"
+        echo objShortCut.Save
+    ) > "%SHORTCUT_VBS%"
+    cscript //nologo "%SHORTCUT_VBS%" 2>nul
+    del "%SHORTCUT_VBS%" 2>nul
+    
+    REM Create VBScript for visualizer shortcut
+    (
+        echo Set objShell = CreateObject("WScript.Shell"^)
+        echo Set objDesktop = objShell.SpecialFolders("Desktop"^)
+        echo Set objShortCut = objShell.CreateShortcut(objDesktop ^& "\CAESER Water Level Visualizer.lnk"^)
+        echo objShortCut.TargetPath = "%VISUALIZER_LAUNCHER%"
+        echo objShortCut.WorkingDirectory = "%INSTALL_DIR%\tools\Visualizer"
+        echo objShortCut.Description = "CAESER Water Level Data Visualizer"
+        echo objShortCut.Save
+    ) > "%SHORTCUT_VBS%"
+    cscript //nologo "%SHORTCUT_VBS%" 2>nul
+    del "%SHORTCUT_VBS%" 2>nul
+    
+    :verify_shortcuts
     
     REM Verify shortcuts were created
     set "DESKTOP_PATH=%USERPROFILE%\Desktop"
