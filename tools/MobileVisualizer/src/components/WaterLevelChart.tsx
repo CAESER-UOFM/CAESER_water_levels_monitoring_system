@@ -53,20 +53,39 @@ export function WaterLevelChart({ data, config, loading = false }: WaterLevelCha
   // Separate manual readings for scatter plot
   const manualReadings = useMemo(() => {
     const manual = chartData.filter(point => point.source === 'manual');
+    
+    // Filter manual readings to match display time range if zoomed
+    let filteredManual = manual;
+    if (zoomedData && zoomedData.length > 0) {
+      const startTime = new Date(zoomedData[0].timestamp).getTime();
+      const endTime = new Date(zoomedData[zoomedData.length - 1].timestamp).getTime();
+      filteredManual = manual.filter(point => {
+        const pointTime = new Date(point.timestamp).getTime();
+        return pointTime >= startTime && pointTime <= endTime;
+      });
+    }
+    
     console.log(`🎯 Chart manual readings:`, {
       totalPoints: chartData.length,
       manualPoints: manual.length,
+      filteredManualPoints: filteredManual.length,
+      isZoomed: !!zoomedData,
       sourceCounts: chartData.reduce((acc, point) => {
         acc[point.source] = (acc[point.source] || 0) + 1;
         return acc;
       }, {} as Record<string, number>),
       sampleData: chartData.slice(0, 3)
     });
-    return manual;
-  }, [chartData]);
+    return filteredManual;
+  }, [chartData, zoomedData]);
 
   const continuousData = useMemo(() => {
-    return chartData.filter(point => point.source !== 'manual');
+    const continuous = chartData.filter(point => point.source !== 'manual');
+    console.log(`📈 Continuous data:`, {
+      totalPoints: continuous.length,
+      sampleData: continuous.slice(0, 3)
+    });
+    return continuous;
   }, [chartData]);
 
   // Calculate Y-axis domain
@@ -150,13 +169,13 @@ export function WaterLevelChart({ data, config, loading = false }: WaterLevelCha
     if (brushData && brushData.startIndex !== undefined && brushData.endIndex !== undefined) {
       const start = brushData.startIndex;
       const end = brushData.endIndex;
-      setZoomedData(chartData.slice(start, end + 1));
+      setZoomedData(continuousData.slice(start, end + 1));
     } else {
       setZoomedData(null);
     }
-  }, [chartData]);
+  }, [continuousData]);
 
-  const displayData = zoomedData || chartData;
+  const displayData = zoomedData || continuousData;
 
   if (loading) {
     return (
@@ -189,7 +208,7 @@ export function WaterLevelChart({ data, config, loading = false }: WaterLevelCha
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <span className="text-sm text-gray-600">
-            {displayData.length} points displayed
+            {displayData.length} transducer points{config.showManualReadings && manualReadings.length > 0 ? ` + ${manualReadings.length} manual` : ''} displayed
           </span>
           {zoomedData && (
             <button
@@ -211,7 +230,7 @@ export function WaterLevelChart({ data, config, loading = false }: WaterLevelCha
       {/* Main Chart */}
       <div className="h-96 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={displayData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <ComposedChart data={continuousData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis 
               dataKey="timestamp"
@@ -281,8 +300,8 @@ export function WaterLevelChart({ data, config, loading = false }: WaterLevelCha
               />
             )}
 
-            {/* Manual Readings as Scatter on main chart */}
-            {config.showManualReadings && (
+            {/* Manual Readings as Scatter on main chart - rendered last to appear on top */}
+            {config.showManualReadings && manualReadings.length > 0 && (
               <Scatter
                 dataKey="water_level"
                 data={manualReadings}
@@ -294,7 +313,7 @@ export function WaterLevelChart({ data, config, loading = false }: WaterLevelCha
             )}
 
             {/* Brush for navigation */}
-            {showBrush && chartData.length > 50 && !zoomedData && (
+            {showBrush && continuousData.length > 50 && !zoomedData && (
               <Brush
                 dataKey="timestamp"
                 height={30}
@@ -302,7 +321,7 @@ export function WaterLevelChart({ data, config, loading = false }: WaterLevelCha
                 onChange={handleBrushChange}
                 tickFormatter={formatXAxis}
                 startIndex={0}
-                endIndex={chartData.length - 1}
+                endIndex={continuousData.length - 1}
               />
             )}
           </ComposedChart>
@@ -342,10 +361,10 @@ export function WaterLevelChart({ data, config, loading = false }: WaterLevelCha
       </div>
 
       {/* Data Range Info */}
-      {chartData.length > 0 && (
+      {displayData.length > 0 && (
         <div className="text-xs text-gray-500 text-center">
-          Data range: {chartData[0].date.toLocaleDateString()} to{' '}
-          {chartData[chartData.length - 1].date.toLocaleDateString()}
+          Data range: {displayData[0].date.toLocaleDateString()} to{' '}
+          {displayData[displayData.length - 1].date.toLocaleDateString()}
           {zoomedData && (
             <span className="ml-2 text-primary-600">
               (Zoomed view)
