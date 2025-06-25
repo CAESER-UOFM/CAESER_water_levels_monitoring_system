@@ -188,7 +188,7 @@ export default function PlotViewerPage() {
         setLoading(false);
       }
     }
-  }, [progressiveLoading]);
+  }, [progressiveLoading.loadForViewport]);
 
   const handleBackToWells = useCallback(() => {
     router.push(`/wells/${databaseId}`);

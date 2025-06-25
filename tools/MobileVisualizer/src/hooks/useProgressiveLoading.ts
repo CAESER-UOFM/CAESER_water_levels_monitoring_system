@@ -190,15 +190,17 @@ export function useProgressiveLoading({
     const startDate = viewport.start.toISOString();
     const endDate = viewport.end.toISOString();
 
-    // Load ~5000 points for the specific time range
+    // Load ~5000 points for the specific time range directly
     // Higher resolution comes from smaller time window, not more points
     try {
-      return await loadForTimeRange(startDate, endDate);
+      const viewportData = { start: viewport.start, end: viewport.end };
+      console.log(`🚀 Loading ${timeSpanDays.toFixed(1)} days - expecting ~5000 points for time range`);
+      return await loadDataLevel(1, startDate, endDate, viewportData);
     } catch (err) {
       console.error('Viewport loading failed, using current data:', err);
       return getCurrentData();
     }
-  }, [loadForTimeRange, getCurrentData]);
+  }, [loadDataLevel, getCurrentData]);
 
   // Clear cache and reset
   const reset = useCallback(() => {

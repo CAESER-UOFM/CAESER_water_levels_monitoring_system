@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useRef } from 'react';
 import { SamplingControls, downsampleData } from './SamplingControls';
 import {
   ResponsiveContainer,
@@ -51,6 +51,10 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
     selectedSampling: currentSampling,
     isLoadingSampling: false
   });
+  
+  // Prevent infinite loops with ref-based flags
+  const isLoadingViewport = useRef(false);
+  const lastViewportRequest = useRef<string>('');
 
   // Update internal state when external sampling changes
   React.useEffect(() => {
@@ -253,6 +257,12 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
   }, []);
 
   const handleZoomIn = useCallback(async () => {
+    // Prevent multiple simultaneous viewport changes
+    if (isLoadingViewport.current) {
+      console.log('⏳ Zoom in blocked - already loading viewport');
+      return;
+    }
+    
     if (onViewportChange && chartData.length > 0) {
       // Progressive loading mode - calculate time-based zoom
       const currentTimeSpan = chartData.length > 1 ? 
@@ -267,15 +277,31 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
       const startDate = new Date(zoomStartTime);
       const endDate = new Date(zoomEndTime);
       
+      // Create unique request key to prevent duplicates
+      const requestKey = `${startDate.getTime()}-${endDate.getTime()}`;
+      if (lastViewportRequest.current === requestKey) {
+        console.log('⏭️ Skipping duplicate zoom request');
+        return;
+      }
+      
       console.log(`🔍 Zoom in triggered viewport loading:`, {
         timeSpanDays: currentTimeSpan / (1000 * 60 * 60 * 24),
         dateRange: { start: startDate.toISOString(), end: endDate.toISOString() }
       });
       
+      isLoadingViewport.current = true;
+      lastViewportRequest.current = requestKey;
+      
       try {
         await onViewportChange({ start: startDate, end: endDate });
       } catch (err) {
         console.error('Failed to load viewport data on zoom:', err);
+      } finally {
+        isLoadingViewport.current = false;
+        // Clear request key after a delay to allow different requests
+        setTimeout(() => {
+          lastViewportRequest.current = '';
+        }, 1000);
       }
     } else {
       // Fallback to client-side windowing for non-progressive mode
@@ -294,6 +320,12 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
   }, [viewWindow, chartData, onViewportChange]);
 
   const handleZoomOut = useCallback(async () => {
+    // Prevent multiple simultaneous viewport changes
+    if (isLoadingViewport.current) {
+      console.log('⏳ Zoom out blocked - already loading viewport');
+      return;
+    }
+    
     if (onViewportChange && chartData.length > 0) {
       // Progressive loading mode - calculate time-based zoom out
       const currentTimeSpan = chartData.length > 1 ? 
@@ -312,15 +344,31 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
       const startDate = new Date(zoomStartTime);
       const endDate = new Date(zoomEndTime);
       
+      // Create unique request key to prevent duplicates
+      const requestKey = `${startDate.getTime()}-${endDate.getTime()}`;
+      if (lastViewportRequest.current === requestKey) {
+        console.log('⏭️ Skipping duplicate zoom request');
+        return;
+      }
+      
       console.log(`🔍 Zoom out triggered viewport loading:`, {
         timeSpanDays: newTimeSpan / (1000 * 60 * 60 * 24),
         dateRange: { start: startDate.toISOString(), end: endDate.toISOString() }
       });
       
+      isLoadingViewport.current = true;
+      lastViewportRequest.current = requestKey;
+      
       try {
         await onViewportChange({ start: startDate, end: endDate });
       } catch (err) {
         console.error('Failed to load viewport data on zoom out:', err);
+      } finally {
+        isLoadingViewport.current = false;
+        // Clear request key after a delay to allow different requests
+        setTimeout(() => {
+          lastViewportRequest.current = '';
+        }, 1000);
       }
     } else {
       // Fallback to client-side windowing for non-progressive mode
