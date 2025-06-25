@@ -36,7 +36,6 @@ echo.
 
 REM Use default installation directory - keep it simple!
 set "INSTALL_DIR=%USERPROFILE%\CAESER_Water_levels_monitoring_system"
-set "DELETE_SOURCE=False"
 
 echo.
 echo    ===============================================================================
@@ -137,29 +136,46 @@ if exist "%CODE_DIR%\tools" xcopy "%CODE_DIR%\tools" "%INSTALL_DIR%\tools\" /E /
 if exist "%CODE_DIR%\assets" xcopy "%CODE_DIR%\assets" "%INSTALL_DIR%\assets\" /E /I /Y >nul
 
 REM Create launchers
+REM Main app launcher (no console window)
 (
     echo @echo off
     echo cd /d "%INSTALL_DIR%"
     echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
-    echo python "%INSTALL_DIR%\main.py"
-) > "%INSTALL_DIR%\water_levels_app.bat"
+    echo "%INSTALL_DIR%\venv\Scripts\pythonw.exe" "%INSTALL_DIR%\main.py"
+) > "%INSTALL_DIR%\water_levels_monitoring_system.bat"
 
+REM Create a proper Windows shortcut with icon for the main app
+powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Levels Monitoring.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\water_levels_monitoring_system.bat'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Levels Monitoring System'; if (Test-Path '%INSTALL_DIR%\assets\icon.png') { $Shortcut.IconLocation = '%INSTALL_DIR%\assets\icon.png' } elseif (Test-Path '%INSTALL_DIR%\src\gui\icons\app_icon.webp') { $Shortcut.IconLocation = '%INSTALL_DIR%\src\gui\icons\water_level_meter.png' }; $Shortcut.Save() } catch { Write-Host 'Shortcut creation failed' }" 2>nul
+
+REM Debug launcher (with console)
 (
     echo @echo off
     echo echo CAESER Water Levels Monitoring - Debug Mode
+    echo echo ==========================================
     echo cd /d "%INSTALL_DIR%"
     echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
     echo python "%INSTALL_DIR%\main.py"
     echo pause
-) > "%INSTALL_DIR%\water_levels_app_debug.bat"
+) > "%INSTALL_DIR%\water_levels_monitoring_system_debug.bat"
 
+REM Visualizer launcher (no console window)
 (
     echo @echo off
     echo cd /d "%INSTALL_DIR%\tools\Visualizer"
     echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
+    echo "%INSTALL_DIR%\venv\Scripts\pythonw.exe" "%INSTALL_DIR%\tools\Visualizer\main.py"
+) > "%INSTALL_DIR%\water_levels_visualizer.bat"
+
+REM Visualizer debug launcher (with console)
+(
+    echo @echo off
+    echo echo CAESER Water Level Visualizer - Debug Mode
+    echo echo ==========================================
+    echo cd /d "%INSTALL_DIR%\tools\Visualizer"
+    echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
     echo python "%INSTALL_DIR%\tools\Visualizer\main.py"
     echo pause
-) > "%INSTALL_DIR%\water_level_visualizer_app.bat"
+) > "%INSTALL_DIR%\water_levels_visualizer_debug.bat"
 
 echo.
 echo    ===============================================================================
@@ -172,15 +188,17 @@ echo.
 echo    [+] Installation directory: %INSTALL_DIR%
 echo.
 echo    [+] Launchers created:
-echo        [*] Main app: water_levels_app.bat
-echo        [*] Debug mode: water_levels_app_debug.bat
-echo        [*] Visualizer: water_level_visualizer_app.bat
+echo        [*] Main app: CAESER Water Levels Monitoring.lnk (shortcut with icon)
+echo        [*] Main app: water_levels_monitoring_system.bat (no console)
+echo        [*] Debug mode: water_levels_monitoring_system_debug.bat (with console)
+echo        [*] Visualizer: water_levels_visualizer.bat (no console)
+echo        [*] Visualizer debug: water_levels_visualizer_debug.bat (with console)
 echo.
 echo    [+] You can now launch the application!
 echo.
 echo    [+] To start using the application:
-echo        - Double-click: water_levels_app.bat (in the folder that will open)
-echo        - Or run: %INSTALL_DIR%\water_levels_app.bat
+echo        - Double-click: CAESER Water Levels Monitoring.lnk (recommended - has icon)
+echo        - Or double-click: water_levels_monitoring_system.bat
 echo.
 echo    [*] For troubleshooting, use the debug launcher
 echo.
