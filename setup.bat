@@ -327,8 +327,19 @@ if not exist "%INSTALL_DIR%" (
     exit /b 1
 )
 
-echo    [*] Copying core application files...
-xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y
+echo    [*] Creating file exclusion list...
+(
+    echo __pycache__
+    echo .pyc
+    echo .pyo
+    echo .git
+    echo .gitignore
+    echo .DS_Store
+    echo Thumbs.db
+) > "%TEMP%\exclude_files.txt"
+
+echo    [*] Copying core application files (excluding cache files)...
+xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y /EXCLUDE:"%TEMP%\exclude_files.txt"
 if %ERRORLEVEL% NEQ 0 (
     echo.
     echo    ===============================================================================
@@ -388,6 +399,9 @@ if exist "%CODE_DIR%\Legacy_tables" (
 )
 
 echo    [+] Application files copied successfully
+
+REM Clean up exclude file
+del "%TEMP%\exclude_files.txt" 2>nul
 
 REM Create version file
 echo    [*] Creating version file...
