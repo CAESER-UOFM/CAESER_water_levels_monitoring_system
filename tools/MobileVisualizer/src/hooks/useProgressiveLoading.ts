@@ -180,27 +180,41 @@ export function useProgressiveLoading({
   }, [loadDataLevel]);
 
 
-  // Simplified viewport loading - always use ~5000 points for any time range
+  // Smart viewport loading with caching - always use ~5000 points for any time range
   const loadForViewport = useCallback(async (viewport: { start: Date; end: Date }) => {
     const timeSpanMs = viewport.end.getTime() - viewport.start.getTime();
     const timeSpanDays = timeSpanMs / (1000 * 60 * 60 * 24);
     
-    console.log(`🔍 Viewport loading: ${timeSpanDays.toFixed(1)} days → ~5000 points`, viewport);
-    
     const startDate = viewport.start.toISOString();
     const endDate = viewport.end.toISOString();
+    
+    // Check if we already have this exact time range cached
+    const cacheKey = getCacheKey(1, startDate, endDate);
+    const cached = cache.get(cacheKey);
+    
+    if (cached) {
+      console.log(`📋 Smart cache hit for ${timeSpanDays.toFixed(1)} days`);
+      // Update state with cached data
+      setState(prev => ({
+        ...prev,
+        segments: [...prev.segments.filter(s => s.level !== 1 || s.startDate !== startDate || s.endDate !== endDate), cached],
+        currentLevel: 1
+      }));
+      return cached.data;
+    }
+    
+    console.log(`🔍 Smart viewport loading: ${timeSpanDays.toFixed(1)} days → ~5000 points`);
+    console.log(`🚀 Loading fresh data for ${timeSpanDays.toFixed(1)} days - expecting ~5000 points`);
 
-    // Load ~5000 points for the specific time range directly
-    // Higher resolution comes from smaller time window, not more points
+    // Load fresh data for this specific time range
     try {
       const viewportData = { start: viewport.start, end: viewport.end };
-      console.log(`🚀 Loading ${timeSpanDays.toFixed(1)} days - expecting ~5000 points for time range`);
       return await loadDataLevel(1, startDate, endDate, viewportData);
     } catch (err) {
       console.error('Viewport loading failed, using current data:', err);
       return getCurrentData();
     }
-  }, [loadDataLevel, getCurrentData]);
+  }, [loadDataLevel, getCurrentData, cache, getCacheKey]);
 
   // Clear cache and reset
   const reset = useCallback(() => {

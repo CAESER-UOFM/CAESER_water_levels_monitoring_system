@@ -110,11 +110,20 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
     return processedData;
   }, [data, config.dateRange]);
 
-  // Process data for display - no client-side windowing when using progressive loading
+  // Process data for display - smart two-phase approach
   const displayData = useMemo(() => {
-    // When using progressive loading (onViewportChange exists), don't do client-side filtering
-    // The API handles the windowing with appropriate detail levels
-    const finalData = onViewportChange ? chartData : (zoomedData || chartData);
+    let finalData = chartData;
+    
+    // Apply view window filtering for immediate visual feedback (Phase 1)
+    if (viewWindow) {
+      const totalLength = chartData.length;
+      const startIdx = Math.floor((viewWindow.start / 100) * totalLength);
+      const endIdx = Math.floor((viewWindow.end / 100) * totalLength);
+      finalData = chartData.slice(startIdx, endIdx + 1);
+    }
+    
+    // Apply zoom data if available (Phase 2 - high-res background loaded data)
+    finalData = zoomedData || finalData;
     
     // Add manual indicator for styling
     const processedData = finalData.map(point => ({
@@ -130,9 +139,9 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
       totalPoints: finalData.length,
       manualCount: finalData.filter(p => p.source === 'manual').length,
       continuousCount: finalData.filter(p => p.source !== 'manual').length,
-      usingProgressiveLoading: !!onViewportChange,
-      windowActive: !!viewWindow,
-      zoomActive: !!zoomedData
+      phase1Active: !!viewWindow, // Client-side filtering active
+      phase2Active: !!zoomedData, // High-res background data active
+      twoPhaseZoom: !!onViewportChange
     });
     
     return processedData;
@@ -257,138 +266,159 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
   }, []);
 
   const handleZoomIn = useCallback(async () => {
-    // Prevent multiple simultaneous viewport changes
-    if (isLoadingViewport.current) {
-      console.log('⏳ Zoom in blocked - already loading viewport');
-      return;
+    // Two-phase zoom approach:
+    // Phase 1: Instant visual feedback with client-side filtering
+    // Phase 2: Background loading of high-resolution data for the zoomed range
+    
+    let newWindow;
+    if (!viewWindow) {
+      newWindow = { start: 25, end: 75 };
+    } else {
+      const center = (viewWindow.start + viewWindow.end) / 2;
+      const newSize = (viewWindow.end - viewWindow.start) / 2;
+      const newStart = Math.max(0, center - newSize / 2);
+      const newEnd = Math.min(100, center + newSize / 2);
+      newWindow = { start: newStart, end: newEnd };
     }
     
+    // Phase 1: Immediate visual zoom (client-side filtering)
+    console.log(`⚡ Phase 1 - Instant zoom: ${newWindow.start}% to ${newWindow.end}%`);
+    setViewWindow(newWindow);
+    
+    // Phase 2: Background high-resolution data loading
     if (onViewportChange && chartData.length > 0) {
-      // Progressive loading mode - calculate time-based zoom
-      const currentTimeSpan = chartData.length > 1 ? 
-        new Date(chartData[chartData.length - 1].timestamp).getTime() - new Date(chartData[0].timestamp).getTime() :
-        30 * 24 * 60 * 60 * 1000; // Default to 30 days if single point
-        
-      // Zoom in to middle 50% of current time range
-      const startTime = new Date(chartData[0].timestamp).getTime();
-      const zoomStartTime = startTime + currentTimeSpan * 0.25;
-      const zoomEndTime = startTime + currentTimeSpan * 0.75;
-      
-      const startDate = new Date(zoomStartTime);
-      const endDate = new Date(zoomEndTime);
-      
-      // Create unique request key to prevent duplicates
-      const requestKey = `${startDate.getTime()}-${endDate.getTime()}`;
-      if (lastViewportRequest.current === requestKey) {
-        console.log('⏭️ Skipping duplicate zoom request');
+      // Prevent multiple simultaneous requests
+      if (isLoadingViewport.current) {
+        console.log('⏳ Background loading already in progress');
         return;
       }
       
-      console.log(`🔍 Zoom in triggered viewport loading:`, {
-        timeSpanDays: currentTimeSpan / (1000 * 60 * 60 * 24),
-        dateRange: { start: startDate.toISOString(), end: endDate.toISOString() }
-      });
+      // Calculate actual date range for the zoomed area
+      const totalLength = chartData.length;
+      const startIdx = Math.floor((newWindow.start / 100) * totalLength);
+      const endIdx = Math.floor((newWindow.end / 100) * totalLength);
       
-      isLoadingViewport.current = true;
-      lastViewportRequest.current = requestKey;
-      
-      try {
-        await onViewportChange({ start: startDate, end: endDate });
-      } catch (err) {
-        console.error('Failed to load viewport data on zoom:', err);
-      } finally {
-        isLoadingViewport.current = false;
-        // Clear request key after a delay to allow different requests
-        setTimeout(() => {
-          lastViewportRequest.current = '';
-        }, 1000);
+      if (startIdx < chartData.length && endIdx >= 0) {
+        const startDate = new Date(chartData[Math.max(0, startIdx)]?.timestamp);
+        const endDate = new Date(chartData[Math.min(chartData.length - 1, endIdx)]?.timestamp);
+        
+        const timeSpanMs = endDate.getTime() - startDate.getTime();
+        const timeSpanDays = timeSpanMs / (1000 * 60 * 60 * 24);
+        
+        // Create unique request key to prevent duplicates
+        const requestKey = `${startDate.getTime()}-${endDate.getTime()}`;
+        if (lastViewportRequest.current === requestKey) {
+          console.log('⏭️ Skipping duplicate background request');
+          return;
+        }
+        
+        console.log(`🔄 Phase 2 - Background loading ${timeSpanDays.toFixed(1)} days of high-res data`);
+        
+        isLoadingViewport.current = true;
+        lastViewportRequest.current = requestKey;
+        
+        // Background load - don't block the UI
+        setTimeout(async () => {
+          try {
+            await onViewportChange({ start: startDate, end: endDate });
+            console.log('✨ Phase 2 complete - high-res data loaded');
+          } catch (err) {
+            console.error('Background loading failed:', err);
+          } finally {
+            isLoadingViewport.current = false;
+            // Clear request key after delay
+            setTimeout(() => {
+              lastViewportRequest.current = '';
+            }, 1000);
+          }
+        }, 100); // Small delay to ensure visual zoom happens first
       }
-    } else {
-      // Fallback to client-side windowing for non-progressive mode
-      let newWindow;
-      if (!viewWindow) {
-        newWindow = { start: 25, end: 75 };
-      } else {
-        const center = (viewWindow.start + viewWindow.end) / 2;
-        const newSize = (viewWindow.end - viewWindow.start) / 2;
-        const newStart = Math.max(0, center - newSize / 2);
-        const newEnd = Math.min(100, center + newSize / 2);
-        newWindow = { start: newStart, end: newEnd };
-      }
-      setViewWindow(newWindow);
     }
   }, [viewWindow, chartData, onViewportChange]);
 
   const handleZoomOut = useCallback(async () => {
-    // Prevent multiple simultaneous viewport changes
-    if (isLoadingViewport.current) {
-      console.log('⏳ Zoom out blocked - already loading viewport');
-      return;
+    // Two-phase zoom out approach
+    
+    let newWindow = null;
+    
+    if (!viewWindow) {
+      newWindow = { start: 0, end: 100 };
+    } else {
+      const center = (viewWindow.start + viewWindow.end) / 2;
+      const newSize = Math.min(100, (viewWindow.end - viewWindow.start) * 2);
+      const newStart = Math.max(0, center - newSize / 2);
+      const newEnd = Math.min(100, center + newSize / 2);
+      
+      if (newStart === 0 && newEnd === 100) {
+        newWindow = null;
+      } else {
+        newWindow = { start: newStart, end: newEnd };
+      }
     }
     
-    if (onViewportChange && chartData.length > 0) {
-      // Progressive loading mode - calculate time-based zoom out
-      const currentTimeSpan = chartData.length > 1 ? 
-        new Date(chartData[chartData.length - 1].timestamp).getTime() - new Date(chartData[0].timestamp).getTime() :
-        30 * 24 * 60 * 60 * 1000; // Default to 30 days if single point
-        
-      // Zoom out to 2x current time range, centered
-      const startTime = new Date(chartData[0].timestamp).getTime();
-      const endTime = new Date(chartData[chartData.length - 1].timestamp).getTime();
-      const center = (startTime + endTime) / 2;
-      const newTimeSpan = currentTimeSpan * 2;
-      
-      const zoomStartTime = center - newTimeSpan / 2;
-      const zoomEndTime = center + newTimeSpan / 2;
-      
-      const startDate = new Date(zoomStartTime);
-      const endDate = new Date(zoomEndTime);
-      
-      // Create unique request key to prevent duplicates
-      const requestKey = `${startDate.getTime()}-${endDate.getTime()}`;
-      if (lastViewportRequest.current === requestKey) {
-        console.log('⏭️ Skipping duplicate zoom request');
+    // Phase 1: Immediate visual zoom out
+    console.log(`⚡ Phase 1 - Instant zoom out: ${newWindow ? `${newWindow.start}% to ${newWindow.end}%` : 'full view'}`);
+    setViewWindow(newWindow);
+    
+    // Phase 2: Background loading for larger time range (if needed)
+    if (onViewportChange && chartData.length > 0 && newWindow) {
+      // Prevent multiple simultaneous requests
+      if (isLoadingViewport.current) {
+        console.log('⏳ Background loading already in progress');
         return;
       }
       
-      console.log(`🔍 Zoom out triggered viewport loading:`, {
-        timeSpanDays: newTimeSpan / (1000 * 60 * 60 * 24),
-        dateRange: { start: startDate.toISOString(), end: endDate.toISOString() }
-      });
+      // Calculate expanded date range
+      const totalLength = chartData.length;
+      const startIdx = Math.floor((newWindow.start / 100) * totalLength);
+      const endIdx = Math.floor((newWindow.end / 100) * totalLength);
       
-      isLoadingViewport.current = true;
-      lastViewportRequest.current = requestKey;
-      
-      try {
-        await onViewportChange({ start: startDate, end: endDate });
-      } catch (err) {
-        console.error('Failed to load viewport data on zoom out:', err);
-      } finally {
-        isLoadingViewport.current = false;
-        // Clear request key after a delay to allow different requests
-        setTimeout(() => {
-          lastViewportRequest.current = '';
-        }, 1000);
-      }
-    } else {
-      // Fallback to client-side windowing for non-progressive mode
-      let newWindow = null;
-      
-      if (!viewWindow) {
-        newWindow = { start: 0, end: 100 };
-      } else {
-        const center = (viewWindow.start + viewWindow.end) / 2;
-        const newSize = Math.min(100, (viewWindow.end - viewWindow.start) * 2);
-        const newStart = Math.max(0, center - newSize / 2);
-        const newEnd = Math.min(100, center + newSize / 2);
+      if (startIdx < chartData.length && endIdx >= 0) {
+        const currentTimeSpan = chartData.length > 1 ? 
+          new Date(chartData[chartData.length - 1].timestamp).getTime() - new Date(chartData[0].timestamp).getTime() :
+          30 * 24 * 60 * 60 * 1000;
+          
+        // Expand time range by 2x centered on current view
+        const startTime = new Date(chartData[0].timestamp).getTime();
+        const endTime = new Date(chartData[chartData.length - 1].timestamp).getTime();
+        const center = (startTime + endTime) / 2;
+        const newTimeSpan = currentTimeSpan * 2;
         
-        if (newStart === 0 && newEnd === 100) {
-          newWindow = null;
-        } else {
-          newWindow = { start: newStart, end: newEnd };
+        const expandedStartTime = center - newTimeSpan / 2;
+        const expandedEndTime = center + newTimeSpan / 2;
+        
+        const startDate = new Date(expandedStartTime);
+        const endDate = new Date(expandedEndTime);
+        
+        const timeSpanDays = newTimeSpan / (1000 * 60 * 60 * 24);
+        
+        // Create unique request key
+        const requestKey = `${startDate.getTime()}-${endDate.getTime()}`;
+        if (lastViewportRequest.current === requestKey) {
+          console.log('⏭️ Skipping duplicate background request');
+          return;
         }
+        
+        console.log(`🔄 Phase 2 - Background loading ${timeSpanDays.toFixed(1)} days of expanded data`);
+        
+        isLoadingViewport.current = true;
+        lastViewportRequest.current = requestKey;
+        
+        // Background load
+        setTimeout(async () => {
+          try {
+            await onViewportChange({ start: startDate, end: endDate });
+            console.log('✨ Phase 2 complete - expanded data loaded');
+          } catch (err) {
+            console.error('Background loading failed:', err);
+          } finally {
+            isLoadingViewport.current = false;
+            setTimeout(() => {
+              lastViewportRequest.current = '';
+            }, 1000);
+          }
+        }, 100);
       }
-      setViewWindow(newWindow);
     }
   }, [viewWindow, chartData, onViewportChange]);
 
