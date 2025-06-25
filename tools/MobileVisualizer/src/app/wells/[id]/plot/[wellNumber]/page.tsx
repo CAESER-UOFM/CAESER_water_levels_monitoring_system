@@ -5,9 +5,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { WaterLevelChart } from '@/components/WaterLevelChart';
 import { ChartControls } from '@/components/ChartControls';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { databaseManager } from '@/lib/database';
 import { exportWaterLevelDataToCSV, exportWaterLevelDataToJSON, filterDataForExport } from '@/utils/dataExport';
-import type { Well, WaterLevelReading, PlotConfig } from '@/types/database';
+import type { Well, WaterLevelReading } from '@/lib/api/api';
+import type { PlotConfig } from '@/types/database';
 
 export default function PlotViewerPage() {
   const params = useParams();
@@ -39,33 +39,35 @@ export default function PlotViewerPage() {
         setLoading(true);
         setError(null);
 
-        const db = databaseManager.getDatabase(databaseId);
-        if (!db) {
-          throw new Error('Database not available');
-        }
-
         // Load well metadata
-        const wellData = await db.getWell(wellNumber);
-        if (!wellData) {
-          throw new Error('Well not found');
+        const wellResponse = await fetch(`/.netlify/functions/wells/${databaseId}/${wellNumber}`);
+        const wellResult = await wellResponse.json();
+        
+        if (!wellResult.success) {
+          throw new Error(wellResult.error || 'Well not found');
         }
-        setWell(wellData);
+        setWell(wellResult.data);
 
         // Load water level data
-        const readings = await db.getWaterLevelData({
-          wellNumber,
-          dataType: 'all',
-          downsample: true,
-          maxPoints: 2000
+        const dataParams = new URLSearchParams({
+          downsample: 'true',
+          maxPoints: '2000'
         });
-
-        setData(readings);
+        
+        const dataResponse = await fetch(`/.netlify/functions/data/${databaseId}/water/${wellNumber}?${dataParams}`);
+        const dataResult = await dataResponse.json();
+        
+        if (!dataResult.success) {
+          throw new Error(dataResult.error || 'Failed to load water level data');
+        }
+        
+        setData(dataResult.data || []);
 
         // Set initial date range based on data
-        if (readings.length > 0) {
-          const dates = readings.map(r => new Date(r.timestamp_utc));
-          const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
-          const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
+        if (dataResult.data && dataResult.data.length > 0) {
+          const dates = dataResult.data.map((r: WaterLevelReading) => new Date(r.timestamp_utc));
+          const minDate = new Date(Math.min(...dates.map((d: Date) => d.getTime())));
+          const maxDate = new Date(Math.max(...dates.map((d: Date) => d.getTime())));
           
           setPlotConfig(prev => ({
             ...prev,
@@ -110,19 +112,21 @@ export default function PlotViewerPage() {
     try {
       setLoading(true);
       
-      const db = databaseManager.getDatabase(databaseId);
-      if (!db) return;
-
-      const readings = await db.getWaterLevelData({
-        wellNumber,
-        startDate: startDate?.toISOString(),
-        endDate: endDate?.toISOString(),
-        dataType: 'all',
-        downsample: true,
-        maxPoints: 2000
+      const dataParams = new URLSearchParams({
+        downsample: 'true',
+        maxPoints: '2000',
+        ...(startDate && { startDate: startDate.toISOString() }),
+        ...(endDate && { endDate: endDate.toISOString() })
       });
-
-      setData(readings);
+      
+      const dataResponse = await fetch(`/.netlify/functions/data/${databaseId}/water/${wellNumber}?${dataParams}`);
+      const dataResult = await dataResponse.json();
+      
+      if (dataResult.success && dataResult.data) {
+        setData(dataResult.data);
+      }
+      
+      setData(dataResult.data || []);
       setPlotConfig(prev => ({
         ...prev,
         dateRange: {
@@ -150,11 +154,11 @@ export default function PlotViewerPage() {
     
     try {
       const filteredData = filterDataForExport(
-        data,
+        data as any,
         plotConfig.dateRange?.start?.toISOString(),
         plotConfig.dateRange?.end?.toISOString()
       );
-      exportWaterLevelDataToCSV(filteredData, well);
+      exportWaterLevelDataToCSV(filteredData, well as any);
       setShowExportMenu(false);
     } catch (error) {
       console.error('Error exporting CSV:', error);
@@ -167,11 +171,11 @@ export default function PlotViewerPage() {
     
     try {
       const filteredData = filterDataForExport(
-        data,
+        data as any,
         plotConfig.dateRange?.start?.toISOString(),
         plotConfig.dateRange?.end?.toISOString()
       );
-      exportWaterLevelDataToJSON(filteredData, well);
+      exportWaterLevelDataToJSON(filteredData, well as any);
       setShowExportMenu(false);
     } catch (error) {
       console.error('Error exporting JSON:', error);
@@ -359,7 +363,7 @@ export default function PlotViewerPage() {
             </div>
           ) : (
             <WaterLevelChart
-              data={data}
+              data={data as any}
               config={plotConfig}
               loading={loading}
             />

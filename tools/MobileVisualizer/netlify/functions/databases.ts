@@ -1,11 +1,9 @@
 import { Handler, HandlerEvent } from '@netlify/functions';
-import { GoogleDriveService } from '../../src/lib/api/services/googleDrive';
-import { SQLiteService } from '../../src/lib/api/services/sqljs';
+import { TursoService } from '../../src/lib/api/services/turso';
 import { cacheService } from '../../src/lib/api/services/cache';
 import { ApiResponse, DatabaseInfo } from '../../src/lib/api/api';
 
-const googleDriveService = new GoogleDriveService();
-const sqliteService = new SQLiteService();
+const tursoService = new TursoService();
 
 export const handler: Handler = async (event: HandlerEvent) => {
   // Set CORS headers
@@ -86,28 +84,23 @@ async function listDatabases() {
     };
   }
 
-  // Fetch from Google Drive
-  const databases = await googleDriveService.listDatabases();
+  // Since we're using a single Turso database, return static info
+  const stats = await tursoService.getDatabaseStats();
+  const wellFields = await tursoService.getWellFields();
   
-  // Enhance with additional metadata
-  const enhancedDatabases = await Promise.all(
-    databases.map(async (db) => {
-      try {
-        // Try to get well count from cache or calculate it
-        const cachedStats = cacheService.getDatabaseStats(db.id);
-        if (cachedStats?.wellsCount) {
-          db.wellsCount = cachedStats.wellsCount;
-        }
-        return db;
-      } catch (error) {
-        console.warn(`Failed to get stats for database ${db.name}:`, error);
-        return db;
-      }
-    })
-  );
+  const databases: DatabaseInfo[] = [{
+    id: 'caeser-water-monitoring',
+    name: 'CAESER Water Monitoring Database',
+    size: 0, // Size not applicable for Turso
+    modified: new Date().toISOString(),
+    wellsCount: stats.wellsCount,
+    readingsCount: stats.readingsCount,
+    lastUpdate: stats.lastUpdate,
+    wellFields
+  }];
 
   // Cache the result
-  cacheService.setDatabaseList(enhancedDatabases);
+  cacheService.setDatabaseList(databases);
 
   return {
     statusCode: 200,
@@ -117,7 +110,7 @@ async function listDatabases() {
     },
     body: JSON.stringify({
       success: true,
-      data: enhancedDatabases
+      data: databases
     } as ApiResponse<DatabaseInfo[]>),
   };
 }
@@ -139,11 +132,8 @@ async function getDatabaseInfo(id: string) {
     };
   }
 
-  // Download and open database to get stats
-  const databases = await googleDriveService.listDatabases();
-  const database = databases.find(db => db.id === id);
-  
-  if (!database) {
+  // Only support our single Turso database
+  if (id !== 'caeser-water-monitoring') {
     return {
       statusCode: 404,
       headers: {
@@ -157,18 +147,15 @@ async function getDatabaseInfo(id: string) {
     };
   }
 
-  // Download and analyze database
-  const filePath = await googleDriveService.downloadDatabase(id, database.name);
-  await sqliteService.openDatabase(filePath);
-  
-  const stats = await sqliteService.getDatabaseStats();
-  const wellFields = await sqliteService.getWellFields();
+  // Get stats from Turso
+  const stats = await tursoService.getDatabaseStats();
+  const wellFields = await tursoService.getWellFields();
   
   const databaseInfo = {
-    id: database.id,
-    name: database.name,
-    size: database.size,
-    modified: database.modified,
+    id: 'caeser-water-monitoring',
+    name: 'CAESER Water Monitoring Database',
+    size: 0, // Size not applicable for Turso
+    modified: new Date().toISOString(),
     wellsCount: stats.wellsCount,
     readingsCount: stats.readingsCount,
     lastUpdate: stats.lastUpdate,
@@ -177,8 +164,6 @@ async function getDatabaseInfo(id: string) {
 
   // Cache the stats
   cacheService.setDatabaseStats(id, databaseInfo);
-
-  sqliteService.closeDatabase();
 
   return {
     statusCode: 200,
@@ -199,9 +184,6 @@ async function refreshDatabaseCache(id: string) {
   
   // Clear database list cache to force refresh
   cacheService.del('databases:list');
-
-  // Clean up Google Drive cache for this file
-  googleDriveService.cleanupCache();
 
   return {
     statusCode: 200,

@@ -223,6 +223,21 @@ export function WaterLevelChart({ data, config, loading = false }: WaterLevelCha
                 style: { textAnchor: 'middle' }
               }}
             />
+            {/* Secondary Y-axis for temperature */}
+            {config.showTemperature && (
+              <YAxis 
+                yAxisId="temp"
+                orientation="right"
+                stroke="#6b7280"
+                fontSize={12}
+                label={{ 
+                  value: 'Temperature (°C)', 
+                  angle: 90, 
+                  position: 'insideRight',
+                  style: { textAnchor: 'middle' }
+                }}
+              />
+            )}
             <Tooltip content={<CustomTooltip />} />
             <Legend />
             

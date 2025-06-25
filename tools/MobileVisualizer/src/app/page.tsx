@@ -1,20 +1,39 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { DatabaseSelector } from '@/components/DatabaseSelector';
-import { DatabaseUpload } from '@/components/DatabaseUpload';
 import type { DatabaseInfo } from '@/types/database';
 
 export default function HomePage() {
-  const [selectedDatabase, setSelectedDatabase] = useState<DatabaseInfo | null>(null);
-  const [uploadedDatabases, setUploadedDatabases] = useState<DatabaseInfo[]>([]);
+  const [databases, setDatabases] = useState<DatabaseInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleDatabaseUploaded = useCallback((database: DatabaseInfo) => {
-    setUploadedDatabases(prev => [...prev, database]);
+  // Fetch databases from API
+  useEffect(() => {
+    const fetchDatabases = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/.netlify/functions/databases');
+        const data = await response.json();
+        
+        if (data.success) {
+          setDatabases(data.data);
+        } else {
+          setError(data.error || 'Failed to fetch databases');
+        }
+      } catch (err) {
+        setError('Failed to connect to database');
+        console.error('Error fetching databases:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDatabases();
   }, []);
 
   const handleDatabaseSelected = useCallback((database: DatabaseInfo) => {
-    setSelectedDatabase(database);
     // Redirect to wells page
     window.location.href = `/wells/${database.id}`;
   }, []);
@@ -29,39 +48,46 @@ export default function HomePage() {
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Mobile-optimized visualization of groundwater monitoring data. 
-            Upload your database or select from previously uploaded files.
+            Connected to live Turso cloud database with real-time CAESER data.
           </p>
         </div>
 
         {/* Main Content */}
         <div className="space-y-8">
-          {/* Database Upload Section */}
+          {/* Database Connection Status */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-gray-900">
-                Upload Database
+                Database Connection
               </h2>
-              <span className="text-sm text-gray-500">
-                SQLite files (.db, .sqlite)
+              <span className={`text-sm px-2 py-1 rounded ${
+                loading ? 'bg-yellow-100 text-yellow-800' :
+                error ? 'bg-red-100 text-red-800' :
+                'bg-green-100 text-green-800'
+              }`}>
+                {loading ? 'Connecting...' : error ? 'Error' : 'Connected'}
               </span>
             </div>
-            <DatabaseUpload onDatabaseUploaded={handleDatabaseUploaded} />
-          </div>
-
-          {/* Database Selection Section */}
-          <div className="card">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Select Database
-              </h2>
-              <span className="text-sm text-gray-500">
-                {uploadedDatabases.length} available
-              </span>
-            </div>
-            <DatabaseSelector
-              databases={uploadedDatabases}
-              onDatabaseSelected={handleDatabaseSelected}
-            />
+            
+            {loading && (
+              <div className="flex items-center space-x-3">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                <span className="text-gray-600">Connecting to database...</span>
+              </div>
+            )}
+            
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-red-800">Error: {error}</p>
+              </div>
+            )}
+            
+            {!loading && !error && (
+              <DatabaseSelector
+                databases={databases}
+                onDatabaseSelected={handleDatabaseSelected}
+              />
+            )}
           </div>
 
           {/* Quick Info */}
@@ -77,10 +103,10 @@ export default function HomePage() {
                   Getting Started
                 </h3>
                 <div className="text-sm text-blue-700 space-y-1">
-                  <p>• Upload a SQLite database file containing water level monitoring data</p>
-                  <p>• Browse wells and view time-series plots</p>
-                  <p>• Export data in CSV or JSON format</p>
-                  <p>• View recharge calculation results (if available)</p>
+                  <p>• Browse 44+ wells from live CAESER monitoring database</p>
+                  <p>• View interactive time-series plots with 180K+ readings</p>
+                  <p>• Export filtered data in CSV or JSON format</p>
+                  <p>• Access RISE, MRC, and ERC recharge calculations</p>
                 </div>
               </div>
             </div>

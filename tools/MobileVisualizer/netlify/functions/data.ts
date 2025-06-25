@@ -1,11 +1,9 @@
 import { Handler, HandlerEvent } from '@netlify/functions';
-import { GoogleDriveService } from '../../src/lib/api/services/googleDrive';
-import { SQLiteService } from '../../src/lib/api/services/sqljs';
+import { TursoService } from '../../src/lib/api/services/turso';
 import { cacheService, CacheService } from '../../src/lib/api/services/cache';
 import { ApiResponse, WaterLevelReading, RechargeResult, DataQueryParams } from '../../src/lib/api/api';
 
-const googleDriveService = new GoogleDriveService();
-const sqliteService = new SQLiteService();
+const tursoService = new TursoService();
 
 export const handler: Handler = async (event: HandlerEvent) => {
   // Set CORS headers
@@ -132,35 +130,11 @@ async function getWaterLevelData(databaseId: string, wellNumber: string, queryPa
     };
   }
 
-  // Get database list to find the database
-  const databases = await googleDriveService.listDatabases();
-  const database = databases.find(db => db.id === databaseId);
-  
-  if (!database) {
-    return {
-      statusCode: 404,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        success: false,
-        error: 'Database not found'
-      } as ApiResponse),
-    };
-  }
-
-  // Download and open database
-  const filePath = await googleDriveService.downloadDatabase(databaseId, database.name);
-  await sqliteService.openDatabase(filePath);
-  
-  // Get water level data
-  const waterLevelData = await sqliteService.getWaterLevelData(params);
+  // Get water level data directly from Turso
+  const waterLevelData = await tursoService.getWaterLevelData(params);
 
   // Cache the result (shorter TTL for data queries)
   cacheService.setWaterLevelData(databaseId, cacheKey, waterLevelData);
-
-  sqliteService.closeDatabase();
 
   return {
     statusCode: 200,
@@ -202,35 +176,11 @@ async function getRechargeResults(databaseId: string, wellNumber: string) {
     };
   }
 
-  // Get database list to find the database
-  const databases = await googleDriveService.listDatabases();
-  const database = databases.find(db => db.id === databaseId);
-  
-  if (!database) {
-    return {
-      statusCode: 404,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        success: false,
-        error: 'Database not found'
-      } as ApiResponse),
-    };
-  }
-
-  // Download and open database
-  const filePath = await googleDriveService.downloadDatabase(databaseId, database.name);
-  await sqliteService.openDatabase(filePath);
-  
-  // Get recharge results
-  const rechargeResults = await sqliteService.getRechargeResults(wellNumber);
+  // Get recharge results directly from Turso
+  const rechargeResults = await tursoService.getRechargeResults(wellNumber);
 
   // Cache the result
   cacheService.setRechargeResults(databaseId, wellNumber, rechargeResults);
-
-  sqliteService.closeDatabase();
 
   return {
     statusCode: 200,
@@ -268,32 +218,9 @@ async function getDataSummary(databaseId: string, wellNumber: string) {
     };
   }
 
-  // Get database list to find the database
-  const databases = await googleDriveService.listDatabases();
-  const database = databases.find(db => db.id === databaseId);
-  
-  if (!database) {
-    return {
-      statusCode: 404,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        success: false,
-        error: 'Database not found'
-      } as ApiResponse),
-    };
-  }
-
-  // Download and open database
-  const filePath = await googleDriveService.downloadDatabase(databaseId, database.name);
-  await sqliteService.openDatabase(filePath);
-  
-  // Get well info
-  const well = await sqliteService.getWell(wellNumber);
+  // Get well info directly from Turso
+  const well = await tursoService.getWell(wellNumber);
   if (!well) {
-    sqliteService.closeDatabase();
     return {
       statusCode: 404,
       headers: {
@@ -308,8 +235,8 @@ async function getDataSummary(databaseId: string, wellNumber: string) {
   }
 
   // Get data counts by type
-  const allData = await sqliteService.getWaterLevelData({ wellNumber });
-  const rechargeResults = await sqliteService.getRechargeResults(wellNumber);
+  const allData = await tursoService.getWaterLevelData({ wellNumber });
+  const rechargeResults = await tursoService.getRechargeResults(wellNumber);
 
   const dataTypeCounts = allData.reduce((counts, reading) => {
     counts[reading.data_source] = (counts[reading.data_source] || 0) + 1;
@@ -333,8 +260,6 @@ async function getDataSummary(databaseId: string, wellNumber: string) {
 
   // Cache the result
   cacheService.set(cacheKey, summary, 30 * 60); // 30 minutes TTL
-
-  sqliteService.closeDatabase();
 
   return {
     statusCode: 200,

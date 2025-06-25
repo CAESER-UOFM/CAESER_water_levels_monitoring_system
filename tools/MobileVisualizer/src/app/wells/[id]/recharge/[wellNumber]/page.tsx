@@ -3,9 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { databaseManager } from '@/lib/database';
 import { exportRechargeResultsToCSV, exportRechargeResultsToJSON, exportRechargeResultsToPDF } from '@/utils/dataExport';
-import type { Well, RechargeResult } from '@/types/database';
+import type { Well, RechargeResult } from '@/lib/api/api';
 
 export default function RechargeResultsPage() {
   const params = useParams();
@@ -24,21 +23,25 @@ export default function RechargeResultsPage() {
         setLoading(true);
         setError(null);
 
-        const db = databaseManager.getDatabase(databaseId);
-        if (!db) {
-          throw new Error('Database not available');
-        }
-
         // Load well metadata
-        const wellData = await db.getWell(wellNumber);
-        if (!wellData) {
-          throw new Error('Well not found');
+        const wellResponse = await fetch(`/.netlify/functions/wells/${databaseId}/${wellNumber}`);
+        const wellResult = await wellResponse.json();
+        
+        if (!wellResult.success) {
+          throw new Error(wellResult.error || 'Well not found');
         }
-        setWell(wellData);
+        setWell(wellResult.data);
 
         // Load recharge results
-        const results = await db.getRechargeResults(wellNumber);
-        setRechargeResults(results);
+        const rechargeResponse = await fetch(`/.netlify/functions/data/${databaseId}/recharge/${wellNumber}`);
+        const rechargeResult = await rechargeResponse.json();
+        
+        if (rechargeResult.success) {
+          setRechargeResults(rechargeResult.data || []);
+        } else {
+          // Don't fail if recharge data doesn't exist - just show empty results
+          setRechargeResults([]);
+        }
 
       } catch (err) {
         console.error('Error loading recharge data:', err);
@@ -76,7 +79,7 @@ export default function RechargeResultsPage() {
     if (!well || rechargeResults.length === 0) return;
     
     try {
-      exportRechargeResultsToCSV(rechargeResults, well);
+      exportRechargeResultsToCSV(rechargeResults as any, well as any);
     } catch (error) {
       console.error('Error exporting CSV:', error);
       alert('Failed to export CSV file. Please try again.');
@@ -87,7 +90,7 @@ export default function RechargeResultsPage() {
     if (!well || rechargeResults.length === 0) return;
     
     try {
-      exportRechargeResultsToJSON(rechargeResults, well);
+      exportRechargeResultsToJSON(rechargeResults as any, well as any);
     } catch (error) {
       console.error('Error exporting JSON:', error);
       alert('Failed to export JSON file. Please try again.');
@@ -98,7 +101,7 @@ export default function RechargeResultsPage() {
     if (!well || rechargeResults.length === 0) return;
     
     try {
-      exportRechargeResultsToPDF(rechargeResults, well);
+      exportRechargeResultsToPDF(rechargeResults as any, well as any);
     } catch (error) {
       console.error('Error exporting PDF:', error);
       alert('Failed to export PDF report. Please try again.');

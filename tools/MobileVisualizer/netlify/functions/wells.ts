@@ -1,11 +1,16 @@
 import { Handler, HandlerEvent } from '@netlify/functions';
-import { GoogleDriveService } from '../../src/lib/api/services/googleDrive';
-import { SQLiteService } from '../../src/lib/api/services/sqljs';
+import { TursoService } from '../../src/lib/api/services/turso';
 import { cacheService, CacheService } from '../../src/lib/api/services/cache';
 import { ApiResponse, PaginatedResponse, Well, WellsQueryParams } from '../../src/lib/api/api';
 
-const googleDriveService = new GoogleDriveService();
-const sqliteService = new SQLiteService();
+let tursoService: TursoService;
+
+try {
+  tursoService = new TursoService();
+} catch (initError) {
+  console.error('Failed to initialize TursoService:', initError);
+  tursoService = null as any;
+}
 
 export const handler: Handler = async (event: HandlerEvent) => {
   // Set CORS headers
@@ -30,6 +35,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
   const pathParts = path.split('/').filter(p => p);
 
   try {
+    // GET /wells/:databaseId/fields - Get well fields (check this first)
+    if (event.httpMethod === 'GET' && pathParts.length === 2 && pathParts[1] === 'fields') {
+      const databaseId = pathParts[0];
+      return await getWellFields(databaseId);
+    }
+
     // GET /wells/:databaseId - Get wells for database
     if (event.httpMethod === 'GET' && pathParts.length === 1) {
       const databaseId = pathParts[0];
@@ -40,12 +51,6 @@ export const handler: Handler = async (event: HandlerEvent) => {
     if (event.httpMethod === 'GET' && pathParts.length === 2) {
       const [databaseId, wellNumber] = pathParts;
       return await getWell(databaseId, wellNumber);
-    }
-
-    // GET /wells/:databaseId/fields - Get well fields
-    if (event.httpMethod === 'GET' && pathParts.length === 2 && pathParts[1] === 'fields') {
-      const databaseId = pathParts[0];
-      return await getWellFields(databaseId);
     }
 
     return {
@@ -136,35 +141,16 @@ async function getWells(databaseId: string, queryParams: Record<string, string |
     };
   }
 
-  // Get database list to find the database
-  const databases = await googleDriveService.listDatabases();
-  const database = databases.find(db => db.id === databaseId);
-  
-  if (!database) {
-    return {
-      statusCode: 404,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        success: false,
-        error: 'Database not found'
-      } as ApiResponse),
-    };
+  // Check if tursoService initialized properly
+  if (!tursoService) {
+    throw new Error('TursoService failed to initialize - check environment variables');
   }
 
-  // Download and open database
-  const filePath = await googleDriveService.downloadDatabase(databaseId, database.name);
-  await sqliteService.openDatabase(filePath);
-  
-  // Get wells with pagination
-  const wells = await sqliteService.getWells(params);
+  // Get wells with pagination directly from Turso
+  const wells = await tursoService.getWells(params);
 
   // Cache the result
   cacheService.setWells(databaseId, cacheKey, wells);
-
-  sqliteService.closeDatabase();
 
   return {
     statusCode: 200,
@@ -194,33 +180,10 @@ async function getWell(databaseId: string, wellNumber: string) {
     };
   }
 
-  // Get database list to find the database
-  const databases = await googleDriveService.listDatabases();
-  const database = databases.find(db => db.id === databaseId);
-  
-  if (!database) {
-    return {
-      statusCode: 404,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        success: false,
-        error: 'Database not found'
-      } as ApiResponse),
-    };
-  }
-
-  // Download and open database
-  const filePath = await googleDriveService.downloadDatabase(databaseId, database.name);
-  await sqliteService.openDatabase(filePath);
-  
-  // Get specific well
-  const well = await sqliteService.getWell(wellNumber);
+  // Get specific well directly from Turso
+  const well = await tursoService.getWell(wellNumber);
 
   if (!well) {
-    sqliteService.closeDatabase();
     return {
       statusCode: 404,
       headers: {
@@ -236,8 +199,6 @@ async function getWell(databaseId: string, wellNumber: string) {
 
   // Cache the result
   cacheService.set(cacheKey, well, 30 * 60); // 30 minutes TTL
-
-  sqliteService.closeDatabase();
 
   return {
     statusCode: 200,
@@ -270,35 +231,11 @@ async function getWellFields(databaseId: string) {
     };
   }
 
-  // Get database list to find the database
-  const databases = await googleDriveService.listDatabases();
-  const database = databases.find(db => db.id === databaseId);
-  
-  if (!database) {
-    return {
-      statusCode: 404,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        success: false,
-        error: 'Database not found'
-      } as ApiResponse),
-    };
-  }
-
-  // Download and open database
-  const filePath = await googleDriveService.downloadDatabase(databaseId, database.name);
-  await sqliteService.openDatabase(filePath);
-  
-  // Get well fields
-  const wellFields = await sqliteService.getWellFields();
+  // Get well fields directly from Turso
+  const wellFields = await tursoService.getWellFields();
 
   // Cache the result
   cacheService.set(`${databaseId}:${cacheKey}`, wellFields, 60 * 60); // 1 hour TTL
-
-  sqliteService.closeDatabase();
 
   return {
     statusCode: 200,

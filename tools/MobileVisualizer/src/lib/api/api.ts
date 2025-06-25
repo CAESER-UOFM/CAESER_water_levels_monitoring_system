@@ -25,8 +25,11 @@ export interface DatabaseInfo {
   size: number;
   modified: string;
   wellsCount?: number;
+  readingsCount?: number;
+  lastUpdate?: string | null;
+  wellFields?: string[];
   downloadUrl?: string;
-  mimeType: string;
+  mimeType?: string;
 }
 
 export interface Well {
@@ -55,8 +58,8 @@ export interface WaterLevelReading {
   id?: number;
   well_number: string;
   timestamp_utc: string;
-  julian_timestamp: number;
-  water_level: number;
+  julian_timestamp?: number;
+  water_level?: number;
   temperature?: number;
   dtw?: number;
   data_source: 'transducer' | 'telemetry' | 'manual';
@@ -68,7 +71,7 @@ export interface WaterLevelReading {
 export interface RechargeResult {
   id?: number;
   well_number: string;
-  method: 'RISE' | 'MRC' | 'EMR';
+  method: 'RISE' | 'MRC' | 'ERC' | 'EMR';
   calculation_date: string;
   start_date: string;
   end_date: string;
@@ -76,7 +79,7 @@ export interface RechargeResult {
   recharge_inches?: number;
   specific_yield?: number;
   water_table_rise?: number;
-  calculation_parameters?: Record<string, any>;
+  calculation_parameters?: string | Record<string, any>;
   notes?: string;
 }
 

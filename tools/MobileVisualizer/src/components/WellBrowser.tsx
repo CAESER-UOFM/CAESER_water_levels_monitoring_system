@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { databaseManager } from '@/lib/database';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import type { Well, WellsQueryParams } from '@/types/database';
+import type { Well, WellsQueryParams, PaginatedResponse } from '@/lib/api/api';
 
 interface WellBrowserProps {
   databaseId: string;
@@ -22,30 +21,46 @@ export function WellBrowser({ databaseId, onWellSelected }: WellBrowserProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalWells, setTotalWells] = useState(0);
+  const [wellFields, setWellFields] = useState<string[]>([]);
 
   const pageSize = 20;
 
-  // Get unique well fields for filter
-  const wellFields = useMemo(() => {
-    const fields = new Set(wells.map(well => well.well_field).filter(Boolean));
-    return Array.from(fields).sort();
-  }, [wells]);
+  // Load well fields for filter
+  useEffect(() => {
+    const loadWellFields = async () => {
+      try {
+        const response = await fetch(`/.netlify/functions/wells/${databaseId}/fields`);
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+          setWellFields(result.data);
+        }
+      } catch (err) {
+        console.error('Error loading well fields:', err);
+      }
+    };
+
+    loadWellFields();
+  }, [databaseId]);
 
   const loadWells = useCallback(async (params: WellsQueryParams = {}) => {
     try {
       setLoading(true);
       setError(null);
 
-      const db = databaseManager.getDatabase(databaseId);
-      if (!db) {
-        throw new Error('Database not available');
-      }
-
-      const result = await db.getWells({
-        ...params,
-        page: currentPage,
-        limit: pageSize
+      // Build query parameters
+      const queryParams = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: pageSize.toString(),
+        ...(params.search && { search: params.search }),
+        ...(params.field && { field: params.field }),
+        ...(params.hasData !== undefined && { hasData: params.hasData.toString() }),
+        ...(params.sortBy && { sortBy: params.sortBy }),
+        ...(params.sortOrder && { sortOrder: params.sortOrder })
       });
+
+      const response = await fetch(`/.netlify/functions/wells/${databaseId}?${queryParams}`);
+      const result: PaginatedResponse<Well> = await response.json();
 
       if (result.success && result.data) {
         setWells(result.data);

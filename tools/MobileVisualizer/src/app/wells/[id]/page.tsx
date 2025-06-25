@@ -4,8 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { WellBrowser } from '@/components/WellBrowser';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { databaseManager } from '@/lib/database';
-import type { DatabaseInfo, Well } from '@/types/database';
+import type { DatabaseInfo, Well } from '@/lib/api/api';
 
 export default function WellsPage() {
   const params = useParams();
@@ -23,13 +22,15 @@ export default function WellsPage() {
         setLoading(true);
         setError(null);
 
-        // Get database metadata
-        const stored = localStorage.getItem('uploaded_databases');
-        if (!stored) {
-          throw new Error('No databases found');
+        // Get database metadata from API
+        const response = await fetch('/.netlify/functions/databases');
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to fetch databases');
         }
 
-        const databases = JSON.parse(stored) as DatabaseInfo[];
+        const databases = data.data as DatabaseInfo[];
         const dbInfo = databases.find(db => db.id === databaseId);
         
         if (!dbInfo) {
@@ -37,17 +38,6 @@ export default function WellsPage() {
         }
 
         setDatabase(dbInfo);
-
-        // Load database data
-        const dbData = localStorage.getItem(`db_${databaseId}`);
-        if (!dbData) {
-          throw new Error('Database data not found');
-        }
-
-        const dataArray = JSON.parse(dbData) as number[];
-        const arrayBuffer = new Uint8Array(dataArray).buffer;
-        
-        await databaseManager.loadDatabase(databaseId, arrayBuffer);
         
       } catch (err) {
         console.error('Error loading database:', err);
@@ -58,11 +48,6 @@ export default function WellsPage() {
     };
 
     loadDatabase();
-
-    // Cleanup on unmount
-    return () => {
-      databaseManager.closeDatabase(databaseId);
-    };
   }, [databaseId]);
 
   const handleWellSelected = useCallback((well: Well) => {
