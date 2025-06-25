@@ -55,7 +55,8 @@ export function useProgressiveLoading({
     level: 1 | 2 | 3,
     startDate?: string,
     endDate?: string,
-    viewport?: { start: Date; end: Date }
+    viewport?: { start: Date; end: Date },
+    backgroundMode = false // If true, don't update current state
   ) => {
     const cacheKey = getCacheKey(level, startDate, endDate);
     
@@ -121,17 +122,22 @@ export function useProgressiveLoading({
       cache.set(cacheKey, segment);
       cache.delete(`loading-${cacheKey}`);
 
-      // Update state - prevent duplicate segments
-      setState(prev => {
-        const existingSegments = prev.segments.filter(s => !(s.level === level && s.startDate === startDate && s.endDate === endDate));
-        return {
-          ...prev,
-          segments: [...existingSegments, segment],
-          currentLevel: level,
-          totalDataPoints: existingSegments.reduce((sum, s) => sum + s.data.length, 0) + data.length,
-          isLoading: false
-        };
-      });
+      // Update state only if not in background mode
+      if (!backgroundMode) {
+        setState(prev => {
+          const existingSegments = prev.segments.filter(s => !(s.level === level && s.startDate === startDate && s.endDate === endDate));
+          return {
+            ...prev,
+            segments: [...existingSegments, segment],
+            currentLevel: level,
+            totalDataPoints: existingSegments.reduce((sum, s) => sum + s.data.length, 0) + data.length,
+            isLoading: false
+          };
+        });
+      } else {
+        // In background mode, just clear loading state but don't update segments
+        setState(prev => ({ ...prev, isLoading: false }));
+      }
 
       return data;
 
@@ -180,7 +186,7 @@ export function useProgressiveLoading({
   }, [loadDataLevel]);
 
 
-  // Smart viewport loading with caching - always use ~5000 points for any time range
+  // Background viewport loading with caching - loads but doesn't auto-apply to prevent loops
   const loadForViewport = useCallback(async (viewport: { start: Date; end: Date }) => {
     const timeSpanMs = viewport.end.getTime() - viewport.start.getTime();
     const timeSpanDays = timeSpanMs / (1000 * 60 * 60 * 24);
@@ -193,28 +199,26 @@ export function useProgressiveLoading({
     const cached = cache.get(cacheKey);
     
     if (cached) {
-      console.log(`📋 Smart cache hit for ${timeSpanDays.toFixed(1)} days`);
-      // Update state with cached data
-      setState(prev => ({
-        ...prev,
-        segments: [...prev.segments.filter(s => s.level !== 1 || s.startDate !== startDate || s.endDate !== endDate), cached],
-        currentLevel: 1
-      }));
+      console.log(`📋 Smart cache hit for ${timeSpanDays.toFixed(1)} days - data ready`);
+      // DON'T update current state to avoid infinite loops
+      // Just return the cached data for potential future use
       return cached.data;
     }
     
-    console.log(`🔍 Smart viewport loading: ${timeSpanDays.toFixed(1)} days → ~5000 points`);
+    console.log(`🔍 Background viewport loading: ${timeSpanDays.toFixed(1)} days → ~5000 points`);
     console.log(`🚀 Loading fresh data for ${timeSpanDays.toFixed(1)} days - expecting ~5000 points`);
 
-    // Load fresh data for this specific time range
+    // Load fresh data in background mode - caches but doesn't update current view
     try {
       const viewportData = { start: viewport.start, end: viewport.end };
-      return await loadDataLevel(1, startDate, endDate, viewportData);
+      const data = await loadDataLevel(1, startDate, endDate, viewportData, true); // background mode = true
+      console.log(`💾 Background data loaded and cached for ${timeSpanDays.toFixed(1)} days`);
+      return data;
     } catch (err) {
-      console.error('Viewport loading failed, using current data:', err);
-      return getCurrentData();
+      console.error('Background loading failed:', err);
+      return [];
     }
-  }, [loadDataLevel, getCurrentData, cache, getCacheKey]);
+  }, [loadDataLevel, cache, getCacheKey]);
 
   // Clear cache and reset
   const reset = useCallback(() => {
