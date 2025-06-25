@@ -404,8 +404,9 @@ You can find folder IDs in the URL of your Google Drive folders.
             self.settings_handler.get_setting("google_drive_folder_id", "1vGoxkS-HQ0n0u0ToNcYL_wJGZ02RDhAK"))
         self.xle_folder_id.setText(
             self.settings_handler.get_setting("google_drive_xle_folder_id", "1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW"))
-        self.projects_folder_id.setText(
-            self.settings_handler.get_setting("google_drive_projects_folder_id", "1JjiXRblLAf6rdhiOzrAaYik8bjNpBc9s"))
+        projects_folder_value = self.settings_handler.get_setting("google_drive_projects_folder_id", "1JjiXRblLAf6rdhiOzrAaYik8bjNpBc9s")
+        logger.info(f"Loading projects folder ID: '{projects_folder_value}'")
+        self.projects_folder_id.setText(projects_folder_value)
             
         # Field data folders (convert list to comma-separated string)
         field_folders = self.settings_handler.get_setting("field_data_folders", ["1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW"])

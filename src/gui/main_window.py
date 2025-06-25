@@ -2911,7 +2911,27 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
                     if hasattr(self, 'drive_service'):
                         self.drive_service.authenticate(force=True)
                     
+                    # Reinitialize cloud database handler with new settings
+                    if self.drive_service.authenticated:
+                        logger.info("Reinitializing Google Drive components after credential setup")
+                        
+                        # Initialize Cloud database handler
+                        self.cloud_db_handler = CloudDatabaseHandler(self.drive_service, self.settings_handler)
+                        
+                        # Initialize Google Drive database handler
+                        if not hasattr(self, 'drive_db_handler') or self.drive_db_handler is None:
+                            self.drive_db_handler = GoogleDriveDatabaseHandler(self.settings_handler)
+                        self.drive_db_handler.authenticate()
+                        
+                        # Set Google Drive handler for database manager
+                        self.db_manager.set_google_drive_handler(self.drive_db_handler)
+                        
+                        logger.info("Google Drive components reinitialized successfully")
+                    else:
+                        logger.warning("Google Drive service not authenticated after credential setup")
+                    
                     # Reload databases
+                    logger.info("Reloading databases after credential setup")
                     self._load_databases()
                     
                     # Update water level runs tab if it exists
