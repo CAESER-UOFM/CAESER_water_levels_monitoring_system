@@ -221,8 +221,20 @@ if not exist "%PYTHON_DIR%\python.exe" (
     
     REM Extract Python using built-in Windows tools
     echo Extracting Python...
-    powershell -ExecutionPolicy Bypass -Command "try { Expand-Archive -Path '%INSTALL_DIR%\python.zip' -DestinationPath '%PYTHON_DIR%' -Force } catch { exit 1 }"
+    powershell -ExecutionPolicy Bypass -Command "try { Expand-Archive -Path '%INSTALL_DIR%\python.zip' -DestinationPath '%PYTHON_DIR%' -Force } catch { Write-Host 'Extraction failed'; exit 1 }"
+    if %ERRORLEVEL% NEQ 0 (
+        echo Failed to extract Python. Please check if the download was successful.
+        pause
+        exit /b 1
+    )
     if exist "%INSTALL_DIR%\python.zip" del "%INSTALL_DIR%\python.zip"
+    
+    REM Verify Python was extracted
+    if not exist "%PYTHON_DIR%\python.exe" (
+        echo Python extraction failed - python.exe not found
+        pause
+        exit /b 1
+    )
     
     REM Enable site-packages
     echo Enabling site-packages...
@@ -240,6 +252,11 @@ if not exist "%PYTHON_DIR%\python.exe" (
     )
     
     "%PYTHON_DIR%\python.exe" "%INSTALL_DIR%\get-pip.py" --no-warn-script-location
+    if %ERRORLEVEL% NEQ 0 (
+        echo Failed to install pip. Python installation may be corrupted.
+        pause
+        exit /b 1
+    )
     if exist "%INSTALL_DIR%\get-pip.py" del "%INSTALL_DIR%\get-pip.py"
     
     echo    [+] Python installation complete.
