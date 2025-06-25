@@ -16,7 +16,7 @@ export function WellBrowser({ databaseId, onWellSelected }: WellBrowserProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedField, setSelectedField] = useState('');
   const [hasDataFilter, setHasDataFilter] = useState<boolean | undefined>(undefined);
-  const [sortBy, setSortBy] = useState<'well_number' | 'cae_number' | 'last_reading_date'>('well_number');
+  const [sortBy, setSortBy] = useState<'well_number' | 'cae_number'>('well_number');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -108,7 +108,7 @@ export function WellBrowser({ databaseId, onWellSelected }: WellBrowserProps) {
     setHasDataFilter(value === '' ? undefined : value === 'true');
   }, []);
 
-  const handleSortChange = useCallback((field: 'well_number' | 'cae_number' | 'last_reading_date') => {
+  const handleSortChange = useCallback((field: 'well_number' | 'cae_number') => {
     if (sortBy === field) {
       setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
     } else {
@@ -293,12 +293,10 @@ export function WellBrowser({ databaseId, onWellSelected }: WellBrowserProps) {
                     Readings
                   </th>
                   <th 
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 mobile-touch-target"
-                    onClick={() => handleSortChange('last_reading_date')}
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
                     <div className="flex items-center space-x-1">
-                      <span>Last Reading</span>
-                      {getSortIcon('last_reading_date')}
+                      <span>Manual Readings</span>
                     </div>
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -345,7 +343,14 @@ export function WellBrowser({ databaseId, onWellSelected }: WellBrowserProps) {
                       </div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {formatDate(well.last_reading_date)}
+                      <div className="flex items-center space-x-2">
+                        <span className="font-medium text-green-600">{well.manual_readings_count || 0}</span>
+                        {(well.manual_readings_count || 0) > 0 && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Available
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm">
                       <button

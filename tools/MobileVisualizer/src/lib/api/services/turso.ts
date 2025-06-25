@@ -180,6 +180,7 @@ export class TursoService {
           return {
             ...wellBase,
             total_readings: transducerCount + manualCount + telemetryCount,
+            manual_readings_count: manualCount,
             has_manual_readings: manualCount > 0,
             has_transducer_data: transducerCount > 0,
             has_telemetry_data: telemetryCount > 0
@@ -189,6 +190,7 @@ export class TursoService {
           return {
             ...wellBase,
             total_readings: 0,
+            manual_readings_count: 0,
             has_manual_readings: false,
             has_transducer_data: false,
             has_telemetry_data: false
@@ -254,6 +256,7 @@ export class TursoService {
         return {
           ...wellBase,
           total_readings: transducerCount + manualCount + telemetryCount,
+          manual_readings_count: manualCount,
           has_manual_readings: manualCount > 0,
           has_transducer_data: transducerCount > 0,
           has_telemetry_data: telemetryCount > 0
@@ -262,6 +265,7 @@ export class TursoService {
         return {
           ...wellBase,
           total_readings: 0,
+          manual_readings_count: 0,
           has_manual_readings: false,
           has_transducer_data: false,
           has_telemetry_data: false
@@ -403,11 +407,17 @@ export class TursoService {
         ORDER BY measurement_date_utc ASC
       `;
 
+      console.log(`🔍 Manual data query for well ${wellNumber}:`, query, queryParams);
       const result = await this.execute(query, queryParams);
+      console.log(`📊 Manual data result for well ${wellNumber}:`, {
+        columns: result.columns,
+        rowCount: result.rows.length,
+        firstRow: result.rows[0]
+      });
 
-      return result.rows.map(row => {
+      const manualReadings = result.rows.map(row => {
         const obj = this.rowToObject(result.columns, row);
-        return {
+        const reading = {
           id: Number(obj.id),
           well_number: String(obj.well_number),
           timestamp_utc: String(obj.measurement_date_utc), // Map measurement_date_utc to timestamp_utc
@@ -415,14 +425,18 @@ export class TursoService {
           water_level: obj.water_level ? Number(obj.water_level) : undefined,
           temperature: undefined, // Manual readings don't have temperature
           dtw: obj.dtw_avg ? Number(obj.dtw_avg) : undefined,
-          data_source: 'manual', // Explicitly set for manual data
+          data_source: 'manual' as const, // Explicitly set for manual data
           baro_flag: undefined,
           level_flag: undefined,
           notes: obj.comments ? String(obj.comments) : undefined
         };
+        return reading;
       });
+
+      console.log(`✅ Processed ${manualReadings.length} manual readings for well ${wellNumber}`);
+      return manualReadings;
     } catch (error) {
-      console.error(`Failed to get manual data for well ${wellNumber}:`, error);
+      console.error(`❌ Failed to get manual data for well ${wellNumber}:`, error);
       return [];
     }
   }

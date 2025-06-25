@@ -49,6 +49,7 @@ export interface Well {
   notes?: string;
   last_reading_date?: string;
   total_readings?: number;
+  manual_readings_count?: number;
   has_manual_readings?: boolean;
   has_transducer_data?: boolean;
   has_telemetry_data?: boolean;
@@ -89,7 +90,7 @@ export interface WellsQueryParams {
   hasData?: boolean;
   page?: number;
   limit?: number;
-  sortBy?: 'well_number' | 'cae_number' | 'last_reading_date';
+  sortBy?: 'well_number' | 'cae_number';
   sortOrder?: 'asc' | 'desc';
 }
 
