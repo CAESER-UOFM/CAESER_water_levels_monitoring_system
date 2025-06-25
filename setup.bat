@@ -1,6 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
 
+REM Global error handler - catch unexpected crashes
+if not defined DEBUG_MODE set DEBUG_MODE=1
+
 REM ================================================================
 REM CAESER Water Levels Monitoring Application - GUI Installer
 REM ================================================================
@@ -205,25 +208,42 @@ set "GET_PIP_URL=https://bootstrap.pypa.io/get-pip.py"
 REM Download and install Python if not already installed
 if not exist "%PYTHON_DIR%\python.exe" (
     echo    [*] [2/8] Installing fresh Python %PYTHON_VERSION% for this application...
+    echo    [DEBUG] Python directory: %PYTHON_DIR%
+    echo    [DEBUG] Python URL: %PYTHON_URL%
+    echo    [DEBUG] Install directory: %INSTALL_DIR%
     
     REM Download Python using built-in Windows tools
     echo Downloading Python %PYTHON_VERSION%...
-    bitsadmin /transfer "PythonDownload" "%PYTHON_URL%" "%INSTALL_DIR%\python.zip" >nul
+    bitsadmin /transfer "PythonDownload" "%PYTHON_URL%" "%INSTALL_DIR%\python.zip"
+    echo [DEBUG] Bitsadmin exit code: %ERRORLEVEL%
     if %ERRORLEVEL% NEQ 0 (
         echo Failed to download Python using bitsadmin. Trying alternative method...
-        powershell -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; try { Invoke-WebRequest -Uri '%PYTHON_URL%' -OutFile '%INSTALL_DIR%\python.zip' } catch { exit 1 }"
+        powershell -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; try { Invoke-WebRequest -Uri '%PYTHON_URL%' -OutFile '%INSTALL_DIR%\python.zip' } catch { Write-Host 'PowerShell download failed'; exit 1 }"
+        echo [DEBUG] PowerShell exit code: !ERRORLEVEL!
         if !ERRORLEVEL! NEQ 0 (
             echo Failed to download Python. Please check your internet connection.
+            echo [DEBUG] Both bitsadmin and PowerShell failed
             pause
             exit /b 1
         )
     )
     
+    echo [DEBUG] Download completed, checking if file exists...
+    if not exist "%INSTALL_DIR%\python.zip" (
+        echo [ERROR] Python.zip file was not created despite successful download
+        pause
+        exit /b 1
+    )
+    
     REM Extract Python using built-in Windows tools
     echo Extracting Python...
+    echo [DEBUG] Extracting from: %INSTALL_DIR%\python.zip
+    echo [DEBUG] Extracting to: %PYTHON_DIR%
     powershell -ExecutionPolicy Bypass -Command "try { Expand-Archive -Path '%INSTALL_DIR%\python.zip' -DestinationPath '%PYTHON_DIR%' -Force } catch { Write-Host 'Extraction failed'; exit 1 }"
+    echo [DEBUG] Extraction exit code: %ERRORLEVEL%
     if %ERRORLEVEL% NEQ 0 (
         echo Failed to extract Python. Please check if the download was successful.
+        echo [DEBUG] PowerShell extraction command failed
         pause
         exit /b 1
     )
