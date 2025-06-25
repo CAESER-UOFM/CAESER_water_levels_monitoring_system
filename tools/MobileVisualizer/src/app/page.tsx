@@ -131,7 +131,7 @@ export default function HomePage() {
                 </svg>
               </div>
               <h3 className="font-medium text-gray-900 mb-1">Recharge Analysis</h3>
-              <p className="text-xs text-gray-600">Access RISE, MRC, and ERC calculations</p>
+              <p className="text-xs text-gray-600">Access RISE and MRC calculations</p>
             </div>
           </div>
         </div>

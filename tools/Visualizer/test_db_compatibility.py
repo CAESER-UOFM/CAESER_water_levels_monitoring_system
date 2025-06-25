@@ -201,21 +201,40 @@ def test_database_compatibility(db_path):
 def main():
     """Main function to run the compatibility test"""
     
-    # Default database path (can be overridden with command line argument)
-    default_db_path = r"S:\Water_Projects\CAESER\Water_Data_Series\water_levels_monitoring\CAESER_GENERAL.db"
-    
     # Use command line argument if provided
     if len(sys.argv) > 1:
         db_path = sys.argv[1]
+        print(f"Using command line database: {db_path}")
     else:
-        # Try to find a local database file for testing
-        local_db = Path(__file__).parent.parent.parent / "T.db"
-        if local_db.exists():
-            db_path = str(local_db)
-            print(f"Using local database: {db_path}")
+        # Look for databases in the configured databases folder
+        from pathlib import Path
+        
+        # Check installation databases folder first
+        installation_root = Path(__file__).parent.parent.parent
+        databases_folder = installation_root / "databases"
+        
+        db_files = []
+        if databases_folder.exists():
+            db_files = list(databases_folder.glob("*.db"))
+        
+        # Also check for local test database
+        local_test_db = installation_root / "T.db"
+        if local_test_db.exists():
+            db_files.append(local_test_db)
+        
+        if db_files:
+            # Use the first database found
+            db_path = str(db_files[0])
+            print(f"Found database: {db_path}")
+            if len(db_files) > 1:
+                print(f"Note: {len(db_files)} databases found, using first one")
         else:
-            db_path = default_db_path
-            print(f"Using default database: {db_path}")
+            print("No databases found in the databases folder.")
+            print("Please:")
+            print("1. Add a .db file to the databases folder, or")
+            print("2. Specify a database path as command line argument")
+            print("   Example: python test_db_compatibility.py path/to/your/database.db")
+            return
     
     # Run the compatibility test
     success = test_database_compatibility(db_path)

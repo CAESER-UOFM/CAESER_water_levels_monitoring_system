@@ -122,8 +122,8 @@ export interface PaginatedResponse<T> {
 // Query parameters
 export interface WellsQueryParams {
   search?: string;
-  field?: string;
-  hasData?: boolean;
+  aquifer?: string;
+  dataType?: string;
   page?: number;
   limit?: number;
   sortBy?: 'well_number' | 'cae_number' | 'last_reading_date';

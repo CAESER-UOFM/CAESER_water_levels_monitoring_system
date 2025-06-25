@@ -86,8 +86,8 @@ export interface RechargeResult {
 
 export interface WellsQueryParams {
   search?: string;
-  field?: string;
-  hasData?: boolean;
+  aquifer?: string;
+  dataType?: string;
   page?: number;
   limit?: number;
   sortBy?: 'well_number' | 'cae_number';

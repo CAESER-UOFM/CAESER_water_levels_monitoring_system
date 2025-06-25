@@ -14,9 +14,30 @@ sys.path.insert(0, project_root)
 
 def test_manual_readings():
     """Test manual readings retrieval."""
-    db_path = "/Users/bmac/Library/CloudStorage/OneDrive-TheUniversityofMemphis/UofM/CAESER/2025/dbs_test/Test.db"
+    # Look for databases in the installation databases folder
+    from pathlib import Path
     
+    installation_root = Path(__file__).parent.parent.parent
+    databases_folder = installation_root / "databases"
+    
+    # Find any .db file
+    db_files = []
+    if databases_folder.exists():
+        db_files = list(databases_folder.glob("*.db"))
+    
+    # Also check for local test database
+    local_test_db = installation_root / "Test.db"
+    if local_test_db.exists():
+        db_files.append(local_test_db)
+    
+    if not db_files:
+        print("No databases found. Please add a .db file to the databases folder.")
+        return
+    
+    db_path = str(db_files[0])
     print(f"Testing manual readings from: {db_path}")
+    if len(db_files) > 1:
+        print(f"Note: Found {len(db_files)} databases, using first one")
     
     try:
         with sqlite3.connect(db_path) as conn:

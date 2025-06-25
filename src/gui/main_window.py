@@ -672,8 +672,13 @@ class MainWindow(QMainWindow):
         try:
             self.db_combo.clear()
             
-            # Load local databases
-            local_db_files = [db for db in Path().glob("*.db") if "_(drive)" not in db.name]
+            # Load local databases from configured directory
+            local_db_directory = Path(self.settings_handler.get_setting("local_db_directory", str(Path.cwd())))
+            if local_db_directory.exists():
+                local_db_files = [db for db in local_db_directory.glob("*.db") if "_(drive)" not in db.name]
+            else:
+                logger.warning(f"Database directory does not exist: {local_db_directory}")
+                local_db_files = []
             has_databases = False
             
             # Add local databases section
@@ -2628,35 +2633,34 @@ class MainWindow(QMainWindow):
         self._update_db_info_label()
 
     def load_local_database(self):
-        """Load a local database - first try CAESER_GENERAL.db, then any available database"""
+        """Load any available database from the configured databases directory"""
         try:
-            # First, look for CAESER_GENERAL.db in the current directory
-            caeser_general_path = Path() / "CAESER_GENERAL.db"
-            if caeser_general_path.exists():
-                logger.info(f"Found CAESER_GENERAL.db at {caeser_general_path}, loading it")
-                self.db_manager.open_database(str(caeser_general_path))
+            # Get the configured database directory
+            local_db_directory = Path(self.settings_handler.get_setting("local_db_directory", str(Path.cwd())))
+            
+            if not local_db_directory.exists():
+                logger.warning(f"Database directory does not exist: {local_db_directory}")
+                return False
                 
-                # Update the database info label
-                self._update_db_info_label()
-                
-                logger.info(f"Loaded CAESER_GENERAL.db database")
-                return True
-                
-            # If CAESER_GENERAL.db not found, try to load the first available database
-            db_files = list(Path().glob("*.db"))
+            # Look for any .db files in the directory
+            db_files = [db for db in local_db_directory.glob("*.db") if "_(drive)" not in db.name]
+            
             if db_files:
+                # Load the first database found
                 first_db = db_files[0]
-                logger.info(f"CAESER_GENERAL.db not found, loading first available database: {first_db}")
+                logger.info(f"Loading database: {first_db}")
                 self.db_manager.open_database(str(first_db))
                 
                 # Update the database info label
                 self._update_db_info_label()
                 
-                logger.info(f"Loaded default database: {first_db}")
+                logger.info(f"Loaded database: {first_db}")
+                if len(db_files) > 1:
+                    logger.info(f"Found {len(db_files)} databases, loaded first one")
                 return True
                 
             # No databases found
-            logger.warning("No databases found to load")
+            logger.warning(f"No databases found in {local_db_directory}")
             return False
                 
         except Exception as e:

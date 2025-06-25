@@ -111,8 +111,8 @@ export class TursoService {
   async getWells(params: WellsQueryParams = {}): Promise<PaginatedResponse<Well>> {
     const {
       search = '',
-      field = '',
-      hasData,
+      aquifer = '',
+      dataType,
       page = 1,
       limit = 50,
       sortBy = 'well_number',
@@ -130,12 +130,10 @@ export class TursoService {
         queryParams.push(searchPattern, searchPattern, searchPattern);
       }
 
-      if (field) {
-        whereConditions.push(`well_field = ?`);
-        queryParams.push(field);
+      if (aquifer) {
+        whereConditions.push(`aquifer = ?`);
+        queryParams.push(aquifer);
       }
-
-      // Skip hasData filter for now to simplify
       
       const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
       const orderClause = `ORDER BY ${sortBy} ${sortOrder.toUpperCase()}`;
@@ -159,7 +157,7 @@ export class TursoService {
 
       const result = await this.execute(dataQuery, [...queryParams, limit, offset]);
 
-      const wells = await Promise.all(result.rows.map(async row => {
+      const wellPromises = result.rows.map(async row => {
         const obj = this.rowToObject(result.columns, row);
         const wellBase = this.mapRowToWell(obj);
         
@@ -177,7 +175,7 @@ export class TursoService {
           const telemetryResult = await this.execute(telemetryCountQuery, [wellBase.well_number]);
           const telemetryCount = Number(telemetryResult.rows[0][0]);
           
-          return {
+          const wellWithCounts = {
             ...wellBase,
             total_readings: transducerCount + manualCount + telemetryCount,
             manual_readings_count: manualCount,
@@ -185,9 +183,24 @@ export class TursoService {
             has_transducer_data: transducerCount > 0,
             has_telemetry_data: telemetryCount > 0
           };
+
+          // Apply dataType filter
+          if (dataType) {
+            if (dataType === 'transducer' && !wellWithCounts.has_transducer_data) {
+              return null; // Filter out this well
+            }
+            if (dataType === 'telemetry' && !wellWithCounts.has_telemetry_data) {
+              return null; // Filter out this well
+            }
+            if (dataType === 'manual' && !wellWithCounts.has_manual_readings) {
+              return null; // Filter out this well
+            }
+          }
+
+          return wellWithCounts;
         } catch (err) {
           // If count fails, return well with 0 readings
-          return {
+          const wellWithCounts = {
             ...wellBase,
             total_readings: 0,
             manual_readings_count: 0,
@@ -195,8 +208,19 @@ export class TursoService {
             has_transducer_data: false,
             has_telemetry_data: false
           };
+
+          // Apply dataType filter for wells with no data
+          if (dataType) {
+            return null; // Filter out wells with no data when dataType is specified
+          }
+
+          return wellWithCounts;
         }
-      }));
+      });
+      
+      const allWells = await Promise.all(wellPromises);
+      // Filter out null values (wells that didn't match dataType filter)
+      const wells = allWells.filter(well => well !== null) as Well[];
 
       return {
         success: true,
@@ -572,19 +596,73 @@ export class TursoService {
     }
   }
 
+  async getAquiferTypes(): Promise<string[]> {
+    try {
+      const query = `
+        SELECT DISTINCT aquifer 
+        FROM wells 
+        WHERE aquifer IS NOT NULL AND aquifer != ''
+        ORDER BY aquifer
+      `;
+
+      const result = await this.execute(query);
+      return result.rows.map(row => String(row[0]));
+    } catch (error) {
+      console.error('Failed to get aquifer types:', error);
+      // Return fallback aquifer types if query fails
+      return ['confined', 'unconfined', 'semiconfined'];
+    }
+  }
+
   async getDatabaseStats(): Promise<{ wellsCount: number; readingsCount: number; lastUpdate: string | null }> {
     try {
       const wellsResult = await this.execute('SELECT COUNT(*) as count FROM wells');
-      const readingsResult = await this.execute('SELECT COUNT(*) as count FROM water_level_readings');
-      const lastUpdateResult = await this.execute(`
-        SELECT MAX(timestamp_utc) as last_update 
-        FROM water_level_readings
-      `);
+      
+      // Start with main readings table
+      let totalReadings = 0;
+      let lastUpdate: string | null = null;
+      
+      // Count from water_level_readings (main table)
+      const transducerReadingsResult = await this.execute('SELECT COUNT(*) as count FROM water_level_readings');
+      totalReadings += Number(transducerReadingsResult.rows[0][0]);
+      
+      // Get timestamp from main table
+      const mainTimestampResult = await this.execute('SELECT MAX(timestamp_utc) as last_update FROM water_level_readings');
+      lastUpdate = mainTimestampResult.rows[0][0] ? String(mainTimestampResult.rows[0][0]) : null;
+      
+      // Try to count from other tables if they exist
+      try {
+        const manualReadingsResult = await this.execute('SELECT COUNT(*) as count FROM manual_level_readings');
+        totalReadings += Number(manualReadingsResult.rows[0][0]);
+        
+        // Check for later timestamp
+        const manualTimestampResult = await this.execute('SELECT MAX(timestamp_utc) as last_update FROM manual_level_readings');
+        const manualTimestamp = manualTimestampResult.rows[0][0] ? String(manualTimestampResult.rows[0][0]) : null;
+        if (manualTimestamp && (!lastUpdate || manualTimestamp > lastUpdate)) {
+          lastUpdate = manualTimestamp;
+        }
+      } catch (err) {
+        console.log('manual_level_readings table not found, skipping');
+      }
+      
+      try {
+        const telemetryReadingsResult = await this.execute('SELECT COUNT(*) as count FROM telemetry_level_readings');
+        totalReadings += Number(telemetryReadingsResult.rows[0][0]);
+        
+        // Check for later timestamp
+        const telemetryTimestampResult = await this.execute('SELECT MAX(timestamp_utc) as last_update FROM telemetry_level_readings');
+        const telemetryTimestamp = telemetryTimestampResult.rows[0][0] ? String(telemetryTimestampResult.rows[0][0]) : null;
+        if (telemetryTimestamp && (!lastUpdate || telemetryTimestamp > lastUpdate)) {
+          lastUpdate = telemetryTimestamp;
+        }
+      } catch (err) {
+        console.log('telemetry_level_readings table not found, skipping');
+      }
 
       return {
         wellsCount: Number(wellsResult.rows[0][0]),
-        readingsCount: Number(readingsResult.rows[0][0]),
-        lastUpdate: lastUpdateResult.rows[0][0] ? String(lastUpdateResult.rows[0][0]) : null
+        readingsCount: totalReadings,
+        lastUpdate
       };
     } catch (error) {
       console.error('Failed to get database stats:', error);

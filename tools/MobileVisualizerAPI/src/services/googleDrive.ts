@@ -7,7 +7,7 @@ import { GoogleDriveFile, DatabaseInfo, DatabaseCache } from '@/types/api';
 export class GoogleDriveService {
   private drive: any;
   private authenticated = false;
-  private readonly tempDir = path.join(__dirname, '../../temp');
+  private readonly tempDir = process.env.DATABASE_TEMP_DIR || path.join(__dirname, '../../temp');
   private readonly cacheFile = path.join(__dirname, '../../cache.json');
   private cache: Map<string, DatabaseCache> = new Map();
 

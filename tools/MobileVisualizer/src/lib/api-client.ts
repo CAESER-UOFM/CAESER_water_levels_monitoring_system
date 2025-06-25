@@ -75,8 +75,8 @@ class WaterLevelApiClient {
     const queryString = new URLSearchParams();
     
     if (params.search) queryString.set('search', params.search);
-    if (params.field) queryString.set('field', params.field);
-    if (params.hasData !== undefined) queryString.set('hasData', params.hasData.toString());
+    if (params.aquifer) queryString.set('aquifer', params.aquifer);
+    if (params.dataType) queryString.set('dataType', params.dataType);
     if (params.page) queryString.set('page', params.page.toString());
     if (params.limit) queryString.set('limit', params.limit.toString());
     if (params.sortBy) queryString.set('sortBy', params.sortBy);

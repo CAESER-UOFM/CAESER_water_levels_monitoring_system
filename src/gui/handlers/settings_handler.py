@@ -61,10 +61,20 @@ class SettingsHandler:
                 except:
                     continue
         
+        # Determine default database directory
+        # Check if we're in an installation (has databases folder in current dir)
+        databases_folder = Path.cwd() / "databases"
+        if databases_folder.exists():
+            default_db_directory = str(databases_folder)
+            logger.info(f"Using installation databases folder: {default_db_directory}")
+        else:
+            # Fallback to current working directory
+            default_db_directory = str(Path.cwd())
+            logger.info(f"Using current working directory for databases: {default_db_directory}")
+        
         defaults = {
-            "local_db_directory": str(Path.cwd()),
+            "local_db_directory": default_db_directory,
             "use_google_drive_db": True,
-            "default_db_name": "CAESER_GENERAL.db",
             "google_drive_auto_check": False,
             "google_drive_folder_id": "1vGoxkS-HQ0n0u0ToNcYL_wJGZ02RDhAK",  # Default CAESER folder ID for database
             "google_drive_xle_folder_id": "1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW",  # Default folder ID for XLE files

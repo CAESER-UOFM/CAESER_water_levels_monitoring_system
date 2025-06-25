@@ -58,8 +58,8 @@ export class SQLiteService {
 
     const {
       search = '',
-      field = '',
-      hasData,
+      aquifer = '',
+      dataType,
       page = 1,
       limit = 50,
       sortBy = 'well_number',
@@ -77,16 +77,18 @@ export class SQLiteService {
         queryParams.push(searchPattern, searchPattern, searchPattern);
       }
 
-      if (field) {
-        whereConditions.push(`well_field = ?`);
-        queryParams.push(field);
+      if (aquifer) {
+        whereConditions.push(`aquifer_type = ?`);
+        queryParams.push(aquifer);
       }
 
-      if (hasData !== undefined) {
-        if (hasData) {
-          whereConditions.push(`(has_transducer_data = 1 OR has_telemetry_data = 1 OR has_manual_readings = 1)`);
-        } else {
-          whereConditions.push(`(has_transducer_data = 0 AND has_telemetry_data = 0 AND has_manual_readings = 0)`);
+      if (dataType) {
+        if (dataType === 'transducer') {
+          whereConditions.push(`has_transducer_data = 1`);
+        } else if (dataType === 'telemetry') {
+          whereConditions.push(`has_telemetry_data = 1`);
+        } else if (dataType === 'manual') {
+          whereConditions.push(`has_manual_readings = 1`);
         }
       }
 

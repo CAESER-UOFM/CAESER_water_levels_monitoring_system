@@ -183,6 +183,8 @@ REM Create installation directory structure
 echo    [*] [1/8] Creating installation directories...
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 if not exist "%BACKUP_DIR%" mkdir "%BACKUP_DIR%"
+if not exist "%INSTALL_DIR%\databases" mkdir "%INSTALL_DIR%\databases"
+if not exist "%INSTALL_DIR%\databases\temp" mkdir "%INSTALL_DIR%\databases\temp"
 
 REM Define Python version and URLs
 set "PYTHON_VERSION=3.11.6"

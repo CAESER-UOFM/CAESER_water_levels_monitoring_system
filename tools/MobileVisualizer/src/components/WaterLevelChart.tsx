@@ -10,9 +10,9 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  Brush,
   ScatterChart,
   Scatter,
+  ComposedChart,
   ReferenceLine
 } from 'recharts';
 import type { WaterLevelReading, PlotConfig, ChartDataPoint } from '@/types/database';
@@ -25,7 +25,7 @@ interface WaterLevelChartProps {
 
 export function WaterLevelChart({ data, config, loading = false }: WaterLevelChartProps) {
   const [zoomedData, setZoomedData] = useState<ChartDataPoint[] | null>(null);
-  const [showBrush, setShowBrush] = useState(true);
+  const [viewWindow, setViewWindow] = useState<{ start: number; end: number } | null>(null);
 
   // Process data for chart
   const chartData = useMemo(() => {
@@ -49,43 +49,49 @@ export function WaterLevelChart({ data, config, loading = false }: WaterLevelCha
     return processedData;
   }, [data, config.dateRange]);
 
-  // Separate manual readings for scatter plot
-  const manualReadings = useMemo(() => {
-    const manual = chartData.filter(point => point.source === 'manual');
+  // Smart data windowing for better performance and navigation
+  const displayData = useMemo(() => {
+    let baseData = chartData;
     
-    // Filter manual readings to match display time range if zoomed
-    let filteredManual = manual;
-    if (zoomedData && zoomedData.length > 0) {
-      const startTime = new Date(zoomedData[0].timestamp).getTime();
-      const endTime = new Date(zoomedData[zoomedData.length - 1].timestamp).getTime();
-      filteredManual = manual.filter(point => {
-        const pointTime = new Date(point.timestamp).getTime();
-        return pointTime >= startTime && pointTime <= endTime;
-      });
+    // Apply view window if set (for navigation)
+    if (viewWindow && !zoomedData) {
+      const totalLength = chartData.length;
+      const startIdx = Math.floor((viewWindow.start / 100) * totalLength);
+      const endIdx = Math.floor((viewWindow.end / 100) * totalLength);
+      baseData = chartData.slice(startIdx, endIdx + 1);
     }
     
-    console.log(`🎯 Chart manual readings:`, {
-      totalPoints: chartData.length,
-      manualPoints: manual.length,
-      filteredManualPoints: filteredManual.length,
-      isZoomed: !!zoomedData,
-      sourceCounts: chartData.reduce((acc, point) => {
-        acc[point.source] = (acc[point.source] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>),
-      sampleData: chartData.slice(0, 3)
+    // Apply zoom if set (for detailed view)
+    const finalData = zoomedData || baseData;
+    
+    // Add manual indicator for styling
+    const processedData = finalData.map(point => ({
+      ...point,
+      isManual: point.source === 'manual',
+      // For manual readings, we'll use scatter plot
+      manualWaterLevel: point.source === 'manual' ? point.water_level : null,
+      // For continuous readings, we'll use line plot
+      continuousWaterLevel: point.source !== 'manual' ? point.water_level : null
+    }));
+    
+    console.log(`🎯 Chart data processing:`, {
+      totalPoints: finalData.length,
+      manualCount: finalData.filter(p => p.source === 'manual').length,
+      continuousCount: finalData.filter(p => p.source !== 'manual').length,
+      windowActive: !!viewWindow,
+      zoomActive: !!zoomedData
     });
-    return filteredManual;
-  }, [chartData, zoomedData]);
+    
+    return processedData;
+  }, [chartData, zoomedData, viewWindow]);
+
+  const manualReadings = useMemo(() => {
+    return displayData.filter(point => point.source === 'manual');
+  }, [displayData]);
 
   const continuousData = useMemo(() => {
-    const continuous = chartData.filter(point => point.source !== 'manual');
-    console.log(`📈 Continuous data:`, {
-      totalPoints: continuous.length,
-      sampleData: continuous.slice(0, 3)
-    });
-    return continuous;
-  }, [chartData]);
+    return displayData.filter(point => point.source !== 'manual');
+  }, [displayData]);
 
   // Calculate Y-axis domain
   const yAxisDomain = useMemo(() => {
@@ -163,18 +169,65 @@ export function WaterLevelChart({ data, config, loading = false }: WaterLevelCha
     });
   }, [chartData.length]);
 
-  // Handle brush change
-  const handleBrushChange = useCallback((brushData: any) => {
-    if (brushData && brushData.startIndex !== undefined && brushData.endIndex !== undefined) {
-      const start = brushData.startIndex;
-      const end = brushData.endIndex;
-      setZoomedData(continuousData.slice(start, end + 1));
-    } else {
-      setZoomedData(null);
-    }
-  }, [continuousData]);
 
-  const displayData = zoomedData || continuousData;
+  // Modern navigation handlers
+  const handleNavigateLeft = useCallback(() => {
+    if (!viewWindow) {
+      setViewWindow({ start: 0, end: 25 });
+    } else {
+      const windowSize = viewWindow.end - viewWindow.start;
+      const newStart = Math.max(0, viewWindow.start - windowSize / 2);
+      const newEnd = Math.min(100, newStart + windowSize);
+      setViewWindow({ start: newStart, end: newEnd });
+    }
+  }, [viewWindow]);
+
+  const handleNavigateRight = useCallback(() => {
+    if (!viewWindow) {
+      setViewWindow({ start: 75, end: 100 });
+    } else {
+      const windowSize = viewWindow.end - viewWindow.start;
+      const newEnd = Math.min(100, viewWindow.end + windowSize / 2);
+      const newStart = Math.max(0, newEnd - windowSize);
+      setViewWindow({ start: newStart, end: newEnd });
+    }
+  }, [viewWindow]);
+
+  const handleResetView = useCallback(() => {
+    setViewWindow(null);
+    setZoomedData(null);
+  }, []);
+
+  const handleZoomIn = useCallback(() => {
+    if (!viewWindow) {
+      setViewWindow({ start: 25, end: 75 });
+    } else {
+      const center = (viewWindow.start + viewWindow.end) / 2;
+      const newSize = (viewWindow.end - viewWindow.start) / 2;
+      const newStart = Math.max(0, center - newSize / 2);
+      const newEnd = Math.min(100, center + newSize / 2);
+      setViewWindow({ start: newStart, end: newEnd });
+    }
+  }, [viewWindow]);
+
+  const handleZoomOut = useCallback(() => {
+    if (!viewWindow) {
+      setViewWindow({ start: 0, end: 100 });
+    } else {
+      const center = (viewWindow.start + viewWindow.end) / 2;
+      const newSize = Math.min(100, (viewWindow.end - viewWindow.start) * 2);
+      const newStart = Math.max(0, center - newSize / 2);
+      const newEnd = Math.min(100, center + newSize / 2);
+      
+      if (newStart === 0 && newEnd === 100) {
+        setViewWindow(null);
+      } else {
+        setViewWindow({ start: newStart, end: newEnd });
+      }
+    }
+  }, [viewWindow]);
+
+  // This line is now handled in the useMemo above
 
   if (loading) {
     return (
@@ -203,33 +256,123 @@ export function WaterLevelChart({ data, config, loading = false }: WaterLevelCha
 
   return (
     <div className="space-y-4">
-      {/* Chart Controls */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <span className="text-sm text-gray-600">
-            {displayData.length} transducer points{config.showManualReadings && manualReadings.length > 0 ? ` + ${manualReadings.length} manual` : ''} displayed
-          </span>
-          {zoomedData && (
+      {/* Modern Chart Navigation */}
+      <div className="space-y-3">
+        {/* Data Info & View Status */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <span className="text-sm text-gray-600">
+              {displayData.length} transducer points{config.showManualReadings && manualReadings.length > 0 ? ` + ${manualReadings.length} manual` : ''} displayed
+            </span>
+            {(viewWindow || zoomedData) && (
+              <span className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full">
+                {viewWindow ? 'Navigated' : ''} {zoomedData ? 'Zoomed' : ''}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Touch-Friendly Navigation Controls */}
+        <div className="bg-gray-50 rounded-lg p-3">
+          <div className="flex items-center justify-center space-x-2">
+            {/* Navigation Controls */}
             <button
-              onClick={() => setZoomedData(null)}
-              className="text-sm text-primary-600 hover:text-primary-800"
+              onClick={handleNavigateLeft}
+              className="flex items-center justify-center w-12 h-12 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors mobile-touch-target"
+              title="Navigate left"
+              disabled={viewWindow?.start === 0}
             >
-              Reset Zoom
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
             </button>
+
+            <button
+              onClick={handleZoomOut}
+              className="flex items-center justify-center w-12 h-12 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors mobile-touch-target"
+              title="Zoom out"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+              </svg>
+            </button>
+
+            <button
+              onClick={handleResetView}
+              className="flex items-center justify-center px-4 h-12 bg-primary-600 text-white rounded-lg hover:bg-primary-700 active:bg-primary-800 transition-colors mobile-touch-target font-medium text-sm"
+              title="Reset view"
+            >
+              Reset
+            </button>
+
+            <button
+              onClick={handleZoomIn}
+              className="flex items-center justify-center w-12 h-12 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors mobile-touch-target"
+              title="Zoom in"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+              </svg>
+            </button>
+
+            <button
+              onClick={handleNavigateRight}
+              className="flex items-center justify-center w-12 h-12 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors mobile-touch-target"
+              title="Navigate right"
+              disabled={viewWindow?.end === 100}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+          
+          {/* View Window Indicator */}
+          {viewWindow && (
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                <span>View Range</span>
+                <span>{Math.round(viewWindow.start)}% - {Math.round(viewWindow.end)}%</span>
+              </div>
+              {/* Date Range Display */}
+              {chartData.length > 0 && (
+                <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                  <span className="font-mono">
+                    {(() => {
+                      const startIdx = Math.floor((viewWindow.start / 100) * chartData.length);
+                      const endIdx = Math.floor((viewWindow.end / 100) * chartData.length);
+                      const startDate = new Date(chartData[Math.max(0, startIdx)]?.timestamp);
+                      const endDate = new Date(chartData[Math.min(chartData.length - 1, endIdx)]?.timestamp);
+                      return `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}`;
+                    })()}
+                  </span>
+                  <span className="text-gray-400">
+                    {(() => {
+                      const startIdx = Math.floor((viewWindow.start / 100) * chartData.length);
+                      const endIdx = Math.floor((viewWindow.end / 100) * chartData.length);
+                      return `${Math.max(endIdx - startIdx, 1)} points`;
+                    })()}
+                  </span>
+                </div>
+              )}
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-primary-600 h-2 rounded-full transition-all duration-200"
+                  style={{
+                    marginLeft: `${viewWindow.start}%`,
+                    width: `${viewWindow.end - viewWindow.start}%`
+                  }}
+                />
+              </div>
+            </div>
           )}
         </div>
-        <button
-          onClick={() => setShowBrush(!showBrush)}
-          className="text-sm text-gray-600 hover:text-gray-800"
-        >
-          {showBrush ? 'Hide' : 'Show'} Navigation
-        </button>
       </div>
 
       {/* Main Chart */}
-      <div className="h-96 w-full">
+      <div className="h-96 w-full relative overflow-hidden" style={{ touchAction: 'pan-x pan-y' }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={continuousData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <ComposedChart data={displayData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis 
               dataKey="timestamp"
@@ -270,11 +413,11 @@ export function WaterLevelChart({ data, config, loading = false }: WaterLevelCha
             <Tooltip content={<CustomTooltip />} />
             <Legend />
             
-            {/* Water Level Line */}
+            {/* Water Level Line for continuous data */}
             {config.showWaterLevel && (
               <Line
                 type="monotone"
-                dataKey="water_level"
+                dataKey="continuousWaterLevel"
                 stroke={config.colors.waterLevel}
                 strokeWidth={2}
                 dot={false}
@@ -299,48 +442,20 @@ export function WaterLevelChart({ data, config, loading = false }: WaterLevelCha
               />
             )}
 
-            {/* Brush for navigation */}
-            {showBrush && continuousData.length > 50 && !zoomedData && (
-              <Brush
-                dataKey="timestamp"
-                height={30}
-                stroke={config.colors.waterLevel}
-                onChange={handleBrushChange}
-                tickFormatter={formatXAxis}
-                startIndex={0}
-                endIndex={continuousData.length - 1}
-              />
-            )}
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Manual Readings Overlay - Separate chart to avoid data mixing */}
-      {config.showManualReadings && manualReadings.length > 0 && (
-        <div className="h-96 w-full -mt-96 relative pointer-events-none">
-          <ResponsiveContainer width="100%" height="100%">
-            <ScatterChart data={manualReadings} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <XAxis 
-                dataKey="timestamp"
-                type="category"
-                scale="time"
-                domain={displayData.length > 0 ? [displayData[0].timestamp, displayData[displayData.length - 1].timestamp] : ['dataMin', 'dataMax']}
-                hide
-              />
-              <YAxis domain={yAxisDomain} hide />
+            {/* Manual Readings as Scatter on the same chart */}
+            {config.showManualReadings && (
               <Scatter
-                dataKey="water_level"
+                dataKey="manualWaterLevel"
                 fill={config.colors.manual}
-                stroke="#ffffff"
-                strokeWidth={1}
-                r={5}
-                shape="circle"
+                stroke={config.colors.manual}
+                strokeWidth={2}
                 name="Manual Readings"
               />
-            </ScatterChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+            )}
+
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
 
 
       {/* Chart Legend */}

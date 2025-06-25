@@ -41,7 +41,9 @@ class CloudDatabaseHandler:
     
     def _get_cache_directory(self) -> str:
         """Get or create the cache directory for storing downloaded databases"""
-        cache_dir = os.path.join(tempfile.gettempdir(), "wlm_cloud_cache")
+        # Use databases/temp folder instead of system temp
+        local_db_directory = self.settings_handler.get_setting("local_db_directory", str(Path.cwd()))
+        cache_dir = os.path.join(local_db_directory, "temp")
         os.makedirs(cache_dir, exist_ok=True)
         return cache_dir
     
@@ -214,7 +216,7 @@ class CloudDatabaseHandler:
                 
                 # Copy cached file to temp location
                 cached_path = self._get_cached_db_path(project_name)
-                temp_dir = tempfile.gettempdir()
+                temp_dir = self.cache_dir  # Use databases/temp folder
                 temp_filename = f"wlm_{project_name}_{uuid.uuid4().hex[:8]}.db"
                 temp_path = os.path.join(temp_dir, temp_filename)
                 
@@ -236,7 +238,7 @@ class CloudDatabaseHandler:
             cached_path = self._get_cached_db_path(project_name)
             
             # Create temp file with unique name for final result
-            temp_dir = tempfile.gettempdir()
+            temp_dir = self.cache_dir  # Use databases/temp folder
             temp_filename = f"wlm_{project_name}_{uuid.uuid4().hex[:8]}.db"
             temp_path = os.path.join(temp_dir, temp_filename)
             

@@ -41,6 +41,12 @@ export const handler: Handler = async (event: HandlerEvent) => {
       return await getWellFields(databaseId);
     }
 
+    // GET /wells/:databaseId/aquifers - Get aquifer types
+    if (event.httpMethod === 'GET' && pathParts.length === 2 && pathParts[1] === 'aquifers') {
+      const databaseId = pathParts[0];
+      return await getAquiferTypes(databaseId);
+    }
+
     // GET /wells/:databaseId - Get wells for database
     if (event.httpMethod === 'GET' && pathParts.length === 1) {
       const databaseId = pathParts[0];
@@ -84,14 +90,17 @@ async function getWells(databaseId: string, queryParams: Record<string, string |
     params.search = queryParams.search.trim().substring(0, 100);
   }
 
-  // Field parameter
-  if (queryParams.field && typeof queryParams.field === 'string') {
-    params.field = queryParams.field.trim().substring(0, 100);
+  // Aquifer parameter
+  if (queryParams.aquifer && typeof queryParams.aquifer === 'string') {
+    params.aquifer = queryParams.aquifer.trim().substring(0, 100);
   }
 
-  // HasData parameter
-  if (queryParams.hasData !== undefined) {
-    params.hasData = queryParams.hasData === 'true';
+  // DataType parameter
+  if (queryParams.dataType && typeof queryParams.dataType === 'string') {
+    const allowedDataTypes = ['transducer', 'telemetry', 'manual'];
+    if (allowedDataTypes.includes(queryParams.dataType)) {
+      params.dataType = queryParams.dataType;
+    }
   }
 
   // Page parameter
@@ -246,6 +255,43 @@ async function getWellFields(databaseId: string) {
     body: JSON.stringify({
       success: true,
       data: wellFields
+    } as ApiResponse<string[]>),
+  };
+}
+
+async function getAquiferTypes(databaseId: string) {
+  // Check cache first
+  const cacheKey = 'aquiferTypes';
+  const cachedTypes = cacheService.get(`${databaseId}:${cacheKey}`);
+  if (cachedTypes) {
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        success: true,
+        data: cachedTypes
+      } as ApiResponse<string[]>),
+    };
+  }
+
+  // Get aquifer types directly from Turso
+  const aquiferTypes = await tursoService.getAquiferTypes();
+
+  // Cache the result
+  cacheService.set(`${databaseId}:${cacheKey}`, aquiferTypes, 60 * 60); // 1 hour TTL
+
+  return {
+    statusCode: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      success: true,
+      data: aquiferTypes
     } as ApiResponse<string[]>),
   };
 }

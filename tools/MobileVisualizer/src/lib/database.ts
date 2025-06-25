@@ -81,8 +81,8 @@ export class WaterLevelDatabase {
 
     const {
       search = '',
-      field = '',
-      hasData = undefined,
+      aquifer = '',
+      dataType = undefined,
       page = 1,
       limit = 50,
       sortBy = 'well_number',
@@ -111,20 +111,13 @@ export class WaterLevelDatabase {
       params_values.push(searchPattern, searchPattern, searchPattern);
     }
 
-    // Add field filter
-    if (field) {
-      query += ` AND w.well_field = ?`;
-      params_values.push(field);
+    // Add aquifer filter
+    if (aquifer) {
+      query += ` AND w.aquifer_type = ?`;
+      params_values.push(aquifer);
     }
 
-    // Add data filter
-    if (hasData !== undefined) {
-      if (hasData) {
-        query += ` AND COUNT(wlr.id) > 0`;
-      } else {
-        query += ` AND COUNT(wlr.id) = 0`;
-      }
-    }
+    // Add data type filter will be handled post-query since it requires data analysis
 
     query += ` GROUP BY w.well_number`;
 
@@ -164,9 +157,9 @@ export class WaterLevelDatabase {
         const searchPattern = `%${search}%`;
         countParams.push(searchPattern, searchPattern, searchPattern);
       }
-      if (field) {
-        countQuery += ` AND w.well_field = ?`;
-        countParams.push(field);
+      if (aquifer) {
+        countQuery += ` AND w.aquifer_type = ?`;
+        countParams.push(aquifer);
       }
 
       const countStmt = this.db.prepare(countQuery);

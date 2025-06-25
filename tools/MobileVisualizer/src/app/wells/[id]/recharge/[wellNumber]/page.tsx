@@ -208,8 +208,8 @@ export default function RechargeResultsPage() {
               <h2 className="text-lg font-semibold text-gray-900 mb-4">
                 Recharge Calculation Summary
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {['RISE', 'MRC', 'EMR'].map(method => {
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {['RISE', 'MRC'].map(method => {
                   const methodResults = rechargeResults.filter(r => r.method === method);
                   const latestResult = methodResults.sort((a, b) => 
                     new Date(b.calculation_date).getTime() - new Date(a.calculation_date).getTime()
@@ -310,7 +310,7 @@ export default function RechargeResultsPage() {
             </div>
 
             {/* Method Information */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="card">
                 <h3 className="font-semibold text-gray-900 mb-3">RISE Method</h3>
                 <p className="text-sm text-gray-600 mb-3">
@@ -332,18 +332,6 @@ export default function RechargeResultsPage() {
                   <p>• Manual parameter selection</p>
                   <p>• Custom time periods</p>
                   <p>• User-defined specific yield</p>
-                </div>
-              </div>
-
-              <div className="card">
-                <h3 className="font-semibold text-gray-900 mb-3">EMR Method</h3>
-                <p className="text-sm text-gray-600 mb-3">
-                  Enhanced Manual Recharge - advanced manual calculation with additional parameters.
-                </p>
-                <div className="text-xs text-gray-500">
-                  <p>• Enhanced parameter control</p>
-                  <p>• Advanced filtering options</p>
-                  <p>• Detailed quality assessment</p>
                 </div>
               </div>
             </div>

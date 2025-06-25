@@ -160,7 +160,7 @@ BACKUP_DIR="$INSTALL_DIR/backups"
 
 # Create installation directory structure
 echo "    📁 [1/8] Creating installation directories..."
-mkdir -p "$INSTALL_DIR" "$BACKUP_DIR"
+mkdir -p "$INSTALL_DIR" "$BACKUP_DIR" "$INSTALL_DIR/databases" "$INSTALL_DIR/databases/temp"
 
 # Check if Python 3 is available
 echo "    🐍 [2/8] Checking Python installation..."

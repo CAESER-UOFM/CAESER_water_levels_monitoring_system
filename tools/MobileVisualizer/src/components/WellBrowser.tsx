@@ -14,33 +14,35 @@ export function WellBrowser({ databaseId, onWellSelected }: WellBrowserProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedField, setSelectedField] = useState('');
-  const [hasDataFilter, setHasDataFilter] = useState<boolean | undefined>(undefined);
+  const [selectedAquifer, setSelectedAquifer] = useState('');
+  const [dataTypeFilter, setDataTypeFilter] = useState<string>('');
   const [sortBy, setSortBy] = useState<'well_number' | 'cae_number'>('well_number');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalWells, setTotalWells] = useState(0);
-  const [wellFields, setWellFields] = useState<string[]>([]);
+  const [aquiferTypes, setAquiferTypes] = useState<string[]>([]);
 
   const pageSize = 20;
 
-  // Load well fields for filter
+  // Load aquifer types for filter
   useEffect(() => {
-    const loadWellFields = async () => {
+    const loadAquiferTypes = async () => {
       try {
-        const response = await fetch(`/.netlify/functions/wells/${databaseId}/fields`);
+        const response = await fetch(`/.netlify/functions/wells/${databaseId}/aquifers`);
         const result = await response.json();
         
         if (result.success && result.data) {
-          setWellFields(result.data);
+          setAquiferTypes(result.data);
         }
       } catch (err) {
-        console.error('Error loading well fields:', err);
+        console.error('Error loading aquifer types:', err);
+        // Fallback to common aquifer types
+        setAquiferTypes(['confined', 'unconfined', 'semiconfined']);
       }
     };
 
-    loadWellFields();
+    loadAquiferTypes();
   }, [databaseId]);
 
   const loadWells = useCallback(async (params: WellsQueryParams = {}) => {
@@ -53,8 +55,8 @@ export function WellBrowser({ databaseId, onWellSelected }: WellBrowserProps) {
         page: currentPage.toString(),
         limit: pageSize.toString(),
         ...(params.search && { search: params.search }),
-        ...(params.field && { field: params.field }),
-        ...(params.hasData !== undefined && { hasData: params.hasData.toString() }),
+        ...(params.aquifer && { aquifer: params.aquifer }),
+        ...(params.dataType && { dataType: params.dataType }),
         ...(params.sortBy && { sortBy: params.sortBy }),
         ...(params.sortOrder && { sortOrder: params.sortOrder })
       });
@@ -82,30 +84,30 @@ export function WellBrowser({ databaseId, onWellSelected }: WellBrowserProps) {
   useEffect(() => {
     const params: WellsQueryParams = {
       search: searchTerm || undefined,
-      field: selectedField || undefined,
-      hasData: hasDataFilter,
+      aquifer: selectedAquifer || undefined,
+      dataType: dataTypeFilter || undefined,
       sortBy,
       sortOrder
     };
 
     loadWells(params);
-  }, [loadWells, searchTerm, selectedField, hasDataFilter, sortBy, sortOrder]);
+  }, [loadWells, searchTerm, selectedAquifer, dataTypeFilter, sortBy, sortOrder]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedField, hasDataFilter]);
+  }, [searchTerm, selectedAquifer, dataTypeFilter]);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchTerm(value);
   }, []);
 
-  const handleFieldChange = useCallback((value: string) => {
-    setSelectedField(value);
+  const handleAquiferChange = useCallback((value: string) => {
+    setSelectedAquifer(value);
   }, []);
 
-  const handleDataFilterChange = useCallback((value: string) => {
-    setHasDataFilter(value === '' ? undefined : value === 'true');
+  const handleDataTypeFilterChange = useCallback((value: string) => {
+    setDataTypeFilter(value);
   }, []);
 
   const handleSortChange = useCallback((field: 'well_number' | 'cae_number') => {
@@ -197,36 +199,39 @@ export function WellBrowser({ databaseId, onWellSelected }: WellBrowserProps) {
             </div>
           </div>
 
-          {/* Field Filter */}
+          {/* Aquifer Filter */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Well Field
+              Aquifer Type
             </label>
             <select
-              value={selectedField}
-              onChange={(e) => handleFieldChange(e.target.value)}
+              value={selectedAquifer}
+              onChange={(e) => handleAquiferChange(e.target.value)}
               className="input-field"
             >
-              <option value="">All Fields</option>
-              {wellFields.map(field => (
-                <option key={field} value={field}>{field}</option>
+              <option value="">All Aquifers</option>
+              {aquiferTypes.map(aquifer => (
+                <option key={aquifer} value={aquifer}>
+                  {aquifer.charAt(0).toUpperCase() + aquifer.slice(1)}
+                </option>
               ))}
             </select>
           </div>
 
-          {/* Data Filter */}
+          {/* Data Type Filter */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Data Availability
+              Data Type
             </label>
             <select
-              value={hasDataFilter === undefined ? '' : hasDataFilter.toString()}
-              onChange={(e) => handleDataFilterChange(e.target.value)}
+              value={dataTypeFilter}
+              onChange={(e) => handleDataTypeFilterChange(e.target.value)}
               className="input-field"
             >
-              <option value="">All Wells</option>
-              <option value="true">With Data</option>
-              <option value="false">No Data</option>
+              <option value="">All Types</option>
+              <option value="transducer">Transducer</option>
+              <option value="telemetry">Telemetry</option>
+              <option value="manual">Manual Only</option>
             </select>
           </div>
 
@@ -287,7 +292,7 @@ export function WellBrowser({ databaseId, onWellSelected }: WellBrowserProps) {
                     </div>
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Field
+                    Aquifer Type
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Transducer
@@ -298,9 +303,6 @@ export function WellBrowser({ databaseId, onWellSelected }: WellBrowserProps) {
                     <div className="flex items-center space-x-1">
                       <span>Manual Readings</span>
                     </div>
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Action
                   </th>
                 </tr>
               </thead>
@@ -318,7 +320,9 @@ export function WellBrowser({ databaseId, onWellSelected }: WellBrowserProps) {
                       {well.cae_number || '—'}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {well.well_field || '—'}
+                      <span className="capitalize">
+                        {well.aquifer_type || '—'}
+                      </span>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       <div className="flex items-center space-x-2">
@@ -341,17 +345,6 @@ export function WellBrowser({ databaseId, onWellSelected }: WellBrowserProps) {
                           </span>
                         )}
                       </div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onWellSelected(well);
-                        }}
-                        className="text-primary-600 hover:text-primary-800 font-medium mobile-touch-target"
-                      >
-                        View Data →
-                      </button>
                     </td>
                   </tr>
                 ))}

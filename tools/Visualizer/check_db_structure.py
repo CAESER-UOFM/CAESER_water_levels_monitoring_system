@@ -80,6 +80,31 @@ def check_database_structure(db_path):
         print(f"❌ Error checking database: {e}")
 
 if __name__ == "__main__":
-    # Use Test.db from the actual testing location
-    db_path = "/Users/bmac/Library/CloudStorage/OneDrive-TheUniversityofMemphis/UofM/CAESER/2025/dbs_test/Test.db"
+    # Look for databases in the installation databases folder
+    from pathlib import Path
+    
+    installation_root = Path(__file__).parent.parent.parent
+    databases_folder = installation_root / "databases"
+    
+    # Find any .db file
+    db_files = []
+    if databases_folder.exists():
+        db_files = list(databases_folder.glob("*.db"))
+    
+    # Also check for local test database
+    local_test_db = installation_root / "Test.db"
+    if local_test_db.exists():
+        db_files.append(local_test_db)
+    
+    if not db_files:
+        print("No databases found. Please add a .db file to the databases folder.")
+        print("Or specify a database path as command line argument:")
+        print("  python check_db_structure.py path/to/database.db")
+        exit(1)
+    
+    db_path = str(db_files[0])
+    print(f"Using database: {db_path}")
+    if len(db_files) > 1:
+        print(f"Note: Found {len(db_files)} databases, using first one")
+    
     check_database_structure(db_path)
