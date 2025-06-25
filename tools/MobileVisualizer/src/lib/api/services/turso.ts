@@ -308,15 +308,37 @@ export class TursoService {
       endDate,
       dataType = 'all',
       downsample = false,
-      maxPoints = 2000
+      maxPoints = 2000,
+      level
     } = params;
+
+    // Progressive loading: determine parameters based on level
+    let actualMaxPoints = maxPoints;
+    let actualDownsample = downsample;
+    
+    if (level) {
+      switch (level) {
+        case 1: // Overview - fast loading, always downsampled
+          actualMaxPoints = 300;
+          actualDownsample = true;
+          break;
+        case 2: // Medium detail - for zoomed views  
+          actualMaxPoints = 2000;
+          actualDownsample = true;
+          break;
+        case 3: // Full detail - for deep zoom
+          actualMaxPoints = 10000;
+          actualDownsample = false; // Prefer original data when possible
+          break;
+      }
+    }
 
     try {
       let allReadings: WaterLevelReading[] = [];
 
       // Query transducer data if needed
       if (dataType === 'all' || dataType === 'transducer') {
-        const transducerReadings = await this.getTransducerData(wellNumber, startDate, endDate, downsample, maxPoints);
+        const transducerReadings = await this.getTransducerData(wellNumber, startDate, endDate, actualDownsample, actualMaxPoints);
         allReadings = allReadings.concat(transducerReadings);
       }
 

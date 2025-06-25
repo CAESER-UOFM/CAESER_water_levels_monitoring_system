@@ -103,8 +103,31 @@ async function getWaterLevelData(databaseId: string, wellNumber: string, queryPa
     params.downsample = queryParams.downsample === 'true';
   }
 
-  // MaxPoints parameter
-  if (queryParams.maxPoints) {
+  // Progressive loading level parameter
+  if (queryParams.level) {
+    const level = parseInt(queryParams.level);
+    if (level >= 1 && level <= 3) {
+      params.level = level as 1 | 2 | 3;
+      // Set appropriate maxPoints based on level - increased for better visual quality
+      switch (level) {
+        case 1: // Overview - much better representation for large datasets
+          params.maxPoints = 5000;
+          params.downsample = true;
+          break;
+        case 2: // Medium detail - for zoomed views
+          params.maxPoints = 12000;
+          params.downsample = true;
+          break;
+        case 3: // Full detail - for deep zoom, minimal downsampling
+          params.maxPoints = 25000;
+          params.downsample = false;
+          break;
+      }
+    }
+  }
+
+  // Legacy MaxPoints parameter (fallback)
+  if (queryParams.maxPoints && !queryParams.level) {
     const maxPoints = parseInt(queryParams.maxPoints);
     if (!isNaN(maxPoints) && maxPoints >= 1) {
       params.maxPoints = Math.min(maxPoints, 10000);

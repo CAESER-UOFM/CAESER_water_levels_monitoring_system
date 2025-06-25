@@ -137,6 +137,7 @@ export interface DataQueryParams {
   dataType?: 'all' | 'transducer' | 'telemetry' | 'manual';
   downsample?: boolean;
   maxPoints?: number;
+  level?: 1 | 2 | 3; // Progressive loading levels: 1=Overview, 2=Medium, 3=Full
 }
 
 // Chart data types

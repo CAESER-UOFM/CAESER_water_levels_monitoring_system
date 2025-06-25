@@ -27,3 +27,13 @@
   [headers.values]
     Content-Type = "application/wasm"
     Cache-Control = "public, max-age=31536000, immutable"
+
+[functions]
+  # Increase timeout for data-heavy functions to 30 seconds
+  node_bundler = "esbuild"
+
+[functions."data"]
+  timeout = 30
+
+[functions."wells"]
+  timeout = 30

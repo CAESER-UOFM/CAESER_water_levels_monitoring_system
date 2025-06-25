@@ -1,10 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { WaterLevelChart } from '@/components/WaterLevelChart';
 import { ChartControls } from '@/components/ChartControls';
+import { ChartControlsPanel } from '@/components/ChartControlsPanel';
+import { WellInfoPanel } from '@/components/WellInfoPanel';
+import { DataStatisticsPanel } from '@/components/DataStatisticsPanel';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { useProgressiveLoading } from '@/hooks/useProgressiveLoading';
 import { exportWaterLevelDataToCSV, exportWaterLevelDataToJSON, filterDataForExport } from '@/utils/dataExport';
 import type { Well, WaterLevelReading } from '@/lib/api/api';
 import type { PlotConfig } from '@/types/database';
@@ -16,10 +20,26 @@ export default function PlotViewerPage() {
   const wellNumber = params.wellNumber as string;
 
   const [well, setWell] = useState<Well | null>(null);
-  const [data, setData] = useState<WaterLevelReading[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [isChartControlsCollapsed, setIsChartControlsCollapsed] = useState(false);
+  const [currentTimeRange, setCurrentTimeRange] = useState<{ start: string; end: string } | null>(null);
+  const [samplingRate, setSamplingRate] = useState('Overview');
+  
+  // Track if initial data has been loaded to prevent infinite loops
+  const initialLoadedRef = useRef(false);
+
+  // Progressive loading hook with stable error handler
+  const handleProgressiveError = useCallback((errorMessage: string) => {
+    setError(errorMessage);
+  }, []);
+
+  const progressiveLoading = useProgressiveLoading({
+    databaseId,
+    wellNumber,
+    onError: handleProgressiveError
+  });
   const [plotConfig, setPlotConfig] = useState<PlotConfig>({
     showWaterLevel: true,
     showTemperature: false,
@@ -32,12 +52,67 @@ export default function PlotViewerPage() {
     }
   });
 
-  // Load well data and readings
+  // Handle sampling rate changes with progressive loading
+  const handleSamplingRateChange = useCallback(async (newSampling: string) => {
+    setSamplingRate(newSampling);
+    
+    try {
+      setLoading(true);
+      
+      // Map sampling rate to progressive loading levels
+      switch (newSampling) {
+        case 'Overview':
+          await progressiveLoading.loadOverview();
+          break;
+        case 'Medium Detail':
+          if (plotConfig.dateRange?.start && plotConfig.dateRange?.end) {
+            await progressiveLoading.loadMediumDetail(
+              plotConfig.dateRange.start.toISOString(),
+              plotConfig.dateRange.end.toISOString()
+            );
+          } else {
+            // Load medium detail for last year if no date range
+            const endDate = new Date();
+            const startDate = new Date(endDate.getTime() - 365 * 24 * 60 * 60 * 1000);
+            await progressiveLoading.loadMediumDetail(
+              startDate.toISOString(),
+              endDate.toISOString()
+            );
+          }
+          break;
+        case 'Full Detail':
+          if (plotConfig.dateRange?.start && plotConfig.dateRange?.end) {
+            await progressiveLoading.loadFullDetail(
+              plotConfig.dateRange.start.toISOString(),
+              plotConfig.dateRange.end.toISOString()
+            );
+          } else {
+            // Load full detail for last month if no date range
+            const endDate = new Date();
+            const startDate = new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+            await progressiveLoading.loadFullDetail(
+              startDate.toISOString(),
+              endDate.toISOString()
+            );
+          }
+          break;
+      }
+    } catch (err) {
+      console.error('Error loading progressive data:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [progressiveLoading, plotConfig.dateRange]);
+
+  // Load well data and initial overview
   useEffect(() => {
-    const loadWellData = async () => {
+    const loadInitialData = async () => {
       try {
         setLoading(true);
         setError(null);
+        
+        // Reset initial loading flag for new well
+        initialLoadedRef.current = false;
 
         // Load well metadata
         const wellResponse = await fetch(`/.netlify/functions/wells/${databaseId}/${wellNumber}`);
@@ -48,46 +123,27 @@ export default function PlotViewerPage() {
         }
         setWell(wellResult.data);
 
-        // Load water level data
-        const dataParams = new URLSearchParams({
-          downsample: 'true',
-          maxPoints: '2000'
-        });
-        
-        const dataResponse = await fetch(`/.netlify/functions/data/${databaseId}/water/${wellNumber}?${dataParams}`);
-        const dataResult = await dataResponse.json();
-        
-        if (!dataResult.success) {
-          throw new Error(dataResult.error || 'Failed to load water level data');
-        }
-        
-        setData(dataResult.data || []);
-
-        // Set initial date range based on data
-        if (dataResult.data && dataResult.data.length > 0) {
-          const dates = dataResult.data.map((r: WaterLevelReading) => new Date(r.timestamp_utc));
-          const minDate = new Date(Math.min(...dates.map((d: Date) => d.getTime())));
-          const maxDate = new Date(Math.max(...dates.map((d: Date) => d.getTime())));
-          
-          setPlotConfig(prev => ({
-            ...prev,
-            dateRange: {
-              start: minDate,
-              end: maxDate
-            }
-          }));
-        }
-
       } catch (err) {
-        console.error('Error loading well data:', err);
+        console.error('Error loading initial data:', err);
         setError(err instanceof Error ? err.message : 'Failed to load well data');
       } finally {
         setLoading(false);
       }
     };
 
-    loadWellData();
+    loadInitialData();
   }, [databaseId, wellNumber]);
+
+  // Load initial overview data after well is loaded
+  useEffect(() => {
+    if (well && !initialLoadedRef.current && progressiveLoading.segments.length === 0 && !progressiveLoading.isLoading) {
+      initialLoadedRef.current = true;
+      progressiveLoading.loadOverview().catch(err => {
+        console.error('Failed to load initial overview:', err);
+        initialLoadedRef.current = false; // Reset on error to allow retry
+      });
+    }
+  }, [well, progressiveLoading.segments.length, progressiveLoading.isLoading, progressiveLoading.loadOverview]);
 
   // Close export menu when clicking outside
   useEffect(() => {
@@ -109,37 +165,27 @@ export default function PlotViewerPage() {
   }, []);
 
   const handleDateRangeChange = useCallback(async (startDate?: Date, endDate?: Date) => {
-    try {
-      setLoading(true);
-      
-      const dataParams = new URLSearchParams({
-        downsample: 'true',
-        maxPoints: '2000',
-        ...(startDate && { startDate: startDate.toISOString() }),
-        ...(endDate && { endDate: endDate.toISOString() })
-      });
-      
-      const dataResponse = await fetch(`/.netlify/functions/data/${databaseId}/water/${wellNumber}?${dataParams}`);
-      const dataResult = await dataResponse.json();
-      
-      if (dataResult.success && dataResult.data) {
-        setData(dataResult.data);
+    // Update plot config first
+    setPlotConfig(prev => ({
+      ...prev,
+      dateRange: {
+        start: startDate,
+        end: endDate
       }
-      
-      setData(dataResult.data || []);
-      setPlotConfig(prev => ({
-        ...prev,
-        dateRange: {
-          start: startDate,
-          end: endDate
-        }
-      }));
-    } catch (err) {
-      console.error('Error loading filtered data:', err);
-    } finally {
-      setLoading(false);
+    }));
+    
+    // Load appropriate detail level for new viewport
+    if (startDate && endDate) {
+      try {
+        setLoading(true);
+        await progressiveLoading.loadForViewport({ start: startDate, end: endDate });
+      } catch (err) {
+        console.error('Error loading data for date range:', err);
+      } finally {
+        setLoading(false);
+      }
     }
-  }, [databaseId, wellNumber]);
+  }, [progressiveLoading]);
 
   const handleBackToWells = useCallback(() => {
     router.push(`/wells/${databaseId}`);
@@ -150,11 +196,11 @@ export default function PlotViewerPage() {
   }, []);
 
   const handleExportCSV = useCallback(async () => {
-    if (!well || data.length === 0) return;
+    if (!well || progressiveLoading.currentData.length === 0) return;
     
     try {
       const filteredData = filterDataForExport(
-        data as any,
+        progressiveLoading.currentData as any,
         plotConfig.dateRange?.start?.toISOString(),
         plotConfig.dateRange?.end?.toISOString()
       );
@@ -164,14 +210,14 @@ export default function PlotViewerPage() {
       console.error('Error exporting CSV:', error);
       alert('Failed to export CSV file. Please try again.');
     }
-  }, [well, data, plotConfig.dateRange]);
+  }, [well, progressiveLoading.currentData, plotConfig.dateRange]);
 
   const handleExportJSON = useCallback(async () => {
-    if (!well || data.length === 0) return;
+    if (!well || progressiveLoading.currentData.length === 0) return;
     
     try {
       const filteredData = filterDataForExport(
-        data as any,
+        progressiveLoading.currentData as any,
         plotConfig.dateRange?.start?.toISOString(),
         plotConfig.dateRange?.end?.toISOString()
       );
@@ -181,7 +227,7 @@ export default function PlotViewerPage() {
       console.error('Error exporting JSON:', error);
       alert('Failed to export JSON file. Please try again.');
     }
-  }, [well, data, plotConfig.dateRange]);
+  }, [well, progressiveLoading.currentData, plotConfig.dateRange]);
 
   const handleViewRecharge = useCallback(() => {
     router.push(`/wells/${databaseId}/recharge/${wellNumber}`);
@@ -252,15 +298,6 @@ export default function PlotViewerPage() {
                 <h1 className="text-xl font-semibold text-gray-900">
                   Well {well.well_number}
                 </h1>
-                <div className="flex items-center space-x-4 text-sm text-gray-600">
-                  {well.cae_number && (
-                    <span>CAE: {well.cae_number}</span>
-                  )}
-                  {well.well_field && (
-                    <span>Field: {well.well_field}</span>
-                  )}
-                  <span>{data.length} readings</span>
-                </div>
               </div>
             </div>
             
@@ -283,7 +320,7 @@ export default function PlotViewerPage() {
                   onClick={handleExportData}
                   className="btn-primary text-sm px-3 py-2"
                   title="Export data"
-                  disabled={data.length === 0}
+                  disabled={progressiveLoading.currentData.length === 0}
                 >
                   <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -313,7 +350,7 @@ export default function PlotViewerPage() {
                       </button>
                       <div className="border-t border-gray-100 my-1"></div>
                       <div className="px-4 py-2 text-xs text-gray-500">
-                        Exports current date range: {data.length} readings
+                        Exports current data: {progressiveLoading.currentData.length} readings (Level {progressiveLoading.currentLevel})
                       </div>
                     </div>
                   </div>
@@ -326,13 +363,21 @@ export default function PlotViewerPage() {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6 space-y-6">
-        {/* Chart Controls */}
-        <ChartControls
-          config={plotConfig}
-          onConfigChange={handlePlotConfigChange}
-          onDateRangeChange={handleDateRangeChange}
+        {/* Well Information Panel - Top */}
+        <WellInfoPanel
           well={well}
-          dataCount={data.length}
+          currentTimeRange={currentTimeRange}
+          totalPoints={progressiveLoading.stats.totalDataPoints}
+          displayedPoints={progressiveLoading.currentData.length}
+          samplingRate={`${samplingRate} (Level ${progressiveLoading.currentLevel})`}
+        />
+
+        {/* Chart Controls - Collapsible */}
+        <ChartControlsPanel
+          config={plotConfig}
+          onConfigChange={setPlotConfig}
+          isCollapsed={isChartControlsCollapsed}
+          onToggleCollapse={() => setIsChartControlsCollapsed(!isChartControlsCollapsed)}
         />
 
         {/* Chart */}
@@ -349,127 +394,37 @@ export default function PlotViewerPage() {
             )}
           </div>
           
-          {data.length === 0 ? (
+          {progressiveLoading.currentData.length === 0 ? (
             <div className="text-center py-12">
               <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No Data Available
+                {progressiveLoading.isLoading ? 'Loading Data...' : 'No Data Available'}
               </h3>
               <p className="text-gray-600">
-                No water level readings found for the selected date range.
+                {progressiveLoading.isLoading 
+                  ? 'Please wait while we load your water level data.'
+                  : 'No water level readings found for the selected date range.'}
               </p>
             </div>
           ) : (
             <WaterLevelChart
-              data={data as any}
+              data={progressiveLoading.currentData as any}
               config={plotConfig}
-              loading={loading}
+              loading={loading || progressiveLoading.isLoading}
+              currentSampling={samplingRate}
+              onSamplingChange={handleSamplingRateChange}
+              onViewportChange={progressiveLoading.loadForViewport}
             />
           )}
         </div>
 
-        {/* Well Information */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Well Details */}
-          <div className="card">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Well Information</h3>
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium text-gray-700">Well Number:</span>
-                  <p className="text-gray-900">{well.well_number}</p>
-                </div>
-                {well.cae_number && (
-                  <div>
-                    <span className="font-medium text-gray-700">CAE Number:</span>
-                    <p className="text-gray-900">{well.cae_number}</p>
-                  </div>
-                )}
-                {well.well_field && (
-                  <div>
-                    <span className="font-medium text-gray-700">Well Field:</span>
-                    <p className="text-gray-900">{well.well_field}</p>
-                  </div>
-                )}
-                {well.aquifer_type && (
-                  <div>
-                    <span className="font-medium text-gray-700">Aquifer Type:</span>
-                    <p className="text-gray-900 capitalize">{well.aquifer_type}</p>
-                  </div>
-                )}
-                {well.top_of_casing && (
-                  <div>
-                    <span className="font-medium text-gray-700">Top of Casing:</span>
-                    <p className="text-gray-900">{well.top_of_casing.toFixed(2)} ft</p>
-                  </div>
-                )}
-                {well.well_depth && (
-                  <div>
-                    <span className="font-medium text-gray-700">Well Depth:</span>
-                    <p className="text-gray-900">{well.well_depth.toFixed(2)} ft</p>
-                  </div>
-                )}
-              </div>
-              {well.notes && (
-                <div>
-                  <span className="font-medium text-gray-700">Notes:</span>
-                  <p className="text-gray-900 text-sm mt-1">{well.notes}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Data Summary */}
-          <div className="card">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Data Summary</h3>
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Transducer Data */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
-                    <span className="font-medium text-blue-900">Transducer Data</span>
-                  </div>
-                  <div className="text-2xl font-bold text-blue-900">
-                    {well.has_transducer_data ? (well.total_readings || 0) - (well.manual_readings_count || 0) : 0}
-                  </div>
-                  <div className="text-xs text-blue-700">15-minute intervals</div>
-                </div>
-
-                {/* Manual Readings */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <div className="w-3 h-3 bg-green-600 rounded-full"></div>
-                    <span className="font-medium text-green-900">Manual Readings</span>
-                  </div>
-                  <div className="text-2xl font-bold text-green-900">
-                    {well.manual_readings_count || 0}
-                  </div>
-                  <div className="text-xs text-green-700">Periodic measurements</div>
-                </div>
-              </div>
-
-              {/* Total */}
-              <div className="pt-2 border-t border-gray-200">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-gray-700">Total Readings:</span>
-                  <span className="text-lg font-semibold text-gray-900">{well.total_readings || 0}</span>
-                </div>
-              </div>
-
-              {well.last_reading_date && (
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-gray-700">Last Reading:</span>
-                  <span className="text-gray-900">
-                    {new Date(well.last_reading_date).toLocaleDateString()}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        {/* Data Statistics Panel - Bottom */}
+        <DataStatisticsPanel 
+          data={progressiveLoading.currentData as any}
+          wellNumber={well.well_number}
+        />
       </div>
     </div>
   );
