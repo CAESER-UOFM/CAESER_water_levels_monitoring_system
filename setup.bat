@@ -340,12 +340,16 @@ if not exist "%INSTALL_DIR%" (
 
 echo    [*] Copying core application files...
 xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y
-if %ERRORLEVEL% NEQ 0 (
+
+REM Check if destination exists and has files to confirm copy success
+if exist "%INSTALL_DIR%\src\*.py" (
+    echo    [+] Core files copied successfully
+) else (
     echo.
     echo    ===============================================================================
     echo    #                              COPY ERROR                                      #
     echo    ===============================================================================
-    echo    [!] ERROR: Failed to copy src folder (Error Code: %ERRORLEVEL%)
+    echo    [!] ERROR: Failed to copy src folder - no Python files found in destination
     echo.
     echo        Source: %CODE_DIR%\src
     echo        Destination: %INSTALL_DIR%\src\
