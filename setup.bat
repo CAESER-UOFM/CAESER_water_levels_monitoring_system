@@ -131,10 +131,7 @@ xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y >nul
 xcopy "%CODE_DIR%\main.py" "%INSTALL_DIR%\" /Y >nul
 xcopy "%CODE_DIR%\Requirements.txt" "%INSTALL_DIR%\" /Y >nul
 
-REM Create config directory but don't copy credential files
-mkdir "%INSTALL_DIR%\config" >nul 2>&1
-if exist "%CODE_DIR%\config\feature_flags.py" xcopy "%CODE_DIR%\config\feature_flags.py" "%INSTALL_DIR%\config\" /Y >nul
-REM Note: Credential files (.json) are intentionally NOT copied for security
+if exist "%CODE_DIR%\config" xcopy "%CODE_DIR%\config" "%INSTALL_DIR%\config\" /E /I /Y >nul
 if exist "%CODE_DIR%\tools" xcopy "%CODE_DIR%\tools" "%INSTALL_DIR%\tools\" /E /I /Y >nul
 if exist "%CODE_DIR%\assets" xcopy "%CODE_DIR%\assets" "%INSTALL_DIR%\assets\" /E /I /Y >nul
 
