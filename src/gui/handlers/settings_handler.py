@@ -93,6 +93,17 @@ class SettingsHandler:
             logger.warning("Correcting Google Drive folder ID from XLE folder to CAESER folder")
             self.settings["google_drive_folder_id"] = "1vGoxkS-HQ0n0u0ToNcYL_wJGZ02RDhAK"
         
+        # Force update local_db_directory if it's still pointing to old hardcoded paths
+        if "local_db_directory" in self.settings:
+            current_path = self.settings["local_db_directory"]
+            # Check for specific old hardcoded path patterns (S: drive or network paths)
+            old_path_indicators = ["S:/Water_Projects", "S:\\Water_Projects", "Water_Data_Series"]
+            if any(indicator in current_path for indicator in old_path_indicators):
+                logger.warning(f"Correcting local_db_directory from old hardcoded path: {current_path} -> {default_db_directory}")
+                self.settings["local_db_directory"] = default_db_directory
+                # Force save immediately to persist the correction
+                self.save_settings()
+        
         for key, value in defaults.items():
             if key not in self.settings:
                 self.settings[key] = value
@@ -117,4 +128,19 @@ class SettingsHandler:
     def set_setting(self, key, value):
         """Set a setting value"""
         self.settings[key] = value
-        return self.save_settings() 
+        return self.save_settings()
+        
+    def reset_database_directory(self):
+        """Reset database directory to installation default"""
+        # Determine default database directory
+        databases_folder = Path.cwd() / "databases"
+        if databases_folder.exists():
+            default_db_directory = str(databases_folder)
+            logger.info(f"Resetting to installation databases folder: {default_db_directory}")
+        else:
+            default_db_directory = str(Path.cwd())
+            logger.info(f"Resetting to current working directory: {default_db_directory}")
+        
+        self.settings["local_db_directory"] = default_db_directory
+        self.save_settings()
+        return default_db_directory 

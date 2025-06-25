@@ -42,9 +42,14 @@ class DatabaseFolderSettingsDialog(QDialog):
         browse_dir_btn = QPushButton("Browse...")
         browse_dir_btn.clicked.connect(self.browse_local_dir)
         
+        reset_dir_btn = QPushButton("Reset to Default")
+        reset_dir_btn.clicked.connect(self.reset_to_default)
+        reset_dir_btn.setToolTip("Reset to installation default (databases folder)")
+        
         local_dir_layout.addWidget(local_dir_label)
         local_dir_layout.addWidget(self.local_db_dir, 1)
         local_dir_layout.addWidget(browse_dir_btn)
+        local_dir_layout.addWidget(reset_dir_btn)
         folder_layout.addLayout(local_dir_layout)
         
         # Database folder help text
@@ -109,6 +114,16 @@ class DatabaseFolderSettingsDialog(QDialog):
         
         if dir_path:
             self.local_db_dir.setText(dir_path)
+    
+    def reset_to_default(self):
+        """Reset database directory to installation default"""
+        default_path = self.settings_handler.reset_database_directory()
+        self.local_db_dir.setText(default_path)
+        QMessageBox.information(
+            self, 
+            "Reset to Default", 
+            f"Database directory has been reset to:\n{default_path}"
+        )
     
     def load_settings(self):
         """Load settings from settings handler"""
