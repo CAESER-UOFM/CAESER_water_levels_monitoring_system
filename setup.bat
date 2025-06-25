@@ -181,10 +181,21 @@ set "BACKUP_DIR=%INSTALL_DIR%\backups"
 
 REM Create installation directory structure
 echo    [*] [1/8] Creating installation directories...
-if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
-if not exist "%BACKUP_DIR%" mkdir "%BACKUP_DIR%"
-if not exist "%INSTALL_DIR%\databases" mkdir "%INSTALL_DIR%\databases"
-if not exist "%INSTALL_DIR%\databases\temp" mkdir "%INSTALL_DIR%\databases\temp"
+
+REM Clean up existing installation if it exists
+if exist "%INSTALL_DIR%" (
+    echo    [*] Removing existing installation directory...
+    rmdir /s /q "%INSTALL_DIR%" 2>nul
+    if exist "%INSTALL_DIR%" (
+        echo    [!] Warning: Could not fully remove existing installation directory
+        echo    [!] Some files may be in use. Installation will continue with overwrite.
+    )
+)
+
+mkdir "%INSTALL_DIR%"
+mkdir "%BACKUP_DIR%"
+mkdir "%INSTALL_DIR%\databases"
+mkdir "%INSTALL_DIR%\databases\temp"
 
 REM Define Python version and URLs
 set "PYTHON_VERSION=3.11.6"
@@ -327,19 +338,19 @@ if not exist "%INSTALL_DIR%" (
     exit /b 1
 )
 
-echo    [*] Creating file exclusion list...
-(
-    echo __pycache__
-    echo .pyc
-    echo .pyo
-    echo .git
-    echo .gitignore
-    echo .DS_Store
-    echo Thumbs.db
-) > "%TEMP%\exclude_files.txt"
+echo    [*] Copying core application files (with cache file exclusions)...
 
-echo    [*] Copying core application files (excluding cache files)...
-xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y /EXCLUDE:"%TEMP%\exclude_files.txt"
+REM Try with exclusions first, fall back to simple copy if it fails
+echo __pycache__ > "%TEMP%\exclude_files.txt" 2>nul
+if exist "%TEMP%\exclude_files.txt" (
+    echo .pyc >> "%TEMP%\exclude_files.txt"
+    echo .pyo >> "%TEMP%\exclude_files.txt"
+    echo .git >> "%TEMP%\exclude_files.txt"
+    xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y /EXCLUDE:"%TEMP%\exclude_files.txt"
+) else (
+    echo    [*] Exclusion file creation failed, using simple copy...
+    xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y
+)
 if %ERRORLEVEL% NEQ 0 (
     echo.
     echo    ===============================================================================
