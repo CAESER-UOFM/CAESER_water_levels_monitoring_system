@@ -225,7 +225,7 @@ You can find folder IDs in the URL of your Google Drive folders.
         projects_layout.addWidget(self.projects_folder_id, 1)
         folder_layout.addLayout(projects_layout)
         
-        projects_help = QLabel("Optional: Specific projects folder")
+        projects_help = QLabel("Default: CAESER Projects folder for collaborative project databases")
         projects_help.setStyleSheet("color: #666; font-style: italic; margin-left: 20px;")
         folder_layout.addWidget(projects_help)
         
@@ -296,6 +296,7 @@ You can find folder IDs in the URL of your Google Drive folders.
 <li><b>Main Database:</b> 1vGoxkS-HQ0n0u0ToNcYL_wJGZ02RDhAK (CAESER shared folder)</li>
 <li><b>XLE Files:</b> 1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW (Solinst folder)</li>
 <li><b>Field Data:</b> 1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW (Same as XLE for field laptops)</li>
+<li><b>Projects:</b> 1JjiXRblLAf6rdhiOzrAaYik8bjNpBc9s (CAESER Projects folder)</li>
 </ul>
 
 <h4>Note About OAuth Client Secrets</h4>
@@ -404,7 +405,7 @@ You can find folder IDs in the URL of your Google Drive folders.
         self.xle_folder_id.setText(
             self.settings_handler.get_setting("google_drive_xle_folder_id", "1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW"))
         self.projects_folder_id.setText(
-            self.settings_handler.get_setting("google_drive_projects_folder_id", ""))
+            self.settings_handler.get_setting("google_drive_projects_folder_id", "1JjiXRblLAf6rdhiOzrAaYik8bjNpBc9s"))
             
         # Field data folders (convert list to comma-separated string)
         field_folders = self.settings_handler.get_setting("field_data_folders", ["1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW"])

@@ -78,7 +78,7 @@ class SettingsHandler:
             "google_drive_auto_check": False,
             "google_drive_folder_id": "1vGoxkS-HQ0n0u0ToNcYL_wJGZ02RDhAK",  # Default CAESER folder ID for database
             "google_drive_xle_folder_id": "1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW",  # Default folder ID for XLE files
-            "google_drive_projects_folder_id": "",  # Folder ID for water_levels_monitoring/Projects
+            "google_drive_projects_folder_id": "1JjiXRblLAf6rdhiOzrAaYik8bjNpBc9s",  # Default Projects folder ID
             "google_drive_secret_path": default_secret_path,  # Default client secret path (legacy OAuth)
             "service_account_key_path": default_service_account_path,  # Service account key path
             "transducer_watch_folder": str(Path.cwd()),  # Add transducer watch folder default
