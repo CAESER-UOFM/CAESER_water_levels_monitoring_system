@@ -105,7 +105,7 @@ class SettingsHandler:
                 self.save_settings()
         
         for key, value in defaults.items():
-            if key not in self.settings:
+            if key not in self.settings or not self.settings[key]:
                 self.settings[key] = value
                 
         # Save settings if any defaults were set
