@@ -330,21 +330,38 @@ if not exist "%INSTALL_DIR%" (
 echo    [*] Copying core application files...
 xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y
 if %ERRORLEVEL% NEQ 0 (
-    echo    [!] Error copying src folder
+    echo.
+    echo    ===============================================================================
+    echo    #                              ERROR OCCURRED                                 #
+    echo    ===============================================================================
+    echo    [!] ERROR: Failed to copy src folder from:
+    echo        Source: %CODE_DIR%\src
+    echo        Destination: %INSTALL_DIR%\src\
+    echo.
+    echo    This could be due to:
+    echo    - Running from network drive (OneDrive, SharePoint)
+    echo    - Insufficient permissions
+    echo    - Antivirus interference
+    echo    - Path too long
+    echo.
+    echo    Try copying the installer to your local drive first.
+    echo.
     pause
     exit /b 1
 )
 
 xcopy "%CODE_DIR%\main.py" "%INSTALL_DIR%\" /Y
 if %ERRORLEVEL% NEQ 0 (
-    echo    [!] Error copying main.py
+    echo    [!] ERROR: Failed to copy main.py - this is a critical file
+    echo    Installation cannot continue without this file.
     pause
     exit /b 1
 )
 
 xcopy "%CODE_DIR%\Requirements.txt" "%INSTALL_DIR%\" /Y
 if %ERRORLEVEL% NEQ 0 (
-    echo    [!] Error copying Requirements.txt
+    echo    [!] ERROR: Failed to copy Requirements.txt - this is a critical file
+    echo    Installation cannot continue without this file.
     pause
     exit /b 1
 )
@@ -564,5 +581,9 @@ if "%DELETE_SOURCE%"=="True" (
         )
     )
 )
+
+echo.
+echo    [*] Installation script completed. Press any key to close this window.
+pause >nul
 
 endlocal
