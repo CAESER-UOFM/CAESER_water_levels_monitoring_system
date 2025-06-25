@@ -290,7 +290,7 @@ export function WellBrowser({ databaseId, onWellSelected }: WellBrowserProps) {
                     Field
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Readings
+                    Transducer
                   </th>
                   <th 
                     className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -321,25 +321,15 @@ export function WellBrowser({ databaseId, onWellSelected }: WellBrowserProps) {
                       {well.well_field || '—'}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                      <div className="flex items-center space-x-4">
-                        <span className="font-medium">{well.total_readings || 0}</span>
-                        <div className="flex space-x-1">
-                          {well.has_transducer_data && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800" title="Has transducer data">
-                              T
-                            </span>
-                          )}
-                          {well.has_manual_readings && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800" title="Has manual readings">
-                              M
-                            </span>
-                          )}
-                          {well.has_telemetry_data && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800" title="Has telemetry data">
-                              Tel
-                            </span>
-                          )}
-                        </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-medium text-blue-600">
+                          {well.has_transducer_data ? (well.total_readings || 0) - (well.manual_readings_count || 0) : 0}
+                        </span>
+                        {well.has_transducer_data && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            Available
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">

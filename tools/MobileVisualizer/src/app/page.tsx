@@ -45,12 +45,11 @@ export default function HomePage() {
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Water Level Visualizer
+          <h1 className="text-4xl font-bold text-gray-900 mb-3">
+            CAESER Water Levels Visualizer
           </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Mobile-optimized visualization of groundwater monitoring data. 
-            Connected to live Turso cloud database with real-time CAESER data.
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            Mobile-optimized visualization of groundwater monitoring data from the CAESER research database.
           </p>
         </div>
 
@@ -92,80 +91,47 @@ export default function HomePage() {
             )}
           </div>
 
-          {/* Quick Info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0">
-                <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-medium text-blue-900 mb-1">
-                  Getting Started
-                </h3>
-                <div className="text-sm text-blue-700 space-y-1">
-                  <p>• Browse 44+ wells from live CAESER monitoring database</p>
-                  <p>• View interactive time-series plots with 180K+ readings</p>
-                  <p>• Export filtered data in CSV or JSON format</p>
-                  <p>• Access RISE, MRC, and ERC recharge calculations</p>
-                </div>
-              </div>
-            </div>
-          </div>
 
-          {/* Features Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="card">
-              <div className="flex items-center space-x-3 mb-3">
-                <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {/* Quick Access Features */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+              <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg mb-3">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-                <h3 className="font-semibold text-gray-900">Interactive Plots</h3>
               </div>
-              <p className="text-gray-600 text-sm">
-                Touch-optimized charts with zoom, pan, and detailed data tooltips. 
-                View water levels, temperature, and manual readings.
-              </p>
+              <h3 className="font-medium text-gray-900 mb-1">Interactive Charts</h3>
+              <p className="text-xs text-gray-600">Touch-optimized visualization with zoom and filtering</p>
             </div>
 
-            <div className="card">
-              <div className="flex items-center space-x-3 mb-3">
-                <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-white border border-gray-200 rounded-lg p-4 hover:border-green-300 transition-colors">
+              <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-lg mb-3">
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                <h3 className="font-semibold text-gray-900">Data Export</h3>
               </div>
-              <p className="text-gray-600 text-sm">
-                Download filtered data in CSV or JSON format. 
-                Customize date ranges and data types for your analysis.
-              </p>
+              <h3 className="font-medium text-gray-900 mb-1">Data Export</h3>
+              <p className="text-xs text-gray-600">Download data in CSV or JSON formats</p>
             </div>
 
-            <div className="card">
-              <div className="flex items-center space-x-3 mb-3">
-                <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-white border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors">
+              <div className="flex items-center justify-center w-10 h-10 bg-purple-100 rounded-lg mb-3">
+                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-                <h3 className="font-semibold text-gray-900">Well Browser</h3>
               </div>
-              <p className="text-gray-600 text-sm">
-                Search and filter wells by number, field, or data availability. 
-                Quick access to well metadata and recent readings.
-              </p>
+              <h3 className="font-medium text-gray-900 mb-1">Well Browser</h3>
+              <p className="text-xs text-gray-600">Search and filter 44+ monitoring wells</p>
             </div>
 
-            <div className="card">
-              <div className="flex items-center space-x-3 mb-3">
-                <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-white border border-gray-200 rounded-lg p-4 hover:border-orange-300 transition-colors">
+              <div className="flex items-center justify-center w-10 h-10 bg-orange-100 rounded-lg mb-3">
+                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
-                <h3 className="font-semibold text-gray-900">Recharge Results</h3>
               </div>
-              <p className="text-gray-600 text-sm">
-                View existing recharge calculations from RISE, MRC, and EMR methods. 
-                Display results with detailed calculation metadata.
-              </p>
+              <h3 className="font-medium text-gray-900 mb-1">Recharge Analysis</h3>
+              <p className="text-xs text-gray-600">Access RISE, MRC, and ERC calculations</p>
             </div>
           </div>
         </div>

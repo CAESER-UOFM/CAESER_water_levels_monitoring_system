@@ -19,7 +19,6 @@ export function ChartControls({
   dataCount 
 }: ChartControlsProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [showTips, setShowTips] = useState(true);
   const [customDateRange, setCustomDateRange] = useState({
     start: '',
     end: ''
@@ -237,41 +236,6 @@ export function ChartControls({
           </div>
         </div>
 
-        {/* Chart Tips */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center space-x-2">
-              <svg className="w-4 h-4 text-yellow-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="text-xs font-medium text-yellow-700">Chart Tips</p>
-            </div>
-            <button
-              onClick={() => setShowTips(!showTips)}
-              className="text-yellow-600 hover:text-yellow-800 transition-colors"
-              title={showTips ? 'Hide tips' : 'Show tips'}
-            >
-              <svg 
-                className={`w-4 h-4 transform transition-transform ${showTips ? 'rotate-180' : ''}`}
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </div>
-          {showTips && (
-            <div className="text-xs text-yellow-700">
-              <ul className="space-y-1">
-                <li>• Touch and drag to pan the chart</li>
-                <li>• Pinch to zoom on mobile devices</li>
-                <li>• Tap data points for detailed information</li>
-                <li>• Use the brush below the chart to navigate large datasets</li>
-              </ul>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );

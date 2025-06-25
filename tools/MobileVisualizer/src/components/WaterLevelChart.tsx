@@ -13,7 +13,6 @@ import {
   Brush,
   ScatterChart,
   Scatter,
-  ComposedChart,
   ReferenceLine
 } from 'recharts';
 import type { WaterLevelReading, PlotConfig, ChartDataPoint } from '@/types/database';
@@ -230,7 +229,7 @@ export function WaterLevelChart({ data, config, loading = false }: WaterLevelCha
       {/* Main Chart */}
       <div className="h-96 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={continuousData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <LineChart data={continuousData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis 
               dataKey="timestamp"
@@ -300,18 +299,6 @@ export function WaterLevelChart({ data, config, loading = false }: WaterLevelCha
               />
             )}
 
-            {/* Manual Readings as Scatter on main chart - rendered last to appear on top */}
-            {config.showManualReadings && manualReadings.length > 0 && (
-              <Scatter
-                dataKey="water_level"
-                data={manualReadings}
-                fill={config.colors.manual}
-                stroke={config.colors.manual}
-                strokeWidth={2}
-                name="Manual Readings"
-              />
-            )}
-
             {/* Brush for navigation */}
             {showBrush && continuousData.length > 50 && !zoomedData && (
               <Brush
@@ -324,9 +311,36 @@ export function WaterLevelChart({ data, config, loading = false }: WaterLevelCha
                 endIndex={continuousData.length - 1}
               />
             )}
-          </ComposedChart>
+          </LineChart>
         </ResponsiveContainer>
       </div>
+
+      {/* Manual Readings Overlay - Separate chart to avoid data mixing */}
+      {config.showManualReadings && manualReadings.length > 0 && (
+        <div className="h-96 w-full -mt-96 relative pointer-events-none">
+          <ResponsiveContainer width="100%" height="100%">
+            <ScatterChart data={manualReadings} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <XAxis 
+                dataKey="timestamp"
+                type="category"
+                scale="time"
+                domain={displayData.length > 0 ? [displayData[0].timestamp, displayData[displayData.length - 1].timestamp] : ['dataMin', 'dataMax']}
+                hide
+              />
+              <YAxis domain={yAxisDomain} hide />
+              <Scatter
+                dataKey="water_level"
+                fill={config.colors.manual}
+                stroke="#ffffff"
+                strokeWidth={1}
+                r={5}
+                shape="circle"
+                name="Manual Readings"
+              />
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
 
       {/* Chart Legend */}

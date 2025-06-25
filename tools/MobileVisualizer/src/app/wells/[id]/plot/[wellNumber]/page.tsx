@@ -425,10 +425,40 @@ export default function PlotViewerPage() {
           <div className="card">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Data Summary</h3>
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-gray-700">Total Readings:</span>
-                <span className="text-gray-900">{well.total_readings || 0}</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Transducer Data */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
+                    <span className="font-medium text-blue-900">Transducer Data</span>
+                  </div>
+                  <div className="text-2xl font-bold text-blue-900">
+                    {well.has_transducer_data ? (well.total_readings || 0) - (well.manual_readings_count || 0) : 0}
+                  </div>
+                  <div className="text-xs text-blue-700">15-minute intervals</div>
+                </div>
+
+                {/* Manual Readings */}
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="w-3 h-3 bg-green-600 rounded-full"></div>
+                    <span className="font-medium text-green-900">Manual Readings</span>
+                  </div>
+                  <div className="text-2xl font-bold text-green-900">
+                    {well.manual_readings_count || 0}
+                  </div>
+                  <div className="text-xs text-green-700">Periodic measurements</div>
+                </div>
               </div>
+
+              {/* Total */}
+              <div className="pt-2 border-t border-gray-200">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-gray-700">Total Readings:</span>
+                  <span className="text-lg font-semibold text-gray-900">{well.total_readings || 0}</span>
+                </div>
+              </div>
+
               {well.last_reading_date && (
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-gray-700">Last Reading:</span>
@@ -437,25 +467,6 @@ export default function PlotViewerPage() {
                   </span>
                 </div>
               )}
-              <div className="pt-2 border-t border-gray-200">
-                <div className="flex flex-wrap gap-2">
-                  {well.has_transducer_data && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      Transducer Data
-                    </span>
-                  )}
-                  {well.has_manual_readings && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      Manual Readings
-                    </span>
-                  )}
-                  {well.has_telemetry_data && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                      Telemetry Data
-                    </span>
-                  )}
-                </div>
-              </div>
             </div>
           </div>
         </div>
