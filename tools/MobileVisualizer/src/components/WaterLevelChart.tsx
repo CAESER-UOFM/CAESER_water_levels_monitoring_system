@@ -106,20 +106,11 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
     return processedData;
   }, [data, config.dateRange]);
 
-  // Smart data windowing for better performance and navigation
+  // Process data for display - no client-side windowing when using progressive loading
   const displayData = useMemo(() => {
-    let baseData = chartData;
-    
-    // Apply view window if set (for navigation)
-    if (viewWindow && !zoomedData) {
-      const totalLength = chartData.length;
-      const startIdx = Math.floor((viewWindow.start / 100) * totalLength);
-      const endIdx = Math.floor((viewWindow.end / 100) * totalLength);
-      baseData = chartData.slice(startIdx, endIdx + 1);
-    }
-    
-    // Apply zoom if set (for detailed view)
-    const finalData = zoomedData || baseData;
+    // When using progressive loading (onViewportChange exists), don't do client-side filtering
+    // The API handles the windowing with appropriate detail levels
+    const finalData = onViewportChange ? chartData : (zoomedData || chartData);
     
     // Add manual indicator for styling
     const processedData = finalData.map(point => ({
@@ -135,12 +126,13 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
       totalPoints: finalData.length,
       manualCount: finalData.filter(p => p.source === 'manual').length,
       continuousCount: finalData.filter(p => p.source !== 'manual').length,
+      usingProgressiveLoading: !!onViewportChange,
       windowActive: !!viewWindow,
       zoomActive: !!zoomedData
     });
     
     return processedData;
-  }, [chartData, zoomedData, viewWindow]);
+  }, [chartData, zoomedData, viewWindow, onViewportChange]);
 
   const manualReadings = useMemo(() => {
     return displayData.filter(point => point.source === 'manual');
@@ -261,84 +253,94 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
   }, []);
 
   const handleZoomIn = useCallback(async () => {
-    let newWindow;
-    if (!viewWindow) {
-      newWindow = { start: 25, end: 75 };
-    } else {
-      const center = (viewWindow.start + viewWindow.end) / 2;
-      const newSize = (viewWindow.end - viewWindow.start) / 2;
-      const newStart = Math.max(0, center - newSize / 2);
-      const newEnd = Math.min(100, center + newSize / 2);
-      newWindow = { start: newStart, end: newEnd };
-    }
-    
-    setViewWindow(newWindow);
-    
-    // Trigger progressive loading for new viewport
     if (onViewportChange && chartData.length > 0) {
-      const totalLength = chartData.length;
-      const startIdx = Math.floor((newWindow.start / 100) * totalLength);
-      const endIdx = Math.floor((newWindow.end / 100) * totalLength);
+      // Progressive loading mode - calculate time-based zoom
+      const currentTimeSpan = chartData.length > 1 ? 
+        new Date(chartData[chartData.length - 1].timestamp).getTime() - new Date(chartData[0].timestamp).getTime() :
+        30 * 24 * 60 * 60 * 1000; // Default to 30 days if single point
+        
+      // Zoom in to middle 50% of current time range
+      const startTime = new Date(chartData[0].timestamp).getTime();
+      const zoomStartTime = startTime + currentTimeSpan * 0.25;
+      const zoomEndTime = startTime + currentTimeSpan * 0.75;
       
-      if (startIdx < chartData.length && endIdx >= 0) {
-        const startDate = new Date(chartData[Math.max(0, startIdx)]?.timestamp);
-        const endDate = new Date(chartData[Math.min(chartData.length - 1, endIdx)]?.timestamp);
-        
-        console.log(`🔍 Zoom in triggered viewport loading:`, {
-          window: newWindow,
-          dateRange: { start: startDate.toISOString(), end: endDate.toISOString() }
-        });
-        
-        try {
-          await onViewportChange(startDate, endDate);
-        } catch (err) {
-          console.error('Failed to load viewport data on zoom:', err);
-        }
+      const startDate = new Date(zoomStartTime);
+      const endDate = new Date(zoomEndTime);
+      
+      console.log(`🔍 Zoom in triggered viewport loading:`, {
+        timeSpanDays: currentTimeSpan / (1000 * 60 * 60 * 24),
+        dateRange: { start: startDate.toISOString(), end: endDate.toISOString() }
+      });
+      
+      try {
+        await onViewportChange(startDate, endDate);
+      } catch (err) {
+        console.error('Failed to load viewport data on zoom:', err);
       }
+    } else {
+      // Fallback to client-side windowing for non-progressive mode
+      let newWindow;
+      if (!viewWindow) {
+        newWindow = { start: 25, end: 75 };
+      } else {
+        const center = (viewWindow.start + viewWindow.end) / 2;
+        const newSize = (viewWindow.end - viewWindow.start) / 2;
+        const newStart = Math.max(0, center - newSize / 2);
+        const newEnd = Math.min(100, center + newSize / 2);
+        newWindow = { start: newStart, end: newEnd };
+      }
+      setViewWindow(newWindow);
     }
   }, [viewWindow, chartData, onViewportChange]);
 
   const handleZoomOut = useCallback(async () => {
-    let newWindow = null;
-    
-    if (!viewWindow) {
-      newWindow = { start: 0, end: 100 };
-    } else {
-      const center = (viewWindow.start + viewWindow.end) / 2;
-      const newSize = Math.min(100, (viewWindow.end - viewWindow.start) * 2);
-      const newStart = Math.max(0, center - newSize / 2);
-      const newEnd = Math.min(100, center + newSize / 2);
+    if (onViewportChange && chartData.length > 0) {
+      // Progressive loading mode - calculate time-based zoom out
+      const currentTimeSpan = chartData.length > 1 ? 
+        new Date(chartData[chartData.length - 1].timestamp).getTime() - new Date(chartData[0].timestamp).getTime() :
+        30 * 24 * 60 * 60 * 1000; // Default to 30 days if single point
+        
+      // Zoom out to 2x current time range, centered
+      const startTime = new Date(chartData[0].timestamp).getTime();
+      const endTime = new Date(chartData[chartData.length - 1].timestamp).getTime();
+      const center = (startTime + endTime) / 2;
+      const newTimeSpan = currentTimeSpan * 2;
       
-      if (newStart === 0 && newEnd === 100) {
-        newWindow = null;
-      } else {
-        newWindow = { start: newStart, end: newEnd };
+      const zoomStartTime = center - newTimeSpan / 2;
+      const zoomEndTime = center + newTimeSpan / 2;
+      
+      const startDate = new Date(zoomStartTime);
+      const endDate = new Date(zoomEndTime);
+      
+      console.log(`🔍 Zoom out triggered viewport loading:`, {
+        timeSpanDays: newTimeSpan / (1000 * 60 * 60 * 24),
+        dateRange: { start: startDate.toISOString(), end: endDate.toISOString() }
+      });
+      
+      try {
+        await onViewportChange(startDate, endDate);
+      } catch (err) {
+        console.error('Failed to load viewport data on zoom out:', err);
       }
-    }
-    
-    setViewWindow(newWindow);
-    
-    // Trigger progressive loading for new viewport
-    if (onViewportChange && chartData.length > 0 && newWindow) {
-      const totalLength = chartData.length;
-      const startIdx = Math.floor((newWindow.start / 100) * totalLength);
-      const endIdx = Math.floor((newWindow.end / 100) * totalLength);
+    } else {
+      // Fallback to client-side windowing for non-progressive mode
+      let newWindow = null;
       
-      if (startIdx < chartData.length && endIdx >= 0) {
-        const startDate = new Date(chartData[Math.max(0, startIdx)]?.timestamp);
-        const endDate = new Date(chartData[Math.min(chartData.length - 1, endIdx)]?.timestamp);
+      if (!viewWindow) {
+        newWindow = { start: 0, end: 100 };
+      } else {
+        const center = (viewWindow.start + viewWindow.end) / 2;
+        const newSize = Math.min(100, (viewWindow.end - viewWindow.start) * 2);
+        const newStart = Math.max(0, center - newSize / 2);
+        const newEnd = Math.min(100, center + newSize / 2);
         
-        console.log(`🔍 Zoom out triggered viewport loading:`, {
-          window: newWindow,
-          dateRange: { start: startDate.toISOString(), end: endDate.toISOString() }
-        });
-        
-        try {
-          await onViewportChange(startDate, endDate);
-        } catch (err) {
-          console.error('Failed to load viewport data on zoom out:', err);
+        if (newStart === 0 && newEnd === 100) {
+          newWindow = null;
+        } else {
+          newWindow = { start: newStart, end: newEnd };
         }
       }
+      setViewWindow(newWindow);
     }
   }, [viewWindow, chartData, onViewportChange]);
 

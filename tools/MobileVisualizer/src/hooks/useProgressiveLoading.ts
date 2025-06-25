@@ -72,7 +72,9 @@ export function useProgressiveLoading({
       const params = new URLSearchParams({
         level: level.toString(),
         ...(startDate && { startDate }),
-        ...(endDate && { endDate })
+        ...(endDate && { endDate }),
+        // Add cache buster to force fresh API calls
+        v: Date.now().toString()
       });
 
       const response = await fetch(`/.netlify/functions/data/${databaseId}/water/${wellNumber}?${params}`, {
@@ -93,7 +95,7 @@ export function useProgressiveLoading({
       }
 
       const data = result.data as WaterLevelReading[];
-      console.log(`📊 Loaded level ${level}: ${data.length} points`);
+      console.log(`📊 Loaded level ${level}: ${data.length} points (expected: ${level === 1 ? '~5000' : level === 2 ? '~12000' : '~25000'})`);
 
       // Create segment
       const segment: LoadedDataSegment = {
@@ -148,6 +150,7 @@ export function useProgressiveLoading({
 
   // Load initial overview data
   const loadOverview = useCallback(async () => {
+    console.log('🚀 Loading overview (Level 1) - expecting ~5000 points');
     return loadDataLevel(1);
   }, [loadDataLevel]);
 
@@ -213,6 +216,7 @@ export function useProgressiveLoading({
 
   // Clear cache and reset
   const reset = useCallback(() => {
+    console.log('🗑️ Clearing progressive loading cache and resetting state');
     cache.clear();
     setState({
       segments: [],
