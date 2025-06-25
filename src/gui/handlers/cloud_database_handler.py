@@ -35,8 +35,9 @@ class CloudDatabaseHandler:
         """Get the projects folder ID from settings"""
         if not self.projects_folder_id:
             self.projects_folder_id = self.settings_handler.get_setting(
-                "google_drive_projects_folder_id", ""
+                "google_drive_projects_folder_id", "1JjiXRblLAf6rdhiOzrAaYik8bjNpBc9s"
             )
+            logger.info(f"CloudDatabaseHandler projects folder ID: '{self.projects_folder_id}'")
         return self.projects_folder_id
     
     def _get_cache_directory(self) -> str:
