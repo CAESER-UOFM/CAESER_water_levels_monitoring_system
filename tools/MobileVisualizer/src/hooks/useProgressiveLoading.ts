@@ -66,6 +66,16 @@ export function useProgressiveLoading({
       return cached.data;
     }
 
+    // Check if already loading this specific request
+    const loadingKey = `loading-${cacheKey}`;
+    if (cache.has(loadingKey)) {
+      console.log(`⏳ Already loading ${cacheKey}, skipping duplicate request`);
+      return [];
+    }
+    
+    // Mark as loading
+    cache.set(loadingKey, { data: [], loadedAt: new Date(), level } as any);
+
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
@@ -107,23 +117,30 @@ export function useProgressiveLoading({
         viewport
       };
 
-      // Cache the segment
+      // Cache the segment and clear loading flag
       cache.set(cacheKey, segment);
+      cache.delete(`loading-${cacheKey}`);
 
-      // Update state
-      setState(prev => ({
-        ...prev,
-        segments: [...prev.segments.filter(s => s.level !== level || s.startDate !== startDate || s.endDate !== endDate), segment],
-        currentLevel: level,
-        totalDataPoints: prev.totalDataPoints + data.length,
-        isLoading: false
-      }));
+      // Update state - prevent duplicate segments
+      setState(prev => {
+        const existingSegments = prev.segments.filter(s => !(s.level === level && s.startDate === startDate && s.endDate === endDate));
+        return {
+          ...prev,
+          segments: [...existingSegments, segment],
+          currentLevel: level,
+          totalDataPoints: existingSegments.reduce((sum, s) => sum + s.data.length, 0) + data.length,
+          isLoading: false
+        };
+      });
 
       return data;
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : `Failed to load level ${level} data`;
       console.error('Progressive loading error:', errorMessage);
+      
+      // Clear loading flag on error
+      cache.delete(`loading-${cacheKey}`);
       
       setState(prev => ({ 
         ...prev, 

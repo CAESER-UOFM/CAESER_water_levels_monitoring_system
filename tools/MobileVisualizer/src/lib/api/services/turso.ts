@@ -318,16 +318,16 @@ export class TursoService {
     
     if (level) {
       switch (level) {
-        case 1: // Overview - fast loading, always downsampled
-          actualMaxPoints = 300;
+        case 1: // Overview - much better representation for large datasets
+          actualMaxPoints = 5000;
           actualDownsample = true;
           break;
         case 2: // Medium detail - for zoomed views  
-          actualMaxPoints = 2000;
+          actualMaxPoints = 12000;
           actualDownsample = true;
           break;
-        case 3: // Full detail - for deep zoom
-          actualMaxPoints = 10000;
+        case 3: // Full detail - for deep zoom, minimal downsampling
+          actualMaxPoints = 25000;
           actualDownsample = false; // Prefer original data when possible
           break;
       }
