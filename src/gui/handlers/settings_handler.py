@@ -11,9 +11,9 @@ class SettingsHandler:
     def __init__(self, settings_file=None):
         """Initialize settings handler"""
         if settings_file is None:
-            # Store settings in application directory instead of user home
+            # Store settings in application config directory instead of user home
             app_dir = Path.cwd()
-            settings_dir = app_dir / 'settings'
+            settings_dir = app_dir / 'config'
             self.settings_file = settings_dir / 'settings.json'
         else:
             self.settings_file = settings_file
