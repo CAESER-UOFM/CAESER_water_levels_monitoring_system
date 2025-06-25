@@ -17,6 +17,7 @@ import {
   ReferenceLine
 } from 'recharts';
 import type { WaterLevelReading, PlotConfig, ChartDataPoint } from '@/types/database';
+import { calculateOptimalSampling, formatSamplingInfo } from '@/utils/adaptiveSampling';
 
 interface ChartMetadata {
   totalPoints: number;
@@ -37,6 +38,24 @@ interface WaterLevelChartProps {
   currentSampling?: string;
   onSamplingChange?: (sampling: string) => void;
   onViewportChange?: (viewport: { start: Date; end: Date }) => Promise<any>;
+  currentSamplingInfo?: {
+    samplingRate: string;
+    description: string;
+    estimatedPoints: number;
+    timeSpanDays: number;
+    isHighRes: boolean;
+  } | null;
+  currentIntendedViewport?: {
+    start: Date;
+    end: Date;
+    originalTimeSpanMs: number;
+  } | null;
+  getDataBoundaries?: () => {
+    earliest: Date;
+    latest: Date;
+    totalSpanDays: number;
+  } | null;
+  isWithinDataBoundaries?: (start: Date, end: Date) => boolean;
 }
 
 interface SamplingState {
@@ -44,17 +63,46 @@ interface SamplingState {
   isLoadingSampling: boolean;
 }
 
-export function WaterLevelChart({ data, config, loading = false, onMetadataChange, currentSampling = '15min', onSamplingChange, onViewportChange }: WaterLevelChartProps) {
-  const [zoomedData, setZoomedData] = useState<ChartDataPoint[] | null>(null);
+export function WaterLevelChart({ data, config, loading = false, onMetadataChange, currentSampling = '15min', onSamplingChange, onViewportChange, currentSamplingInfo, currentIntendedViewport, getDataBoundaries, isWithinDataBoundaries }: WaterLevelChartProps) {
+  // CRITICAL: Handle early returns BEFORE any hooks to avoid Rules of Hooks violations
+  if (loading) {
+    return (
+      <div className="h-96 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 loading-spinner mx-auto mb-2"></div>
+          <p className="text-sm text-gray-600">Loading chart...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-96 flex items-center justify-center">
+        <div className="text-center">
+          <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Data to Display</h3>
+          <p className="text-gray-600">Adjust your filters or date range to view data.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ALL HOOKS MUST COME AFTER EARLY RETURNS
   const [viewWindow, setViewWindow] = useState<{ start: number; end: number } | null>(null);
   const [samplingState, setSamplingState] = useState<SamplingState>({
     selectedSampling: currentSampling,
     isLoadingSampling: false
   });
+  const [showLoadHighResButton, setShowLoadHighResButton] = useState(false);
+  const [isLoadingHighRes, setIsLoadingHighRes] = useState(false);
   
   // Prevent infinite loops with ref-based flags
   const isLoadingViewport = useRef(false);
   const lastViewportRequest = useRef<string>('');
+  const currentViewportRef = useRef<{ start: Date; end: Date } | null>(null);
 
   // Update internal state when external sampling changes
   React.useEffect(() => {
@@ -110,21 +158,24 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
     return processedData;
   }, [data, config.dateRange]);
 
-  // Process data for display - smart two-phase approach
+  // Process data for display - rely on progressive loading system
   const displayData = useMemo(() => {
     let finalData = chartData;
     
-    // Apply view window filtering for immediate visual feedback (Phase 1)
-    if (viewWindow) {
+    // Only apply client-side filtering if we haven't loaded high-res data yet
+    // The progressive loading system manages the actual data switching
+    if (viewWindow && showLoadHighResButton) {
+      // Phase 1: Apply view window filtering for immediate visual feedback while waiting for high-res
       const totalLength = chartData.length;
       const startIdx = Math.floor((viewWindow.start / 100) * totalLength);
       const endIdx = Math.floor((viewWindow.end / 100) * totalLength);
       finalData = chartData.slice(startIdx, endIdx + 1);
+      console.log(`🎯 Using client-side filtered data: ${finalData.length} points (Phase 1 - waiting for high-res)`);
+    } else {
+      // Use data as provided by progressive loading system (could be overview or high-res)
+      console.log(`🎯 Using progressive loading data: ${finalData.length} points`);
     }
-    
-    // Apply zoom data if available (Phase 2 - high-res background loaded data)
-    finalData = zoomedData || finalData;
-    
+
     // Add manual indicator for styling
     const processedData = finalData.map(point => ({
       ...point,
@@ -139,13 +190,13 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
       totalPoints: finalData.length,
       manualCount: finalData.filter(p => p.source === 'manual').length,
       continuousCount: finalData.filter(p => p.source !== 'manual').length,
-      phase1Active: !!viewWindow, // Client-side filtering active
-      phase2Active: !!zoomedData, // High-res background data active
-      twoPhaseZoom: !!onViewportChange
+      hasViewWindow: !!viewWindow,
+      awaitingHighRes: showLoadHighResButton,
+      isHighResMode: currentSamplingInfo?.isHighRes || false
     });
     
     return processedData;
-  }, [chartData, zoomedData, viewWindow, onViewportChange]);
+  }, [chartData, viewWindow, showLoadHighResButton, currentSamplingInfo?.isHighRes]);
 
   const manualReadings = useMemo(() => {
     return displayData.filter(point => point.source === 'manual');
@@ -237,39 +288,199 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
   }, []);
 
 
-  // Modern navigation handlers
-  const handleNavigateLeft = useCallback(() => {
+  // Smart navigation that maintains current sampling resolution
+  const handleNavigateLeft = useCallback(async () => {
+    setShowLoadHighResButton(false); // Hide button on navigation
+    
+    let newWindow;
     if (!viewWindow) {
-      setViewWindow({ start: 0, end: 25 });
+      newWindow = { start: 0, end: 25 };
     } else {
       const windowSize = viewWindow.end - viewWindow.start;
       const newStart = Math.max(0, viewWindow.start - windowSize / 2);
       const newEnd = Math.min(100, newStart + windowSize);
-      setViewWindow({ start: newStart, end: newEnd });
+      newWindow = { start: newStart, end: newEnd };
     }
-  }, [viewWindow]);
+    
+    setViewWindow(newWindow);
+    
+    // Debug navigation state
+    console.log(`🔍 Left navigation state:`, {
+      hasCurrentSamplingInfo: !!currentSamplingInfo,
+      isHighRes: currentSamplingInfo?.isHighRes,
+      samplingRate: currentSamplingInfo?.samplingRate,
+      description: currentSamplingInfo?.description,
+      hasData: chartData.length > 0,
+      hasViewportHandler: !!onViewportChange
+    });
+    
+    // Smart navigation: If we have an intended viewport (high-res mode), automatically load data for new viewport
+    if (currentIntendedViewport && onViewportChange) {
+      // Use the intended viewport time span, not actual data timestamps
+      const timeSpanMs = currentIntendedViewport.originalTimeSpanMs;
+      const currentStartDate = currentIntendedViewport.start;
+      const currentEndDate = currentIntendedViewport.end;
+      
+      // Shift the entire time span left by the same duration
+      const newEndDate = new Date(currentStartDate.getTime());
+      const newStartDate = new Date(newEndDate.getTime() - timeSpanMs);
+      
+      console.log(`🧭 Smart navigation left: shifting ${currentSamplingInfo?.description || 'time span'} left`);
+      console.log(`📅 Current intended range: ${currentStartDate.toLocaleDateString()} to ${currentEndDate.toLocaleDateString()}`);
+      console.log(`📅 New intended range: ${newStartDate.toLocaleDateString()} to ${newEndDate.toLocaleDateString()}`);
+      console.log(`📅 Original time span: ${(timeSpanMs / (1000 * 60 * 60 * 24)).toFixed(1)} days (maintained)`);
+      
+      // Check boundaries before attempting to load
+      if (isWithinDataBoundaries && !isWithinDataBoundaries(newStartDate, newEndDate)) {
+        console.log(`🚫 Navigation blocked: new range is outside data boundaries`);
+        const boundaries = getDataBoundaries?.();
+        if (boundaries) {
+          console.log(`📊 Available data range: ${boundaries.earliest.toLocaleDateString()} to ${boundaries.latest.toLocaleDateString()}`);
+        }
+        return; // Stop navigation
+      }
+      
+      try {
+        // Automatically load data for the new viewport at current resolution
+        await onViewportChange({ start: newStartDate, end: newEndDate });
+        
+        console.log(`✅ Left navigation completed - progressive loading will update sampling info`);
+        
+      } catch (error) {
+        console.error('Failed to load data for navigation:', error);
+        // Show load button if automatic loading fails
+        currentViewportRef.current = { start: newStartDate, end: newEndDate };
+        setShowLoadHighResButton(true);
+      }
+    } else if (viewWindow && chartData.length > 0) {
+      // Fallback: Client-side navigation for overview data
+      console.log(`🔄 Client-side navigation left: shifting view window`);
+      const windowSize = viewWindow.end - viewWindow.start;
+      const newStart = Math.max(0, viewWindow.start - windowSize / 2);
+      const newEnd = Math.min(100, newStart + windowSize);
+      const newViewWindow = { start: newStart, end: newEnd };
+      
+      setViewWindow(newViewWindow);
+      console.log(`📊 New view window: ${newViewWindow.start.toFixed(1)}% to ${newViewWindow.end.toFixed(1)}%`);
+    }
+  }, [viewWindow, currentSamplingInfo, chartData, onViewportChange, currentIntendedViewport, isWithinDataBoundaries, getDataBoundaries]);
 
-  const handleNavigateRight = useCallback(() => {
+  const handleNavigateRight = useCallback(async () => {
+    setShowLoadHighResButton(false); // Hide button on navigation
+    
+    let newWindow;
     if (!viewWindow) {
-      setViewWindow({ start: 75, end: 100 });
+      newWindow = { start: 75, end: 100 };
     } else {
       const windowSize = viewWindow.end - viewWindow.start;
       const newEnd = Math.min(100, viewWindow.end + windowSize / 2);
       const newStart = Math.max(0, newEnd - windowSize);
-      setViewWindow({ start: newStart, end: newEnd });
+      newWindow = { start: newStart, end: newEnd };
     }
-  }, [viewWindow]);
+    
+    setViewWindow(newWindow);
+    
+    // Debug navigation state
+    console.log(`🔍 Right navigation state:`, {
+      hasCurrentSamplingInfo: !!currentSamplingInfo,
+      isHighRes: currentSamplingInfo?.isHighRes,
+      samplingRate: currentSamplingInfo?.samplingRate,
+      description: currentSamplingInfo?.description,
+      hasData: chartData.length > 0,
+      hasViewportHandler: !!onViewportChange
+    });
+    
+    // Smart navigation: If we have an intended viewport (high-res mode), automatically load data for new viewport
+    if (currentIntendedViewport && onViewportChange) {
+      // Use the intended viewport time span, not actual data timestamps
+      const timeSpanMs = currentIntendedViewport.originalTimeSpanMs;
+      const currentStartDate = currentIntendedViewport.start;
+      const currentEndDate = currentIntendedViewport.end;
+      
+      // Shift the entire time span right by the same duration
+      const newStartDate = new Date(currentEndDate.getTime());
+      const newEndDate = new Date(newStartDate.getTime() + timeSpanMs);
+      
+      console.log(`🧭 Smart navigation right: shifting ${currentSamplingInfo?.description || 'time span'} right`);
+      console.log(`📅 Current intended range: ${currentStartDate.toLocaleDateString()} to ${currentEndDate.toLocaleDateString()}`);
+      console.log(`📅 New intended range: ${newStartDate.toLocaleDateString()} to ${newEndDate.toLocaleDateString()}`);
+      console.log(`📅 Original time span: ${(timeSpanMs / (1000 * 60 * 60 * 24)).toFixed(1)} days (maintained)`);
+      
+      // Check boundaries before attempting to load
+      if (isWithinDataBoundaries && !isWithinDataBoundaries(newStartDate, newEndDate)) {
+        console.log(`🚫 Navigation blocked: new range is outside data boundaries`);
+        const boundaries = getDataBoundaries?.();
+        if (boundaries) {
+          console.log(`📊 Available data range: ${boundaries.earliest.toLocaleDateString()} to ${boundaries.latest.toLocaleDateString()}`);
+        }
+        return; // Stop navigation
+      }
+      
+      try {
+        // Automatically load data for the new viewport at current resolution
+        await onViewportChange({ start: newStartDate, end: newEndDate });
+        
+        console.log(`✅ Right navigation completed - progressive loading will update sampling info`);
+        
+      } catch (error) {
+        console.error('Failed to load data for navigation:', error);
+        // Show load button if automatic loading fails
+        currentViewportRef.current = { start: newStartDate, end: newEndDate };
+        setShowLoadHighResButton(true);
+      }
+    } else if (viewWindow && chartData.length > 0) {
+      // Fallback: Client-side navigation for overview data
+      console.log(`🔄 Client-side navigation right: shifting view window`);
+      const windowSize = viewWindow.end - viewWindow.start;
+      const newEnd = Math.min(100, viewWindow.end + windowSize / 2);
+      const newStart = Math.max(0, newEnd - windowSize);
+      const newViewWindow = { start: newStart, end: newEnd };
+      
+      setViewWindow(newViewWindow);
+      console.log(`📊 New view window: ${newViewWindow.start.toFixed(1)}% to ${newViewWindow.end.toFixed(1)}%`);
+    }
+  }, [viewWindow, currentSamplingInfo, chartData, onViewportChange, currentIntendedViewport, isWithinDataBoundaries, getDataBoundaries]);
 
   const handleResetView = useCallback(() => {
     setViewWindow(null);
-    setZoomedData(null);
+    setShowLoadHighResButton(false);
+    currentViewportRef.current = null;
   }, []);
 
-  const handleZoomIn = useCallback(async () => {
-    // Two-phase zoom approach:
-    // Phase 1: Instant visual feedback with client-side filtering
-    // Phase 2: Background loading of high-resolution data for the zoomed range
+  // Calculate optimal sampling for current viewport
+  const optimalSampling = useMemo(() => {
+    if (!currentViewportRef.current) return null;
+    const viewport = currentViewportRef.current;
+    return calculateOptimalSampling(viewport.start, viewport.end);
+  }, [currentViewportRef.current]);
+
+  // Handler for loading high-resolution data (Phase 2)
+  const handleLoadHighResData = useCallback(async () => {
+    if (!currentViewportRef.current || !onViewportChange) return;
     
+    setIsLoadingHighRes(true);
+    setShowLoadHighResButton(false);
+    
+    try {
+      const viewport = currentViewportRef.current;
+      const sampling = calculateOptimalSampling(viewport.start, viewport.end);
+      console.log(`🎯 Loading adaptive sampling: ${formatSamplingInfo(sampling)}`);
+      
+      // Call the viewport change handler which will use adaptive sampling
+      const result = await onViewportChange(viewport);
+      
+      console.log(`✅ Adaptive sampling completed for zoomed viewport`);
+    } catch (error) {
+      console.error('Failed to load adaptive sampling data:', error);
+      // Keep showing the button so user can retry
+      setShowLoadHighResButton(true);
+    } finally {
+      setIsLoadingHighRes(false);
+    }
+  }, [onViewportChange]);
+
+  const handleZoomIn = useCallback(async () => {
+    // Phase 1: Immediate client-side zoom for instant feedback
     let newWindow;
     if (!viewWindow) {
       newWindow = { start: 25, end: 75 };
@@ -281,71 +492,52 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
       newWindow = { start: newStart, end: newEnd };
     }
     
-    // Phase 1: Immediate visual zoom (client-side filtering)
-    console.log(`⚡ Phase 1 - Instant zoom: ${newWindow.start}% to ${newWindow.end}%`);
+    console.log(`🔍 Zoom in: ${newWindow.start.toFixed(1)}% to ${newWindow.end.toFixed(1)}%`);
     setViewWindow(newWindow);
     
-    // Phase 2: Background high-resolution data loading
-    if (onViewportChange && chartData.length > 0) {
-      // Prevent multiple simultaneous requests
-      if (isLoadingViewport.current) {
-        console.log('⏳ Background loading already in progress');
-        return;
-      }
-      
-      // Calculate actual date range for the zoomed area
+    // Calculate viewport dates and automatically load high-res data
+    if (chartData.length > 0 && onViewportChange) {
       const totalLength = chartData.length;
       const startIdx = Math.floor((newWindow.start / 100) * totalLength);
       const endIdx = Math.floor((newWindow.end / 100) * totalLength);
+      const startDate = new Date(chartData[Math.max(0, startIdx)]?.timestamp);
+      const endDate = new Date(chartData[Math.min(chartData.length - 1, endIdx)]?.timestamp);
+      const timeSpanDays = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+      console.log(`📅 Showing ${timeSpanDays.toFixed(1)} days: ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`);
       
-      if (startIdx < chartData.length && endIdx >= 0) {
-        const startDate = new Date(chartData[Math.max(0, startIdx)]?.timestamp);
-        const endDate = new Date(chartData[Math.min(chartData.length - 1, endIdx)]?.timestamp);
-        
-        const timeSpanMs = endDate.getTime() - startDate.getTime();
-        const timeSpanDays = timeSpanMs / (1000 * 60 * 60 * 24);
-        
-        // Create unique request key to prevent duplicates
-        const requestKey = `${startDate.getTime()}-${endDate.getTime()}`;
-        if (lastViewportRequest.current === requestKey) {
-          console.log('⏭️ Skipping duplicate background request');
-          return;
-        }
-        
-        console.log(`🔄 Phase 2 - Background loading ${timeSpanDays.toFixed(1)} days of high-res data`);
-        
-        isLoadingViewport.current = true;
-        lastViewportRequest.current = requestKey;
-        
-        // Background load - don't auto-update chart to avoid infinite loops
-        setTimeout(async () => {
-          try {
-            // Load the data but don't let it automatically update the chart
-            // This prevents the infinite loop while still caching the data
-            console.log('🔄 Background loading started (will cache but not auto-apply)');
-            await onViewportChange({ start: startDate, end: endDate });
-            console.log('✨ Phase 2 complete - high-res data cached (use sampling controls to apply)');
-          } catch (err) {
-            console.error('Background loading failed:', err);
-          } finally {
-            isLoadingViewport.current = false;
-            // Clear request key after delay
-            setTimeout(() => {
-              lastViewportRequest.current = '';
-            }, 1000);
-          }
-        }, 100);
+      // Automatically load high-res data for the zoomed viewport
+      console.log(`🚀 Auto-loading high-res data for zoom...`);
+      try {
+        await onViewportChange({ start: startDate, end: endDate });
+        console.log(`✅ High-res data loaded successfully for zoom`);
+        // Keep the view window for manual control - don't auto-clear it
+        // setViewWindow(null);
+      } catch (error) {
+        console.error('Failed to auto-load high-res data for zoom:', error);
+        // Fallback: Store viewport and show load button
+        currentViewportRef.current = { start: startDate, end: endDate };
+        setShowLoadHighResButton(true);
       }
+    } else if (chartData.length > 0) {
+      // If no onViewportChange handler, just show the button
+      const totalLength = chartData.length;
+      const startIdx = Math.floor((newWindow.start / 100) * totalLength);
+      const endIdx = Math.floor((newWindow.end / 100) * totalLength);
+      const startDate = new Date(chartData[Math.max(0, startIdx)]?.timestamp);
+      const endDate = new Date(chartData[Math.min(chartData.length - 1, endIdx)]?.timestamp);
+      
+      currentViewportRef.current = { start: startDate, end: endDate };
+      setShowLoadHighResButton(true);
     }
   }, [viewWindow, chartData, onViewportChange]);
 
-  const handleZoomOut = useCallback(async () => {
-    // Two-phase zoom out approach
-    
+  const handleZoomOut = useCallback(() => {
+    // Phase 1: Immediate client-side zoom out
     let newWindow = null;
     
     if (!viewWindow) {
-      newWindow = { start: 0, end: 100 };
+      console.log('🔍 Already at full view');
+      return;
     } else {
       const center = (viewWindow.start + viewWindow.end) / 2;
       const newSize = Math.min(100, (viewWindow.end - viewWindow.start) * 2);
@@ -359,99 +551,31 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
       }
     }
     
-    // Phase 1: Immediate visual zoom out
-    console.log(`⚡ Phase 1 - Instant zoom out: ${newWindow ? `${newWindow.start}% to ${newWindow.end}%` : 'full view'}`);
+    console.log(`🔎 Zoom out: ${newWindow ? `${newWindow.start.toFixed(1)}% to ${newWindow.end.toFixed(1)}%` : 'full view'}`);
     setViewWindow(newWindow);
     
-    // Phase 2: Background loading for larger time range (if needed)
-    if (onViewportChange && chartData.length > 0 && newWindow) {
-      // Prevent multiple simultaneous requests
-      if (isLoadingViewport.current) {
-        console.log('⏳ Background loading already in progress');
-        return;
-      }
-      
-      // Calculate expanded date range
+    // Calculate viewport dates and show load button for Phase 2
+    if (chartData.length > 0 && newWindow) {
       const totalLength = chartData.length;
       const startIdx = Math.floor((newWindow.start / 100) * totalLength);
       const endIdx = Math.floor((newWindow.end / 100) * totalLength);
+      const startDate = new Date(chartData[Math.max(0, startIdx)]?.timestamp);
+      const endDate = new Date(chartData[Math.min(chartData.length - 1, endIdx)]?.timestamp);
+      const timeSpanDays = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+      console.log(`📅 Showing ${timeSpanDays.toFixed(1)} days: ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`);
       
-      if (startIdx < chartData.length && endIdx >= 0) {
-        const currentTimeSpan = chartData.length > 1 ? 
-          new Date(chartData[chartData.length - 1].timestamp).getTime() - new Date(chartData[0].timestamp).getTime() :
-          30 * 24 * 60 * 60 * 1000;
-          
-        // Expand time range by 2x centered on current view
-        const startTime = new Date(chartData[0].timestamp).getTime();
-        const endTime = new Date(chartData[chartData.length - 1].timestamp).getTime();
-        const center = (startTime + endTime) / 2;
-        const newTimeSpan = currentTimeSpan * 2;
-        
-        const expandedStartTime = center - newTimeSpan / 2;
-        const expandedEndTime = center + newTimeSpan / 2;
-        
-        const startDate = new Date(expandedStartTime);
-        const endDate = new Date(expandedEndTime);
-        
-        const timeSpanDays = newTimeSpan / (1000 * 60 * 60 * 24);
-        
-        // Create unique request key
-        const requestKey = `${startDate.getTime()}-${endDate.getTime()}`;
-        if (lastViewportRequest.current === requestKey) {
-          console.log('⏭️ Skipping duplicate background request');
-          return;
-        }
-        
-        console.log(`🔄 Phase 2 - Background loading ${timeSpanDays.toFixed(1)} days of expanded data`);
-        
-        isLoadingViewport.current = true;
-        lastViewportRequest.current = requestKey;
-        
-        // Background load
-        setTimeout(async () => {
-          try {
-            console.log('🔄 Background loading started (will cache but not auto-apply)');
-            await onViewportChange({ start: startDate, end: endDate });
-            console.log('✨ Phase 2 complete - expanded data cached (use sampling controls to apply)');
-          } catch (err) {
-            console.error('Background loading failed:', err);
-          } finally {
-            isLoadingViewport.current = false;
-            setTimeout(() => {
-              lastViewportRequest.current = '';
-            }, 1000);
-          }
-        }, 100);
+      // Store current viewport for background loading
+      currentViewportRef.current = { start: startDate, end: endDate };
+      
+      // Show button to trigger Phase 2
+      if (onViewportChange) {
+        setShowLoadHighResButton(true);
       }
     }
   }, [viewWindow, chartData, onViewportChange]);
 
   // This line is now handled in the useMemo above
-
-  if (loading) {
-    return (
-      <div className="h-96 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 loading-spinner mx-auto mb-2"></div>
-          <p className="text-sm text-gray-600">Loading chart...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (chartData.length === 0) {
-    return (
-      <div className="h-96 flex items-center justify-center">
-        <div className="text-center">
-          <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Data to Display</h3>
-          <p className="text-gray-600">Adjust your filters or date range to view data.</p>
-        </div>
-      </div>
-    );
-  }
+  // NOTE: Early returns have been moved to the top of the component to fix React Error #300
 
   // Send metadata to parent component
   const metadata: ChartMetadata = {
@@ -462,8 +586,7 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
       start: displayData[0].date.toLocaleDateString(),
       end: displayData[displayData.length - 1].date.toLocaleDateString()
     } : null,
-    viewStatus: (viewWindow || zoomedData) ? 
-      `${viewWindow ? 'Navigated' : ''}${zoomedData ? ' Zoomed' : ''}`.trim() : null
+    viewStatus: viewWindow ? 'Navigated/Zoomed' : null
   };
 
   // Call metadata callback when metadata changes
@@ -471,7 +594,7 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
     if (onMetadataChange) {
       onMetadataChange(metadata);
     }
-  }, [onMetadataChange, chartData.length, displayData.length, manualReadings.length, viewWindow, zoomedData]);
+  }, [onMetadataChange, chartData.length, displayData.length, manualReadings.length, viewWindow]);
 
   return (
     <div className="space-y-3">
@@ -494,9 +617,18 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
             <div className="flex items-center space-x-1">
               <button
                 onClick={handleNavigateLeft}
-                className="flex items-center justify-center w-8 h-8 bg-white border border-gray-300 rounded-md hover:bg-gray-100 active:bg-gray-200 transition-colors mobile-touch-target"
+                className="flex items-center justify-center w-8 h-8 bg-white border border-gray-300 rounded-md hover:bg-gray-100 active:bg-gray-200 transition-colors mobile-touch-target disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Navigate left"
-                disabled={viewWindow?.start === 0}
+                disabled={(() => {
+                  // Check if navigation would go beyond boundaries
+                  if (currentIntendedViewport && isWithinDataBoundaries) {
+                    const timeSpanMs = currentIntendedViewport.originalTimeSpanMs;
+                    const newEndDate = new Date(currentIntendedViewport.start.getTime());
+                    const newStartDate = new Date(newEndDate.getTime() - timeSpanMs);
+                    return !isWithinDataBoundaries(newStartDate, newEndDate);
+                  }
+                  return viewWindow?.start === 0;
+                })()}
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -533,9 +665,18 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
 
               <button
                 onClick={handleNavigateRight}
-                className="flex items-center justify-center w-8 h-8 bg-white border border-gray-300 rounded-md hover:bg-gray-100 active:bg-gray-200 transition-colors mobile-touch-target"
+                className="flex items-center justify-center w-8 h-8 bg-white border border-gray-300 rounded-md hover:bg-gray-100 active:bg-gray-200 transition-colors mobile-touch-target disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Navigate right"
-                disabled={viewWindow?.end === 100}
+                disabled={(() => {
+                  // Check if navigation would go beyond boundaries
+                  if (currentIntendedViewport && isWithinDataBoundaries) {
+                    const timeSpanMs = currentIntendedViewport.originalTimeSpanMs;
+                    const newStartDate = new Date(currentIntendedViewport.end.getTime());
+                    const newEndDate = new Date(newStartDate.getTime() + timeSpanMs);
+                    return !isWithinDataBoundaries(newStartDate, newEndDate);
+                  }
+                  return viewWindow?.end === 100;
+                })()}
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -556,22 +697,55 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
                   </span>
                 )}
               </div>
-              {viewWindow && chartData.length > 0 && (
+              
+              {/* Current sampling rate display */}
+              {currentSamplingInfo?.isHighRes && (
+                <div className="text-primary-600 font-medium mt-1">
+                  Resolution: {currentSamplingInfo.description}
+                </div>
+              )}
+              
+              {/* Always show current data range info */}
+              {chartData.length > 0 && (
                 <div className="text-gray-500 font-mono mt-1">
                   {(() => {
-                    const startIdx = Math.floor((viewWindow.start / 100) * chartData.length);
-                    const endIdx = Math.floor((viewWindow.end / 100) * chartData.length);
-                    const startDate = new Date(chartData[Math.max(0, startIdx)]?.timestamp);
-                    const endDate = new Date(chartData[Math.min(chartData.length - 1, endIdx)]?.timestamp);
-                    return `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+                    if (currentIntendedViewport) {
+                      // Use intended viewport for display (high-res mode)
+                      return `${currentIntendedViewport.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${currentIntendedViewport.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+                    } else if (viewWindow) {
+                      // Use view window calculation (client-side mode)
+                      const startIdx = Math.floor((viewWindow.start / 100) * chartData.length);
+                      const endIdx = Math.floor((viewWindow.end / 100) * chartData.length);
+                      const startDate = new Date(chartData[Math.max(0, startIdx)]?.timestamp);
+                      const endDate = new Date(chartData[Math.min(chartData.length - 1, endIdx)]?.timestamp);
+                      return `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+                    } else {
+                      // Fallback: show full data range
+                      const startDate = new Date(chartData[0]?.timestamp);
+                      const endDate = new Date(chartData[chartData.length - 1]?.timestamp);
+                      return `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+                    }
+                  })()}
+                </div>
+              )}
+              
+              {/* Data boundaries info */}
+              {getDataBoundaries && (
+                <div className="text-xs text-gray-400 mt-1">
+                  {(() => {
+                    const boundaries = getDataBoundaries();
+                    if (boundaries) {
+                      return `Available: ${boundaries.earliest.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${boundaries.latest.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+                    }
+                    return '';
                   })()}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Progress bar for view window */}
-          {viewWindow && (
+          {/* Progress bar - only show for client-side navigation */}
+          {viewWindow && !currentIntendedViewport && (
             <div className="w-full bg-gray-200 rounded-full h-1.5">
               <div 
                 className="bg-primary-600 h-1.5 rounded-full transition-all duration-200"
@@ -580,6 +754,67 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
                   width: `${viewWindow.end - viewWindow.start}%`
                 }}
               />
+            </div>
+          )}
+          
+          {/* Progress bar for high-res navigation - shows position within full dataset */}
+          {currentIntendedViewport && getDataBoundaries && (
+            <div className="w-full bg-gray-200 rounded-full h-1.5">
+              {(() => {
+                const boundaries = getDataBoundaries();
+                if (!boundaries) return null;
+                
+                const totalSpan = boundaries.latest.getTime() - boundaries.earliest.getTime();
+                const viewportStart = currentIntendedViewport.start.getTime() - boundaries.earliest.getTime();
+                const viewportSpan = currentIntendedViewport.end.getTime() - currentIntendedViewport.start.getTime();
+                
+                const startPercent = Math.max(0, (viewportStart / totalSpan) * 100);
+                const widthPercent = Math.min(100 - startPercent, (viewportSpan / totalSpan) * 100);
+                
+                return (
+                  <div 
+                    className="bg-primary-600 h-1.5 rounded-full transition-all duration-200"
+                    style={{
+                      marginLeft: `${startPercent}%`,
+                      width: `${widthPercent}%`
+                    }}
+                  />
+                );
+              })()}
+            </div>
+          )}
+          
+          {/* Load high-res data button (Phase 2) */}
+          {showLoadHighResButton && (
+            <div className="mt-2 flex justify-center">
+              <button
+                onClick={handleLoadHighResData}
+                disabled={isLoadingHighRes}
+                className="px-4 py-2 bg-primary-600 text-white text-sm rounded-md hover:bg-primary-700 active:bg-primary-800 transition-colors flex items-center space-x-2"
+              >
+                {isLoadingHighRes ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span>Loading {currentSamplingInfo?.description || optimalSampling?.samplingRate.description || 'data'}...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span>
+                      {currentSamplingInfo?.isHighRes ? (
+                        `Load at ${currentSamplingInfo.description}`
+                      ) : (
+                        `Load ${optimalSampling?.estimatedPoints || '~4000'} points 
+                        (${optimalSampling?.samplingRate.description || 'adaptive sampling'})`
+                      )}
+                    </span>
+                  </>
+                )}
+              </button>
             </div>
           )}
         </div>

@@ -108,6 +108,22 @@ export class TursoService {
     return obj;
   }
 
+  private getSamplingIntervalMinutes(samplingRate: string): number {
+    const intervals: Record<string, number> = {
+      '15min': 15,
+      '30min': 30,
+      '1hour': 60,
+      '3hour': 180,
+      '6hour': 360,
+      '12hour': 720,
+      '1day': 1440,
+      '3day': 4320,
+      '1week': 10080,
+      '1month': 43200
+    };
+    return intervals[samplingRate] || 15; // Default to 15 minutes
+  }
+
   async getWells(params: WellsQueryParams = {}): Promise<PaginatedResponse<Well>> {
     const {
       search = '',
@@ -309,18 +325,26 @@ export class TursoService {
       dataType = 'all',
       downsample = false,
       maxPoints = 2000,
-      level
+      level,
+      samplingRate
     } = params;
 
-    // Progressive loading: determine parameters based on level
+    // Determine sampling strategy
     let actualMaxPoints = maxPoints;
     let actualDownsample = downsample;
+    let actualSamplingRate: string | undefined = samplingRate;
     
-    // Simplified approach: always use ~5000 points for any time range
-    // Higher resolution comes from smaller time windows, not more points
-    if (level) {
-      actualMaxPoints = 5000; // Consistent point count
-      actualDownsample = true; // Always downsample to 5000 for performance
+    // Adaptive sampling approach: use natural time intervals
+    if (samplingRate) {
+      // New approach: use specific sampling rates instead of arbitrary point counts
+      actualDownsample = true;
+      actualSamplingRate = samplingRate;
+      console.log(`🎯 Using adaptive sampling: ${samplingRate}`);
+    } else if (level) {
+      // Legacy approach: fixed points (fallback)
+      actualMaxPoints = 4500; // Slightly reduced for better performance
+      actualDownsample = true;
+      console.log(`📊 Using legacy level-based sampling: level ${level} (${actualMaxPoints} points)`);
     }
 
     try {
@@ -328,7 +352,7 @@ export class TursoService {
 
       // Query transducer data if needed
       if (dataType === 'all' || dataType === 'transducer') {
-        const transducerReadings = await this.getTransducerData(wellNumber, startDate, endDate, actualDownsample, actualMaxPoints);
+        const transducerReadings = await this.getTransducerData(wellNumber, startDate, endDate, actualDownsample, actualMaxPoints, actualSamplingRate);
         allReadings = allReadings.concat(transducerReadings);
       }
 
@@ -354,7 +378,7 @@ export class TursoService {
     }
   }
 
-  private async getTransducerData(wellNumber: string, startDate?: string, endDate?: string, downsample = false, maxPoints = 2000): Promise<WaterLevelReading[]> {
+  private async getTransducerData(wellNumber: string, startDate?: string, endDate?: string, downsample = false, maxPoints = 2000, samplingRate?: string): Promise<WaterLevelReading[]> {
     try {
       let whereConditions = ['well_number = ?'];
       let queryParams: any[] = [wellNumber];
@@ -380,25 +404,61 @@ export class TursoService {
         ORDER BY timestamp_utc ASC
       `;
 
-      // Apply downsampling if requested and data is large
+      // Apply downsampling if requested
       if (downsample) {
-        const countQuery = `SELECT COUNT(*) as total FROM water_level_readings WHERE ${whereClause}`;
-        const countResult = await this.execute(countQuery, queryParams);
-        
-        const totalCount = Number(countResult.rows[0][0]);
-        if (totalCount > maxPoints) {
-          const skipFactor = Math.ceil(totalCount / maxPoints);
+        if (samplingRate) {
+          // Use adaptive sampling with time intervals
+          const intervalMinutes = this.getSamplingIntervalMinutes(samplingRate);
+          console.log(`🎯 Applying ${samplingRate} sampling (${intervalMinutes} minute intervals)`);
+          
           query = `
-            SELECT * FROM (
+            WITH time_intervals AS (
               SELECT 
                 id, well_number, timestamp_utc, julian_timestamp,
                 water_level, temperature, baro_flag, level_flag,
-                ROW_NUMBER() OVER (ORDER BY timestamp_utc) as row_num
+                -- Group readings into time intervals
+                (CAST((julianday(timestamp_utc) - julianday('1970-01-01')) * 24 * 60 AS INTEGER) / ${intervalMinutes}) * ${intervalMinutes} as interval_group
               FROM water_level_readings 
               WHERE ${whereClause}
-            ) WHERE row_num % ${skipFactor} = 1
+            ),
+            aggregated AS (
+              SELECT 
+                MIN(id) as id,
+                well_number,
+                datetime(julianday('1970-01-01') + (interval_group / (24.0 * 60))) as timestamp_utc,
+                AVG(julian_timestamp) as julian_timestamp,
+                AVG(water_level) as water_level,
+                AVG(temperature) as temperature,
+                MIN(baro_flag) as baro_flag,
+                MIN(level_flag) as level_flag
+              FROM time_intervals
+              GROUP BY well_number, interval_group
+            )
+            SELECT * FROM aggregated
             ORDER BY timestamp_utc ASC
           `;
+        } else {
+          // Legacy point-based downsampling
+          const countQuery = `SELECT COUNT(*) as total FROM water_level_readings WHERE ${whereClause}`;
+          const countResult = await this.execute(countQuery, queryParams);
+          
+          const totalCount = Number(countResult.rows[0][0]);
+          if (totalCount > maxPoints) {
+            const skipFactor = Math.ceil(totalCount / maxPoints);
+            console.log(`📊 Legacy downsampling: ${totalCount} → ~${Math.floor(totalCount / skipFactor)} points`);
+            
+            query = `
+              SELECT * FROM (
+                SELECT 
+                  id, well_number, timestamp_utc, julian_timestamp,
+                  water_level, temperature, baro_flag, level_flag,
+                  ROW_NUMBER() OVER (ORDER BY timestamp_utc) as row_num
+                FROM water_level_readings 
+                WHERE ${whereClause}
+              ) WHERE row_num % ${skipFactor} = 1
+              ORDER BY timestamp_utc ASC
+            `;
+          }
         }
       }
 

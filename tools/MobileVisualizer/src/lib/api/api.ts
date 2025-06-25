@@ -101,7 +101,8 @@ export interface DataQueryParams {
   dataType?: 'all' | 'transducer' | 'telemetry' | 'manual';
   downsample?: boolean;
   maxPoints?: number;
-  level?: 1 | 2 | 3; // Progressive loading levels: 1=Overview, 2=Medium, 3=Full
+  level?: 1 | 2 | 3; // Progressive loading levels: 1=Overview, 2=Medium, 3=Full (legacy)
+  samplingRate?: '15min' | '30min' | '1hour' | '3hour' | '6hour' | '12hour' | '1day' | '3day' | '1week' | '1month'; // Adaptive sampling
 }
 
 export interface CacheEntry<T> {

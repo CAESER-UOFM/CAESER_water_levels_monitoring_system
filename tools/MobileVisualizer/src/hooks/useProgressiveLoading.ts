@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { WaterLevelReading } from '@/lib/api/api';
+import { calculateOptimalSampling, formatSamplingInfo, type AdaptiveSamplingResult } from '@/utils/adaptiveSampling';
 
 export interface LoadedDataSegment {
   level: 1 | 2 | 3;
@@ -12,6 +13,19 @@ export interface LoadedDataSegment {
   viewport?: {
     start: Date;
     end: Date;
+  };
+  samplingInfo?: {
+    samplingRate: string;
+    description: string;
+    estimatedPoints: number;
+    timeSpanDays: number;
+    isHighRes: boolean;
+  };
+  // Track the intended viewport vs actual data availability
+  intendedViewport?: {
+    start: Date;
+    end: Date;
+    originalTimeSpanMs: number;
   };
 }
 
@@ -108,14 +122,21 @@ export function useProgressiveLoading({
       const data = result.data as WaterLevelReading[];
       console.log(`📊 Loaded level ${level}: ${data.length} points (expected: ${level === 1 ? '~5000' : level === 2 ? '~12000' : '~25000'})`);
 
-      // Create segment
+      // Create segment with basic sampling info
       const segment: LoadedDataSegment = {
         level,
         data,
         startDate,
         endDate,
         loadedAt: new Date(),
-        viewport
+        viewport,
+        samplingInfo: {
+          samplingRate: level === 1 ? 'Overview' : `Level ${level}`,
+          description: level === 1 ? 'Overview data' : `Level ${level} detail`,
+          estimatedPoints: data.length,
+          timeSpanDays: viewport ? (viewport.end.getTime() - viewport.start.getTime()) / (1000 * 60 * 60 * 24) : 0,
+          isHighRes: false
+        }
       };
 
       // Cache the segment and clear loading flag
@@ -166,10 +187,108 @@ export function useProgressiveLoading({
   const getCurrentData = useCallback(() => {
     if (state.segments.length === 0) return [];
 
-    // Return the highest level data available
-    const sortedSegments = [...state.segments].sort((a, b) => b.level - a.level);
-    return sortedSegments[0]?.data || [];
+    // Prioritize the most recently loaded data for best user experience
+    // This ensures adaptive sampling data takes precedence over overview data
+    const sortedSegments = [...state.segments].sort((a, b) => {
+      // First priority: Most recent loadedAt time
+      const timeDiff = new Date(b.loadedAt).getTime() - new Date(a.loadedAt).getTime();
+      if (timeDiff !== 0) return timeDiff;
+      
+      // Second priority: Highest level (more detailed data)
+      return b.level - a.level;
+    });
+    
+    const currentSegment = sortedSegments[0];
+    console.log(`📊 getCurrentData: Using segment loaded at ${currentSegment?.loadedAt} with ${currentSegment?.data.length} points`);
+    return currentSegment?.data || [];
   }, [state.segments]);
+
+  // Get current sampling information
+  const getCurrentSamplingInfo = useCallback(() => {
+    if (state.segments.length === 0) return null;
+
+    // Use the same logic as getCurrentData to find the current segment
+    const sortedSegments = [...state.segments].sort((a, b) => {
+      const timeDiff = new Date(b.loadedAt).getTime() - new Date(a.loadedAt).getTime();
+      if (timeDiff !== 0) return timeDiff;
+      return b.level - a.level;
+    });
+    
+    const currentSegment = sortedSegments[0];
+    return currentSegment?.samplingInfo || null;
+  }, [state.segments]);
+
+  // Get current intended viewport (for navigation)
+  const getCurrentIntendedViewport = useCallback(() => {
+    if (state.segments.length === 0) return null;
+
+    // Use the same logic as getCurrentData to find the current segment
+    const sortedSegments = [...state.segments].sort((a, b) => {
+      const timeDiff = new Date(b.loadedAt).getTime() - new Date(a.loadedAt).getTime();
+      if (timeDiff !== 0) return timeDiff;
+      return b.level - a.level;
+    });
+    
+    const currentSegment = sortedSegments[0];
+    return currentSegment?.intendedViewport || null;
+  }, [state.segments]);
+
+  // Get the actual data boundaries from all loaded segments
+  const getDataBoundaries = useCallback((): { earliest: Date; latest: Date; totalSpanDays: number } | null => {
+    if (state.segments.length === 0) return null;
+
+    // Find the earliest and latest timestamps across all segments
+    const timestamps: Date[] = [];
+
+    state.segments.forEach(segment => {
+      if (segment.data.length === 0) return;
+
+      timestamps.push(new Date(segment.data[0].timestamp_utc));
+      timestamps.push(new Date(segment.data[segment.data.length - 1].timestamp_utc));
+    });
+
+    if (timestamps.length === 0) return null;
+
+    const earliest = new Date(Math.min(...timestamps.map(d => d.getTime())));
+    const latest = new Date(Math.max(...timestamps.map(d => d.getTime())));
+
+    return {
+      earliest,
+      latest,
+      totalSpanDays: (latest.getTime() - earliest.getTime()) / (1000 * 60 * 60 * 24)
+    };
+  }, [state.segments]);
+
+  // Check if a proposed viewport would be within data boundaries
+  const isWithinDataBoundaries = useCallback((proposedStart: Date, proposedEnd: Date) => {
+    const boundaries = getDataBoundaries();
+    if (!boundaries) return true; // Allow if no data loaded yet
+
+    // Use strict boundaries - no buffer to prevent loading empty data
+    const bufferMs = 0; // No buffer
+    const allowedStart = new Date(boundaries.earliest.getTime() - bufferMs);
+    const allowedEnd = new Date(boundaries.latest.getTime() + bufferMs);
+
+    // Require BOTH start and end to be fully within boundaries
+    const isStartValid = proposedStart >= allowedStart;
+    const isEndValid = proposedEnd <= allowedEnd;
+    
+    // Extra check: make sure the entire range has data
+    const rangeOverlaps = proposedStart < boundaries.latest && proposedEnd > boundaries.earliest;
+
+    const withinBounds = isStartValid && isEndValid && rangeOverlaps;
+
+    console.log(`🔍 Boundary check:`, {
+      proposedRange: `${proposedStart.toLocaleDateString()} to ${proposedEnd.toLocaleDateString()}`,
+      dataRange: `${boundaries.earliest.toLocaleDateString()} to ${boundaries.latest.toLocaleDateString()}`,
+      isStartValid,
+      isEndValid,
+      rangeOverlaps,
+      withinBounds
+    });
+
+    return withinBounds;
+  }, [getDataBoundaries]);
 
   // Load initial overview data (full dataset)
   const loadOverview = useCallback(async () => {
@@ -185,40 +304,255 @@ export function useProgressiveLoading({
     return loadDataLevel(1, startDate, endDate, viewport);
   }, [loadDataLevel]);
 
+  // Load data with specific sampling rate (background only - no state updates)
+  const loadDataWithSampling = useCallback(async (
+    samplingRate: string,
+    startDate: string,
+    endDate: string,
+    viewport: { start: Date; end: Date }
+  ) => {
+    const cacheKey = `adaptive-${samplingRate}-${startDate}-${endDate}`;
+    
+    // Check if already loading this specific request
+    const loadingKey = `loading-${cacheKey}`;
+    if (cache.has(loadingKey)) {
+      console.log(`⏳ Already loading ${samplingRate} data, skipping duplicate request`);
+      return [];
+    }
+    
+    // Mark as loading
+    cache.set(loadingKey, { data: [], loadedAt: new Date(), level: 1 } as any);
 
-  // Background viewport loading with caching - loads but doesn't auto-apply to prevent loops
+    // Only update loading state (minimal state change)
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
+
+    try {
+      const params = new URLSearchParams({
+        samplingRate,
+        startDate,
+        endDate,
+        // Add cache buster to force fresh API calls
+        v: Date.now().toString()
+      });
+
+      const response = await fetch(`/.netlify/functions/data/${databaseId}/water/${wellNumber}?${params}`, {
+        signal: AbortSignal.timeout(30000) // 30 second timeout
+      });
+
+      if (!response.ok) {
+        if (response.status === 502 || response.status === 504) {
+          throw new Error(`Server timeout for ${samplingRate} sampling - try a smaller date range`);
+        }
+        throw new Error(`Failed to load ${samplingRate} data: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      if (!result.success || !result.data) {
+        throw new Error(result.error || `Failed to load ${samplingRate} data`);
+      }
+
+      const data = result.data as WaterLevelReading[];
+      console.log(`📊 Loaded ${samplingRate}: ${data.length} points`);
+
+      // Create segment with sampling info
+      const timeSpanDays = (viewport.end.getTime() - viewport.start.getTime()) / (1000 * 60 * 60 * 24);
+      const segment: LoadedDataSegment = {
+        level: 1,
+        data,
+        startDate,
+        endDate,
+        loadedAt: new Date(),
+        viewport,
+        samplingInfo: {
+          samplingRate: samplingRate,
+          description: `${samplingRate} sampling`,
+          estimatedPoints: data.length,
+          timeSpanDays: timeSpanDays,
+          isHighRes: true
+        }
+      };
+
+      // ONLY cache the data - DO NOT update React state to prevent infinite loops
+      cache.set(cacheKey, segment);
+      cache.delete(`loading-${cacheKey}`);
+
+      // Only clear loading state (no data updates)
+      setState(prev => ({ ...prev, isLoading: false }));
+
+      console.log(`💾 Data cached but not applied - avoiding React loops`);
+      return data;
+
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : `Failed to load ${samplingRate} data`;
+      console.error('Adaptive sampling error:', errorMessage);
+      
+      // Clear loading flag on error
+      cache.delete(`loading-${cacheKey}`);
+      
+      setState(prev => ({ 
+        ...prev, 
+        isLoading: false, 
+        error: errorMessage 
+      }));
+      
+      if (onError) {
+        onError(errorMessage);
+      }
+      
+      throw err;
+    }
+  }, [databaseId, wellNumber, cache, onError]);
+
+  // Apply cached data to current view (manual trigger)
+  const applyCachedData = useCallback((samplingRate: string, startDate: string, endDate: string, viewport: { start: Date; end: Date }) => {
+    const cacheKey = `adaptive-${samplingRate}-${startDate}-${endDate}`;
+    const cached = cache.get(cacheKey);
+    
+    if (cached) {
+      console.log(`🎯 Applying cached ${samplingRate} data: ${cached.data.length} points`);
+      
+      // Create a fresh segment with current timestamp to ensure it takes precedence
+      const freshSegment: LoadedDataSegment = {
+        ...cached,
+        loadedAt: new Date() // Update timestamp to make it the most recent
+      };
+      
+      // Update state with cached data
+      setState(prev => {
+        const existingSegments = prev.segments.filter(s => !(s.level === 1 && s.startDate === startDate && s.endDate === endDate));
+        const newSegments = [...existingSegments, freshSegment];
+        
+        console.log(`📊 State update: ${newSegments.length} segments, newest has ${freshSegment.data.length} points`);
+        
+        return {
+          ...prev,
+          segments: newSegments,
+          currentLevel: 1,
+          totalDataPoints: existingSegments.reduce((sum, s) => sum + s.data.length, 0) + freshSegment.data.length
+        };
+      });
+      
+      return cached.data;
+    }
+    
+    return [];
+  }, [cache]);
+
+  // Viewport loading with adaptive sampling - background loading only
   const loadForViewport = useCallback(async (viewport: { start: Date; end: Date }) => {
     const timeSpanMs = viewport.end.getTime() - viewport.start.getTime();
     const timeSpanDays = timeSpanMs / (1000 * 60 * 60 * 24);
     
+    // Calculate optimal sampling rate for this time range
+    const sampling = calculateOptimalSampling(viewport.start, viewport.end);
+    const samplingInfo = formatSamplingInfo(sampling);
+    
     const startDate = viewport.start.toISOString();
     const endDate = viewport.end.toISOString();
     
-    // Check if we already have this exact time range cached
-    const cacheKey = getCacheKey(1, startDate, endDate);
+    // Use sampling rate in cache key for better caching
+    const cacheKey = `adaptive-${sampling.samplingRate.name}-${startDate}-${endDate}`;
     const cached = cache.get(cacheKey);
     
     if (cached) {
-      console.log(`📋 Smart cache hit for ${timeSpanDays.toFixed(1)} days - data ready`);
-      // DON'T update current state to avoid infinite loops
-      // Just return the cached data for potential future use
-      return cached.data;
+      console.log(`📋 Smart cache hit: ${samplingInfo}`);
+      // Apply cached data immediately since it's already loaded
+      return applyCachedData(sampling.samplingRate.name, startDate, endDate, viewport);
     }
     
-    console.log(`🔍 Background viewport loading: ${timeSpanDays.toFixed(1)} days → ~5000 points`);
-    console.log(`🚀 Loading fresh data for ${timeSpanDays.toFixed(1)} days - expecting ~5000 points`);
+    console.log(`🎯 Adaptive sampling requested: ${samplingInfo}`);
+    console.log(`🚀 ${sampling.recommendation}`);
 
-    // Load fresh data in background mode - caches but doesn't update current view
+    // Load fresh data using adaptive sampling (background only)
+    // Inline the sampling logic to avoid circular dependencies
+    const samplingCacheKey = `adaptive-${sampling.samplingRate.name}-${startDate}-${endDate}`;
+    const loadingKey = `loading-${samplingCacheKey}`;
+    
     try {
-      const viewportData = { start: viewport.start, end: viewport.end };
-      const data = await loadDataLevel(1, startDate, endDate, viewportData, true); // background mode = true
-      console.log(`💾 Background data loaded and cached for ${timeSpanDays.toFixed(1)} days`);
-      return data;
+      
+      if (cache.has(loadingKey)) {
+        console.log(`⏳ Already loading ${sampling.samplingRate.name} data, skipping duplicate request`);
+        return [];
+      }
+      
+      // Mark as loading
+      cache.set(loadingKey, { data: [], loadedAt: new Date(), level: 1 } as any);
+      setState(prev => ({ ...prev, isLoading: true, error: null }));
+
+      const params = new URLSearchParams({
+        samplingRate: sampling.samplingRate.name,
+        startDate,
+        endDate,
+        v: Date.now().toString()
+      });
+
+      const response = await fetch(`/.netlify/functions/data/${databaseId}/water/${wellNumber}?${params}`, {
+        signal: AbortSignal.timeout(30000)
+      });
+
+      if (!response.ok) {
+        if (response.status === 502 || response.status === 504) {
+          throw new Error(`Server timeout for ${sampling.samplingRate.name} sampling - try a smaller date range`);
+        }
+        throw new Error(`Failed to load ${sampling.samplingRate.name} data: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      if (!result.success || !result.data) {
+        throw new Error(result.error || `Failed to load ${sampling.samplingRate.name} data`);
+      }
+
+      const data = result.data as WaterLevelReading[];
+      console.log(`📊 Loaded ${sampling.samplingRate.name}: ${data.length} points`);
+
+      // Create segment with sampling info and intended viewport
+      const originalTimeSpanMs = viewport.end.getTime() - viewport.start.getTime();
+      const segment: LoadedDataSegment = {
+        level: 1,
+        data,
+        startDate,
+        endDate,
+        loadedAt: new Date(),
+        viewport,
+        samplingInfo: {
+          samplingRate: sampling.samplingRate.name,
+          description: sampling.samplingRate.description,
+          estimatedPoints: sampling.estimatedPoints,
+          timeSpanDays: sampling.timeSpanDays,
+          isHighRes: true
+        },
+        intendedViewport: {
+          start: viewport.start,
+          end: viewport.end,
+          originalTimeSpanMs: originalTimeSpanMs
+        }
+      };
+
+      // Cache the data and clear loading flag
+      cache.set(samplingCacheKey, segment);
+      cache.delete(loadingKey);
+      setState(prev => ({ ...prev, isLoading: false }));
+      
+      console.log(`💾 Data loaded and cached: ${data.length} points with ${sampling.samplingRate.description}`);
+      
+      // Now apply the data to avoid React loops
+      return applyCachedData(sampling.samplingRate.name, startDate, endDate, viewport);
     } catch (err) {
-      console.error('Background loading failed:', err);
-      return [];
+      const errorMessage = err instanceof Error ? err.message : 'Loading failed';
+      console.error('Adaptive sampling failed:', err);
+      
+      // Clean up loading state
+      cache.delete(loadingKey);
+      setState(prev => ({ ...prev, isLoading: false, error: errorMessage }));
+      
+      if (onError) {
+        onError(errorMessage);
+      }
+      
+      throw err; // Re-throw so button can show again
     }
-  }, [loadDataLevel, cache, getCacheKey]);
+  }, [cache, applyCachedData, databaseId, wellNumber, onError]);
 
   // Clear cache and reset
   const reset = useCallback(() => {
@@ -253,6 +587,8 @@ export function useProgressiveLoading({
   return {
     // Data
     currentData: getCurrentData(),
+    currentSamplingInfo: getCurrentSamplingInfo(),
+    currentIntendedViewport: getCurrentIntendedViewport(),
     segments: state.segments,
     
     // State
@@ -261,10 +597,15 @@ export function useProgressiveLoading({
     error: state.error,
     stats,
     
+    // Boundary functions
+    getDataBoundaries,
+    isWithinDataBoundaries,
+    
     // Actions
     loadOverview,
     loadForTimeRange,
     loadForViewport,
+    applyCachedData,
     reset
   };
 }

@@ -103,14 +103,22 @@ async function getWaterLevelData(databaseId: string, wellNumber: string, queryPa
     params.downsample = queryParams.downsample === 'true';
   }
 
-  // Progressive loading level parameter
-  if (queryParams.level) {
+  // Adaptive sampling rate parameter (replaces level-based approach)
+  if (queryParams.samplingRate && typeof queryParams.samplingRate === 'string') {
+    const allowedRates = ['15min', '30min', '1hour', '3hour', '6hour', '12hour', '1day', '3day', '1week', '1month'] as const;
+    if (allowedRates.includes(queryParams.samplingRate as any)) {
+      params.samplingRate = queryParams.samplingRate as typeof allowedRates[number];
+      params.downsample = true;
+    }
+  }
+
+  // Legacy progressive loading level parameter (fallback)
+  if (queryParams.level && !queryParams.samplingRate) {
     const level = parseInt(queryParams.level);
     if (level >= 1 && level <= 3) {
       params.level = level as 1 | 2 | 3;
-      // Simplified approach: always use ~5000 points for consistent performance
-      // Higher resolution comes from smaller time ranges, not more points
-      params.maxPoints = 5000;
+      // Use adaptive sampling instead of fixed points
+      params.maxPoints = 4500;
       params.downsample = true;
     }
   }

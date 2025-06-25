@@ -419,6 +419,10 @@ export default function PlotViewerPage() {
               currentSampling={samplingRate}
               onSamplingChange={handleSamplingRateChange}
               onViewportChange={progressiveLoading.loadForViewport}
+              currentSamplingInfo={progressiveLoading.currentSamplingInfo}
+              currentIntendedViewport={progressiveLoading.currentIntendedViewport}
+              getDataBoundaries={progressiveLoading.getDataBoundaries}
+              isWithinDataBoundaries={progressiveLoading.isWithinDataBoundaries}
             />
           )}
         </div>

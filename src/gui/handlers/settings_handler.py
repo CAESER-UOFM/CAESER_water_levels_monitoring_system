@@ -10,7 +10,13 @@ class SettingsHandler:
     
     def __init__(self, settings_file=None):
         """Initialize settings handler"""
-        self.settings_file = settings_file or Path.home() / '.water_levels' / 'settings.json'
+        if settings_file is None:
+            # Store settings in application directory instead of user home
+            app_dir = Path.cwd()
+            settings_dir = app_dir / 'settings'
+            self.settings_file = settings_dir / 'settings.json'
+        else:
+            self.settings_file = settings_file
         self.settings = self._load_settings()
         
         # Set default settings if not already set
