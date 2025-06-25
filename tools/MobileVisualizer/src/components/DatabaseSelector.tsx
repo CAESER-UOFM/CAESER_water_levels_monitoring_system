@@ -49,7 +49,14 @@ export function DatabaseSelector({ databases, onDatabaseSelected }: DatabaseSele
 
   const handleDatabaseSelect = (database: DatabaseInfo) => {
     setSelectedId(database.id);
-    onDatabaseSelected(database);
+    // Don't immediately navigate - wait for button click
+  };
+
+  const handleNavigate = () => {
+    const selected = allDatabases.find(db => db.id === selectedId);
+    if (selected) {
+      onDatabaseSelected(selected);
+    }
   };
 
   const handleDelete = (databaseId: string, event: React.MouseEvent) => {
@@ -210,12 +217,7 @@ export function DatabaseSelector({ databases, onDatabaseSelected }: DatabaseSele
       {selectedId && (
         <div className="flex justify-center pt-4">
           <button
-            onClick={() => {
-              const selected = allDatabases.find(db => db.id === selectedId);
-              if (selected) {
-                handleDatabaseSelect(selected);
-              }
-            }}
+            onClick={handleNavigate}
             className="btn-primary mobile-touch-target px-8"
           >
             Continue to Wells →

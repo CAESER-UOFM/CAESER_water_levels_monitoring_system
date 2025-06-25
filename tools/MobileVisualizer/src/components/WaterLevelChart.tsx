@@ -51,7 +51,17 @@ export function WaterLevelChart({ data, config, loading = false }: WaterLevelCha
 
   // Separate manual readings for scatter plot
   const manualReadings = useMemo(() => {
-    return chartData.filter(point => point.source === 'manual');
+    const manual = chartData.filter(point => point.source === 'manual');
+    console.log(`🎯 Chart manual readings:`, {
+      totalPoints: chartData.length,
+      manualPoints: manual.length,
+      sourceCounts: chartData.reduce((acc, point) => {
+        acc[point.source] = (acc[point.source] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+      sampleData: chartData.slice(0, 3)
+    });
+    return manual;
   }, [chartData]);
 
   const continuousData = useMemo(() => {
@@ -271,13 +281,15 @@ export function WaterLevelChart({ data, config, loading = false }: WaterLevelCha
             )}
 
             {/* Brush for navigation */}
-            {showBrush && chartData.length > 50 && (
+            {showBrush && chartData.length > 50 && !zoomedData && (
               <Brush
                 dataKey="timestamp"
                 height={30}
                 stroke={config.colors.waterLevel}
                 onChange={handleBrushChange}
                 tickFormatter={formatXAxis}
+                startIndex={0}
+                endIndex={chartData.length - 1}
               />
             )}
           </LineChart>

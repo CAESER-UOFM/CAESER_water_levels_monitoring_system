@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { DatabaseSelector } from '@/components/DatabaseSelector';
 import type { DatabaseInfo } from '@/types/database';
 
 export default function HomePage() {
+  const router = useRouter();
   const [databases, setDatabases] = useState<DatabaseInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,9 +36,9 @@ export default function HomePage() {
   }, []);
 
   const handleDatabaseSelected = useCallback((database: DatabaseInfo) => {
-    // Redirect to wells page
-    window.location.href = `/wells/${database.id}`;
-  }, []);
+    // Navigate to wells page
+    router.push(`/wells/${database.id}`);
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
