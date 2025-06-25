@@ -31,7 +31,8 @@ from .tabs.water_level_tab import WaterLevelTab
 from .tabs.water_level_runs_tab import WaterLevelRunsTab
 from ..database.manager import DatabaseManager
 from .handlers.settings_handler import SettingsHandler
-from .dialogs.google_drive_settings_dialog import GoogleDriveSettingsDialog
+# Legacy Google Drive dialog - replaced by UnifiedCredentialsDialog
+# from .dialogs.google_drive_settings_dialog import GoogleDriveSettingsDialog
 from .dialogs.monet_settings_dialog import MonetSettingsDialog  # Import the new dialog
 from .handlers.google_drive_db_handler import GoogleDriveDatabaseHandler
 from .handlers.google_drive_service import GoogleDriveService
@@ -45,7 +46,7 @@ from .handlers.style_handler import StyleHandler  # Import the style handler
 from .dialogs.application_help_system import ApplicationHelpSystem
 from .handlers.auto_updater import AutoUpdater
 from .handlers.version_checker import VersionChecker
-from .dialogs.credentials_setup_dialog import CredentialsSetupDialog
+from .dialogs.unified_credentials_dialog import UnifiedCredentialsDialog
 
 logger = logging.getLogger(__name__)
 
@@ -1820,9 +1821,9 @@ class MainWindow(QMainWindow):
         database_folder_action.triggered.connect(self.open_database_folder_settings)
         settings_menu.addAction(database_folder_action)
         
-        # Google Drive settings
-        google_drive_settings_action = QAction("Google Drive Settings", self)
-        google_drive_settings_action.triggered.connect(self.open_google_drive_settings)
+        # Google Drive setup
+        google_drive_settings_action = QAction("Google Drive Setup", self)
+        google_drive_settings_action.triggered.connect(self.setup_credentials)
         settings_menu.addAction(google_drive_settings_action)
         
         # Monet API settings
@@ -1932,33 +1933,6 @@ class MainWindow(QMainWindow):
             logger.error(f"Error editing user credentials: {e}")
             QMessageBox.critical(self, "Error", f"Failed to edit user credentials: {str(e)}")
 
-    def open_google_drive_settings(self):
-        """Open the Google Drive settings dialog"""
-        dialog = GoogleDriveSettingsDialog(self.settings_handler, self)
-        if dialog.exec_():
-            # Reload databases after settings change
-            self._load_databases()
-            
-            # Update water level runs tab if it exists
-            if 'water_level_runs' in self._tabs:
-                runs_tab = self._tabs['water_level_runs']
-                
-                # If we're authenticated, reload existing runs
-                if self.drive_service and self.drive_service.authenticated:
-                    if hasattr(runs_tab, 'load_existing_runs'):
-                        runs_tab.load_existing_runs()
-            
-            # Update barologger tab if it exists
-            if 'barologger' in self._tabs:
-                barologger_tab = self._tabs['barologger']
-                if hasattr(barologger_tab, 'update_drive_state'):
-                    barologger_tab.update_drive_state(self.drive_service.authenticated)
-            
-            # Update water level tab if it exists
-            if 'water_level' in self._tabs:
-                water_level_tab = self._tabs['water_level']
-                if hasattr(water_level_tab, 'update_drive_state'):
-                    water_level_tab.update_drive_state(self.drive_service.authenticated)
 
     def open_monet_settings(self):
         """Open the Monet API settings dialog"""
@@ -2899,48 +2873,75 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
             QMessageBox.critical(self, "Error", f"Failed to show version info: {str(e)}")
             
     def _check_credentials_on_startup(self):
-        """Check for Google API credentials on startup"""
+        """Check for Google Drive credentials on startup"""
         try:
-            from pathlib import Path
-            config_dir = Path(__file__).parent.parent.parent / "config"
-            
-            if not CredentialsSetupDialog.check_credentials_exist(config_dir):
-                logger.info("Google API credentials not found, showing setup dialog")
+            if not UnifiedCredentialsDialog.check_credentials_configured(self.settings_handler):
+                logger.info("Google Drive credentials not configured, showing setup dialog")
                 
                 # Show info message first
-                reply = QMessageBox.question(self, "Google API Credentials", 
-                                           "Google API credentials are required for cloud features.\n\n" +
-                                           "Would you like to set them up now?\n\n" +
+                reply = QMessageBox.question(self, "Google Drive Setup", 
+                                           "Google Drive setup is required for cloud features.\n\n" +
+                                           "Would you like to configure it now?\n\n" +
                                            "• Yes: Open setup dialog\n" +
                                            "• No: Continue with limited functionality",
                                            QMessageBox.Yes | QMessageBox.No,
                                            QMessageBox.Yes)
                 
                 if reply == QMessageBox.Yes:
-                    dialog = CredentialsSetupDialog(self)
+                    dialog = UnifiedCredentialsDialog(self.settings_handler, self)
                     dialog.exec_()
                 else:
                     logger.info("User chose to skip credential setup")
             else:
-                logger.info("Google API credentials found")
+                logger.info("Google Drive credentials configured")
                 
         except Exception as e:
             logger.error(f"Error checking credentials: {e}")
             
     def setup_credentials(self):
-        """Open credentials setup dialog manually"""
+        """Open unified credentials setup dialog manually"""
         try:
-            dialog = CredentialsSetupDialog(self)
+            dialog = UnifiedCredentialsDialog(self.settings_handler, self)
             result = dialog.exec_()
             
             if result == QDialog.Accepted:
-                # Credentials were set up, ask if user wants to restart
-                reply = QMessageBox.question(self, "Credentials Updated", 
-                                           "Google API credentials have been updated.\n\n" +
-                                           "Would you like to restart the application to use the new credentials?",
-                                           QMessageBox.Yes | QMessageBox.No)
-                if reply == QMessageBox.Yes:
-                    QApplication.quit()
+                # Settings were updated, reload Google Drive components
+                try:
+                    # Reinitialize Google Drive service
+                    if hasattr(self, 'drive_service'):
+                        self.drive_service.authenticate(force=True)
+                    
+                    # Reload databases
+                    self._load_databases()
+                    
+                    # Update water level runs tab if it exists
+                    if 'water_level_runs' in self._tabs:
+                        runs_tab = self._tabs['water_level_runs']
+                        
+                        # If we're authenticated, reload existing runs
+                        if self.drive_service and self.drive_service.authenticated:
+                            if hasattr(runs_tab, 'load_existing_runs'):
+                                runs_tab.load_existing_runs()
+                    
+                    # Update barologger tab if it exists
+                    if 'barologger' in self._tabs:
+                        barologger_tab = self._tabs['barologger']
+                        if hasattr(barologger_tab, 'update_drive_state'):
+                            barologger_tab.update_drive_state(self.drive_service.authenticated)
+                    
+                    # Update water level tab if it exists
+                    if 'water_level' in self._tabs:
+                        water_level_tab = self._tabs['water_level']
+                        if hasattr(water_level_tab, 'update_drive_state'):
+                            water_level_tab.update_drive_state(self.drive_service.authenticated)
+                    
+                    QMessageBox.information(self, "Setup Complete", 
+                                          "Google Drive setup completed successfully!\n\n" +
+                                          "The application is now using the new configuration.")
+                except Exception as reload_error:
+                    logger.error(f"Error reloading after credentials update: {reload_error}")
+                    QMessageBox.warning(self, "Reload Warning", 
+                                      "Settings saved but some components may need a restart to update fully.")
             
         except Exception as e:
             logger.error(f"Error opening credentials setup: {e}")
