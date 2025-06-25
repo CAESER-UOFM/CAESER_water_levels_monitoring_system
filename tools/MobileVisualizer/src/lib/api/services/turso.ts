@@ -612,7 +612,7 @@ export class TursoService {
       water_level: row.water_level ? Number(row.water_level) : undefined,
       temperature: row.temperature ? Number(row.temperature) : undefined,
       dtw: undefined, // Not in this schema
-      data_source: row.data_source ? String(row.data_source) : 'transducer', // Use database value
+      data_source: row.data_source ? String(row.data_source) as 'transducer' | 'telemetry' | 'manual' : 'transducer', // Use database value
       baro_flag: row.baro_flag ? String(row.baro_flag) : undefined,
       level_flag: row.level_flag ? String(row.level_flag) : undefined,
       notes: undefined // Not in this schema
