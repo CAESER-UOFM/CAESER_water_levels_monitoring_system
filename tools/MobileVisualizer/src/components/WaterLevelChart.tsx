@@ -36,7 +36,7 @@ interface WaterLevelChartProps {
   onMetadataChange?: (metadata: ChartMetadata) => void;
   currentSampling?: string;
   onSamplingChange?: (sampling: string) => void;
-  onViewportChange?: (startDate: Date, endDate: Date) => Promise<void>;
+  onViewportChange?: (viewport: { start: Date; end: Date }) => Promise<any>;
 }
 
 interface SamplingState {
@@ -273,7 +273,7 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
       });
       
       try {
-        await onViewportChange(startDate, endDate);
+        await onViewportChange({ start: startDate, end: endDate });
       } catch (err) {
         console.error('Failed to load viewport data on zoom:', err);
       }
@@ -318,7 +318,7 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
       });
       
       try {
-        await onViewportChange(startDate, endDate);
+        await onViewportChange({ start: startDate, end: endDate });
       } catch (err) {
         console.error('Failed to load viewport data on zoom out:', err);
       }
