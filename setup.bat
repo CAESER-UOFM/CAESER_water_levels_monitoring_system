@@ -40,7 +40,7 @@ set "DEFAULT_PATH=%USERPROFILE%\CAESER_Water_levels_monitoring_system"
 
 echo.
 echo    ===============================================================================
-echo    #                        INSTALLATION DIRECTORY                              #
+echo    #                     1. INSTALLATION DIRECTORY                              #
 echo    ===============================================================================
 echo.
 echo   Default location: %DEFAULT_PATH%
@@ -95,7 +95,7 @@ echo.
 REM Ask about desktop shortcuts
 echo.
 echo    ===============================================================================
-echo    #                           DESKTOP SHORTCUTS                                #
+echo    #                        2. DESKTOP SHORTCUTS                                #
 echo    ===============================================================================
 echo.
 echo   ^> Create desktop shortcuts (Press ENTER)
@@ -111,7 +111,7 @@ if /i "%create_shortcuts%"=="n" (
 REM Ask about source deletion
 echo.
 echo    ===============================================================================
-echo    #                          SOURCE FOLDER CLEANUP                             #
+echo    #                       3. SOURCE FOLDER CLEANUP                             #
 echo    ===============================================================================
 echo.
 echo   ^> Delete source folder after installation (Press ENTER)
@@ -126,7 +126,7 @@ if /i "%delete_source%"=="k" (
 
 echo.
 echo    ===============================================================================
-echo    #                          INSTALLATION SUMMARY                              #
+echo    #                       4. INSTALLATION SUMMARY                              #
 echo    ===============================================================================
 echo.
 echo - Installation directory: %INSTALL_DIR%
@@ -146,7 +146,7 @@ if /i "%confirm%"=="q" (
 
 echo.
 echo    ===============================================================================
-echo    #                           INSTALLATION STARTING                            #
+echo    #                        5. INSTALLATION STARTING                            #
 echo    ===============================================================================
 echo.
 echo    [*] Installation directory: %INSTALL_DIR%
