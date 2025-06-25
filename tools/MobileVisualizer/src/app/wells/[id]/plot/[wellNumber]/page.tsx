@@ -418,7 +418,6 @@ export default function PlotViewerPage() {
               loading={loading || progressiveLoading.isLoading}
               currentSampling={samplingRate}
               onSamplingChange={handleSamplingRateChange}
-              onViewportChange={progressiveLoading.loadForViewport}
             />
           )}
         </div>
