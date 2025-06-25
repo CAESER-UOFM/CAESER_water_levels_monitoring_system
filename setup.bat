@@ -338,35 +338,23 @@ if not exist "%INSTALL_DIR%" (
     exit /b 1
 )
 
-echo    [*] Copying core application files (with cache file exclusions)...
-
-REM Try with exclusions first, fall back to simple copy if it fails
-echo __pycache__ > "%TEMP%\exclude_files.txt" 2>nul
-if exist "%TEMP%\exclude_files.txt" (
-    echo .pyc >> "%TEMP%\exclude_files.txt"
-    echo .pyo >> "%TEMP%\exclude_files.txt"
-    echo .git >> "%TEMP%\exclude_files.txt"
-    xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y /EXCLUDE:"%TEMP%\exclude_files.txt"
-) else (
-    echo    [*] Exclusion file creation failed, using simple copy...
-    xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y
-)
+echo    [*] Copying core application files...
+xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y
 if %ERRORLEVEL% NEQ 0 (
     echo.
     echo    ===============================================================================
-    echo    #                              ERROR OCCURRED                                 #
+    echo    #                              COPY ERROR                                      #
     echo    ===============================================================================
-    echo    [!] ERROR: Failed to copy src folder from:
+    echo    [!] ERROR: Failed to copy src folder (Error Code: %ERRORLEVEL%)
+    echo.
     echo        Source: %CODE_DIR%\src
     echo        Destination: %INSTALL_DIR%\src\
     echo.
-    echo    This could be due to:
-    echo    - Running from network drive (OneDrive, SharePoint)
-    echo    - Insufficient permissions
-    echo    - Antivirus interference
-    echo    - Path too long
-    echo.
-    echo    Try copying the installer to your local drive first.
+    echo    Troubleshooting steps:
+    echo    1. Check if source folder exists: dir "%CODE_DIR%\src"
+    echo    2. Check if destination is writable: dir "%INSTALL_DIR%"
+    echo    3. Try copying installer to local drive (C:\temp\installer\) first
+    echo    4. Run installer as administrator if needed
     echo.
     pause
     exit /b 1
@@ -410,9 +398,6 @@ if exist "%CODE_DIR%\Legacy_tables" (
 )
 
 echo    [+] Application files copied successfully
-
-REM Clean up exclude file
-del "%TEMP%\exclude_files.txt" 2>nul
 
 REM Create version file
 echo    [*] Creating version file...
