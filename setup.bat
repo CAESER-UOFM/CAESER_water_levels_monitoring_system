@@ -342,40 +342,24 @@ echo    [*] Copying core application files...
 xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y
 
 REM Check if destination exists and has files to confirm copy success
-if exist "%INSTALL_DIR%\src\*.py" (
+if exist "%INSTALL_DIR%\src\" (
     echo    [+] Core files copied successfully
 ) else (
-    echo.
-    echo    ===============================================================================
-    echo    #                              COPY ERROR                                      #
-    echo    ===============================================================================
-    echo    [!] ERROR: Failed to copy src folder - no Python files found in destination
-    echo.
-    echo        Source: %CODE_DIR%\src
-    echo        Destination: %INSTALL_DIR%\src\
-    echo.
-    echo    Troubleshooting steps:
-    echo    1. Check if source folder exists: dir "%CODE_DIR%\src"
-    echo    2. Check if destination is writable: dir "%INSTALL_DIR%"
-    echo    3. Try copying installer to local drive (C:\temp\installer\) first
-    echo    4. Run installer as administrator if needed
-    echo.
+    echo    [!] ERROR: Source folder copy failed - src directory not created
     pause
     exit /b 1
 )
 
 xcopy "%CODE_DIR%\main.py" "%INSTALL_DIR%\" /Y
-if %ERRORLEVEL% NEQ 0 (
-    echo    [!] ERROR: Failed to copy main.py - this is a critical file
-    echo    Installation cannot continue without this file.
+if not exist "%INSTALL_DIR%\main.py" (
+    echo    [!] ERROR: Failed to copy main.py
     pause
     exit /b 1
 )
 
 xcopy "%CODE_DIR%\Requirements.txt" "%INSTALL_DIR%\" /Y
-if %ERRORLEVEL% NEQ 0 (
-    echo    [!] ERROR: Failed to copy Requirements.txt - this is a critical file
-    echo    Installation cannot continue without this file.
+if not exist "%INSTALL_DIR%\Requirements.txt" (
+    echo    [!] ERROR: Failed to copy Requirements.txt
     pause
     exit /b 1
 )
