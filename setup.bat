@@ -310,13 +310,67 @@ echo        [+] All dependencies installed successfully!
 
 REM Copy application files
 echo    [*] [6/8] Copying application files...
-xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y >nul
-xcopy "%CODE_DIR%\main.py" "%INSTALL_DIR%\" /Y >nul
-xcopy "%CODE_DIR%\Requirements.txt" "%INSTALL_DIR%\" /Y >nul
-if exist "%CODE_DIR%\config" xcopy "%CODE_DIR%\config" "%INSTALL_DIR%\config\" /E /I /Y >nul
-if exist "%CODE_DIR%\tools" xcopy "%CODE_DIR%\tools" "%INSTALL_DIR%\tools\" /E /I /Y >nul
-if exist "%CODE_DIR%\assets" xcopy "%CODE_DIR%\assets" "%INSTALL_DIR%\assets\" /E /I /Y >nul
-if exist "%CODE_DIR%\Legacy_tables" xcopy "%CODE_DIR%\Legacy_tables" "%INSTALL_DIR%\Legacy_tables\" /E /I /Y >nul
+echo    [*] Source directory: %CODE_DIR%
+echo    [*] Destination directory: %INSTALL_DIR%
+
+REM Verify source directory exists
+if not exist "%CODE_DIR%" (
+    echo    [!] ERROR: Source directory does not exist: %CODE_DIR%
+    pause
+    exit /b 1
+)
+
+REM Verify destination directory exists
+if not exist "%INSTALL_DIR%" (
+    echo    [!] ERROR: Destination directory does not exist: %INSTALL_DIR%
+    pause
+    exit /b 1
+)
+
+echo    [*] Copying core application files...
+xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y
+if %ERRORLEVEL% NEQ 0 (
+    echo    [!] Error copying src folder
+    pause
+    exit /b 1
+)
+
+xcopy "%CODE_DIR%\main.py" "%INSTALL_DIR%\" /Y
+if %ERRORLEVEL% NEQ 0 (
+    echo    [!] Error copying main.py
+    pause
+    exit /b 1
+)
+
+xcopy "%CODE_DIR%\Requirements.txt" "%INSTALL_DIR%\" /Y
+if %ERRORLEVEL% NEQ 0 (
+    echo    [!] Error copying Requirements.txt
+    pause
+    exit /b 1
+)
+
+echo    [*] Copying optional folders...
+if exist "%CODE_DIR%\config" (
+    xcopy "%CODE_DIR%\config" "%INSTALL_DIR%\config\" /E /I /Y
+    if %ERRORLEVEL% NEQ 0 echo    [!] Warning: Error copying config folder
+)
+
+if exist "%CODE_DIR%\tools" (
+    xcopy "%CODE_DIR%\tools" "%INSTALL_DIR%\tools\" /E /I /Y
+    if %ERRORLEVEL% NEQ 0 echo    [!] Warning: Error copying tools folder
+)
+
+if exist "%CODE_DIR%\assets" (
+    xcopy "%CODE_DIR%\assets" "%INSTALL_DIR%\assets\" /E /I /Y
+    if %ERRORLEVEL% NEQ 0 echo    [!] Warning: Error copying assets folder
+)
+
+if exist "%CODE_DIR%\Legacy_tables" (
+    xcopy "%CODE_DIR%\Legacy_tables" "%INSTALL_DIR%\Legacy_tables\" /E /I /Y
+    if %ERRORLEVEL% NEQ 0 echo    [!] Warning: Error copying Legacy_tables folder
+)
+
+echo    [+] Application files copied successfully
 
 REM Create version file
 echo    [*] Creating version file...
