@@ -66,3 +66,5 @@ config/water-levels-monitoring-*.json
 # Backup files
 *.bak
 *.backup
+# Local Netlify folder
+.netlify
