@@ -317,11 +317,14 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
         isLoadingViewport.current = true;
         lastViewportRequest.current = requestKey;
         
-        // Background load - don't block the UI
+        // Background load - don't auto-update chart to avoid infinite loops
         setTimeout(async () => {
           try {
+            // Load the data but don't let it automatically update the chart
+            // This prevents the infinite loop while still caching the data
+            console.log('🔄 Background loading started (will cache but not auto-apply)');
             await onViewportChange({ start: startDate, end: endDate });
-            console.log('✨ Phase 2 complete - high-res data loaded');
+            console.log('✨ Phase 2 complete - high-res data cached (use sampling controls to apply)');
           } catch (err) {
             console.error('Background loading failed:', err);
           } finally {
@@ -331,7 +334,7 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
               lastViewportRequest.current = '';
             }, 1000);
           }
-        }, 100); // Small delay to ensure visual zoom happens first
+        }, 100);
       }
     }
   }, [viewWindow, chartData, onViewportChange]);
@@ -407,8 +410,9 @@ export function WaterLevelChart({ data, config, loading = false, onMetadataChang
         // Background load
         setTimeout(async () => {
           try {
+            console.log('🔄 Background loading started (will cache but not auto-apply)');
             await onViewportChange({ start: startDate, end: endDate });
-            console.log('✨ Phase 2 complete - expanded data loaded');
+            console.log('✨ Phase 2 complete - expanded data cached (use sampling controls to apply)');
           } catch (err) {
             console.error('Background loading failed:', err);
           } finally {
