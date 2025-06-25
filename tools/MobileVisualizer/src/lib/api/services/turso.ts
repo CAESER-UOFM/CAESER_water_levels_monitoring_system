@@ -316,21 +316,11 @@ export class TursoService {
     let actualMaxPoints = maxPoints;
     let actualDownsample = downsample;
     
+    // Simplified approach: always use ~5000 points for any time range
+    // Higher resolution comes from smaller time windows, not more points
     if (level) {
-      switch (level) {
-        case 1: // Overview - much better representation for large datasets
-          actualMaxPoints = 5000;
-          actualDownsample = true;
-          break;
-        case 2: // Medium detail - for zoomed views  
-          actualMaxPoints = 12000;
-          actualDownsample = true;
-          break;
-        case 3: // Full detail - for deep zoom, minimal downsampling
-          actualMaxPoints = 25000;
-          actualDownsample = false; // Prefer original data when possible
-          break;
-      }
+      actualMaxPoints = 5000; // Consistent point count
+      actualDownsample = true; // Always downsample to 5000 for performance
     }
 
     try {

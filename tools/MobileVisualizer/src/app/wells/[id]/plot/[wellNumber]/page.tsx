@@ -59,22 +59,24 @@ export default function PlotViewerPage() {
     try {
       setLoading(true);
       
-      // Map sampling rate to progressive loading levels
+      // Map sampling rate to time ranges (always ~5000 points)
       switch (newSampling) {
         case 'Overview':
+          // Load full dataset
           await progressiveLoading.loadOverview();
           break;
         case 'Medium Detail':
           if (plotConfig.dateRange?.start && plotConfig.dateRange?.end) {
-            await progressiveLoading.loadMediumDetail(
+            // Use current date range
+            await progressiveLoading.loadForTimeRange(
               plotConfig.dateRange.start.toISOString(),
               plotConfig.dateRange.end.toISOString()
             );
           } else {
-            // Load medium detail for last year if no date range
+            // Load last year
             const endDate = new Date();
             const startDate = new Date(endDate.getTime() - 365 * 24 * 60 * 60 * 1000);
-            await progressiveLoading.loadMediumDetail(
+            await progressiveLoading.loadForTimeRange(
               startDate.toISOString(),
               endDate.toISOString()
             );
@@ -82,15 +84,16 @@ export default function PlotViewerPage() {
           break;
         case 'Full Detail':
           if (plotConfig.dateRange?.start && plotConfig.dateRange?.end) {
-            await progressiveLoading.loadFullDetail(
+            // Use current date range
+            await progressiveLoading.loadForTimeRange(
               plotConfig.dateRange.start.toISOString(),
               plotConfig.dateRange.end.toISOString()
             );
           } else {
-            // Load full detail for last month if no date range
+            // Load last month
             const endDate = new Date();
             const startDate = new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
-            await progressiveLoading.loadFullDetail(
+            await progressiveLoading.loadForTimeRange(
               startDate.toISOString(),
               endDate.toISOString()
             );

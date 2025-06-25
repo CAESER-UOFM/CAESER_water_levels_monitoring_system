@@ -165,71 +165,40 @@ export function useProgressiveLoading({
     return sortedSegments[0]?.data || [];
   }, [state.segments]);
 
-  // Load initial overview data
+  // Load initial overview data (full dataset)
   const loadOverview = useCallback(async () => {
-    console.log('🚀 Loading overview (Level 1) - expecting ~5000 points');
+    console.log('🚀 Loading overview - expecting ~5000 points for full dataset');
     return loadDataLevel(1);
   }, [loadDataLevel]);
 
-  // Load medium detail for specific time range
-  const loadMediumDetail = useCallback(async (startDate: string, endDate: string) => {
+  // Load data for specific time range (always ~5000 points)
+  const loadForTimeRange = useCallback(async (startDate: string, endDate: string) => {
     const viewport = { start: new Date(startDate), end: new Date(endDate) };
-    return loadDataLevel(2, startDate, endDate, viewport);
+    const timeSpanDays = (viewport.end.getTime() - viewport.start.getTime()) / (1000 * 60 * 60 * 24);
+    console.log(`🚀 Loading ${timeSpanDays.toFixed(1)} days - expecting ~5000 points for time range`);
+    return loadDataLevel(1, startDate, endDate, viewport);
   }, [loadDataLevel]);
 
-  // Load full detail for specific time range
-  const loadFullDetail = useCallback(async (startDate: string, endDate: string) => {
-    const viewport = { start: new Date(startDate), end: new Date(endDate) };
-    return loadDataLevel(3, startDate, endDate, viewport);
-  }, [loadDataLevel]);
 
-  // Determine the appropriate detail level based on time span
-  const getDetailLevelForTimeSpan = useCallback((timeSpanDays: number): 1 | 2 | 3 => {
-    if (timeSpanDays < 30) {
-      return 3; // Full detail for < 30 days
-    } else if (timeSpanDays < 365) {
-      return 2; // Medium detail for < 1 year
-    } else {
-      return 1; // Overview for > 1 year
-    }
-  }, []);
-
-  // Smart loading based on viewport
+  // Simplified viewport loading - always use ~5000 points for any time range
   const loadForViewport = useCallback(async (viewport: { start: Date; end: Date }) => {
     const timeSpanMs = viewport.end.getTime() - viewport.start.getTime();
     const timeSpanDays = timeSpanMs / (1000 * 60 * 60 * 24);
     
-    // Determine the appropriate level based on time span
-    let targetLevel: 1 | 2 | 3;
-    if (timeSpanDays < 30) {
-      targetLevel = 3; // Full detail for < 30 days
-    } else if (timeSpanDays < 365) {
-      targetLevel = 2; // Medium detail for < 1 year
-    } else {
-      targetLevel = 1; // Overview for > 1 year
-    }
-    
-    console.log(`🔍 Viewport loading: ${timeSpanDays.toFixed(1)} days → Level ${targetLevel}`, viewport);
+    console.log(`🔍 Viewport loading: ${timeSpanDays.toFixed(1)} days → ~5000 points`, viewport);
     
     const startDate = viewport.start.toISOString();
     const endDate = viewport.end.toISOString();
 
-    // Always load the appropriate level for the viewport
+    // Load ~5000 points for the specific time range
+    // Higher resolution comes from smaller time window, not more points
     try {
-      switch (targetLevel) {
-        case 3:
-          return await loadFullDetail(startDate, endDate);
-        case 2:
-          return await loadMediumDetail(startDate, endDate);
-        case 1:
-        default:
-          return await loadDataLevel(1, startDate, endDate, viewport);
-      }
+      return await loadForTimeRange(startDate, endDate);
     } catch (err) {
       console.error('Viewport loading failed, using current data:', err);
       return getCurrentData();
     }
-  }, [loadDataLevel, loadMediumDetail, loadFullDetail, getCurrentData]);
+  }, [loadForTimeRange, getCurrentData]);
 
   // Clear cache and reset
   const reset = useCallback(() => {
@@ -274,12 +243,8 @@ export function useProgressiveLoading({
     
     // Actions
     loadOverview,
-    loadMediumDetail,
-    loadFullDetail,
+    loadForTimeRange,
     loadForViewport,
-    reset,
-    
-    // Utilities
-    getDetailLevelForTimeSpan
+    reset
   };
 }

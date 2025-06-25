@@ -9,9 +9,9 @@ export interface SamplingOption {
 }
 
 const SAMPLING_OPTIONS: SamplingOption[] = [
-  { label: 'Overview', value: 'Overview', intervalMinutes: null }, // Level 1 - ~5000 points, good representation
-  { label: 'Medium Detail', value: 'Medium Detail', intervalMinutes: null }, // Level 2 - ~12000 points for zoom
-  { label: 'Full Detail', value: 'Full Detail', intervalMinutes: null }, // Level 3 - ~25000 points for deep zoom
+  { label: 'Overview', value: 'Overview', intervalMinutes: null }, // Full dataset - ~5000 points
+  { label: 'Last Year', value: 'Medium Detail', intervalMinutes: null }, // 1 year - ~5000 points
+  { label: 'Last Month', value: 'Full Detail', intervalMinutes: null }, // 1 month - ~5000 points
 ];
 
 interface SamplingControlsProps {
@@ -61,9 +61,9 @@ export function SamplingControls({
       
       {selectedOption && (
         <div className="text-xs text-gray-600 text-center">
-          {selectedOption.value === 'Overview' && 'Fast overview with ~5,000 key data points'}
-          {selectedOption.value === 'Medium Detail' && 'Balanced view with ~12,000 data points'}
-          {selectedOption.value === 'Full Detail' && 'Detailed view with up to 25,000 data points'}
+          {selectedOption.value === 'Overview' && 'Full dataset with ~5,000 points (auto time resolution)'}
+          {selectedOption.value === 'Medium Detail' && 'Last year with ~5,000 points (higher resolution)'}
+          {selectedOption.value === 'Full Detail' && 'Last month with ~5,000 points (highest resolution)'}
           {isLoading && (
             <span className="ml-2 text-primary-600">
               <svg className="inline w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
