@@ -96,25 +96,13 @@ echo Selected installation directory: %INSTALL_DIR%
 echo.
 
 REM Ask about desktop shortcuts
-echo.
-echo    ===============================================================================
-echo    #                        2. DESKTOP SHORTCUTS                                #
-echo    ===============================================================================
-echo.
-echo   ^> Create desktop shortcuts (Press ENTER)
-echo     Skip desktop shortcuts (Type 'n' and ENTER)
-echo.
-set /p create_shortcuts="Choice (ENTER for shortcuts, 'n' to skip): "
-if /i "%create_shortcuts%"=="n" (
-    set "CREATE_DESKTOP=False"
-) else (
-    set "CREATE_DESKTOP=True"
-)
+REM Shortcuts will be created in installation folder (no desktop shortcuts)
+set "CREATE_DESKTOP=False"
 
 REM Ask about source deletion
 echo.
 echo    ===============================================================================
-echo    #                       3. SOURCE FOLDER CLEANUP                             #
+echo    #                       2. SOURCE FOLDER CLEANUP                             #
 echo    ===============================================================================
 echo.
 echo   ^> Delete source folder after installation (Press ENTER)
@@ -129,11 +117,10 @@ if /i "%delete_source%"=="k" (
 
 echo.
 echo    ===============================================================================
-echo    #                       4. INSTALLATION SUMMARY                              #
+echo    #                       3. INSTALLATION SUMMARY                              #
 echo    ===============================================================================
 echo.
 echo - Installation directory: %INSTALL_DIR%
-echo - Create desktop shortcuts: %CREATE_DESKTOP%
 echo - Delete source after install: %DELETE_SOURCE%
 echo.
 echo Continue with installation?
@@ -149,11 +136,10 @@ if /i "%confirm%"=="q" (
 
 echo.
 echo    ===============================================================================
-echo    #                        5. INSTALLATION STARTING                            #
+echo    #                        4. INSTALLATION STARTING                            #
 echo    ===============================================================================
 echo.
 echo    [*] Installation directory: %INSTALL_DIR%
-echo    [*] Desktop shortcuts: %CREATE_DESKTOP%
 echo    [*] Delete source: %DELETE_SOURCE%
 echo.
 echo    [*] Please wait while we set up your Water Levels Monitoring System...
@@ -183,7 +169,7 @@ set "VENV_DIR=%INSTALL_DIR%\venv"
 set "BACKUP_DIR=%INSTALL_DIR%\backups"
 
 REM Create installation directory structure
-echo    [*] [1/8] Creating installation directories...
+echo    [*] [1/7] Creating installation directories...
 
 REM Clean up existing installation if it exists
 if exist "%INSTALL_DIR%" (
@@ -207,7 +193,7 @@ set "GET_PIP_URL=https://bootstrap.pypa.io/get-pip.py"
 
 REM Download and install Python if not already installed
 if not exist "%PYTHON_DIR%\python.exe" (
-    echo    [*] [2/8] Installing fresh Python %PYTHON_VERSION% for this application...
+    echo    [*] [2/7] Installing fresh Python %PYTHON_VERSION% for this application...
     echo    [DEBUG] Python directory: %PYTHON_DIR%
     echo    [DEBUG] Python URL: %PYTHON_URL%
     echo    [DEBUG] Install directory: %INSTALL_DIR%
@@ -281,11 +267,11 @@ if not exist "%PYTHON_DIR%\python.exe" (
     
     echo    [+] Python installation complete.
 ) else (
-    echo    [+] [2/8] Using existing Python installation.
+    echo    [+] [2/7] Using existing Python installation.
 )
 
 REM Install virtualenv
-echo    [*] [3/8] Installing virtualenv...
+echo    [*] [3/7] Installing virtualenv...
 "%PYTHON_DIR%\python.exe" -m pip install --no-warn-script-location setuptools virtualenv
 
 REM Create virtual environment
@@ -294,11 +280,11 @@ if exist "%VENV_DIR%" (
     rmdir /s /q "%VENV_DIR%"
 )
 
-echo    [*] [4/8] Creating virtual environment...
+echo    [*] [4/7] Creating virtual environment...
 "%PYTHON_DIR%\python.exe" -m virtualenv "%VENV_DIR%"
 
 REM Install dependencies
-echo    [*] [5/8] Installing dependencies...
+echo    [*] [5/7] Installing dependencies...
 call "%VENV_DIR%\Scripts\activate.bat"
 
 echo        [*] Upgrading pip...
@@ -357,7 +343,7 @@ if %ERRORLEVEL% NEQ 0 (
 echo        [+] All dependencies installed successfully!
 
 REM Copy application files
-echo    [*] [6/8] Copying application files...
+echo    [*] [6/7] Copying application files...
 echo    [*] Source directory: %CODE_DIR%
 echo    [*] Destination directory: %INSTALL_DIR%
 
@@ -442,7 +428,7 @@ echo    [*] Creating version file...
 ) > "%INSTALL_DIR%\version.json"
 
 REM Create launchers
-echo    [*] [7/8] Creating launchers...
+echo    [*] [7/7] Creating launchers...
 
 set "LAUNCHER=%INSTALL_DIR%\water_levels_app.bat"
 (
@@ -472,72 +458,9 @@ set "VISUALIZER_LAUNCHER=%INSTALL_DIR%\water_level_visualizer_app.bat"
     echo pause
 ) > "%VISUALIZER_LAUNCHER%"
 
-REM Create desktop shortcuts if requested
-if "%CREATE_DESKTOP%"=="True" (
-    echo    [*] [8/8] Creating desktop shortcuts...
-    
-    REM Use PowerShell to create shortcuts with error handling
-    echo    [*] Creating main application shortcut...
-    powershell -ExecutionPolicy Bypass -Command "$WshShell = New-Object -comObject WScript.Shell; $Desktop = [System.Environment]::GetFolderPath('Desktop'); $Shortcut = $WshShell.CreateShortcut('$Desktop\CAESER Water Levels Monitoring.lnk'); $Shortcut.TargetPath = '%LAUNCHER%'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Levels Monitoring Application'; $Shortcut.Save(); Write-Host 'Main shortcut created'" 2>nul
-    if %ERRORLEVEL% NEQ 0 (
-        echo    [!] PowerShell shortcut creation failed, trying VBScript fallback...
-        goto :create_shortcuts_vbs
-    )
-    
-    echo    [*] Creating visualizer shortcut...
-    powershell -ExecutionPolicy Bypass -Command "$WshShell = New-Object -comObject WScript.Shell; $Desktop = [System.Environment]::GetFolderPath('Desktop'); $Shortcut = $WshShell.CreateShortcut('$Desktop\CAESER Water Level Visualizer.lnk'); $Shortcut.TargetPath = '%VISUALIZER_LAUNCHER%'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%\tools\Visualizer'; $Shortcut.Description = 'CAESER Water Level Data Visualizer'; $Shortcut.Save(); Write-Host 'Visualizer shortcut created'" 2>nul
-    if %ERRORLEVEL% NEQ 0 (
-        echo    [!] PowerShell shortcut creation failed, trying VBScript fallback...
-        goto :create_shortcuts_vbs
-    )
-    goto :verify_shortcuts
-    
-    :create_shortcuts_vbs
-    echo    [*] Using VBScript fallback for shortcut creation...
-    
-    REM Create VBScript for main app shortcut
-    set "SHORTCUT_VBS=%TEMP%\create_shortcut.vbs"
-    (
-        echo Set objShell = CreateObject("WScript.Shell"^)
-        echo Set objDesktop = objShell.SpecialFolders("Desktop"^)
-        echo Set objShortCut = objShell.CreateShortcut(objDesktop ^& "\CAESER Water Levels Monitoring.lnk"^)
-        echo objShortCut.TargetPath = "%LAUNCHER%"
-        echo objShortCut.WorkingDirectory = "%INSTALL_DIR%"
-        echo objShortCut.Description = "CAESER Water Levels Monitoring Application"
-        echo objShortCut.Save
-    ) > "%SHORTCUT_VBS%"
-    cscript //nologo "%SHORTCUT_VBS%" 2>nul
-    del "%SHORTCUT_VBS%" 2>nul
-    
-    REM Create VBScript for visualizer shortcut
-    (
-        echo Set objShell = CreateObject("WScript.Shell"^)
-        echo Set objDesktop = objShell.SpecialFolders("Desktop"^)
-        echo Set objShortCut = objShell.CreateShortcut(objDesktop ^& "\CAESER Water Level Visualizer.lnk"^)
-        echo objShortCut.TargetPath = "%VISUALIZER_LAUNCHER%"
-        echo objShortCut.WorkingDirectory = "%INSTALL_DIR%\tools\Visualizer"
-        echo objShortCut.Description = "CAESER Water Level Data Visualizer"
-        echo objShortCut.Save
-    ) > "%SHORTCUT_VBS%"
-    cscript //nologo "%SHORTCUT_VBS%" 2>nul
-    del "%SHORTCUT_VBS%" 2>nul
-    
-    :verify_shortcuts
-    
-    REM Verify shortcuts were created
-    set "DESKTOP_PATH=%USERPROFILE%\Desktop"
-    if exist "%DESKTOP_PATH%\CAESER Water Levels Monitoring.lnk" (
-        echo    [+] Main app shortcut created successfully
-    ) else (
-        echo    [!] Warning: Main app shortcut not found
-    )
-    
-    if exist "%DESKTOP_PATH%\CAESER Water Level Visualizer.lnk" (
-        echo    [+] Visualizer shortcut created successfully  
-    ) else (
-        echo    [!] Warning: Visualizer shortcut not found
-    )
-)
+REM Installation complete - open the installation folder
+echo    [*] Opening installation folder...
+echo    [+] Installation complete! Opening folder with your applications...
 
 REM Cleanup temp directory if we copied from UNC
 if "%CLEANUP_TEMP%"=="True" (
@@ -560,13 +483,6 @@ echo        [*] Main app: %LAUNCHER%
 echo        [*] Debug mode: %DEBUG_LAUNCHER%
 echo        [*] Visualizer: %VISUALIZER_LAUNCHER%
 
-if "%CREATE_DESKTOP%"=="True" (
-    echo.
-    echo    [+] Desktop shortcuts created:
-    echo        [*] CAESER Water Levels Monitoring
-    echo        [*] CAESER Water Level Visualizer
-)
-
 echo.
 echo    [+] You can now launch the application!
 echo.
@@ -579,20 +495,17 @@ echo        - Python 3.11.6 (embedded version)
 echo        - Virtual environment with all dependencies
 echo        - CAESER Water Levels Monitoring System
 echo        - Application launchers (main app, debug, visualizer)
-if "%CREATE_DESKTOP%"=="True" (
-    echo        - Desktop shortcuts for easy access
-)
 echo.
 echo    [+] Installation location: %INSTALL_DIR%
 echo.
 echo    [+] To start using the application:
-if "%CREATE_DESKTOP%"=="True" (
-    echo        - Double-click the desktop shortcuts, OR
-)
-echo        - Run: %INSTALL_DIR%\water_levels_app.bat
+echo        - Double-click: water_levels_app.bat (in the folder that will open)
+echo        - Or run: %INSTALL_DIR%\water_levels_app.bat
 echo.
 echo    [*] For troubleshooting, use the debug launcher
 echo.
+echo    [*] Opening installation folder...
+start "" "%INSTALL_DIR%"
 pause
 
 REM Handle source deletion
