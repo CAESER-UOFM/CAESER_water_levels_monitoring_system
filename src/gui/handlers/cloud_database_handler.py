@@ -112,7 +112,7 @@ class CloudDatabaseHandler:
                 
             folder_id = self.get_projects_folder_id()
             if not folder_id:
-                logger.error("Projects folder ID not configured")
+                logger.info("Projects folder ID not configured - no cloud projects available")
                 return projects
                 
             # Query for folders in the Projects folder
