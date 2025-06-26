@@ -83,6 +83,7 @@ mkdir "%INSTALL_DIR%\python"
 mkdir "%INSTALL_DIR%\venv"
 mkdir "%INSTALL_DIR%\databases"
 mkdir "%INSTALL_DIR%\databases\temp"
+mkdir "%INSTALL_DIR%\launchers"
 
 REM Download Python
 echo    [*] [2/7] Downloading Python...
@@ -135,17 +136,16 @@ if exist "%CODE_DIR%\config" xcopy "%CODE_DIR%\config" "%INSTALL_DIR%\config\" /
 if exist "%CODE_DIR%\tools" xcopy "%CODE_DIR%\tools" "%INSTALL_DIR%\tools\" /E /I /Y >nul
 if exist "%CODE_DIR%\assets" xcopy "%CODE_DIR%\assets" "%INSTALL_DIR%\assets\" /E /I /Y >nul
 
-REM Create launchers
+REM Create launchers in dedicated folder
+echo    [*] Creating application launchers...
+
 REM Main app launcher (no console window)
 (
     echo @echo off
     echo cd /d "%INSTALL_DIR%"
     echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
     echo "%INSTALL_DIR%\venv\Scripts\pythonw.exe" "%INSTALL_DIR%\main.py"
-) > "%INSTALL_DIR%\water_levels_monitoring_system.bat"
-
-REM Create a proper Windows shortcut with icon for the main app
-powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Levels Monitoring.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\water_levels_monitoring_system.bat'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Levels Monitoring System'; if (Test-Path '%INSTALL_DIR%\assets\icon.png') { $Shortcut.IconLocation = '%INSTALL_DIR%\assets\icon.png' } elseif (Test-Path '%INSTALL_DIR%\src\gui\icons\app_icon.webp') { $Shortcut.IconLocation = '%INSTALL_DIR%\src\gui\icons\water_level_meter.png' }; $Shortcut.Save() } catch { Write-Host 'Shortcut creation failed' }" 2>nul
+) > "%INSTALL_DIR%\launchers\water_levels_monitoring_system.bat"
 
 REM Debug launcher (with console)
 (
@@ -156,7 +156,7 @@ REM Debug launcher (with console)
     echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
     echo python "%INSTALL_DIR%\main.py"
     echo pause
-) > "%INSTALL_DIR%\water_levels_monitoring_system_debug.bat"
+) > "%INSTALL_DIR%\launchers\water_levels_monitoring_system_debug.bat"
 
 REM Visualizer launcher (no console window)
 (
@@ -164,7 +164,7 @@ REM Visualizer launcher (no console window)
     echo cd /d "%INSTALL_DIR%\tools\Visualizer"
     echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
     echo "%INSTALL_DIR%\venv\Scripts\pythonw.exe" "%INSTALL_DIR%\tools\Visualizer\main.py"
-) > "%INSTALL_DIR%\water_levels_visualizer.bat"
+) > "%INSTALL_DIR%\launchers\water_levels_visualizer.bat"
 
 REM Visualizer debug launcher (with console)
 (
@@ -175,7 +175,15 @@ REM Visualizer debug launcher (with console)
     echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
     echo python "%INSTALL_DIR%\tools\Visualizer\main.py"
     echo pause
-) > "%INSTALL_DIR%\water_levels_visualizer_debug.bat"
+) > "%INSTALL_DIR%\launchers\water_levels_visualizer_debug.bat"
+
+echo    [*] Creating shortcuts with icons...
+
+REM Main app shortcut with proper icon (using water_level_meter.png as fallback since .webp not supported in shortcuts)
+powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Levels Monitoring.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\launchers\water_levels_monitoring_system.bat'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Levels Monitoring System'; $IconPath = '%INSTALL_DIR%\src\gui\icons\water_level_meter.png'; if (Test-Path $IconPath) { $Shortcut.IconLocation = $IconPath }; $Shortcut.Save() } catch { Write-Host 'Main app shortcut creation failed' }" 2>nul
+
+REM Visualizer shortcut with water level tab icon
+powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Level Visualizer.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\launchers\water_levels_visualizer.bat'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Level Visualizer'; if (Test-Path '%INSTALL_DIR%\src\gui\icons\Water_level_tab_icon.png') { $Shortcut.IconLocation = '%INSTALL_DIR%\src\gui\icons\Water_level_tab_icon.png' }; $Shortcut.Save() } catch { Write-Host 'Visualizer shortcut creation failed' }" 2>nul
 
 echo.
 echo    ===============================================================================
@@ -187,20 +195,23 @@ echo    ========================================================================
 echo.
 echo    [+] Installation directory: %INSTALL_DIR%
 echo.
-echo    [+] Launchers created:
-echo        [*] Main app: CAESER Water Levels Monitoring.lnk (shortcut with icon)
-echo        [*] Main app: water_levels_monitoring_system.bat (no console)
-echo        [*] Debug mode: water_levels_monitoring_system_debug.bat (with console)
-echo        [*] Visualizer: water_levels_visualizer.bat (no console)
-echo        [*] Visualizer debug: water_levels_visualizer_debug.bat (with console)
+echo    [+] Shortcuts created in main folder:
+echo        [*] CAESER Water Levels Monitoring.lnk (main app with icon)
+echo        [*] CAESER Water Level Visualizer.lnk (visualizer with icon)
 echo.
-echo    [+] You can now launch the application!
+echo    [+] Launchers created in 'launchers' folder:
+echo        [*] water_levels_monitoring_system.bat (main app, no console)
+echo        [*] water_levels_monitoring_system_debug.bat (main app with console)
+echo        [*] water_levels_visualizer.bat (visualizer, no console)
+echo        [*] water_levels_visualizer_debug.bat (visualizer with console)
 echo.
-echo    [+] To start using the application:
-echo        - Double-click: CAESER Water Levels Monitoring.lnk (recommended - has icon)
-echo        - Or double-click: water_levels_monitoring_system.bat
+echo    [+] You can now launch the applications!
 echo.
-echo    [*] For troubleshooting, use the debug launcher
+echo    [+] Recommended way to start:
+echo        - Main app: Double-click "CAESER Water Levels Monitoring.lnk"
+echo        - Visualizer: Double-click "CAESER Water Level Visualizer.lnk"
+echo.
+echo    [*] For troubleshooting, use the debug launchers in the 'launchers' folder
 echo.
 echo    [*] Opening installation folder...
 start "" "%INSTALL_DIR%"
