@@ -143,6 +143,9 @@ REM Main app launcher (completely hidden - no console window)
 (
     echo Set objShell = CreateObject^("WScript.Shell"^)
     echo objShell.CurrentDirectory = "%INSTALL_DIR%"
+    echo Set objEnv = objShell.Environment^("Process"^)
+    echo objEnv^("PATH"^) = "%INSTALL_DIR%\venv\Scripts;" ^& objEnv^("PATH"^)
+    echo objEnv^("PYTHONPATH"^) = "%INSTALL_DIR%\venv\Lib\site-packages"
     echo objShell.Run """%INSTALL_DIR%\venv\Scripts\pythonw.exe"" ""%INSTALL_DIR%\main.py""", 0, False
 ) > "%INSTALL_DIR%\launchers\water_levels_monitoring_system.vbs"
 
@@ -161,6 +164,9 @@ REM Visualizer launcher (completely hidden - no console window)
 (
     echo Set objShell = CreateObject^("WScript.Shell"^)
     echo objShell.CurrentDirectory = "%INSTALL_DIR%\tools\Visualizer"
+    echo Set objEnv = objShell.Environment^("Process"^)
+    echo objEnv^("PATH"^) = "%INSTALL_DIR%\venv\Scripts;" ^& objEnv^("PATH"^)
+    echo objEnv^("PYTHONPATH"^) = "%INSTALL_DIR%\venv\Lib\site-packages"
     echo objShell.Run """%INSTALL_DIR%\venv\Scripts\pythonw.exe"" ""%INSTALL_DIR%\tools\Visualizer\main.py""", 0, False
 ) > "%INSTALL_DIR%\launchers\water_levels_visualizer.vbs"
 
