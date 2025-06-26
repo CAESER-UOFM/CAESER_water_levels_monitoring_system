@@ -146,7 +146,7 @@ REM Main app launcher (completely hidden - no console window)
     echo Set objEnv = objShell.Environment^("Process"^)
     echo objEnv^("PATH"^) = "%INSTALL_DIR%\venv\Scripts;" ^& objEnv^("PATH"^)
     echo objEnv^("PYTHONPATH"^) = "%INSTALL_DIR%\venv\Lib\site-packages"
-    echo objShell.Run """%INSTALL_DIR%\venv\Scripts\pythonw.exe"" ""%INSTALL_DIR%\main.py""", 0, False
+    echo objShell.Run """%INSTALL_DIR%\venv\Scripts\pythonw.exe"" ""%INSTALL_DIR%\main.py""", 0, True
 ) > "%INSTALL_DIR%\launchers\water_levels_monitoring_system.vbs"
 
 REM Debug launcher (with console for troubleshooting)
@@ -167,7 +167,7 @@ REM Visualizer launcher (completely hidden - no console window)
     echo Set objEnv = objShell.Environment^("Process"^)
     echo objEnv^("PATH"^) = "%INSTALL_DIR%\venv\Scripts;" ^& objEnv^("PATH"^)
     echo objEnv^("PYTHONPATH"^) = "%INSTALL_DIR%\venv\Lib\site-packages"
-    echo objShell.Run """%INSTALL_DIR%\venv\Scripts\pythonw.exe"" ""%INSTALL_DIR%\tools\Visualizer\main.py""", 0, False
+    echo objShell.Run """%INSTALL_DIR%\venv\Scripts\pythonw.exe"" ""%INSTALL_DIR%\tools\Visualizer\main.py""", 0, True
 ) > "%INSTALL_DIR%\launchers\water_levels_visualizer.vbs"
 
 REM Visualizer debug launcher (with console for troubleshooting)
@@ -183,11 +183,11 @@ REM Visualizer debug launcher (with console for troubleshooting)
 
 echo    [*] Creating shortcuts with icons...
 
-REM Main app shortcut with proper icon (points to VBScript for silent execution)
-powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Levels Monitoring.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\launchers\water_levels_monitoring_system.vbs'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Levels Monitoring System'; $IconPath = '%INSTALL_DIR%\src\gui\icons\water_level_meter.png'; if (Test-Path $IconPath) { $Shortcut.IconLocation = $IconPath }; $Shortcut.Save() } catch { Write-Host 'Main app shortcut creation failed' }" 2>nul
+REM Main app shortcut with system icon (points to VBScript for silent execution)
+powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Levels Monitoring.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\launchers\water_levels_monitoring_system.vbs'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Levels Monitoring System'; $Shortcut.IconLocation = 'C:\Windows\System32\imageres.dll, 1'; $Shortcut.Save() } catch { Write-Host 'Main app shortcut creation failed' }" 2>nul
 
-REM Visualizer shortcut with water level tab icon (points to VBScript for silent execution)
-powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Level Visualizer.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\launchers\water_levels_visualizer.vbs'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Level Visualizer'; if (Test-Path '%INSTALL_DIR%\src\gui\icons\Water_level_tab_icon.png') { $Shortcut.IconLocation = '%INSTALL_DIR%\src\gui\icons\Water_level_tab_icon.png' }; $Shortcut.Save() } catch { Write-Host 'Visualizer shortcut creation failed' }" 2>nul
+REM Visualizer shortcut with chart icon (points to VBScript for silent execution)
+powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Level Visualizer.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\launchers\water_levels_visualizer.vbs'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Level Visualizer'; $Shortcut.IconLocation = 'C:\Windows\System32\imageres.dll, 178'; $Shortcut.Save() } catch { Write-Host 'Visualizer shortcut creation failed' }" 2>nul
 
 echo.
 echo    ===============================================================================
