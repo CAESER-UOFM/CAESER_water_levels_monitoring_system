@@ -217,6 +217,11 @@ echo        - Visualizer: Double-click "CAESER Water Level Visualizer.lnk"
 echo.
 echo    [*] For troubleshooting, use the debug launchers in the 'launchers' folder
 echo.
+echo    [*] Cleaning up source files...
+echo    [*] Removing source folder: %CODE_DIR%
+rmdir /s /q "%CODE_DIR%" 2>nul
+echo    [+] Source files cleaned up successfully
+echo.
 echo    [*] Opening installation folder...
 start "" "%INSTALL_DIR%"
 pause
