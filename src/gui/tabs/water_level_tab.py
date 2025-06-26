@@ -2045,22 +2045,19 @@ class WaterLevelTab(QWidget):
         group = QGroupBox("Transducer Data")
         group.setStyleSheet("""
             QGroupBox {
-                font-size: 9pt;
+                font-size: 10pt;
                 font-weight: bold;
-                border-radius: 5px;
-                background-color: #f0f0f0;
+                border-radius: 8px;
+                background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+                padding-top: 15px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 subcontrol-position: top left;
-                padding: 0 5px;
-                color: #2c3e50;
-            }
-            QPushButton {
-                font-size: 8pt;
-                min-height: 20px;
-                max-height: 20px;
-                padding: 2px 8px;
+                padding: 0 8px;
+                color: #495057;
+                font-size: 10pt;
             }
         """)
         
@@ -2079,17 +2076,20 @@ class WaterLevelTab(QWidget):
         import_file_btn.setMinimumWidth(120)
         import_file_btn.setStyleSheet("""
             QPushButton {
-                padding: 8px 16px;
+                padding: 12px 24px;
                 border: 1px solid #0056b3;
-                border-radius: 6px;
+                border-radius: 8px;
                 background-color: #007bff;
                 color: white;
                 font-weight: 500;
-                min-height: 24px;
+                font-size: 9pt;
+                min-height: 36px;
+                min-width: 140px;
             }
             QPushButton:hover {
                 background-color: #0056b3;
                 border-color: #004085;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
             QPushButton:pressed {
                 background-color: #004085;
@@ -2102,17 +2102,20 @@ class WaterLevelTab(QWidget):
         import_folder_btn.setMinimumWidth(120)
         import_folder_btn.setStyleSheet("""
             QPushButton {
-                padding: 8px 16px;
+                padding: 12px 24px;
                 border: 1px solid #0056b3;
-                border-radius: 6px;
+                border-radius: 8px;
                 background-color: #007bff;
                 color: white;
                 font-weight: 500;
-                min-height: 24px;
+                font-size: 9pt;
+                min-height: 36px;
+                min-width: 140px;
             }
             QPushButton:hover {
                 background-color: #0056b3;
                 border-color: #004085;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
             QPushButton:pressed {
                 background-color: #004085;
@@ -2128,8 +2131,8 @@ class WaterLevelTab(QWidget):
         # Add button layout to main layout
         layout.addLayout(btn_layout)
         
-        # Set a fixed maximum height to keep the panel compact
-        group.setMaximumHeight(48)
+        # Set a reasonable maximum height for better appearance
+        group.setMaximumHeight(85)
         
         return group
     
@@ -2138,22 +2141,19 @@ class WaterLevelTab(QWidget):
         group = QGroupBox("Telemetry Data")
         group.setStyleSheet("""
             QGroupBox {
-                font-size: 9pt;
+                font-size: 10pt;
                 font-weight: bold;
-                border-radius: 5px;
-                background-color: #f0f0f0;
+                border-radius: 8px;
+                background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+                padding-top: 15px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 subcontrol-position: top left;
-                padding: 0 5px;
-                color: #2c3e50;
-            }
-            QPushButton {
-                font-size: 8pt;
-                min-height: 20px;
-                max-height: 20px;
-                padding: 2px 8px;
+                padding: 0 8px;
+                color: #495057;
+                font-size: 10pt;
             }
         """)
         
@@ -2172,17 +2172,20 @@ class WaterLevelTab(QWidget):
         update_telemetry_btn.setMinimumWidth(120)
         update_telemetry_btn.setStyleSheet("""
             QPushButton {
-                padding: 8px 16px;
+                padding: 12px 24px;
                 border: 1px solid #0056b3;
-                border-radius: 6px;
+                border-radius: 8px;
                 background-color: #007bff;
                 color: white;
                 font-weight: 500;
-                min-height: 24px;
+                font-size: 9pt;
+                min-height: 36px;
+                min-width: 140px;
             }
             QPushButton:hover {
                 background-color: #0056b3;
                 border-color: #004085;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
             QPushButton:pressed {
                 background-color: #004085;
@@ -2197,8 +2200,8 @@ class WaterLevelTab(QWidget):
         # Add button layout to main layout
         layout.addLayout(btn_layout)
         
-        # Set a fixed maximum height to keep the panel compact
-        group.setMaximumHeight(48)
+        # Set a reasonable maximum height for better appearance
+        group.setMaximumHeight(85)
         
         return group
     
@@ -2207,22 +2210,19 @@ class WaterLevelTab(QWidget):
         group = QGroupBox("Manual Readings")
         group.setStyleSheet("""
             QGroupBox {
-                font-size: 9pt;
+                font-size: 10pt;
                 font-weight: bold;
-                border-radius: 5px;
-                background-color: #f0f0f0;
+                border-radius: 8px;
+                background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+                padding-top: 15px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 subcontrol-position: top left;
-                padding: 0 5px;
-                color: #2c3e50;
-            }
-            QPushButton {
-                font-size: 8pt;
-                min-height: 20px;
-                max-height: 20px;
-                padding: 2px 8px;
+                padding: 0 8px;
+                color: #495057;
+                font-size: 10pt;
             }
         """)
         
@@ -2241,17 +2241,20 @@ class WaterLevelTab(QWidget):
         update_monet_btn.setMinimumWidth(120)
         update_monet_btn.setStyleSheet("""
             QPushButton {
-                padding: 8px 16px;
+                padding: 12px 24px;
                 border: 1px solid #0056b3;
-                border-radius: 6px;
+                border-radius: 8px;
                 background-color: #007bff;
                 color: white;
                 font-weight: 500;
-                min-height: 24px;
+                font-size: 9pt;
+                min-height: 36px;
+                min-width: 140px;
             }
             QPushButton:hover {
                 background-color: #0056b3;
                 border-color: #004085;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
             QPushButton:pressed {
                 background-color: #004085;
@@ -2264,17 +2267,20 @@ class WaterLevelTab(QWidget):
         add_manual_btn.setMinimumWidth(120)
         add_manual_btn.setStyleSheet("""
             QPushButton {
-                padding: 8px 16px;
+                padding: 12px 24px;
                 border: 1px solid #0056b3;
-                border-radius: 6px;
+                border-radius: 8px;
                 background-color: #007bff;
                 color: white;
                 font-weight: 500;
-                min-height: 24px;
+                font-size: 9pt;
+                min-height: 36px;
+                min-width: 140px;
             }
             QPushButton:hover {
                 background-color: #0056b3;
                 border-color: #004085;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
             QPushButton:pressed {
                 background-color: #004085;
@@ -2287,17 +2293,20 @@ class WaterLevelTab(QWidget):
         import_manual_btn.setMinimumWidth(120)
         import_manual_btn.setStyleSheet("""
             QPushButton {
-                padding: 8px 16px;
+                padding: 12px 24px;
                 border: 1px solid #0056b3;
-                border-radius: 6px;
+                border-radius: 8px;
                 background-color: #007bff;
                 color: white;
                 font-weight: 500;
-                min-height: 24px;
+                font-size: 9pt;
+                min-height: 36px;
+                min-width: 140px;
             }
             QPushButton:hover {
                 background-color: #0056b3;
                 border-color: #004085;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
             QPushButton:pressed {
                 background-color: #004085;
@@ -2314,8 +2323,8 @@ class WaterLevelTab(QWidget):
         # Add button layout to main layout
         layout.addLayout(btn_layout)
         
-        # Set a fixed maximum height to keep the panel compact
-        group.setMaximumHeight(48)
+        # Set a reasonable maximum height for better appearance
+        group.setMaximumHeight(85)
         
         return group
     
