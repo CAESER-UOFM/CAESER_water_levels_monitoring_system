@@ -139,16 +139,11 @@ if exist "%CODE_DIR%\assets" xcopy "%CODE_DIR%\assets" "%INSTALL_DIR%\assets\" /
 REM Create launchers in dedicated folder
 echo    [*] Creating application launchers...
 
-REM Main app launcher (completely hidden using PowerShell)
+REM Main app launcher (working approach)
 (
     echo @echo off
-    echo if "%%1"=="hidden" goto :run
-    echo powershell -WindowStyle Hidden -Command "^& '%%~f0' hidden"
-    echo exit
-    echo :run
     echo cd /d "%INSTALL_DIR%"
-    echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
-    echo python "%INSTALL_DIR%\main.py"
+    echo start /min cmd /c "call \"%INSTALL_DIR%\venv\Scripts\activate.bat\" && python \"%INSTALL_DIR%\main.py\""
 ) > "%INSTALL_DIR%\launchers\water_levels_monitoring_system.bat"
 
 REM Debug launcher (with console for troubleshooting)
@@ -162,16 +157,11 @@ REM Debug launcher (with console for troubleshooting)
     echo pause
 ) > "%INSTALL_DIR%\launchers\water_levels_monitoring_system_debug.bat"
 
-REM Visualizer launcher (completely hidden using PowerShell)
+REM Visualizer launcher (working approach)
 (
     echo @echo off
-    echo if "%%1"=="hidden" goto :run
-    echo powershell -WindowStyle Hidden -Command "^& '%%~f0' hidden"
-    echo exit
-    echo :run
     echo cd /d "%INSTALL_DIR%\tools\Visualizer"
-    echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
-    echo python "%INSTALL_DIR%\tools\Visualizer\main.py"
+    echo start /min cmd /c "call \"%INSTALL_DIR%\venv\Scripts\activate.bat\" && python \"%INSTALL_DIR%\tools\Visualizer\main.py\""
 ) > "%INSTALL_DIR%\launchers\water_levels_visualizer.bat"
 
 REM Visualizer debug launcher (with console for troubleshooting)
