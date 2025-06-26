@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
@@ -35,41 +35,49 @@ interface WellsMapProps {
   databaseId: string;
 }
 
-// Create custom icons for different statuses
+// Create custom icons for different statuses with better design
 const createWellIcon = (status: string, isHighlighted: boolean = false) => {
   let color = '#6b7280'; // gray-500 default
+  let strokeColor = '#374151'; // darker border
   
   if (isHighlighted) {
     color = '#ef4444'; // red-500
+    strokeColor = '#dc2626'; // red-600
   } else {
     switch (status) {
       case 'has_data':
-        color = '#22c55e'; // green-500
+        color = '#10b981'; // emerald-500
+        strokeColor = '#059669'; // emerald-600
         break;
       case 'limited_data':
         color = '#3b82f6'; // blue-500
+        strokeColor = '#2563eb'; // blue-600
         break;
       case 'no_data':
         color = '#6b7280'; // gray-500
+        strokeColor = '#4b5563'; // gray-600
         break;
       default:
         color = '#6b7280';
+        strokeColor = '#4b5563';
     }
   }
 
+  const size = isHighlighted ? 32 : 24;
+  const anchor = isHighlighted ? 16 : 12;
+
   return new L.Icon({
     iconUrl: `data:image/svg+xml;base64,${btoa(`
-      <svg width="25" height="41" viewBox="0 0 25 41" xmlns="http://www.w3.org/2000/svg">
-        <path fill="${color}" stroke="#ffffff" stroke-width="2" d="M12.5 0C5.596 0 0 5.596 0 12.5c0 12.5 12.5 28.5 12.5 28.5S25 25 25 12.5C25 5.596 19.404 0 12.5 0z"/>
-        <circle cx="12.5" cy="12.5" r="6" fill="#ffffff"/>
+      <svg width="${size}" height="${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="10" fill="${color}" stroke="${strokeColor}" stroke-width="2"/>
+        <circle cx="12" cy="12" r="4" fill="#ffffff" opacity="0.9"/>
+        ${isHighlighted ? '<circle cx="12" cy="12" r="2" fill="' + strokeColor + '"/>' : ''}
       </svg>
     `)}`,
-    iconSize: [25, 41],
-    iconAnchor: [12.5, 41],
-    popupAnchor: [0, -41],
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-    shadowSize: [41, 41],
-    shadowAnchor: [13, 41]
+    iconSize: [size, size],
+    iconAnchor: [anchor, anchor],
+    popupAnchor: [0, -anchor],
+    className: `well-marker ${isHighlighted ? 'highlighted' : ''}`
   });
 };
 
@@ -133,17 +141,21 @@ export default function WellsMap({ wells, highlightWell, onWellClick, databaseId
   const center: [number, number] = [35.1495, -90.0490];
 
   return (
-    <div className="h-full w-full" style={{ minHeight: '500px' }}>
+    <div className="h-full w-full">
       <MapContainer
         center={center}
         zoom={10}
-        style={{ height: '100%', width: '100%', minHeight: '500px' }}
+        style={{ height: '100%', width: '100%' }}
         ref={mapRef}
+        zoomControl={false}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        
+        {/* Custom positioned zoom control */}
+        <ZoomControl position="topright" />
         
         <MapBounds wells={wells} highlightWell={highlightWell} />
 

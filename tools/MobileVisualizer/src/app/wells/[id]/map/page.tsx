@@ -129,56 +129,57 @@ export default function MapPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-20">
-        <div className="container mx-auto px-4 py-4">
+    <div className="h-screen bg-gray-50 flex flex-col">
+      {/* Compact Header */}
+      <div className="bg-white border-b border-gray-200 z-20">
+        <div className="px-4 py-3">
           <div className="flex items-center justify-between">
+            {/* Left side - Back button and title */}
             <div className="flex items-center space-x-3">
               <button
                 onClick={handleBackToWells}
-                className="p-2 text-gray-600 hover:text-gray-900 transition-colors mobile-touch-target"
+                className="p-1.5 text-gray-600 hover:text-gray-900 transition-colors"
                 title="Back to wells"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
               <div>
-                <h1 className="text-xl font-semibold text-gray-900">Wells Map</h1>
-                <p className="text-sm text-gray-600">{filteredWells.length} of {wells.length} wells</p>
+                <h1 className="text-lg font-semibold text-gray-900">Wells Map</h1>
+                <p className="text-xs text-gray-500">{filteredWells.length} of {wells.length} wells</p>
               </div>
             </div>
 
-            {/* Controls */}
-            <div className="flex items-center space-x-3">
+            {/* Right side - Compact controls */}
+            <div className="flex items-center space-x-2">
               <button
                 onClick={handleBackToWells}
-                className="btn-outline text-sm px-3 py-2"
+                className="btn-outline text-xs px-2 py-1.5"
               >
-                View List
+                List View
               </button>
             </div>
           </div>
 
-          {/* Filters */}
-          <div className="mt-4 flex flex-col md:flex-row gap-3">
+          {/* Compact Filters */}
+          <div className="mt-3 flex gap-2">
             <div className="flex-1">
               <input
                 type="text"
                 placeholder="Search wells..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
               />
             </div>
-            <div className="md:w-48">
+            <div className="w-32">
               <select
                 value={selectedAquifer}
                 onChange={(e) => setSelectedAquifer(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
               >
-                <option value="all">All Aquifers</option>
+                <option value="all">All</option>
                 {uniqueAquifers.map(aquifer => (
                   <option key={aquifer} value={aquifer}>{aquifer}</option>
                 ))}
@@ -188,8 +189,8 @@ export default function MapPage() {
         </div>
       </div>
 
-      {/* Map */}
-      <div className="flex-1 relative" style={{ minHeight: 'calc(100vh - 200px)' }}>
+      {/* Full Screen Map */}
+      <div className="flex-1 relative">
         {wells.length === 0 ? (
           <div className="h-full flex items-center justify-center">
             <div className="text-center">
@@ -202,38 +203,38 @@ export default function MapPage() {
             </div>
           </div>
         ) : (
-          <WellsMap
-            wells={filteredWells}
-            highlightWell={highlightWell}
-            onWellClick={handleWellClick}
-            databaseId={databaseId}
-          />
+          <>
+            <WellsMap
+              wells={filteredWells}
+              highlightWell={highlightWell}
+              onWellClick={handleWellClick}
+              databaseId={databaseId}
+            />
+            
+            {/* Floating Legend - Bottom Left */}
+            <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg border border-gray-200 p-3 z-10">
+              <h3 className="text-xs font-medium text-gray-900 mb-2">Legend</h3>
+              <div className="space-y-1.5">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  <span className="text-xs text-gray-700">Has Data</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                  <span className="text-xs text-gray-700">Limited Data</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+                  <span className="text-xs text-gray-700">No Data</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                  <span className="text-xs text-gray-700">Highlighted</span>
+                </div>
+              </div>
+            </div>
+          </>
         )}
-      </div>
-
-      {/* Legend */}
-      <div className="bg-white border-t border-gray-200 p-4">
-        <div className="container mx-auto">
-          <h3 className="text-sm font-medium text-gray-900 mb-2">Legend</h3>
-          <div className="flex flex-wrap gap-4 text-xs">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-green-500"></div>
-              <span>Has Data</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-              <span>Limited Data</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-gray-400"></div>
-              <span>No Data</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-red-500"></div>
-              <span>Highlighted</span>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
