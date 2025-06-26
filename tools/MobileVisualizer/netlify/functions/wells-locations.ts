@@ -1,6 +1,28 @@
-const { TursoService } = require('../../src/lib/api/services/turso.js');
+import { Handler } from '@netlify/functions';
+import { TursoService } from '../../src/lib/api/services/turso';
 
-exports.handler = async (event, context) => {
+interface WellLocation {
+  well_number: string;
+  cae_number: string;
+  latitude: number;
+  longitude: number;
+  aquifer: string;
+  well_field: string;
+  cluster: string;
+  ground_elevation?: number;
+  well_depth?: number;
+  static_water_level?: number;
+  last_reading_date?: string;
+  total_readings: number;
+  data_status: 'transducer' | 'telemetry' | 'manual' | 'no_data';
+  status: 'has_data' | 'limited_data' | 'no_data';
+  has_manual_readings: boolean;
+  has_transducer_data: boolean;
+  has_telemetry_data: boolean;
+  notes: string;
+}
+
+export const handler: Handler = async (event, context) => {
   try {
     const { databaseId } = event.queryStringParameters || {};
     
@@ -47,32 +69,32 @@ exports.handler = async (event, context) => {
       ORDER BY w.well_number
     `;
 
-    const result = await tursoService.execute(wellsQuery);
+    const result = await tursoService.executeQuery(wellsQuery);
     
     // Process results to determine data status
-    const wellsWithStatus = result.rows.map(row => {
-      const well = {};
+    const wellsWithStatus: WellLocation[] = result.rows.map(row => {
+      const well: any = {};
       result.columns.forEach((col, index) => {
         well[col] = row[index];
       });
 
       // Determine data status based on available data types
-      let dataStatus = 'no_data';
+      let dataStatus: 'transducer' | 'telemetry' | 'manual' | 'no_data' = 'no_data';
       let hasData = false;
 
-      if (well.has_transducer_data === 1 || well.has_transducer_data === true) {
+      if (well.has_transducer_data === 1 || well.has_transducer_data === true || well.has_transducer_data === 'true') {
         dataStatus = 'transducer';
         hasData = true;
-      } else if (well.has_telemetry_data === 1 || well.has_telemetry_data === true) {
+      } else if (well.has_telemetry_data === 1 || well.has_telemetry_data === true || well.has_telemetry_data === 'true') {
         dataStatus = 'telemetry';
         hasData = true;
-      } else if (well.has_manual_readings === 1 || well.has_manual_readings === true) {
+      } else if (well.has_manual_readings === 1 || well.has_manual_readings === true || well.has_manual_readings === 'true') {
         dataStatus = 'manual';
         hasData = true;
       }
 
       // Determine overall status for marker color
-      let status = 'no_data';
+      let status: 'has_data' | 'limited_data' | 'no_data' = 'no_data';
       if (hasData) {
         if (well.total_readings && well.total_readings > 0) {
           status = 'has_data';
@@ -89,16 +111,16 @@ exports.handler = async (event, context) => {
         aquifer: well.aquifer || 'unknown',
         well_field: well.well_field || '',
         cluster: well.cluster || '',
-        ground_elevation: well.ground_elevation,
-        well_depth: well.well_depth,
-        static_water_level: well.static_water_level,
+        ground_elevation: well.ground_elevation ? parseFloat(well.ground_elevation) : undefined,
+        well_depth: well.well_depth ? parseFloat(well.well_depth) : undefined,
+        static_water_level: well.static_water_level ? parseFloat(well.static_water_level) : undefined,
         last_reading_date: well.last_reading_date,
         total_readings: well.total_readings || 0,
         data_status: dataStatus,
         status: status,
-        has_manual_readings: well.has_manual_readings === 1 || well.has_manual_readings === true,
-        has_transducer_data: well.has_transducer_data === 1 || well.has_transducer_data === true,
-        has_telemetry_data: well.has_telemetry_data === 1 || well.has_telemetry_data === true,
+        has_manual_readings: well.has_manual_readings === 1 || well.has_manual_readings === true || well.has_manual_readings === 'true',
+        has_transducer_data: well.has_transducer_data === 1 || well.has_transducer_data === true || well.has_transducer_data === 'true',
+        has_telemetry_data: well.has_telemetry_data === 1 || well.has_telemetry_data === true || well.has_telemetry_data === 'true',
         notes: well.notes || ''
       };
     });
@@ -127,7 +149,7 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({
         success: false,
         error: 'Failed to fetch well locations',
-        details: error.message
+        details: error instanceof Error ? error.message : 'Unknown error'
       })
     };
   }

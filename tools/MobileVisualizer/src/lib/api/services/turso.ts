@@ -100,6 +100,10 @@ export class TursoService {
     };
   }
 
+  public async executeQuery(sql: string, args: any[] = []): Promise<{ columns: string[]; rows: any[] }> {
+    return this.execute(sql, args);
+  }
+
   private rowToObject(columns: string[], row: any[]): Record<string, any> {
     const obj: Record<string, any> = {};
     columns.forEach((col, i) => {
