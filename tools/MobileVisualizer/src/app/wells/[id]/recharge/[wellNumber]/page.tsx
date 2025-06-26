@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { exportRechargeResultsToCSV, exportRechargeResultsToJSON, exportRechargeResultsToPDF } from '@/utils/dataExport';
-import type { Well, RechargeResult } from '@/lib/api/api';
+import type { Well, RechargeResult, RechargeCalculationSummary } from '@/types/database';
 
 export default function RechargeResultsPage() {
   const params = useParams();
@@ -13,7 +13,8 @@ export default function RechargeResultsPage() {
   const wellNumber = params.wellNumber as string;
 
   const [well, setWell] = useState<Well | null>(null);
-  const [rechargeResults, setRechargeResults] = useState<RechargeResult[]>([]);
+  const [rechargeResults, setRechargeResults] = useState<RechargeCalculationSummary[]>([]);
+  const [expandedResult, setExpandedResult] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -227,8 +228,18 @@ export default function RechargeResultsPage() {
                           <div className="flex justify-between">
                             <span className="text-gray-600">Recharge:</span>
                             <span className="font-medium text-primary-600">
-                              {formatRechargeValue(latestResult.recharge_mm)}
+                              {latestResult.total_recharge.toFixed(2)} inches
                             </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Annual Rate:</span>
+                            <span className="font-medium text-green-600">
+                              {latestResult.annual_rate.toFixed(2)} in/yr
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Events:</span>
+                            <span className="font-medium">{latestResult.total_events}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Calculations:</span>
@@ -249,36 +260,18 @@ export default function RechargeResultsPage() {
               <h2 className="text-lg font-semibold text-gray-900 mb-4">
                 All Recharge Calculations
               </h2>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Method
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Calculation Date
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Period
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Recharge (mm)
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Recharge (in)
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Specific Yield
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {rechargeResults
-                      .sort((a, b) => new Date(b.calculation_date).getTime() - new Date(a.calculation_date).getTime())
-                      .map((result, index) => (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-4 py-4 whitespace-nowrap">
+              <div className="space-y-4">
+                {rechargeResults
+                  .sort((a, b) => new Date(b.calculation_date).getTime() - new Date(a.calculation_date).getTime())
+                  .map((result) => (
+                  <div key={result.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                    {/* Summary Row */}
+                    <div 
+                      className="p-4 bg-white hover:bg-gray-50 cursor-pointer"
+                      onClick={() => setExpandedResult(expandedResult === result.id ? null : result.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                             result.method === 'RISE' ? 'bg-blue-100 text-blue-800' :
                             result.method === 'MRC' ? 'bg-green-100 text-green-800' :
@@ -286,26 +279,139 @@ export default function RechargeResultsPage() {
                           }`}>
                             {result.method}
                           </span>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatDate(result.calculation_date)}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                          {formatDate(result.start_date)} - {formatDate(result.end_date)}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {formatRechargeValue(result.recharge_mm)}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                          {formatRechargeValue(result.recharge_inches, 'in')}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                          {result.specific_yield ? result.specific_yield.toFixed(3) : '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {formatDate(result.calculation_date)}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {result.data_start_date && result.data_end_date && 
+                                `${formatDate(result.data_start_date)} - ${formatDate(result.data_end_date)}`
+                              }
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-6 text-sm">
+                          <div className="text-center">
+                            <div className="font-medium text-primary-600">
+                              {result.total_recharge.toFixed(2)} in
+                            </div>
+                            <div className="text-xs text-gray-500">Total Recharge</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="font-medium text-green-600">
+                              {result.annual_rate.toFixed(2)} in/yr
+                            </div>
+                            <div className="text-xs text-gray-500">Annual Rate</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="font-medium text-gray-900">
+                              {result.total_events}
+                            </div>
+                            <div className="text-xs text-gray-500">Events</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="font-medium text-gray-700">
+                              {result.specific_yield?.toFixed(3) || '—'}
+                            </div>
+                            <div className="text-xs text-gray-500">Sy</div>
+                          </div>
+                          <svg 
+                            className={`w-5 h-5 text-gray-400 transition-transform ${
+                              expandedResult === result.id ? 'rotate-180' : ''
+                            }`} 
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Expanded Details */}
+                    {expandedResult === result.id && result.details && (
+                      <div className="border-t border-gray-200 bg-gray-50 p-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          {/* Parameters */}
+                          <div>
+                            <h4 className="font-medium text-gray-900 mb-3">Calculation Parameters</h4>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Specific Yield:</span>
+                                <span className="font-medium">{result.specific_yield?.toFixed(3)}</span>
+                              </div>
+                              {result.method === 'RISE' && result.details.parameters && (
+                                <>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Rise Threshold:</span>
+                                    <span className="font-medium">{result.details.parameters.rise_threshold?.toFixed(3)} ft</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Water Year Start:</span>
+                                    <span className="font-medium">{result.details.parameters.water_year_start_month}/{result.details.parameters.water_year_start_day}</span>
+                                  </div>
+                                </>
+                              )}
+                              {result.method === 'MRC' && result.details.deviation_threshold && (
+                                <>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Deviation Threshold:</span>
+                                    <span className="font-medium">{result.details.deviation_threshold.toFixed(3)} ft</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Curve Type:</span>
+                                    <span className="font-medium">{result.details.curve_info?.curve_type}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">R²:</span>
+                                    <span className="font-medium">{result.details.curve_info?.r_squared?.toFixed(4)}</span>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Yearly Summary */}
+                          <div>
+                            <h4 className="font-medium text-gray-900 mb-3">Yearly Summary</h4>
+                            {result.details.yearly_summaries || result.details.yearly_summary ? (
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="border-b border-gray-200">
+                                      <th className="text-left py-1">Year</th>
+                                      <th className="text-right py-1">Events</th>
+                                      <th className="text-right py-1">Recharge (in)</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {(result.details.yearly_summaries || result.details.yearly_summary || []).map((year: any, idx: number) => (
+                                      <tr key={idx} className="border-b border-gray-100">
+                                        <td className="py-1">{year.water_year}</td>
+                                        <td className="text-right py-1">{year.num_events}</td>
+                                        <td className="text-right py-1">{year.total_recharge?.toFixed(2)}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-500">No yearly breakdown available</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {result.notes && (
+                          <div className="mt-4 pt-4 border-t border-gray-200">
+                            <h4 className="font-medium text-gray-900 mb-2">Notes</h4>
+                            <p className="text-sm text-gray-700">{result.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -314,24 +420,28 @@ export default function RechargeResultsPage() {
               <div className="card">
                 <h3 className="font-semibold text-gray-900 mb-3">RISE Method</h3>
                 <p className="text-sm text-gray-600 mb-3">
-                  Recharge Investigation and Simulation Tool - automated water table fluctuation method.
+                  Rapid Intensive Successive Events - automated water table fluctuation method that identifies 
+                  rapid water level rises and calculates recharge using Recharge = Rise Height × Specific Yield.
                 </p>
                 <div className="text-xs text-gray-500">
-                  <p>• Automated calculation</p>
-                  <p>• Statistical analysis</p>
-                  <p>• Quality control filters</p>
+                  <p>• Automated rise event detection</p>
+                  <p>• Water year analysis (Oct 1 - Sep 30)</p>
+                  <p>• Quality control filters and thresholds</p>
+                  <p>• Statistical summaries by year</p>
                 </div>
               </div>
 
               <div className="card">
                 <h3 className="font-semibold text-gray-900 mb-3">MRC Method</h3>
                 <p className="text-sm text-gray-600 mb-3">
-                  Manual Recharge Calculation - user-defined parameters and periods.
+                  Master Recession Curve - fits recession curves to declining water levels, then calculates 
+                  recharge when actual levels exceed predicted curve levels.
                 </p>
                 <div className="text-xs text-gray-500">
-                  <p>• Manual parameter selection</p>
-                  <p>• Custom time periods</p>
-                  <p>• User-defined specific yield</p>
+                  <p>• Recession curve fitting (exponential, power law, 2-segment)</p>
+                  <p>• Deviation-based recharge calculation</p>
+                  <p>• User-defined deviation thresholds</p>
+                  <p>• Curve versioning and comparison</p>
                 </div>
               </div>
             </div>

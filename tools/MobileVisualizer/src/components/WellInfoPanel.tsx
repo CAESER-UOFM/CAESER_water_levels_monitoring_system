@@ -59,7 +59,11 @@ export function WellInfoPanel({
           <InfoItem 
             label="Total Span" 
             value={currentTimeRange ? 
-              `${Math.ceil((new Date(currentTimeRange.end).getTime() - new Date(currentTimeRange.start).getTime()) / (1000 * 60 * 60 * 24))} days`
+              (() => {
+                const totalDays = Math.ceil((new Date(currentTimeRange.end).getTime() - new Date(currentTimeRange.start).getTime()) / (1000 * 60 * 60 * 24));
+                const years = (totalDays / 365.25).toFixed(1);
+                return `${totalDays} days (${years} years)`;
+              })()
               : 'Loading...'
             } 
             color="text-gray-600" 
@@ -67,31 +71,6 @@ export function WellInfoPanel({
         </div>
       </div>
 
-
-      {/* Data Availability Summary */}
-      <div className="mt-4 pt-4 border-t border-gray-200">
-        <div className="text-xs font-medium text-gray-500 mb-3">Data Availability</div>
-        <div className="flex items-center space-x-4">
-          {well.has_transducer_data && (
-            <div className="flex items-center space-x-1">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <span className="text-xs text-gray-600">Transducer</span>
-            </div>
-          )}
-          {well.has_telemetry_data && (
-            <div className="flex items-center space-x-1">
-              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-              <span className="text-xs text-gray-600">Telemetry</span>
-            </div>
-          )}
-          {well.has_manual_readings && (
-            <div className="flex items-center space-x-1">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-xs text-gray-600">Manual</span>
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

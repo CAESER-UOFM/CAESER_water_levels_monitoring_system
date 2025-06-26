@@ -1,4 +1,5 @@
 import type { WaterLevelReading, RechargeResult, Well } from '@/types/database';
+import type { SamplingRate } from '@/utils/smartSampling';
 
 // Export water level data to CSV format
 export function exportWaterLevelDataToCSV(
@@ -326,4 +327,246 @@ export function filterDataForExport(
     
     return readingDate >= start && readingDate <= end;
   });
+}
+
+// Chunked data fetcher for large exports
+export async function fetchDataForExport(
+  databaseId: string,
+  wellNumber: string,
+  samplingRate: SamplingRate,
+  startDate: string,
+  endDate: string,
+  onProgress?: (progress: { current: number; total: number; percentage: number }) => void,
+  signal?: AbortSignal
+): Promise<WaterLevelReading[]> {
+  const CHUNK_SIZE_DAYS = 30; // Fetch 30 days at a time
+  const allData: WaterLevelReading[] = [];
+  
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  const totalChunks = Math.ceil(totalDays / CHUNK_SIZE_DAYS);
+  
+  let processedChunks = 0;
+  
+  for (let chunkStart = new Date(start); chunkStart < end; ) {
+    // Check for cancellation
+    if (signal?.aborted) {
+      throw new Error('Export cancelled by user');
+    }
+    
+    const chunkEnd = new Date(chunkStart);
+    chunkEnd.setDate(chunkEnd.getDate() + CHUNK_SIZE_DAYS);
+    if (chunkEnd > end) {
+      chunkEnd.setTime(end.getTime());
+    }
+    
+    try {
+      const params = new URLSearchParams({
+        samplingRate,
+        startDate: chunkStart.toISOString(),
+        endDate: chunkEnd.toISOString()
+      });
+      
+      const response = await fetch(
+        `/.netlify/functions/data/${databaseId}/water/${wellNumber}?${params}`,
+        { 
+          signal: AbortSignal.timeout(60000) // 60 second timeout per chunk
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch data chunk: ${response.status} ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to fetch data chunk');
+      }
+      
+      if (result.data && Array.isArray(result.data)) {
+        allData.push(...result.data);
+      }
+      
+      processedChunks++;
+      
+      // Report progress
+      if (onProgress) {
+        onProgress({
+          current: processedChunks,
+          total: totalChunks,
+          percentage: Math.round((processedChunks / totalChunks) * 100)
+        });
+      }
+      
+    } catch (error) {
+      if (signal?.aborted) {
+        throw new Error('Export cancelled by user');
+      }
+      console.error('Error fetching data chunk:', error);
+      throw new Error(`Failed to fetch data chunk: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+    
+    // Move to next chunk
+    chunkStart = new Date(chunkEnd);
+    chunkStart.setDate(chunkStart.getDate() + 1);
+  }
+  
+  // Sort data by timestamp
+  allData.sort((a, b) => new Date(a.timestamp_utc).getTime() - new Date(b.timestamp_utc).getTime());
+  
+  return allData;
+}
+
+// Enhanced export function with progress tracking
+export async function exportWaterLevelDataWithProgress(
+  databaseId: string,
+  wellNumber: string,
+  well: Well,
+  options: {
+    samplingRate: SamplingRate;
+    startDate: string;
+    endDate: string;
+    format: 'csv' | 'json';
+    filename?: string;
+  },
+  onProgress?: (progress: { stage: string; percentage: number; message: string }) => void,
+  signal?: AbortSignal
+): Promise<void> {
+  try {
+    // Stage 1: Fetch data
+    onProgress?.({ stage: 'fetching', percentage: 0, message: 'Fetching data...' });
+    
+    const data = await fetchDataForExport(
+      databaseId,
+      wellNumber,
+      options.samplingRate,
+      options.startDate,
+      options.endDate,
+      (fetchProgress) => {
+        onProgress?.({
+          stage: 'fetching',
+          percentage: Math.round(fetchProgress.percentage * 0.8), // 80% of progress for fetching
+          message: `Fetching data chunk ${fetchProgress.current} of ${fetchProgress.total}...`
+        });
+      },
+      signal
+    );
+    
+    // Stage 2: Process and export
+    onProgress?.({ stage: 'processing', percentage: 80, message: 'Processing data for export...' });
+    
+    if (signal?.aborted) {
+      throw new Error('Export cancelled by user');
+    }
+    
+    // Add export metadata to the data
+    const exportMetadata = {
+      exportDate: new Date().toISOString(),
+      samplingRate: options.samplingRate,
+      dateRange: {
+        start: options.startDate,
+        end: options.endDate
+      },
+      totalRecords: data.length,
+      exportOptions: options
+    };
+    
+    onProgress?.({ stage: 'exporting', percentage: 90, message: 'Generating export file...' });
+    
+    // Export based on format
+    if (options.format === 'csv') {
+      exportWaterLevelDataToCSVWithMetadata(data, well, exportMetadata, options.filename);
+    } else {
+      exportWaterLevelDataToJSONWithMetadata(data, well, exportMetadata, options.filename);
+    }
+    
+    onProgress?.({ stage: 'complete', percentage: 100, message: 'Export completed successfully!' });
+    
+  } catch (error) {
+    if (signal?.aborted || (error instanceof Error && error.message.includes('cancelled'))) {
+      onProgress?.({ stage: 'cancelled', percentage: 0, message: 'Export cancelled' });
+      throw new Error('Export cancelled by user');
+    }
+    
+    onProgress?.({ stage: 'error', percentage: 0, message: `Export failed: ${error instanceof Error ? error.message : 'Unknown error'}` });
+    throw error;
+  }
+}
+
+// Enhanced CSV export with metadata
+function exportWaterLevelDataToCSVWithMetadata(
+  data: WaterLevelReading[],
+  well: Well,
+  metadata: any,
+  filename?: string
+): void {
+  const headers = [
+    'Date/Time',
+    'Water Level (ft)',
+    'Temperature (°C)',
+    'Data Type',
+    'Quality'
+  ];
+
+  const rows = data.map(reading => [
+    reading.timestamp_utc,
+    reading.water_level?.toString() || '',
+    reading.temperature?.toString() || '',
+    reading.data_source || '',
+    reading.level_flag || ''
+  ]);
+
+  const csvContent = [
+    `# Water Level Data Export`,
+    `# Well: ${well.well_number}`,
+    well.cae_number ? `# CAE Number: ${well.cae_number}` : '',
+    well.well_field ? `# Field: ${well.well_field}` : '',
+    `# Export Date: ${metadata.exportDate}`,
+    `# Sampling Rate: ${metadata.samplingRate}`,
+    `# Date Range: ${new Date(metadata.dateRange.start).toLocaleDateString()} - ${new Date(metadata.dateRange.end).toLocaleDateString()}`,
+    `# Total Records: ${metadata.totalRecords}`,
+    '',
+    headers.join(','),
+    ...rows.map(row => row.join(','))
+  ].filter(line => line !== '').join('\n');
+
+  const finalFilename = filename || `water_level_${well.well_number}_${metadata.samplingRate}_${new Date().toISOString().split('T')[0]}.csv`;
+  downloadFile(csvContent, finalFilename, 'text/csv');
+}
+
+// Enhanced JSON export with metadata
+function exportWaterLevelDataToJSONWithMetadata(
+  data: WaterLevelReading[],
+  well: Well,
+  metadata: any,
+  filename?: string
+): void {
+  const exportData = {
+    metadata: {
+      well_number: well.well_number,
+      cae_number: well.cae_number,
+      well_field: well.well_field,
+      latitude: well.latitude,
+      longitude: well.longitude,
+      ground_elevation: well.ground_elevation,
+      export_date: metadata.exportDate,
+      sampling_rate: metadata.samplingRate,
+      date_range: metadata.dateRange,
+      total_records: metadata.totalRecords,
+      export_settings: metadata.exportOptions
+    },
+    data: data.map(reading => ({
+      datetime: reading.timestamp_utc,
+      water_level_ft: reading.water_level,
+      temperature_c: reading.temperature,
+      data_source: reading.data_source,
+      level_flag: reading.level_flag
+    }))
+  };
+
+  const jsonContent = JSON.stringify(exportData, null, 2);
+  const finalFilename = filename || `water_level_${well.well_number}_${metadata.samplingRate}_${new Date().toISOString().split('T')[0]}.json`;
+  downloadFile(jsonContent, finalFilename, 'application/json');
 }

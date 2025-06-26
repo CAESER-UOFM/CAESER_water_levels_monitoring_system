@@ -186,7 +186,7 @@ export const SmartWaterLevelChart = React.forwardRef<
           <div className="text-sm font-medium text-gray-700 mb-3">Currently Loaded</div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
             <div>
-              <span className="font-medium text-gray-700">Points Shown:</span>
+              <span className="font-medium text-gray-700">Points Loaded:</span>
               <p className="text-green-600 font-semibold">{data.length.toLocaleString()}</p>
             </div>
             <div>

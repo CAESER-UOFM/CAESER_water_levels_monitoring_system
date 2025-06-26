@@ -587,68 +587,231 @@ export class TursoService {
     }
   }
 
-  async getRechargeResults(wellNumber: string): Promise<RechargeResult[]> {
+  async getRechargeResults(wellNumber: string): Promise<any[]> {
     try {
-      const tables = ['rise_calculations', 'mrc_calculations', 'erc_calculations'];
-      let allResults: RechargeResult[] = [];
+      let allResults: any[] = [];
 
-      for (const table of tables) {
-        try {
-          // Check if table exists
-          const tableExistsResult = await this.execute(
-            `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
-            [table]
-          );
+      // Get RISE results
+      const riseResults = await this.getRISEResults(wellNumber);
+      allResults = allResults.concat(riseResults);
 
-          if (tableExistsResult.rows.length > 0) {
-            let method: 'RISE' | 'MRC' | 'ERC';
-            if (table.includes('rise')) method = 'RISE';
-            else if (table.includes('mrc')) method = 'MRC';
-            else method = 'ERC';
-            
-            // Build query based on available columns
-            const query = `
-              SELECT *
-              FROM ${table}
-              WHERE well_number = ?
-              ORDER BY created_at DESC
-              LIMIT 50
-            `;
+      // Get MRC results  
+      const mrcResults = await this.getMRCResults(wellNumber);
+      allResults = allResults.concat(mrcResults);
 
-            const result = await this.execute(query, [wellNumber]);
+      // Sort by calculation date (most recent first)
+      allResults.sort((a, b) => new Date(b.calculation_date).getTime() - new Date(a.calculation_date).getTime());
 
-            const methodResults = result.rows.map(row => {
-              const obj = this.rowToObject(result.columns, row);
-              return {
-                id: Number(obj.id || 0),
-                well_number: String(obj.well_number),
-                calculation_date: String(obj.created_at || obj.calculation_date || ''),
-                start_date: String(obj.start_date || ''),
-                end_date: String(obj.end_date || ''),
-                recharge_mm: obj.recharge_mm ? Number(obj.recharge_mm) : undefined,
-                recharge_inches: obj.recharge_inches ? Number(obj.recharge_inches) : undefined,
-                specific_yield: obj.specific_yield ? Number(obj.specific_yield) : undefined,
-                water_table_rise: obj.water_table_rise ? Number(obj.water_table_rise) : undefined,
-                calculation_parameters: obj.calculation_parameters ? String(obj.calculation_parameters) : undefined,
-                notes: obj.notes ? String(obj.notes) : undefined,
-                method
-              };
-            });
-
-            allResults = allResults.concat(methodResults);
-          }
-        } catch (tableError) {
-          // Continue if table doesn't exist or query fails
-          console.warn(`Table ${table} query failed:`, tableError);
-        }
-      }
-
-      return allResults.sort((a, b) => 
-        new Date(b.calculation_date).getTime() - new Date(a.calculation_date).getTime()
-      );
+      return allResults;
     } catch (error) {
       console.error(`Failed to get recharge results for well ${wellNumber}:`, error);
-      throw new Error('Failed to retrieve recharge results');
+      return [];
+    }
+  }
+
+  private async getRISEResults(wellNumber: string): Promise<any[]> {
+    try {
+      // Check if RISE table exists
+      const tableExistsResult = await this.execute(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='rise_calculations'`,
+        []
+      );
+
+      if (tableExistsResult.rows.length === 0) {
+        return [];
+      }
+
+      const query = `
+        SELECT 
+          id,
+          well_number,
+          calculation_date,
+          parameters,
+          events_data,
+          yearly_summary,
+          total_recharge,
+          total_events,
+          annual_rate,
+          notes
+        FROM rise_calculations 
+        WHERE well_number = ?
+        ORDER BY calculation_date DESC
+      `;
+      
+      const result = await this.execute(query, [wellNumber]);
+      
+      return result.rows.map(row => {
+        const obj = this.rowToObject(result.columns, row);
+        let parameters: any = {};
+        let events_data: any[] = [];
+        let yearly_summary: any[] = [];
+        
+        try {
+          parameters = JSON.parse(obj.parameters || '{}');
+          events_data = JSON.parse(obj.events_data || '[]');
+          yearly_summary = JSON.parse(obj.yearly_summary || '[]');
+        } catch (e) {
+          console.warn('Error parsing JSON fields for RISE calculation:', e);
+        }
+        
+        return {
+          id: Number(obj.id),
+          well_number: obj.well_number,
+          method: 'RISE' as const,
+          calculation_date: obj.calculation_date,
+          total_recharge: Number(obj.total_recharge),
+          annual_rate: Number(obj.annual_rate),
+          total_events: Number(obj.total_events),
+          specific_yield: parameters.specific_yield || null,
+          data_start_date: null,
+          data_end_date: null,
+          notes: obj.notes,
+          details: {
+            parameters,
+            events_data,
+            yearly_summary
+          }
+        };
+      });
+    } catch (error) {
+      console.error('Error fetching RISE results:', error);
+      return [];
+    }
+  }
+
+  private async getMRCResults(wellNumber: string): Promise<any[]> {
+    try {
+      // Check if MRC tables exist
+      const calcTableExists = await this.execute(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='mrc_calculations'`,
+        []
+      );
+
+      if (calcTableExists.rows.length === 0) {
+        return [];
+      }
+
+      const query = `
+        SELECT 
+          calc.id,
+          calc.curve_id,
+          calc.well_number,
+          calc.well_name,
+          calc.calculation_date,
+          calc.specific_yield,
+          calc.deviation_threshold,
+          calc.water_year_start_month,
+          calc.water_year_start_day,
+          calc.downsample_rule,
+          calc.downsample_method,
+          calc.filter_type,
+          calc.filter_window,
+          calc.total_recharge,
+          calc.annual_rate,
+          calc.data_start_date,
+          calc.data_end_date,
+          calc.notes,
+          curve.curve_type,
+          curve.curve_parameters,
+          curve.r_squared,
+          curve.creation_date as curve_creation_date,
+          curve.version as curve_version
+        FROM mrc_calculations calc
+        LEFT JOIN mrc_curves curve ON calc.curve_id = curve.id
+        WHERE calc.well_number = ?
+        ORDER BY calc.calculation_date DESC
+      `;
+      
+      const result = await this.execute(query, [wellNumber]);
+      
+      // Get events and yearly summaries for each calculation
+      const enrichedResults = await Promise.all(result.rows.map(async row => {
+        const obj = this.rowToObject(result.columns, row);
+        
+        try {
+          // Get recharge events
+          const eventsQuery = `
+            SELECT event_date, water_year, water_level, predicted_level, deviation, recharge_value
+            FROM mrc_recharge_events 
+            WHERE calculation_id = ?
+            ORDER BY event_date
+          `;
+          const eventsResult = await this.execute(eventsQuery, [obj.id]);
+          const events = eventsResult.rows.map(eventRow => this.rowToObject(eventsResult.columns, eventRow));
+          
+          // Get yearly summaries
+          const summariesQuery = `
+            SELECT water_year, total_recharge, num_events, annual_rate, max_deviation, avg_deviation
+            FROM mrc_yearly_summaries 
+            WHERE calculation_id = ?
+            ORDER BY water_year
+          `;
+          const summariesResult = await this.execute(summariesQuery, [obj.id]);
+          const summaries = summariesResult.rows.map(summaryRow => this.rowToObject(summariesResult.columns, summaryRow));
+          
+          let curve_parameters: any = {};
+          try {
+            curve_parameters = JSON.parse(obj.curve_parameters || '{}');
+          } catch (e) {
+            console.warn('Error parsing curve parameters:', e);
+          }
+          
+          return {
+            id: Number(obj.id),
+            well_number: obj.well_number,
+            method: 'MRC' as const,
+            calculation_date: obj.calculation_date,
+            total_recharge: Number(obj.total_recharge),
+            annual_rate: Number(obj.annual_rate),
+            total_events: events.length,
+            specific_yield: Number(obj.specific_yield),
+            data_start_date: obj.data_start_date,
+            data_end_date: obj.data_end_date,
+            notes: obj.notes,
+            details: {
+              curve_id: Number(obj.curve_id),
+              well_name: obj.well_name,
+              deviation_threshold: Number(obj.deviation_threshold),
+              water_year_start_month: Number(obj.water_year_start_month),
+              water_year_start_day: Number(obj.water_year_start_day),
+              downsample_rule: obj.downsample_rule,
+              downsample_method: obj.downsample_method,
+              filter_type: obj.filter_type,
+              filter_window: obj.filter_window ? Number(obj.filter_window) : null,
+              recharge_events: events,
+              yearly_summaries: summaries,
+              curve_info: {
+                curve_type: obj.curve_type,
+                curve_parameters,
+                r_squared: obj.r_squared ? Number(obj.r_squared) : null,
+                creation_date: obj.curve_creation_date,
+                version: obj.curve_version ? Number(obj.curve_version) : null
+              }
+            }
+          };
+        } catch (error) {
+          console.error('Error enriching MRC result:', error);
+          // Return basic result without details if enrichment fails
+          return {
+            id: Number(obj.id),
+            well_number: obj.well_number,
+            method: 'MRC' as const,
+            calculation_date: obj.calculation_date,
+            total_recharge: Number(obj.total_recharge),
+            annual_rate: Number(obj.annual_rate),
+            total_events: 0,
+            specific_yield: Number(obj.specific_yield),
+            data_start_date: obj.data_start_date,
+            data_end_date: obj.data_end_date,
+            notes: obj.notes
+          };
+        }
+      }));
+      
+      return enrichedResults;
+    } catch (error) {
+      console.error('Error fetching MRC results:', error);
+      return [];
     }
   }
 

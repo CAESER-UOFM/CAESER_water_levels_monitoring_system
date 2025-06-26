@@ -94,13 +94,15 @@ export function ChartJSTimeSeriesChart({
         fill: true,
         tension: 0.1
       },
-      // Add temperature data if available
-      ...(data.some(point => point.temperature !== undefined && point.temperature !== null) ? [{
+      // Add temperature data if available (only for transducer/telemetry data, not manual)
+      ...(data.some(point => point.temperature !== undefined && point.temperature !== null && point.data_source !== 'manual') ? [{
         label: 'Temperature',
-        data: data.map(point => ({
-          x: new Date(point.timestamp_utc).getTime(),
-          y: point.temperature || 0
-        })),
+        data: data
+          .filter(point => point.data_source !== 'manual' && point.temperature !== undefined && point.temperature !== null)
+          .map(point => ({
+            x: new Date(point.timestamp_utc).getTime(),
+            y: point.temperature!
+          })),
         borderColor: '#dc2626',
         backgroundColor: 'rgba(220, 38, 38, 0.1)',
         borderWidth: 1.5,
@@ -203,8 +205,8 @@ export function ChartJSTimeSeriesChart({
           color: 'rgba(0, 0, 0, 0.1)'
         }
       },
-      // Temperature scale (if needed)
-      ...(data.some(point => point.temperature !== undefined) ? {
+      // Temperature scale (if needed - only for non-manual data)
+      ...(data.some(point => point.temperature !== undefined && point.temperature !== null && point.data_source !== 'manual') ? {
         temperature: {
           type: 'linear' as const,
           display: true,
