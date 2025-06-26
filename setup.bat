@@ -139,11 +139,12 @@ if exist "%CODE_DIR%\assets" xcopy "%CODE_DIR%\assets" "%INSTALL_DIR%\assets\" /
 REM Create launchers in dedicated folder
 echo    [*] Creating application launchers...
 
-REM Main app launcher (working approach)
+REM Main app launcher (background process approach)
 (
     echo @echo off
     echo cd /d "%INSTALL_DIR%"
-    echo start /min cmd /c "call \"%INSTALL_DIR%\venv\Scripts\activate.bat\" && python \"%INSTALL_DIR%\main.py\""
+    echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
+    echo start "" /B python "%INSTALL_DIR%\main.py"
 ) > "%INSTALL_DIR%\launchers\water_levels_monitoring_system.bat"
 
 REM Debug launcher (with console for troubleshooting)
@@ -157,11 +158,12 @@ REM Debug launcher (with console for troubleshooting)
     echo pause
 ) > "%INSTALL_DIR%\launchers\water_levels_monitoring_system_debug.bat"
 
-REM Visualizer launcher (working approach)
+REM Visualizer launcher (background process approach)
 (
     echo @echo off
     echo cd /d "%INSTALL_DIR%\tools\Visualizer"
-    echo start /min cmd /c "call \"%INSTALL_DIR%\venv\Scripts\activate.bat\" && python \"%INSTALL_DIR%\tools\Visualizer\main.py\""
+    echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
+    echo start "" /B python "%INSTALL_DIR%\tools\Visualizer\main.py"
 ) > "%INSTALL_DIR%\launchers\water_levels_visualizer.bat"
 
 REM Visualizer debug launcher (with console for troubleshooting)
@@ -177,11 +179,11 @@ REM Visualizer debug launcher (with console for troubleshooting)
 
 echo    [*] Creating shortcuts with icons...
 
-REM Main app shortcut with custom ICO icon (points to batch file for silent execution)
-powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Levels Monitoring.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\launchers\water_levels_monitoring_system.bat'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Levels Monitoring System'; if (Test-Path '%INSTALL_DIR%\assets\water_level_meter.ico') { $Shortcut.IconLocation = '%INSTALL_DIR%\assets\water_level_meter.ico' } else { $Shortcut.IconLocation = 'C:\Windows\System32\imageres.dll,109' }; $Shortcut.Save() } catch { Write-Host 'Main app shortcut creation failed' }" 2>nul
+REM Main app shortcut pointing directly to pythonw.exe (no console window)
+powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Levels Monitoring.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\venv\Scripts\pythonw.exe'; $Shortcut.Arguments = '%INSTALL_DIR%\main.py'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Levels Monitoring System'; if (Test-Path '%INSTALL_DIR%\assets\water_level_meter.ico') { $Shortcut.IconLocation = '%INSTALL_DIR%\assets\water_level_meter.ico' } else { $Shortcut.IconLocation = 'C:\Windows\System32\imageres.dll,109' }; $Shortcut.Save() } catch { Write-Host 'Main app shortcut creation failed' }" 2>nul
 
-REM Visualizer shortcut with custom ICO icon (points to batch file for silent execution)  
-powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Level Visualizer.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\launchers\water_levels_visualizer.bat'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Level Visualizer'; if (Test-Path '%INSTALL_DIR%\assets\Water_level_tab_icon.ico') { $Shortcut.IconLocation = '%INSTALL_DIR%\assets\Water_level_tab_icon.ico' } else { $Shortcut.IconLocation = 'C:\Windows\System32\imageres.dll,178' }; $Shortcut.Save() } catch { Write-Host 'Visualizer shortcut creation failed' }" 2>nul
+REM Visualizer shortcut pointing directly to pythonw.exe (no console window)
+powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Level Visualizer.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\venv\Scripts\pythonw.exe'; $Shortcut.Arguments = '%INSTALL_DIR%\tools\Visualizer\main.py'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%\tools\Visualizer'; $Shortcut.Description = 'CAESER Water Level Visualizer'; if (Test-Path '%INSTALL_DIR%\assets\Water_level_tab_icon.ico') { $Shortcut.IconLocation = '%INSTALL_DIR%\assets\Water_level_tab_icon.ico' } else { $Shortcut.IconLocation = 'C:\Windows\System32\imageres.dll,178' }; $Shortcut.Save() } catch { Write-Host 'Visualizer shortcut creation failed' }" 2>nul
 
 echo.
 echo    ===============================================================================
@@ -198,9 +200,9 @@ echo        [*] CAESER Water Levels Monitoring.lnk (main app with icon)
 echo        [*] CAESER Water Level Visualizer.lnk (visualizer with icon)
 echo.
 echo    [+] Launchers created in 'launchers' folder:
-echo        [*] water_levels_monitoring_system.vbs (main app, completely silent)
+echo        [*] water_levels_monitoring_system.bat (main app, background process)
 echo        [*] water_levels_monitoring_system_debug.bat (main app with console)
-echo        [*] water_levels_visualizer.vbs (visualizer, completely silent)
+echo        [*] water_levels_visualizer.bat (visualizer, background process)
 echo        [*] water_levels_visualizer_debug.bat (visualizer with console)
 echo.
 echo    [+] You can now launch the applications!
