@@ -139,12 +139,12 @@ if exist "%CODE_DIR%\assets" xcopy "%CODE_DIR%\assets" "%INSTALL_DIR%\assets\" /
 REM Create launchers in dedicated folder
 echo    [*] Creating application launchers...
 
-REM Main app launcher (background process approach)
+REM Main app launcher (GUI with no console)
 (
     echo @echo off
     echo cd /d "%INSTALL_DIR%"
     echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
-    echo start "" /B python "%INSTALL_DIR%\main.py"
+    echo "%INSTALL_DIR%\venv\Scripts\pythonw.exe" "%INSTALL_DIR%\main.py"
 ) > "%INSTALL_DIR%\launchers\water_levels_monitoring_system.bat"
 
 REM Debug launcher (with console for troubleshooting)
@@ -158,12 +158,12 @@ REM Debug launcher (with console for troubleshooting)
     echo pause
 ) > "%INSTALL_DIR%\launchers\water_levels_monitoring_system_debug.bat"
 
-REM Visualizer launcher (background process approach)
+REM Visualizer launcher (GUI with no console)
 (
     echo @echo off
     echo cd /d "%INSTALL_DIR%\tools\Visualizer"
     echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
-    echo start "" /B python "%INSTALL_DIR%\tools\Visualizer\main.py"
+    echo "%INSTALL_DIR%\venv\Scripts\pythonw.exe" "%INSTALL_DIR%\tools\Visualizer\main.py"
 ) > "%INSTALL_DIR%\launchers\water_levels_visualizer.bat"
 
 REM Visualizer debug launcher (with console for troubleshooting)
@@ -179,11 +179,11 @@ REM Visualizer debug launcher (with console for troubleshooting)
 
 echo    [*] Creating shortcuts with icons...
 
-REM Main app shortcut pointing to debug batch file (shows console for visibility)
-powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Levels Monitoring.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\launchers\water_levels_monitoring_system_debug.bat'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Levels Monitoring System'; if (Test-Path '%INSTALL_DIR%\assets\water_level_meter.ico') { $Shortcut.IconLocation = '%INSTALL_DIR%\assets\water_level_meter.ico' } else { $Shortcut.IconLocation = 'C:\Windows\System32\imageres.dll,109' }; $Shortcut.Save() } catch { Write-Host 'Main app shortcut creation failed' }" 2>nul
+REM Main app shortcut pointing to GUI launcher (no console)
+powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Levels Monitoring.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\launchers\water_levels_monitoring_system.bat'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Levels Monitoring System'; if (Test-Path '%INSTALL_DIR%\assets\water_level_meter.ico') { $Shortcut.IconLocation = '%INSTALL_DIR%\assets\water_level_meter.ico' } else { $Shortcut.IconLocation = 'C:\Windows\System32\imageres.dll,109' }; $Shortcut.Save() } catch { Write-Host 'Main app shortcut creation failed' }" 2>nul
 
-REM Visualizer shortcut pointing to debug batch file (shows console for visibility)
-powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Level Visualizer.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\launchers\water_levels_visualizer_debug.bat'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Level Visualizer'; if (Test-Path '%INSTALL_DIR%\assets\Water_level_tab_icon.ico') { $Shortcut.IconLocation = '%INSTALL_DIR%\assets\Water_level_tab_icon.ico' } else { $Shortcut.IconLocation = 'C:\Windows\System32\imageres.dll,178' }; $Shortcut.Save() } catch { Write-Host 'Visualizer shortcut creation failed' }" 2>nul
+REM Visualizer shortcut pointing to GUI launcher (no console)
+powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Level Visualizer.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\launchers\water_levels_visualizer.bat'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Level Visualizer'; if (Test-Path '%INSTALL_DIR%\assets\Water_level_tab_icon.ico') { $Shortcut.IconLocation = '%INSTALL_DIR%\assets\Water_level_tab_icon.ico' } else { $Shortcut.IconLocation = 'C:\Windows\System32\imageres.dll,178' }; $Shortcut.Save() } catch { Write-Host 'Visualizer shortcut creation failed' }" 2>nul
 
 echo.
 echo    ===============================================================================
