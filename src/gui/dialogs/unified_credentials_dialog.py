@@ -484,13 +484,24 @@ You can find folder IDs in the URL of your Google Drive folders.
     def save_and_apply(self):
         """Save settings and apply configuration"""
         try:
+            logger.info("DEBUG: Starting save_and_apply process")
+            
             # Validate service account
-            if not self.service_account_path.text():
+            service_account_path = self.service_account_path.text()
+            logger.info(f"DEBUG: Service account path: '{service_account_path}'")
+            
+            if not service_account_path:
+                logger.warning("DEBUG: Service account path is empty - showing missing file dialog")
                 QMessageBox.warning(self, "Missing Service Account", 
                                   "Please select a service account file.")
                 return
                 
-            if not self.validate_service_account_file(self.service_account_path.text()):
+            logger.info(f"DEBUG: Validating service account file: {service_account_path}")
+            validation_result = self.validate_service_account_file(service_account_path)
+            logger.info(f"DEBUG: Service account validation result: {validation_result}")
+            
+            if not validation_result:
+                logger.warning("DEBUG: Service account validation failed - showing invalid file dialog")
                 QMessageBox.warning(self, "Invalid Service Account", 
                                   "Please select a valid service account file.")
                 return
@@ -511,10 +522,12 @@ You can find folder IDs in the URL of your Google Drive folders.
             # Remove obsolete OAuth client secret setting
             self.settings_handler.set_setting("google_drive_secret_path", "")
             
+            logger.info("DEBUG: All settings saved successfully")
             QMessageBox.information(self, "Settings Saved", 
                                   "Google Drive configuration saved successfully!\n\n" +
                                   "The application will now use the new settings.")
             
+            logger.info("DEBUG: Calling self.accept() - dialog should return QDialog.Accepted")
             self.accept()
             
         except Exception as e:
