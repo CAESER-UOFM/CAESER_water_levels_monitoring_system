@@ -19,12 +19,13 @@ if not exist "%INSTALL_DIR%" (
 
 echo [FIX 1] Replacing VBScript with working batch launchers...
 
-REM Create working batch launcher that ACTUALLY works
+REM Create working batch launcher that ACTUALLY works (hidden console)
 (
     echo @echo off
     echo cd /d "%INSTALL_DIR%"
-    echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
-    echo start /min "" "%INSTALL_DIR%\venv\Scripts\pythonw.exe" "%INSTALL_DIR%\main.py"
+    echo call "%INSTALL_DIR%\venv\Scripts\activate.bat" ^>nul 2^>^&1
+    echo start /B "" "%INSTALL_DIR%\venv\Scripts\pythonw.exe" "%INSTALL_DIR%\main.py"
+    echo exit
 ) > "%INSTALL_DIR%\launchers\water_levels_app_WORKING.bat"
 
 echo   ✓ Created working batch launcher
