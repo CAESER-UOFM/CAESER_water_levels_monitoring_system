@@ -143,12 +143,12 @@ if exist "%INSTALL_DIR%\tools\Visualizer\main.py" copy "%INSTALL_DIR%\tools\Visu
 REM Create launchers in dedicated folder
 echo    [*] Creating application launchers...
 
-REM Main app launcher (GUI with minimized console window)
+REM Main app launcher (GUI with no console window)
 (
     echo @echo off
     echo cd /d "%INSTALL_DIR%"
     echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
-    echo start /min "" "%INSTALL_DIR%\venv\Scripts\pythonw.exe" "%INSTALL_DIR%\main.py"
+    echo start "" "%INSTALL_DIR%\venv\Scripts\pythonw.exe" "%INSTALL_DIR%\main.py"
 ) > "%INSTALL_DIR%\launchers\water_levels_monitoring_system.bat"
 
 REM Debug launcher (with console for troubleshooting)
@@ -162,12 +162,12 @@ REM Debug launcher (with console for troubleshooting)
     echo pause
 ) > "%INSTALL_DIR%\launchers\water_levels_monitoring_system_debug.bat"
 
-REM Visualizer launcher (GUI with minimized console window)
+REM Visualizer launcher (GUI with no console window)
 (
     echo @echo off
     echo cd /d "%INSTALL_DIR%\tools\Visualizer"
     echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
-    echo start /min "" "%INSTALL_DIR%\venv\Scripts\pythonw.exe" "%INSTALL_DIR%\tools\Visualizer\main.py"
+    echo start "" "%INSTALL_DIR%\venv\Scripts\pythonw.exe" "%INSTALL_DIR%\tools\Visualizer\main.py"
 ) > "%INSTALL_DIR%\launchers\water_levels_visualizer.bat"
 
 REM Visualizer debug launcher (with console for troubleshooting)
