@@ -32,63 +32,41 @@ export function WellInfoPanel({
     <div className="card">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">Well Information</h3>
       
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        {/* Basic Well Info */}
+      {/* Well Static Info */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <InfoItem label="Well Number" value={well.well_number} color="text-primary-600" />
         <InfoItem label="CAE Number" value={well.cae_number || '—'} />
         <InfoItem label="Aquifer Type" value={well.aquifer_type ? well.aquifer_type.charAt(0).toUpperCase() + well.aquifer_type.slice(1) : '—'} />
-        
-        {/* Data Overview */}
-        <InfoItem 
-          label="Total Points" 
-          value={totalPoints.toLocaleString()} 
-          color="text-blue-600" 
-        />
-        
-        {/* Current View Info */}
-        <InfoItem 
-          label="Displayed Points" 
-          value={displayedPoints.toLocaleString()} 
-          color="text-green-600" 
-        />
-        
-        <InfoItem 
-          label="Sampling Rate" 
-          value={samplingRate} 
-          color="text-purple-600" 
-        />
-
-        {/* Technical Details */}
-        {well.top_of_casing && (
-          <InfoItem 
-            label="Top of Casing" 
-            value={`${well.top_of_casing.toFixed(2)} ft`} 
-          />
-        )}
-
-        {well.well_field && (
-          <InfoItem 
-            label="Field" 
-            value={well.well_field} 
-          />
-        )}
+        <InfoItem label="Top of Casing" value={well.top_of_casing ? `${well.top_of_casing.toFixed(2)} ft` : '—'} />
       </div>
 
-      {/* Current Time Range */}
-      {currentTimeRange && (
-        <div className="mt-4 pt-4 border-t border-gray-200">
-          <div className="text-xs font-medium text-gray-500 mb-2">Current Time Range</div>
-          <div className="bg-gray-50 rounded-lg p-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-mono text-gray-700">{currentTimeRange.start}</span>
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
-              <span className="font-mono text-gray-700">{currentTimeRange.end}</span>
-            </div>
-          </div>
+      {/* Dataset Info */}
+      <div className="bg-blue-50 rounded-lg p-4">
+        <div className="text-sm font-medium text-gray-700 mb-3">Full Dataset</div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <InfoItem 
+            label="Total Points Available" 
+            value={`${well.total_readings?.toLocaleString() || totalPoints.toLocaleString()} (Manual: ${well.manual_readings_count?.toLocaleString() || 'N/A'})`} 
+            color="text-blue-600" 
+          />
+          <InfoItem 
+            label="Full Data Range" 
+            value={currentTimeRange ? 
+              `${new Date(currentTimeRange.start).toLocaleDateString()} - ${new Date(currentTimeRange.end).toLocaleDateString()}`
+              : 'Loading...'
+            } 
+          />
+          <InfoItem 
+            label="Total Span" 
+            value={currentTimeRange ? 
+              `${Math.ceil((new Date(currentTimeRange.end).getTime() - new Date(currentTimeRange.start).getTime()) / (1000 * 60 * 60 * 24))} days`
+              : 'Loading...'
+            } 
+            color="text-gray-600" 
+          />
         </div>
-      )}
+      </div>
+
 
       {/* Data Availability Summary */}
       <div className="mt-4 pt-4 border-t border-gray-200">

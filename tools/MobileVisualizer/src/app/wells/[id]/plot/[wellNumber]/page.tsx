@@ -2,16 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { WaterLevelChart } from '@/components/WaterLevelChart';
-import { ChartControls } from '@/components/ChartControls';
-import { ChartControlsPanel } from '@/components/ChartControlsPanel';
+import { SmartWaterLevelChart } from '@/components/SmartWaterLevelChart';
 import { WellInfoPanel } from '@/components/WellInfoPanel';
-import { DataStatisticsPanel } from '@/components/DataStatisticsPanel';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { useProgressiveLoading } from '@/hooks/useProgressiveLoading';
-import { exportWaterLevelDataToCSV, exportWaterLevelDataToJSON, filterDataForExport } from '@/utils/dataExport';
-import type { Well, WaterLevelReading } from '@/lib/api/api';
-import type { PlotConfig } from '@/types/database';
+import type { Well } from '@/lib/api/api';
 
 export default function PlotViewerPage() {
   const params = useParams();
@@ -23,89 +17,29 @@ export default function PlotViewerPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const [isChartControlsCollapsed, setIsChartControlsCollapsed] = useState(false);
   const [currentTimeRange, setCurrentTimeRange] = useState<{ start: string; end: string } | null>(null);
-  const [samplingRate, setSamplingRate] = useState('Overview');
-  
-  // Track if initial data has been loaded to prevent infinite loops
-  const initialLoadedRef = useRef(false);
+  const chartRef = useRef<{ switchToDailyOverview: () => void; resetZoom: () => void; isZoomed: boolean } | null>(null);
+  const [chartInfo, setChartInfo] = useState<{ 
+    totalPoints: number; 
+    displayedPoints: number; 
+    samplingRate: string;
+    dataRange: { start: string; end: string } | null;
+    isHighRes: boolean;
+  }>({ 
+    totalPoints: 0, 
+    displayedPoints: 0, 
+    samplingRate: 'Loading...',
+    dataRange: null,
+    isHighRes: false
+  });
 
-  // Progressive loading hook with stable error handler
-  const handleProgressiveError = useCallback((errorMessage: string) => {
-    setError(errorMessage);
+  // Handle chart info updates - stable callback
+  const updateChartInfo = useCallback((info: typeof chartInfo) => {
+    setChartInfo(info);
+    if (info.dataRange) {
+      setCurrentTimeRange(info.dataRange);
+    }
   }, []);
-
-  const progressiveLoading = useProgressiveLoading({
-    databaseId,
-    wellNumber,
-    onError: handleProgressiveError
-  });
-  const [plotConfig, setPlotConfig] = useState<PlotConfig>({
-    showWaterLevel: true,
-    showTemperature: false,
-    showManualReadings: true,
-    dateRange: {},
-    colors: {
-      waterLevel: '#3b82f6',
-      temperature: '#ef4444',
-      manual: '#10b981'
-    }
-  });
-
-  // Handle sampling rate changes with progressive loading
-  const handleSamplingRateChange = useCallback(async (newSampling: string) => {
-    setSamplingRate(newSampling);
-    
-    try {
-      setLoading(true);
-      
-      // Map sampling rate to time ranges (always ~5000 points)
-      switch (newSampling) {
-        case 'Overview':
-          // Load full dataset
-          await progressiveLoading.loadOverview();
-          break;
-        case 'Medium Detail':
-          if (plotConfig.dateRange?.start && plotConfig.dateRange?.end) {
-            // Use current date range
-            await progressiveLoading.loadForTimeRange(
-              plotConfig.dateRange.start.toISOString(),
-              plotConfig.dateRange.end.toISOString()
-            );
-          } else {
-            // Load last year
-            const endDate = new Date();
-            const startDate = new Date(endDate.getTime() - 365 * 24 * 60 * 60 * 1000);
-            await progressiveLoading.loadForTimeRange(
-              startDate.toISOString(),
-              endDate.toISOString()
-            );
-          }
-          break;
-        case 'Full Detail':
-          if (plotConfig.dateRange?.start && plotConfig.dateRange?.end) {
-            // Use current date range
-            await progressiveLoading.loadForTimeRange(
-              plotConfig.dateRange.start.toISOString(),
-              plotConfig.dateRange.end.toISOString()
-            );
-          } else {
-            // Load last month
-            const endDate = new Date();
-            const startDate = new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
-            await progressiveLoading.loadForTimeRange(
-              startDate.toISOString(),
-              endDate.toISOString()
-            );
-          }
-          break;
-      }
-    } catch (err) {
-      console.error('Error loading progressive data:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [progressiveLoading, plotConfig.dateRange]);
 
   // Load well data and initial overview
   useEffect(() => {
@@ -114,8 +48,6 @@ export default function PlotViewerPage() {
         setLoading(true);
         setError(null);
         
-        // Reset initial loading flag for new well
-        initialLoadedRef.current = false;
 
         // Load well metadata
         const wellResponse = await fetch(`/.netlify/functions/wells/${databaseId}/${wellNumber}`);
@@ -137,16 +69,6 @@ export default function PlotViewerPage() {
     loadInitialData();
   }, [databaseId, wellNumber]);
 
-  // Load initial overview data after well is loaded
-  useEffect(() => {
-    if (well && !initialLoadedRef.current && progressiveLoading.segments.length === 0 && !progressiveLoading.isLoading) {
-      initialLoadedRef.current = true;
-      progressiveLoading.loadOverview().catch(err => {
-        console.error('Failed to load initial overview:', err);
-        initialLoadedRef.current = false; // Reset on error to allow retry
-      });
-    }
-  }, [well, progressiveLoading.segments.length, progressiveLoading.isLoading, progressiveLoading.loadOverview]);
 
   // Close export menu when clicking outside
   useEffect(() => {
@@ -163,32 +85,7 @@ export default function PlotViewerPage() {
     return () => document.removeEventListener('click', handleClickOutside);
   }, [showExportMenu]);
 
-  const handlePlotConfigChange = useCallback((newConfig: Partial<PlotConfig>) => {
-    setPlotConfig(prev => ({ ...prev, ...newConfig }));
-  }, []);
 
-  const handleDateRangeChange = useCallback(async (startDate?: Date, endDate?: Date) => {
-    // Update plot config first
-    setPlotConfig(prev => ({
-      ...prev,
-      dateRange: {
-        start: startDate,
-        end: endDate
-      }
-    }));
-    
-    // Load appropriate detail level for new viewport
-    if (startDate && endDate) {
-      try {
-        setLoading(true);
-        await progressiveLoading.loadForViewport({ start: startDate, end: endDate });
-      } catch (err) {
-        console.error('Error loading data for date range:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-  }, [progressiveLoading.loadForViewport]);
 
   const handleBackToWells = useCallback(() => {
     router.push(`/wells/${databaseId}`);
@@ -199,38 +96,14 @@ export default function PlotViewerPage() {
   }, []);
 
   const handleExportCSV = useCallback(async () => {
-    if (!well || progressiveLoading.currentData.length === 0) return;
-    
-    try {
-      const filteredData = filterDataForExport(
-        progressiveLoading.currentData as any,
-        plotConfig.dateRange?.start?.toISOString(),
-        plotConfig.dateRange?.end?.toISOString()
-      );
-      exportWaterLevelDataToCSV(filteredData, well as any);
-      setShowExportMenu(false);
-    } catch (error) {
-      console.error('Error exporting CSV:', error);
-      alert('Failed to export CSV file. Please try again.');
-    }
-  }, [well, progressiveLoading.currentData, plotConfig.dateRange]);
+    alert('Export functionality will be implemented with the new chart system.');
+    setShowExportMenu(false);
+  }, []);
 
   const handleExportJSON = useCallback(async () => {
-    if (!well || progressiveLoading.currentData.length === 0) return;
-    
-    try {
-      const filteredData = filterDataForExport(
-        progressiveLoading.currentData as any,
-        plotConfig.dateRange?.start?.toISOString(),
-        plotConfig.dateRange?.end?.toISOString()
-      );
-      exportWaterLevelDataToJSON(filteredData, well as any);
-      setShowExportMenu(false);
-    } catch (error) {
-      console.error('Error exporting JSON:', error);
-      alert('Failed to export JSON file. Please try again.');
-    }
-  }, [well, progressiveLoading.currentData, plotConfig.dateRange]);
+    alert('Export functionality will be implemented with the new chart system.');
+    setShowExportMenu(false);
+  }, []);
 
   const handleViewRecharge = useCallback(() => {
     router.push(`/wells/${databaseId}/recharge/${wellNumber}`);
@@ -323,7 +196,7 @@ export default function PlotViewerPage() {
                   onClick={handleExportData}
                   className="btn-primary text-sm px-3 py-2"
                   title="Export data"
-                  disabled={progressiveLoading.currentData.length === 0}
+                  disabled={false}
                 >
                   <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -353,7 +226,7 @@ export default function PlotViewerPage() {
                       </button>
                       <div className="border-t border-gray-100 my-1"></div>
                       <div className="px-4 py-2 text-xs text-gray-500">
-                        Exports current data: {progressiveLoading.currentData.length} readings (Level {progressiveLoading.currentLevel})
+                        Smart chart export coming soon
                       </div>
                     </div>
                   </div>
@@ -370,68 +243,73 @@ export default function PlotViewerPage() {
         <WellInfoPanel
           well={well}
           currentTimeRange={currentTimeRange}
-          totalPoints={progressiveLoading.stats.totalDataPoints}
-          displayedPoints={progressiveLoading.currentData.length}
-          samplingRate={`${samplingRate} (Level ${progressiveLoading.currentLevel})`}
+          totalPoints={chartInfo.totalPoints}
+          displayedPoints={chartInfo.displayedPoints}
+          samplingRate={chartInfo.samplingRate}
         />
 
-        {/* Chart Controls - Collapsible */}
-        <ChartControlsPanel
-          config={plotConfig}
-          onConfigChange={setPlotConfig}
-          isCollapsed={isChartControlsCollapsed}
-          onToggleCollapse={() => setIsChartControlsCollapsed(!isChartControlsCollapsed)}
-        />
 
         {/* Chart */}
         <div className="card">
           <div className="flex items-center justify-between mb-4">
+            <div className="flex-1"></div>
             <h2 className="text-lg font-semibold text-gray-900">
               Water Level Data
             </h2>
-            {loading && (
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <LoadingSpinner size="small" />
-                <span>Updating...</span>
+            <div className="flex-1 flex justify-end">
+              <div className="flex items-center space-x-2">
+              {/* Back to Overview button - always visible, goes to full daily view */}
+              <button
+                onClick={() => {
+                  if (chartRef.current) {
+                    chartRef.current.switchToDailyOverview();
+                  }
+                  // Also reset zoom
+                  if ((window as any).chartResetZoom) {
+                    (window as any).chartResetZoom();
+                  }
+                }}
+                disabled={loading}
+                className="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded hover:bg-blue-200 disabled:opacity-50 transition-colors"
+              >
+                Back to Overview
+              </button>
+              {/* Reset Zoom button - only when high-res data loaded */}
+              {chartInfo.isHighRes && (
+                <button
+                  onClick={() => {
+                    if ((window as any).chartResetZoom) {
+                      (window as any).chartResetZoom();
+                    }
+                  }}
+                  disabled={loading}
+                  className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                >
+                  Reset Zoom
+                </button>
+              )}
+              {/* Loading indicator */}
+              {loading && (
+                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <LoadingSpinner size="small" />
+                  <span>Updating...</span>
+                </div>
+              )}
               </div>
-            )}
+            </div>
           </div>
           
-          {progressiveLoading.currentData.length === 0 ? (
-            <div className="text-center py-12">
-              <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {progressiveLoading.isLoading ? 'Loading Data...' : 'No Data Available'}
-              </h3>
-              <p className="text-gray-600">
-                {progressiveLoading.isLoading 
-                  ? 'Please wait while we load your water level data.'
-                  : 'No water level readings found for the selected date range.'}
-              </p>
-            </div>
-          ) : (
-            <WaterLevelChart
-              data={progressiveLoading.currentData as any}
-              config={plotConfig}
-              loading={loading || progressiveLoading.isLoading}
-              currentSampling={samplingRate}
-              onSamplingChange={handleSamplingRateChange}
-              onViewportChange={progressiveLoading.loadForViewport}
-              currentSamplingInfo={progressiveLoading.currentSamplingInfo}
-              currentIntendedViewport={progressiveLoading.currentIntendedViewport}
-              getDataBoundaries={progressiveLoading.getDataBoundaries}
-              isWithinDataBoundaries={progressiveLoading.isWithinDataBoundaries}
-            />
-          )}
+          <SmartWaterLevelChart
+            ref={chartRef}
+            databaseId={databaseId}
+            wellNumber={wellNumber}
+            title=""
+            height={400}
+            onError={(error) => setError(error)}
+            onInfoUpdate={updateChartInfo}
+          />
         </div>
 
-        {/* Data Statistics Panel - Bottom */}
-        <DataStatisticsPanel 
-          data={progressiveLoading.currentData as any}
-          wellNumber={well.well_number}
-        />
       </div>
     </div>
   );

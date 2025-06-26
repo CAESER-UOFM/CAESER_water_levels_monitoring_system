@@ -117,6 +117,7 @@ export class TursoService {
       '6hour': 360,
       '12hour': 720,
       '1day': 1440,
+      'daily': 1440,  // Add mapping for 'daily' -> 1440 minutes (24 hours)
       '3day': 4320,
       '1week': 10080,
       '1month': 43200

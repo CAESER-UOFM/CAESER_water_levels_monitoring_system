@@ -105,7 +105,7 @@ async function getWaterLevelData(databaseId: string, wellNumber: string, queryPa
 
   // Adaptive sampling rate parameter (replaces level-based approach)
   if (queryParams.samplingRate && typeof queryParams.samplingRate === 'string') {
-    const allowedRates = ['15min', '30min', '1hour', '3hour', '6hour', '12hour', '1day', '3day', '1week', '1month'] as const;
+    const allowedRates = ['15min', '30min', '1hour', '3hour', '6hour', '12hour', '1day', 'daily', '3day', '1week', '1month'] as const;
     if (allowedRates.includes(queryParams.samplingRate as any)) {
       params.samplingRate = queryParams.samplingRate as typeof allowedRates[number];
       params.downsample = true;

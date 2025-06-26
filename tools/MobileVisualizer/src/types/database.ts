@@ -138,6 +138,7 @@ export interface DataQueryParams {
   downsample?: boolean;
   maxPoints?: number;
   level?: 1 | 2 | 3; // Progressive loading levels: 1=Overview, 2=Medium, 3=Full
+  samplingRate?: '15min' | '30min' | '1hour' | '3hour' | '6hour' | '12hour' | '1day' | 'daily' | '3day' | '1week' | '1month';
 }
 
 // Chart data types
@@ -170,49 +171,6 @@ export interface PlotConfig {
   };
 }
 
-// Resolution system types
-export type ResolutionMode = 'full' | '1year' | '6months' | '1month';
-
-export interface ResolutionConfig {
-  id: ResolutionMode;
-  name: string;
-  description: string;
-  samplingInterval: number; // in minutes
-  maxTimeSpan?: number; // in days, undefined for full view
-  targetPoints: number;
-  icon?: string;
-}
-
-export interface ResolutionCalculation {
-  mode: ResolutionMode;
-  samplingInterval: number;
-  estimatedPoints: number;
-  actualTimeSpan: number; // in days
-  startDate: Date;
-  endDate: Date;
-}
-
-export interface NavigationState {
-  currentResolution: ResolutionMode;
-  dateRange: {
-    start: Date;
-    end: Date;
-  };
-  availableRange: {
-    start: Date;
-    end: Date;
-  };
-  canNavigateLeft: boolean;
-  canNavigateRight: boolean;
-  position: number; // 0-1, current position within full dataset
-}
-
-// Enhanced query parameters with resolution support
-export interface ResolutionDataQueryParams extends Omit<DataQueryParams, 'level' | 'maxPoints'> {
-  resolution: ResolutionMode;
-  samplingInterval?: number;
-  targetPoints?: number;
-}
 
 // Export data types
 export interface ExportConfig {
@@ -224,7 +182,6 @@ export interface ExportConfig {
   dataTypes: string[];
   downsample?: boolean;
   maxPoints?: number;
-  resolution?: ResolutionMode;
 }
 
 export interface ExportData {
@@ -237,7 +194,6 @@ export interface ExportData {
     };
     totalPoints: number;
     dataTypes: string[];
-    resolution?: ResolutionMode;
   };
   data: WaterLevelReading[];
 }
