@@ -130,21 +130,26 @@ if "%CODE_DIR:~-1%"=="\" set "CODE_DIR=%CODE_DIR:~0,-1%"
 
 xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y >nul
 xcopy "%CODE_DIR%\main.py" "%INSTALL_DIR%\" /Y >nul
+copy "%INSTALL_DIR%\main.py" "%INSTALL_DIR%\main.pyw" >nul
 xcopy "%CODE_DIR%\Requirements.txt" "%INSTALL_DIR%\" /Y >nul
 
 if exist "%CODE_DIR%\config" xcopy "%CODE_DIR%\config" "%INSTALL_DIR%\config\" /E /I /Y >nul
 if exist "%CODE_DIR%\tools" xcopy "%CODE_DIR%\tools" "%INSTALL_DIR%\tools\" /E /I /Y >nul
 if exist "%CODE_DIR%\assets" xcopy "%CODE_DIR%\assets" "%INSTALL_DIR%\assets\" /E /I /Y >nul
 
+REM Create .pyw copy of visualizer main file for GUI launching
+if exist "%INSTALL_DIR%\tools\Visualizer\main.py" copy "%INSTALL_DIR%\tools\Visualizer\main.py" "%INSTALL_DIR%\tools\Visualizer\main.pyw" >nul
+
 REM Create launchers in dedicated folder
 echo    [*] Creating application launchers...
 
-REM Main app launcher (PowerShell hidden window)
+REM Main app launcher (direct .pyw execution - no console window)
 (
-    echo cd "%INSTALL_DIR%"
-    echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
-    echo "%INSTALL_DIR%\venv\Scripts\pythonw.exe" "%INSTALL_DIR%\main.py"
-) > "%INSTALL_DIR%\launchers\water_levels_monitoring_system.ps1"
+    echo @echo off
+    echo cd /d "%INSTALL_DIR%"
+    echo call "%INSTALL_DIR%\venv\Scripts\activate.bat" >nul 2>&1
+    echo start "" "%INSTALL_DIR%\main.pyw"
+) > "%INSTALL_DIR%\launchers\water_levels_monitoring_system.bat"
 
 REM Debug launcher (with console for troubleshooting)
 (
@@ -157,12 +162,13 @@ REM Debug launcher (with console for troubleshooting)
     echo pause
 ) > "%INSTALL_DIR%\launchers\water_levels_monitoring_system_debug.bat"
 
-REM Visualizer launcher (PowerShell hidden window)
+REM Visualizer launcher (direct .pyw execution - no console window)
 (
-    echo cd "%INSTALL_DIR%\tools\Visualizer"
-    echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
-    echo "%INSTALL_DIR%\venv\Scripts\pythonw.exe" "%INSTALL_DIR%\tools\Visualizer\main.py"
-) > "%INSTALL_DIR%\launchers\water_levels_visualizer.ps1"
+    echo @echo off
+    echo cd /d "%INSTALL_DIR%\tools\Visualizer"
+    echo call "%INSTALL_DIR%\venv\Scripts\activate.bat" >nul 2>&1
+    echo start "" "%INSTALL_DIR%\tools\Visualizer\main.pyw"
+) > "%INSTALL_DIR%\launchers\water_levels_visualizer.bat"
 
 REM Visualizer debug launcher (with console for troubleshooting)
 (
@@ -177,11 +183,11 @@ REM Visualizer debug launcher (with console for troubleshooting)
 
 echo    [*] Creating shortcuts with icons...
 
-REM Main app shortcut pointing to PowerShell launcher (completely hidden)
-powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Levels Monitoring.lnk'); $Shortcut.TargetPath = 'powershell.exe'; $Shortcut.Arguments = '-ExecutionPolicy Bypass -WindowStyle Hidden -File \"%INSTALL_DIR%\launchers\water_levels_monitoring_system.ps1\"'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Levels Monitoring System'; if (Test-Path '%INSTALL_DIR%\assets\water_level_meter.ico') { $Shortcut.IconLocation = '%INSTALL_DIR%\assets\water_level_meter.ico' } else { $Shortcut.IconLocation = 'C:\Windows\System32\imageres.dll,109' }; $Shortcut.Save() } catch { Write-Host 'Main app shortcut creation failed' }" 2>nul
+REM Main app shortcut pointing to GUI launcher (no console)
+powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Levels Monitoring.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\launchers\water_levels_monitoring_system.bat'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Levels Monitoring System'; if (Test-Path '%INSTALL_DIR%\assets\water_level_meter.ico') { $Shortcut.IconLocation = '%INSTALL_DIR%\assets\water_level_meter.ico' } else { $Shortcut.IconLocation = 'C:\Windows\System32\imageres.dll,109' }; $Shortcut.Save() } catch { Write-Host 'Main app shortcut creation failed' }" 2>nul
 
-REM Visualizer shortcut pointing to PowerShell launcher (completely hidden)
-powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Level Visualizer.lnk'); $Shortcut.TargetPath = 'powershell.exe'; $Shortcut.Arguments = '-ExecutionPolicy Bypass -WindowStyle Hidden -File \"%INSTALL_DIR%\launchers\water_levels_visualizer.ps1\"'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Level Visualizer'; if (Test-Path '%INSTALL_DIR%\assets\Water_level_tab_icon.ico') { $Shortcut.IconLocation = '%INSTALL_DIR%\assets\Water_level_tab_icon.ico' } else { $Shortcut.IconLocation = 'C:\Windows\System32\imageres.dll,178' }; $Shortcut.Save() } catch { Write-Host 'Visualizer shortcut creation failed' }" 2>nul
+REM Visualizer shortcut pointing to GUI launcher (no console)
+powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Level Visualizer.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\launchers\water_levels_visualizer.bat'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Level Visualizer'; if (Test-Path '%INSTALL_DIR%\assets\Water_level_tab_icon.ico') { $Shortcut.IconLocation = '%INSTALL_DIR%\assets\Water_level_tab_icon.ico' } else { $Shortcut.IconLocation = 'C:\Windows\System32\imageres.dll,178' }; $Shortcut.Save() } catch { Write-Host 'Visualizer shortcut creation failed' }" 2>nul
 
 echo.
 echo    ===============================================================================
