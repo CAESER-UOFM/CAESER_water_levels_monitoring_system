@@ -139,15 +139,14 @@ if exist "%CODE_DIR%\assets" xcopy "%CODE_DIR%\assets" "%INSTALL_DIR%\assets\" /
 REM Create launchers in dedicated folder
 echo    [*] Creating application launchers...
 
-REM Main app launcher (no console window)
+REM Main app launcher (completely hidden - no console window)
 (
-    echo @echo off
-    echo cd /d "%INSTALL_DIR%"
-    echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
-    echo "%INSTALL_DIR%\venv\Scripts\pythonw.exe" "%INSTALL_DIR%\main.py"
-) > "%INSTALL_DIR%\launchers\water_levels_monitoring_system.bat"
+    echo Set objShell = CreateObject^("WScript.Shell"^)
+    echo objShell.CurrentDirectory = "%INSTALL_DIR%"
+    echo objShell.Run """%INSTALL_DIR%\venv\Scripts\pythonw.exe"" ""%INSTALL_DIR%\main.py""", 0, False
+) > "%INSTALL_DIR%\launchers\water_levels_monitoring_system.vbs"
 
-REM Debug launcher (with console)
+REM Debug launcher (with console for troubleshooting)
 (
     echo @echo off
     echo echo CAESER Water Levels Monitoring - Debug Mode
@@ -158,15 +157,14 @@ REM Debug launcher (with console)
     echo pause
 ) > "%INSTALL_DIR%\launchers\water_levels_monitoring_system_debug.bat"
 
-REM Visualizer launcher (no console window)
+REM Visualizer launcher (completely hidden - no console window)
 (
-    echo @echo off
-    echo cd /d "%INSTALL_DIR%\tools\Visualizer"
-    echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
-    echo "%INSTALL_DIR%\venv\Scripts\pythonw.exe" "%INSTALL_DIR%\tools\Visualizer\main.py"
-) > "%INSTALL_DIR%\launchers\water_levels_visualizer.bat"
+    echo Set objShell = CreateObject^("WScript.Shell"^)
+    echo objShell.CurrentDirectory = "%INSTALL_DIR%\tools\Visualizer"
+    echo objShell.Run """%INSTALL_DIR%\venv\Scripts\pythonw.exe"" ""%INSTALL_DIR%\tools\Visualizer\main.py""", 0, False
+) > "%INSTALL_DIR%\launchers\water_levels_visualizer.vbs"
 
-REM Visualizer debug launcher (with console)
+REM Visualizer debug launcher (with console for troubleshooting)
 (
     echo @echo off
     echo echo CAESER Water Level Visualizer - Debug Mode
@@ -179,11 +177,11 @@ REM Visualizer debug launcher (with console)
 
 echo    [*] Creating shortcuts with icons...
 
-REM Main app shortcut with proper icon (using water_level_meter.png as fallback since .webp not supported in shortcuts)
-powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Levels Monitoring.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\launchers\water_levels_monitoring_system.bat'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Levels Monitoring System'; $IconPath = '%INSTALL_DIR%\src\gui\icons\water_level_meter.png'; if (Test-Path $IconPath) { $Shortcut.IconLocation = $IconPath }; $Shortcut.Save() } catch { Write-Host 'Main app shortcut creation failed' }" 2>nul
+REM Main app shortcut with proper icon (points to VBScript for silent execution)
+powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Levels Monitoring.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\launchers\water_levels_monitoring_system.vbs'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Levels Monitoring System'; $IconPath = '%INSTALL_DIR%\src\gui\icons\water_level_meter.png'; if (Test-Path $IconPath) { $Shortcut.IconLocation = $IconPath }; $Shortcut.Save() } catch { Write-Host 'Main app shortcut creation failed' }" 2>nul
 
-REM Visualizer shortcut with water level tab icon
-powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Level Visualizer.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\launchers\water_levels_visualizer.bat'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Level Visualizer'; if (Test-Path '%INSTALL_DIR%\src\gui\icons\Water_level_tab_icon.png') { $Shortcut.IconLocation = '%INSTALL_DIR%\src\gui\icons\Water_level_tab_icon.png' }; $Shortcut.Save() } catch { Write-Host 'Visualizer shortcut creation failed' }" 2>nul
+REM Visualizer shortcut with water level tab icon (points to VBScript for silent execution)
+powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Level Visualizer.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\launchers\water_levels_visualizer.vbs'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Level Visualizer'; if (Test-Path '%INSTALL_DIR%\src\gui\icons\Water_level_tab_icon.png') { $Shortcut.IconLocation = '%INSTALL_DIR%\src\gui\icons\Water_level_tab_icon.png' }; $Shortcut.Save() } catch { Write-Host 'Visualizer shortcut creation failed' }" 2>nul
 
 echo.
 echo    ===============================================================================
@@ -200,9 +198,9 @@ echo        [*] CAESER Water Levels Monitoring.lnk (main app with icon)
 echo        [*] CAESER Water Level Visualizer.lnk (visualizer with icon)
 echo.
 echo    [+] Launchers created in 'launchers' folder:
-echo        [*] water_levels_monitoring_system.bat (main app, no console)
+echo        [*] water_levels_monitoring_system.vbs (main app, completely silent)
 echo        [*] water_levels_monitoring_system_debug.bat (main app with console)
-echo        [*] water_levels_visualizer.bat (visualizer, no console)
+echo        [*] water_levels_visualizer.vbs (visualizer, completely silent)
 echo        [*] water_levels_visualizer_debug.bat (visualizer with console)
 echo.
 echo    [+] You can now launch the applications!
