@@ -41,12 +41,63 @@ echo    [DEBUG] Testing icon file availability...
 set "MAIN_ICON=%INSTALL_DIR%\src\gui\icons\water_level_meter.png"
 set "VIZ_ICON=%INSTALL_DIR%\src\gui\icons\Water_level_tab_icon.png"
 
-REM Skip full installation for quick debugging - just copy source files
-echo    [DEBUG] Copying source files for icon testing...
+REM Do FULL installation for proper debugging
+echo    [DEBUG] Performing full installation with debugging...
 set "CODE_DIR=%~dp0"
 if "%CODE_DIR:~-1%"=="\" set "CODE_DIR=%CODE_DIR:~0,-1%"
 
-xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y >nul 2>nul
+echo    [DEBUG] Step 1: Creating Python environment...
+mkdir "%INSTALL_DIR%\python"
+mkdir "%INSTALL_DIR%\venv"
+
+echo    [DEBUG] Step 2: Downloading Python...
+bitsadmin /transfer "PythonDownload" "https://www.python.org/ftp/python/3.11.6/python-3.11.6-embed-amd64.zip" "%INSTALL_DIR%\python.zip" >nul
+if exist "%INSTALL_DIR%\python.zip" (
+    echo    [DEBUG] ✓ Python downloaded successfully
+) else (
+    echo    [DEBUG] ✗ Python download failed
+)
+
+echo    [DEBUG] Step 3: Extracting Python...
+powershell -ExecutionPolicy Bypass -Command "Expand-Archive -Path '%INSTALL_DIR%\python.zip' -DestinationPath '%INSTALL_DIR%\python' -Force" >nul
+del "%INSTALL_DIR%\python.zip"
+if exist "%INSTALL_DIR%\python\python.exe" (
+    echo    [DEBUG] ✓ Python extracted successfully
+) else (
+    echo    [DEBUG] ✗ Python extraction failed
+)
+
+echo    [DEBUG] Step 4: Configuring Python...
+for %%F in ("%INSTALL_DIR%\python\python*._pth") do (
+    type "%%F" > "%%F.temp"
+    echo import site >> "%%F.temp"
+    move /y "%%F.temp" "%%F" >nul
+)
+
+echo    [DEBUG] Step 5: Installing pip...
+bitsadmin /transfer "PipDownload" "https://bootstrap.pypa.io/get-pip.py" "%INSTALL_DIR%\get-pip.py" >nul
+"%INSTALL_DIR%\python\python.exe" "%INSTALL_DIR%\get-pip.py" --no-warn-script-location >nul
+del "%INSTALL_DIR%\get-pip.py"
+
+echo    [DEBUG] Step 6: Installing virtualenv...
+"%INSTALL_DIR%\python\python.exe" -m pip install --no-warn-script-location setuptools virtualenv >nul
+
+echo    [DEBUG] Step 7: Creating virtual environment...
+"%INSTALL_DIR%\python\python.exe" -m virtualenv "%INSTALL_DIR%\venv" >nul
+if exist "%INSTALL_DIR%\venv\Scripts\python.exe" (
+    echo    [DEBUG] ✓ Virtual environment created successfully
+) else (
+    echo    [DEBUG] ✗ Virtual environment creation failed
+)
+
+echo    [DEBUG] Step 8: Installing basic dependencies...
+call "%INSTALL_DIR%\venv\Scripts\activate.bat"
+python -m pip install --upgrade pip >nul
+python -m pip install PyQt5==5.15.10 PyQt5_sip==12.13.0 >nul
+
+echo    [DEBUG] Step 9: Copying application files...
+xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y >nul
+xcopy "%CODE_DIR%\main.py" "%INSTALL_DIR%\" /Y >nul
 xcopy "%CODE_DIR%\assets" "%INSTALL_DIR%\assets\" /E /I /Y >nul 2>nul
 
 echo    [DEBUG] Checking for icon files...
