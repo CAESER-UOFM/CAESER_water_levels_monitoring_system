@@ -709,6 +709,10 @@ class MainWindow(QMainWindow):
                         logger.info("No cloud projects found")
                 except Exception as e:
                     logger.error(f"Error loading cloud projects: {e}")
+                    import traceback
+                    logger.error(f"Full traceback: {traceback.format_exc()}")
+            else:
+                logger.warning("Cloud database handler is None - cannot load cloud projects")
             
             if not has_databases:
                 self.db_combo.addItem("No databases found")
@@ -2909,7 +2913,10 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
                 try:
                     # Reinitialize Google Drive service
                     if hasattr(self, 'drive_service'):
-                        self.drive_service.authenticate(force=True)
+                        logger.info("Force re-authenticating Google Drive service")
+                        auth_result = self.drive_service.authenticate(force=True)
+                        logger.info(f"Google Drive authentication result: {auth_result}")
+                        logger.info(f"Google Drive service authenticated: {self.drive_service.authenticated}")
                     
                     # Reinitialize cloud database handler with new settings
                     if self.drive_service.authenticated:
@@ -2927,12 +2934,15 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
                         self.db_manager.set_google_drive_handler(self.drive_db_handler)
                         
                         logger.info("Google Drive components reinitialized successfully")
+                        
+                        # Reload databases after successful component initialization
+                        logger.info("Reloading databases after credential setup")
+                        self._load_databases()
                     else:
                         logger.warning("Google Drive service not authenticated after credential setup")
-                    
-                    # Reload databases
-                    logger.info("Reloading databases after credential setup")
-                    self._load_databases()
+                        # Still reload databases to show local ones
+                        logger.info("Reloading local databases only")
+                        self._load_databases()
                     
                     # Update water level runs tab if it exists
                     if 'water_level_runs' in self._tabs:
