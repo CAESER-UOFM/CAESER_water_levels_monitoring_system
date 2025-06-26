@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import type { ResolutionMode, ResolutionCalculation } from '@/types/database';
 import type { WaterLevelReading } from '@/lib/api/api';
-import { calculateOptimalSampling, formatSamplingInfo, type AdaptiveSamplingResult } from '@/utils/adaptiveSampling';
+import { calculateOptimalSampling, formatSamplingInfo, type AdaptiveSamplingResult, calculateResolutionSampling } from '@/utils/adaptiveSampling';
+import { smartDataFetcher, type DataFetchRequest, type DataFetchResult } from '@/lib/services/SmartDataFetcher';
 
 export interface LoadedDataSegment {
   level: 1 | 2 | 3;
@@ -14,6 +16,10 @@ export interface LoadedDataSegment {
     start: Date;
     end: Date;
   };
+  // Enhanced resolution information
+  resolution?: ResolutionMode;
+  resolutionCalculation?: ResolutionCalculation;
+  fetchResult?: DataFetchResult;
   samplingInfo?: {
     samplingRate: string;
     description: string;
@@ -41,12 +47,17 @@ export interface UseProgressiveLoadingOptions {
   databaseId: string;
   wellNumber: string;
   onError?: (error: string) => void;
+  // New resolution-aware options
+  defaultResolution?: ResolutionMode;
+  enableSmartCaching?: boolean;
 }
 
 export function useProgressiveLoading({
   databaseId,
   wellNumber,
-  onError
+  onError,
+  defaultResolution = 'full',
+  enableSmartCaching = true
 }: UseProgressiveLoadingOptions) {
   const [state, setState] = useState<ProgressiveLoadingState>({
     segments: [],
@@ -303,6 +314,104 @@ export function useProgressiveLoading({
     console.log(`🚀 Loading ${timeSpanDays.toFixed(1)} days - expecting ~5000 points for time range`);
     return loadDataLevel(1, startDate, endDate, viewport);
   }, [loadDataLevel]);
+
+  // NEW: Resolution-aware data loading with smart caching
+  const loadWithResolution = useCallback(async (
+    resolution: ResolutionMode,
+    startDate: Date,
+    endDate: Date,
+    priority: 'high' | 'medium' | 'low' = 'high'
+  ) => {
+    if (!enableSmartCaching) {
+      // Fallback to legacy loading
+      return loadForTimeRange(startDate.toISOString(), endDate.toISOString());
+    }
+
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
+
+    try {
+      console.log(`🎯 Loading with resolution: ${resolution}`);
+      
+      // Use the smart data fetcher
+      const fetchRequest: DataFetchRequest = {
+        wellNumber,
+        resolution,
+        startDate,
+        endDate,
+        priority,
+        useCache: true
+      };
+
+      const result = await smartDataFetcher.fetchData(fetchRequest);
+      
+      console.log(`✅ Smart fetch complete: ${result.totalPoints} points, ${(result.cacheHitRatio * 100).toFixed(1)}% cache hit`);
+
+      // Create segment with enhanced resolution information
+      const segment: LoadedDataSegment = {
+        level: 1,
+        data: result.data,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        loadedAt: new Date(),
+        viewport: { start: startDate, end: endDate },
+        resolution,
+        resolutionCalculation: result.resolution,
+        fetchResult: result,
+        samplingInfo: {
+          samplingRate: resolution,
+          description: `${resolution} mode (${result.resolution.samplingInterval}min intervals)`,
+          estimatedPoints: result.resolution.estimatedPoints,
+          timeSpanDays: result.resolution.actualTimeSpan,
+          isHighRes: true
+        },
+        intendedViewport: {
+          start: startDate,
+          end: endDate,
+          originalTimeSpanMs: endDate.getTime() - startDate.getTime()
+        }
+      };
+
+      // Update state with new segment
+      setState(prev => {
+        const existingSegments = prev.segments.filter(s => 
+          !(s.resolution === resolution && s.startDate === startDate.toISOString() && s.endDate === endDate.toISOString())
+        );
+        
+        return {
+          ...prev,
+          segments: [...existingSegments, segment],
+          currentLevel: 1,
+          totalDataPoints: existingSegments.reduce((sum, s) => sum + s.data.length, 0) + result.totalPoints,
+          isLoading: false
+        };
+      });
+
+      // Trigger background prefetching for adjacent data
+      if (result.missingSegments.length === 0) {
+        // Only prefetch if we got a complete cache hit
+        smartDataFetcher.prefetchAdjacentData(wellNumber, resolution, startDate, endDate, 'both')
+          .catch(error => console.debug('Background prefetch failed:', error));
+      }
+
+      return result.data;
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Resolution loading failed';
+      console.error('Resolution loading error:', errorMessage);
+      
+      setState(prev => ({ 
+        ...prev, 
+        isLoading: false, 
+        error: errorMessage 
+      }));
+      
+      if (onError) {
+        onError(errorMessage);
+      }
+      
+      throw error;
+    }
+  }, [wellNumber, enableSmartCaching, loadForTimeRange, onError]);
 
   // Load data with specific sampling rate (background only - no state updates)
   const loadDataWithSampling = useCallback(async (
@@ -605,6 +714,7 @@ export function useProgressiveLoading({
     loadOverview,
     loadForTimeRange,
     loadForViewport,
+    loadWithResolution, // NEW: Resolution-aware loading
     applyCachedData,
     reset
   };

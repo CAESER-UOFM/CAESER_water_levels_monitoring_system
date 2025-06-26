@@ -1,6 +1,22 @@
 'use client';
 
 import React from 'react';
+import { ResolutionMode } from '@/types/database';
+import { ResolutionModeSelector } from './ResolutionModeSelector';
+
+// Legacy mapping for backward compatibility
+const LEGACY_TO_RESOLUTION_MAP: Record<string, ResolutionMode> = {
+  'Overview': 'full',
+  'Medium Detail': '1year',
+  'Full Detail': '1month'
+};
+
+const RESOLUTION_TO_LEGACY_MAP: Record<ResolutionMode, string> = {
+  'full': 'Overview',
+  '1year': 'Medium Detail',
+  '6months': 'Medium Detail', // Fallback to closest legacy option
+  '1month': 'Full Detail'
+};
 
 export interface SamplingOption {
   label: string;
@@ -22,6 +38,9 @@ interface SamplingControlsProps {
   isLoading?: boolean;
 }
 
+/**
+ * @deprecated Use ResolutionModeSelector instead. This component is maintained for backward compatibility.
+ */
 export function SamplingControls({ 
   selectedSampling, 
   onSamplingChange, 
@@ -29,52 +48,23 @@ export function SamplingControls({
   displayedPoints,
   isLoading = false 
 }: SamplingControlsProps) {
-  const selectedOption = SAMPLING_OPTIONS.find(opt => opt.value === selectedSampling) || SAMPLING_OPTIONS[0];
+  // Convert legacy sampling to resolution mode
+  const currentResolution = LEGACY_TO_RESOLUTION_MAP[selectedSampling] || 'full';
+  
+  // Handle resolution change and convert back to legacy format
+  const handleResolutionChange = (resolution: ResolutionMode) => {
+    const legacyValue = RESOLUTION_TO_LEGACY_MAP[resolution] || 'Overview';
+    onSamplingChange(legacyValue);
+  };
 
   return (
-    <div className="bg-gray-50 rounded-lg p-3 space-y-3">
-      <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-gray-700">
-          Data Sampling
-        </label>
-        <div className="text-xs text-gray-500">
-          {displayedPoints.toLocaleString()} points loaded
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-        {SAMPLING_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            onClick={() => onSamplingChange(option.value)}
-            disabled={isLoading}
-            className={`px-3 py-2 text-xs rounded-md border transition-all mobile-touch-target ${
-              selectedSampling === option.value
-                ? 'bg-primary-600 text-white border-primary-600'
-                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 active:bg-gray-100'
-            } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-      
-      {selectedOption && (
-        <div className="text-xs text-gray-600 text-center">
-          {selectedOption.value === 'Overview' && 'Full dataset with ~5,000 points (auto time resolution)'}
-          {selectedOption.value === 'Medium Detail' && 'Last year with ~5,000 points (higher resolution)'}
-          {selectedOption.value === 'Full Detail' && 'Last month with ~5,000 points (highest resolution)'}
-          {isLoading && (
-            <span className="ml-2 text-primary-600">
-              <svg className="inline w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Loading...
-            </span>
-          )}
-        </div>
-      )}
-    </div>
+    <ResolutionModeSelector
+      selectedResolution={currentResolution}
+      onResolutionChange={handleResolutionChange}
+      totalDataPoints={totalPoints}
+      displayedPoints={displayedPoints}
+      isLoading={isLoading}
+    />
   );
 }
 
