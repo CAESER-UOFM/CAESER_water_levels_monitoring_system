@@ -141,9 +141,9 @@ echo    [*] Creating application launchers...
 
 REM Main app launcher (hidden console but allows GUI to show properly)
 (
-    echo Set objShell = CreateObject^("WScript.Shell"^)
-    echo objShell.CurrentDirectory = "%INSTALL_DIR%"
-    echo objShell.Run "cmd /c call """"%INSTALL_DIR%\venv\Scripts\activate.bat"""" && python """"%INSTALL_DIR%\main.py""""""", 0, False
+    echo Set shell = CreateObject^("WScript.Shell"^)
+    echo shell.CurrentDirectory = "%INSTALL_DIR%"
+    echo shell.Run "%INSTALL_DIR%\venv\Scripts\python.exe ""%INSTALL_DIR%\main.py""", 0, False
 ) > "%INSTALL_DIR%\launchers\water_levels_monitoring_system.vbs"
 
 REM Debug launcher (with console for troubleshooting)
@@ -159,9 +159,9 @@ REM Debug launcher (with console for troubleshooting)
 
 REM Visualizer launcher (hidden console but allows GUI to show properly)
 (
-    echo Set objShell = CreateObject^("WScript.Shell"^)
-    echo objShell.CurrentDirectory = "%INSTALL_DIR%\tools\Visualizer"
-    echo objShell.Run "cmd /c call """"%INSTALL_DIR%\venv\Scripts\activate.bat"""" && python """"%INSTALL_DIR%\tools\Visualizer\main.py""""""", 0, False
+    echo Set shell = CreateObject^("WScript.Shell"^)
+    echo shell.CurrentDirectory = "%INSTALL_DIR%\tools\Visualizer"
+    echo shell.Run "%INSTALL_DIR%\venv\Scripts\python.exe ""%INSTALL_DIR%\tools\Visualizer\main.py""", 0, False
 ) > "%INSTALL_DIR%\launchers\water_levels_visualizer.vbs"
 
 REM Visualizer debug launcher (with console for troubleshooting)
