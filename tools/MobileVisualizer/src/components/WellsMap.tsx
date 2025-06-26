@@ -133,11 +133,11 @@ export default function WellsMap({ wells, highlightWell, onWellClick, databaseId
   const center: [number, number] = [35.1495, -90.0490];
 
   return (
-    <div className="h-full w-full">
+    <div className="h-full w-full" style={{ minHeight: '500px' }}>
       <MapContainer
         center={center}
         zoom={10}
-        style={{ height: '100%', width: '100%' }}
+        style={{ height: '100%', width: '100%', minHeight: '500px' }}
         ref={mapRef}
       >
         <TileLayer

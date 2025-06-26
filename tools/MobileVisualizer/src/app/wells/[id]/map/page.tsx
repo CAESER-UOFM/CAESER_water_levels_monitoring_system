@@ -189,7 +189,7 @@ export default function MapPage() {
       </div>
 
       {/* Map */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative" style={{ minHeight: 'calc(100vh - 200px)' }}>
         {wells.length === 0 ? (
           <div className="h-full flex items-center justify-center">
             <div className="text-center">
