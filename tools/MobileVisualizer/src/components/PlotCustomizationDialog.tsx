@@ -538,6 +538,12 @@ export function PlotCustomizationDialog({
     wellInfo: boolean;
     export: boolean;
   }>({ dimensions: true, data: false, appearance: false, wellInfo: false, export: false });
+  
+  // Mobile responsive state
+  const [isMobile, setIsMobile] = useState(false);
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
+  const [activeMobileSection, setActiveMobileSection] = useState<keyof typeof expandedSections>('dimensions');
+  
   const dialogRef = useRef<HTMLDivElement>(null);
 
   // Initialize with current data
@@ -572,6 +578,29 @@ export function PlotCustomizationDialog({
       }));
     }
   }, [isOpen, wellNumber, currentTimeRange]);
+
+  // Mobile device detection
+  useEffect(() => {
+    const checkDeviceType = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const isPortrait = height > width;
+      
+      // Consider mobile if: width < 768px OR (touch device AND portrait mode) OR small width overall
+      const mobile = width < 768 || (isTouchDevice && isPortrait && width < 1024);
+      setIsMobile(mobile);
+    };
+
+    checkDeviceType();
+    window.addEventListener('resize', checkDeviceType);
+    window.addEventListener('orientationchange', checkDeviceType);
+
+    return () => {
+      window.removeEventListener('resize', checkDeviceType);
+      window.removeEventListener('orientationchange', checkDeviceType);
+    };
+  }, []);
 
   // Handle aspect ratio changes
   const handleAspectRatioChange = useCallback((ratio: string) => {
@@ -727,7 +756,9 @@ export function PlotCustomizationDialog({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div 
         ref={dialogRef}
-        className={`w-full max-w-7xl h-[90vh] flex flex-col rounded-xl shadow-2xl ${
+        className={`w-full ${
+          isMobile ? 'max-w-sm h-[95vh]' : 'max-w-7xl h-[90vh]'
+        } flex flex-col rounded-xl shadow-2xl ${
           isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
         }`}
       >
@@ -772,8 +803,93 @@ export function PlotCustomizationDialog({
           </button>
         </div>
 
-        {/* Main Content - Side by Side Layout */}
-        <div className="flex-1 flex overflow-hidden">
+        {/* Main Content - Responsive Layout */}
+        {isMobile ? (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Mobile Section Selector */}
+            <div className={`p-4 border-b ${
+              isDarkMode ? 'border-gray-700 bg-gray-800/30' : 'border-gray-200 bg-gray-50'
+            }`}>
+              <div className="flex items-center justify-between mb-3">
+                <label className={`text-sm font-semibold ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>
+                  Customize:
+                </label>
+                <button
+                  onClick={() => setShowMobilePreview(true)}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isDarkMode 
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                      : 'bg-blue-500 hover:bg-blue-600 text-white'
+                  }`}
+                >
+                  📱 Preview Plot
+                </button>
+              </div>
+              <select
+                value={activeMobileSection}
+                onChange={(e) => setActiveMobileSection(e.target.value as keyof typeof expandedSections)}
+                className={`w-full px-3 py-2 rounded-lg border text-sm ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600 text-white' 
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
+              >
+                <option value="dimensions">📐 Dimensions & Layout</option>
+                <option value="data">📊 Data Selection</option>
+                <option value="appearance">🎨 Appearance</option>
+                <option value="wellInfo">📋 Well Info Legend</option>
+                <option value="export">💾 Export Settings</option>
+              </select>
+            </div>
+
+            {/* Mobile Content Area */}
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="space-y-4">
+                {activeMobileSection === 'export' && (
+                  <div className={`p-4 rounded-lg border ${
+                    isDarkMode 
+                      ? 'bg-gray-800/30 border-gray-700' 
+                      : 'bg-gray-50/50 border-gray-200'
+                  }`}>
+                    <h3 className={`text-lg font-semibold mb-4 ${
+                      isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`}>
+                      💾 Export Settings
+                    </h3>
+                    <div className="space-y-4">
+                      <button
+                        onClick={handleExport}
+                        className={`w-full px-4 py-3 rounded-lg font-medium transition-colors ${
+                          isDarkMode 
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                            : 'bg-blue-500 hover:bg-blue-600 text-white'
+                        }`}
+                      >
+                        🚀 Export Plot
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {activeMobileSection !== 'export' && (
+                  <div className={`p-4 rounded-lg border ${
+                    isDarkMode 
+                      ? 'bg-gray-800/30 border-gray-700' 
+                      : 'bg-gray-50/50 border-gray-200'
+                  }`}>
+                    <p className={`text-sm ${
+                      isDarkMode ? 'text-gray-400' : 'text-gray-600'
+                    }`}>
+                      Mobile controls for {activeMobileSection} coming soon...
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 flex overflow-hidden">
           {/* Left Panel - Controls */}
           <div className={`w-1/3 min-w-[400px] overflow-y-auto p-6 border-r ${
             isDarkMode ? 'border-gray-700' : 'border-gray-200'
@@ -2465,6 +2581,77 @@ export function PlotCustomizationDialog({
             </div>
           </div>
         </div>
+        )}
+
+        {/* Mobile Preview Modal */}
+        {showMobilePreview && (
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60] p-4">
+            <div className={`w-full max-w-4xl h-[80vh] flex flex-col rounded-xl shadow-2xl ${
+              isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
+            }`}>
+              {/* Modal Header */}
+              <div className={`flex items-center justify-between p-4 border-b ${
+                isDarkMode ? 'border-gray-700' : 'border-gray-200'
+              }`}>
+                <h3 className={`text-lg font-semibold ${
+                  isDarkMode ? 'text-white' : 'text-gray-900'
+                }`}>
+                  📱 Plot Preview
+                </h3>
+                <button
+                  onClick={() => setShowMobilePreview(false)}
+                  className={`p-2 rounded-lg transition-colors ${
+                    isDarkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              {/* Modal Content - Preview */}
+              <div className="p-4 overflow-auto max-h-[70vh]">
+                <div className={`rounded-lg border p-4 ${
+                  isDarkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-gray-50'
+                }`}>
+                  <LivePlotPreview
+                    customization={customization}
+                    plotData={plotData}
+                    isDarkMode={isDarkMode}
+                    wellNumber={wellNumber}
+                    well={well}
+                  />
+                </div>
+              </div>
+              
+              {/* Modal Footer */}
+              <div className={`flex items-center justify-between p-4 border-t ${
+                isDarkMode ? 'border-gray-700' : 'border-gray-200'
+              }`}>
+                <button
+                  onClick={() => setShowMobilePreview(false)}
+                  className={`px-4 py-2 rounded-lg transition-colors ${
+                    isDarkMode 
+                      ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' 
+                      : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                  }`}
+                >
+                  Close Preview
+                </button>
+                <button
+                  onClick={() => {
+                    setShowMobilePreview(false);
+                    handleExport();
+                  }}
+                  className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white rounded-lg transition-all duration-300"
+                >
+                  🚀 Export Plot
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className={`flex items-center justify-between p-4 border-t ${
