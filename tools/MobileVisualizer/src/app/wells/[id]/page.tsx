@@ -116,13 +116,17 @@ export default function WellsPage() {
                 </svg>
               </button>
               
-              {/* Small CAESER mascot - hidden but accessible */}
-              <div className="w-8 h-8 rounded-full overflow-hidden opacity-30 hover:opacity-70 transition-opacity duration-300">
-                <img 
-                  src="/caeser-mascot.png" 
-                  alt="CAESER"
-                  className="w-full h-full object-contain"
-                />
+              {/* Small CAESER mascot - better visible and integrated */}
+              <div className="relative">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 flex items-center justify-center overflow-hidden hover:from-cyan-500/30 hover:to-blue-500/30 transition-all duration-300 hover:scale-110">
+                  <img 
+                    src="/caeser-mascot.png" 
+                    alt="CAESER"
+                    className="w-8 h-8 object-contain"
+                  />
+                </div>
+                {/* Small glow effect */}
+                <div className="absolute inset-0 w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400/10 to-blue-400/10 blur-sm -z-10"></div>
               </div>
               
               <div>

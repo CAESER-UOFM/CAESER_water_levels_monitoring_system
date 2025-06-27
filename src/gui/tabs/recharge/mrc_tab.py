@@ -2923,8 +2923,11 @@ class MrcTab(BaseRechargeTab):
                 
                 if reply == QMessageBox.Yes:
                     self.save_curve()
-                    # Curve should now be saved, get the ID from the combo box
-                    curve_id = self.curve_combo.currentData()
+                    # Curve should now be saved, get the ID from current_curve
+                    curve_id = self.current_curve.get('id') if hasattr(self, 'current_curve') and self.current_curve else None
+                    if not curve_id:
+                        # Fallback to combo box
+                        curve_id = self.curve_combo.currentData()
                 else:
                     return
             
@@ -5374,6 +5377,19 @@ class InteractiveCurveFittingDialog(QDialog):
                 QMessageBox.information(self, "Save Successful", 
                     "Master recession curve saved successfully.")
                 
+                # Update current_curve with the new ID so it won't ask to save again
+                if hasattr(self, 'current_curve') and self.current_curve:
+                    self.current_curve['id'] = curve_id
+                elif not hasattr(self, 'current_curve'):
+                    self.current_curve = {'id': curve_id}
+                
+                # Update parent tab's current_curve as well
+                if self.parent_tab and hasattr(self.parent_tab, 'current_curve'):
+                    if self.parent_tab.current_curve:
+                        self.parent_tab.current_curve['id'] = curve_id
+                    else:
+                        self.parent_tab.current_curve = {'id': curve_id}
+                
                 # Update segment dropdown to include the new curve
                 self.load_available_segments()
                 
@@ -5388,6 +5404,10 @@ class InteractiveCurveFittingDialog(QDialog):
         except Exception as e:
             logger.error(f"Error saving curve from dialog: {e}")
             QMessageBox.critical(self, "Save Error", f"Failed to save curve: {str(e)}")
+    
+    def save_curve(self):
+        """Save the current curve - wrapper for save_curve_from_dialog."""
+        return self.save_curve_from_dialog()
     
     def calculate_manual_r_squared(self):
         """Calculate R² for manually set parameters."""
