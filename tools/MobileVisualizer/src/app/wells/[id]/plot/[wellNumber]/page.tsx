@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { SmartWaterLevelChart } from '@/components/SmartWaterLevelChart';
 import { WellInfoPanel } from '@/components/WellInfoPanel';
+import { WellStatisticsPanel } from '@/components/WellStatisticsPanel';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { ExportDialog, type ExportOptions } from '@/components/ExportDialog';
 import { exportWaterLevelDataWithProgress } from '@/utils/dataExport';
@@ -270,6 +271,11 @@ export default function PlotViewerPage() {
           samplingRate={chartInfo.samplingRate}
         />
 
+        {/* Well Statistics Panel */}
+        <WellStatisticsPanel 
+          databaseId={databaseId}
+          wellNumber={wellNumber}
+        />
 
         {/* Chart */}
         <div className="card">
