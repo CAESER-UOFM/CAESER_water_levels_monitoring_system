@@ -809,11 +809,19 @@ export function PlotCustomizationDialog({
         {isMobile ? (
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Mobile Plot Preview - Always Visible at Full Resolution */}
-            <div className="flex-1 overflow-auto p-4">
-              <div className={`rounded-lg border p-2 ${
+            <div className="flex-1 overflow-hidden p-4">
+              <div className={`h-full rounded-lg border p-2 ${
                 isDarkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-gray-50'
               }`}>
-                <div className="overflow-auto">
+                {/* Scroll hint */}
+                <div className={`text-xs mb-2 text-center ${
+                  isDarkMode ? 'text-gray-400' : 'text-gray-600'
+                }`}>
+                  📏 Actual plot size: {customization.width}×{customization.height}px • Scroll to explore
+                </div>
+                <div className="h-full overflow-auto border rounded ${
+                  isDarkMode ? 'border-gray-600' : 'border-gray-300'
+                }">
                   <LivePlotPreview
                     customization={customization}
                     plotData={plotData}
