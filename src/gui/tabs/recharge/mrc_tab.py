@@ -1434,23 +1434,23 @@ class MrcTab(BaseRechargeTab):
     def _standardize_dataframe(self, df):
         """Standardize dataframe column names and formats."""
         # Check column names and rename if necessary
-        if 'timestamp_utc' in df.columns and 'water_level' in df.columns:
+        if 'timestamp_utc' in df.columns:
             df = df.rename(columns={
-                'timestamp_utc': 'timestamp',
-                'water_level': 'level'
+                'timestamp_utc': 'timestamp'
+                # Keep 'water_level' as is - don't rename to 'level'
             })
         
         # Make sure timestamp is datetime
         if 'timestamp' in df.columns:
             df['timestamp'] = pd.to_datetime(df['timestamp'])
         
-        # Always ensure level column is numeric, regardless of current dtype
-        if 'level' in df.columns:
+        # Always ensure water_level column is numeric, regardless of current dtype
+        if 'water_level' in df.columns:
             # Force conversion to numeric to handle any string-like types
-            df['level'] = pd.to_numeric(df['level'], errors='coerce')
-            # Drop any rows where level conversion failed (resulted in NaN)
-            df = df.dropna(subset=['level'])
-            logger.debug(f"Level column dtype after conversion: {df['level'].dtype}")
+            df['water_level'] = pd.to_numeric(df['water_level'], errors='coerce')
+            # Drop any rows where water_level conversion failed (resulted in NaN)
+            df = df.dropna(subset=['water_level'])
+            logger.debug(f"Water_level column dtype after conversion: {df['water_level'].dtype}")
         
         return df
 
@@ -1768,7 +1768,7 @@ class MrcTab(BaseRechargeTab):
         # Create DataFrame
         self.raw_data = pd.DataFrame({
             'timestamp': timestamps,
-            'level': levels
+            'water_level': levels
         })
         
         logger.debug(f"Generated synthetic data with {len(self.raw_data)} points")
@@ -1824,12 +1824,14 @@ class MrcTab(BaseRechargeTab):
                     data = data.set_index('timestamp')
                 
                 method = settings.get('downsample_method', 'Mean').lower()
+                # Only resample numeric columns to avoid string aggregation errors
+                numeric_columns = data.select_dtypes(include=[np.number]).columns.tolist()
                 if method == "mean":
-                    data = data.resample(resample_rule).mean()
+                    data = data[numeric_columns].resample(resample_rule).mean()
                 elif method == "median":
-                    data = data.resample(resample_rule).median()
+                    data = data[numeric_columns].resample(resample_rule).median()
                 elif method == "last":
-                    data = data.resample(resample_rule).last()
+                    data = data[numeric_columns].resample(resample_rule).last()
                     
                 data = data.reset_index()
             
@@ -1908,14 +1910,14 @@ class MrcTab(BaseRechargeTab):
             for group_id, group in data[data['is_recession']].groupby('recession_group'):
                 if len(group) >= min_length:
                     # Check if this is a valid recession (net decline)
-                    net_change = group['level'].iloc[-1] - group['level'].iloc[0]
+                    net_change = group['water_level'].iloc[-1] - group['water_level'].iloc[0]
                     if net_change < 0:  # Overall declining trend
                         segment = {
                             'start_date': group['timestamp'].iloc[0],
                             'end_date': group['timestamp'].iloc[-1],
                             'duration_days': len(group),
-                            'start_level': group['level'].iloc[0],
-                            'end_level': group['level'].iloc[-1],
+                            'start_level': group['water_level'].iloc[0],
+                            'end_level': group['water_level'].iloc[-1],
                             'recession_rate': net_change / len(group),
                             'data': group
                         }
@@ -2291,9 +2293,9 @@ class MrcTab(BaseRechargeTab):
                     
                     # Time since start of recession
                     start_time = group['timestamp'].iloc[0]
-                    logger.info(f"Group level dtype: {group['level'].dtype}")
-                    logger.info(f"First level value: {group['level'].iloc[0]}, type: {type(group['level'].iloc[0])}")
-                    start_level = float(group['level'].iloc[0])  # Force to numeric!
+                    logger.info(f"Group water_level dtype: {group['water_level'].dtype}")
+                    logger.info(f"First water_level value: {group['water_level'].iloc[0]}, type: {type(group['water_level'].iloc[0])}")
+                    start_level = float(group['water_level'].iloc[0])  # Force to numeric!
                     
                     time_days = (group['timestamp'] - start_time).dt.total_seconds() / 86400
                     
@@ -2369,7 +2371,7 @@ class MrcTab(BaseRechargeTab):
                 event = {
                     'event_date': row['timestamp'].isoformat() if hasattr(row['timestamp'], 'isoformat') else str(row['timestamp']),
                     'water_year': str(row['water_year']),
-                    'water_level': float(row['level']),
+                    'water_level': float(row['water_level']),
                     'predicted_level': float(row['predicted_level']),
                     'deviation': float(row['deviation']),
                     'recharge_value': float(row['recharge'])
@@ -3341,8 +3343,8 @@ class MrcTab(BaseRechargeTab):
                 decline_rate = segment_row.get('avg_decline_rate', segment_row.get('recession_rate', 0.0))
                 
                 # Calculate start_level and end_level from the segment data
-                start_level = segment_df['level'].iloc[0] if len(segment_df) > 0 and 'level' in segment_df.columns else 0.0
-                end_level = segment_df['level'].iloc[-1] if len(segment_df) > 0 and 'level' in segment_df.columns else 0.0
+                start_level = segment_df['water_level'].iloc[0] if len(segment_df) > 0 and 'water_level' in segment_df.columns else 0.0
+                end_level = segment_df['water_level'].iloc[-1] if len(segment_df) > 0 and 'water_level' in segment_df.columns else 0.0
                 
                 segment = {
                     'start_date': pd.to_datetime(segment_row['start_date']),
@@ -3954,7 +3956,7 @@ class ManageSegmentsDialog(QDialog):
         
         # Rate consistency (lower variance is better)
         if 'data' in segment and not segment['data'].empty:
-            daily_changes = segment['data']['level'].diff().dropna()
+            daily_changes = segment['data']['water_level'].diff().dropna()
             if len(daily_changes) > 1:
                 consistency_score = max(0, 1 - (daily_changes.std() / 0.1))  # Normalize by 0.1 ft
             else:
@@ -5176,8 +5178,8 @@ class InteractiveCurveFittingDialog(QDialog):
                                     segment_df['timestamp'] = pd.to_datetime(segment_df['timestamp'])
                                 
                                 # Validate data has required columns
-                                if 'level' not in segment_df.columns:
-                                    logger.warning(f"Segment missing 'level' column, skipping")
+                                if 'water_level' not in segment_df.columns:
+                                    logger.warning(f"Segment missing 'water_level' column, skipping")
                                     skipped_count += 1
                                     continue
                                 
