@@ -36,8 +36,8 @@ interface WellsMapProps {
   onResetReady?: (resetFunction: () => void) => void;
 }
 
-// Create custom icons for different statuses with improved design
-const createWellIcon = (status: string, caeNumber: string, isHighlighted: boolean = false) => {
+// Create custom icons for different aquifer types with improved design
+const createWellIcon = (aquifer: string, caeNumber: string, isHighlighted: boolean = false, totalReadings: number = 0) => {
   let color = '#6b7280'; // gray-500 default
   let strokeColor = '#374151'; // darker border
   let shadowColor = 'rgba(0,0,0,0.3)';
@@ -46,26 +46,34 @@ const createWellIcon = (status: string, caeNumber: string, isHighlighted: boolea
     color = '#ef4444'; // red-500
     strokeColor = '#dc2626'; // red-600
     shadowColor = 'rgba(239,68,68,0.6)';
+  } else if (totalReadings === 0) {
+    // No data - gray regardless of aquifer
+    color = '#6b7280'; // gray-500
+    strokeColor = '#4b5563'; // gray-600
+    shadowColor = 'rgba(107,114,128,0.3)';
   } else {
-    switch (status) {
-      case 'has_data':
-        color = '#10b981'; // emerald-500
+    // Color by aquifer type (following desktop visualizer pattern)
+    switch (aquifer) {
+      case 'MEM': // Memphis aquifer
+        color = '#10b981'; // emerald-500 (green)
         strokeColor = '#059669'; // emerald-600
         shadowColor = 'rgba(16,185,129,0.3)';
         break;
-      case 'limited_data':
-        color = '#f59e0b'; // amber-500
+      case 'FP': // Fort Pillow aquifer
+        color = '#3b82f6'; // blue-500
+        strokeColor = '#2563eb'; // blue-600
+        shadowColor = 'rgba(59,130,246,0.3)';
+        break;
+      case 'SHAL': // Shallow aquifer
+        color = '#f59e0b'; // amber-500 (orange)
         strokeColor = '#d97706'; // amber-600
         shadowColor = 'rgba(245,158,11,0.3)';
         break;
-      case 'no_data':
-        color = '#6b7280'; // gray-500
-        strokeColor = '#4b5563'; // gray-600
-        shadowColor = 'rgba(107,114,128,0.3)';
-        break;
       default:
-        color = '#6b7280';
-        strokeColor = '#4b5563';
+        // Unknown aquifer but has data
+        color = '#8b5cf6'; // violet-500 (purple)
+        strokeColor = '#7c3aed'; // violet-600
+        shadowColor = 'rgba(139,92,246,0.3)';
     }
   }
 
@@ -235,7 +243,7 @@ export default function WellsMap({ wells, highlightWell, onWellClick, databaseId
             <Marker
               key={well.well_number}
               position={[well.latitude, well.longitude]}
-              icon={createWellIcon(well.status, well.cae_number, isHighlighted)}
+              icon={createWellIcon(well.aquifer, well.cae_number, isHighlighted, well.total_readings)}
             >
               <Popup closeButton={true} maxWidth={280} className="well-popup">
                 <div className="p-3">

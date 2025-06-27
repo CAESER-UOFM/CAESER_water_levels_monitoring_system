@@ -262,7 +262,15 @@ export default function MapPage() {
                         <circle cx="10" cy="10" r="6" fill="#10b981" stroke="#059669" strokeWidth="1"/>
                         <circle cx="10" cy="10" r="2" fill="#ffffff"/>
                       </svg>
-                      <span className="text-sm text-gray-700 font-medium">Has Data</span>
+                      <span className="text-sm text-gray-700 font-medium">MEM - Memphis Aquifer</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <svg width="20" height="20" viewBox="0 0 20 20" className="flex-shrink-0">
+                        <circle cx="10" cy="10" r="9" fill="#ffffff" stroke="#2563eb" strokeWidth="1.5"/>
+                        <circle cx="10" cy="10" r="6" fill="#3b82f6" stroke="#2563eb" strokeWidth="1"/>
+                        <circle cx="10" cy="10" r="2" fill="#ffffff"/>
+                      </svg>
+                      <span className="text-sm text-gray-700 font-medium">FP - Fort Pillow Aquifer</span>
                     </div>
                     <div className="flex items-center space-x-3">
                       <svg width="20" height="20" viewBox="0 0 20 20" className="flex-shrink-0">
@@ -270,7 +278,15 @@ export default function MapPage() {
                         <circle cx="10" cy="10" r="6" fill="#f59e0b" stroke="#d97706" strokeWidth="1"/>
                         <circle cx="10" cy="10" r="2" fill="#ffffff"/>
                       </svg>
-                      <span className="text-sm text-gray-700 font-medium">Limited Data</span>
+                      <span className="text-sm text-gray-700 font-medium">SHAL - Shallow Aquifer</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <svg width="20" height="20" viewBox="0 0 20 20" className="flex-shrink-0">
+                        <circle cx="10" cy="10" r="9" fill="#ffffff" stroke="#7c3aed" strokeWidth="1.5"/>
+                        <circle cx="10" cy="10" r="6" fill="#8b5cf6" stroke="#7c3aed" strokeWidth="1"/>
+                        <circle cx="10" cy="10" r="2" fill="#ffffff"/>
+                      </svg>
+                      <span className="text-sm text-gray-700 font-medium">Unknown Aquifer</span>
                     </div>
                     <div className="flex items-center space-x-3">
                       <svg width="20" height="20" viewBox="0 0 20 20" className="flex-shrink-0">
@@ -288,11 +304,11 @@ export default function MapPage() {
                         <circle cx="10" cy="10" r="2" fill="#ffffff"/>
                         <circle cx="10" cy="10" r="1" fill="#dc2626"/>
                       </svg>
-                      <span className="text-sm text-gray-700 font-medium">Highlighted</span>
+                      <span className="text-sm text-gray-700 font-medium">Selected</span>
                     </div>
                   </div>
                   <div className="mt-3 pt-2 border-t border-gray-200">
-                    <p className="text-xs text-gray-500">Click pins for details</p>
+                    <p className="text-xs text-gray-500">Colors indicate aquifer type • Click pins for details</p>
                   </div>
                 </div>
               )}
