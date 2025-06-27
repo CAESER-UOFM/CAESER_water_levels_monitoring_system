@@ -872,17 +872,342 @@ export function PlotCustomizationDialog({
                     </div>
                   </div>
                 )}
-                {activeMobileSection !== 'export' && (
+                {activeMobileSection === 'dimensions' && (
                   <div className={`p-4 rounded-lg border ${
                     isDarkMode 
                       ? 'bg-gray-800/30 border-gray-700' 
                       : 'bg-gray-50/50 border-gray-200'
                   }`}>
-                    <p className={`text-sm ${
-                      isDarkMode ? 'text-gray-400' : 'text-gray-600'
-                    }`}>
-                      Mobile controls for {activeMobileSection} coming soon...
-                    </p>
+                    <div className="space-y-4">
+                      {/* Preset Templates */}
+                      <div>
+                        <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Quick Start Templates</label>
+                        <select
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              applyPreset(e.target.value as keyof typeof presetTemplates);
+                            }
+                          }}
+                          value=""
+                          className={`w-full px-3 py-2 rounded-lg border transition-colors duration-200 ${
+                            isDarkMode 
+                              ? 'bg-gray-700 border-gray-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500' 
+                              : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                          }`}
+                        >
+                          <option value="">Select a template...</option>
+                          {Object.entries(presetTemplates).map(([key, preset]) => (
+                            <option key={key} value={key}>
+                              {preset.name} ({preset.config.width}×{preset.config.height}, {preset.config.dpi} DPI)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Aspect Ratio */}
+                      <div>
+                        <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Aspect Ratio</label>
+                        <select
+                          value={customization.aspectRatio}
+                          onChange={(e) => handleAspectRatioChange(e.target.value)}
+                          className={`w-full px-3 py-2 rounded-lg border transition-colors duration-200 ${
+                            isDarkMode 
+                              ? 'bg-gray-700 border-gray-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500' 
+                              : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                          }`}
+                        >
+                          <option value="16:9">16:9 (Widescreen)</option>
+                          <option value="4:3">4:3 (Standard)</option>
+                          <option value="1:1">1:1 (Square)</option>
+                          <option value="3:2">3:2 (Classic)</option>
+                          <option value="custom">Custom</option>
+                        </select>
+                      </div>
+
+                      {/* Width & Height */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Width (px)</label>
+                          <input
+                            type="number"
+                            value={customization.width}
+                            onChange={(e) => handleDimensionChange('width', parseInt(e.target.value) || 800)}
+                            className={`w-full px-3 py-2 rounded-lg border transition-colors duration-200 ${
+                              isDarkMode 
+                                ? 'bg-gray-700 border-gray-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500' 
+                                : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                            }`}
+                            min="400"
+                            max="4000"
+                          />
+                        </div>
+                        <div>
+                          <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Height (px)</label>
+                          <input
+                            type="number"
+                            value={customization.height}
+                            onChange={(e) => handleDimensionChange('height', parseInt(e.target.value) || 600)}
+                            className={`w-full px-3 py-2 rounded-lg border transition-colors duration-200 ${
+                              isDarkMode 
+                                ? 'bg-gray-700 border-gray-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500' 
+                                : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                            }`}
+                            min="300"
+                            max="3000"
+                          />
+                        </div>
+                      </div>
+
+                      {/* DPI */}
+                      <div>
+                        <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>DPI (Print Quality)</label>
+                        <select
+                          value={customization.dpi}
+                          onChange={(e) => setCustomization(prev => ({
+                            ...prev,
+                            dpi: parseInt(e.target.value)
+                          }))}
+                          className={`w-full px-3 py-2 rounded-lg border transition-colors duration-200 ${
+                            isDarkMode 
+                              ? 'bg-gray-700 border-gray-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500' 
+                              : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                          }`}
+                        >
+                          <option value={72}>72 DPI (Screen)</option>
+                          <option value={150}>150 DPI (Good Print)</option>
+                          <option value={300}>300 DPI (High Print)</option>
+                          <option value={600}>600 DPI (Professional)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeMobileSection === 'data' && (
+                  <div className={`p-4 rounded-lg border ${
+                    isDarkMode 
+                      ? 'bg-gray-800/30 border-gray-700' 
+                      : 'bg-gray-50/50 border-gray-200'
+                  }`}>
+                    <div className="space-y-4">
+                      {/* Data Selection */}
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            id="mobile-show-transducer"
+                            checked={customization.showTransducerData}
+                            onChange={(e) => setCustomization(prev => ({ 
+                              ...prev, 
+                              showTransducerData: e.target.checked 
+                            }))}
+                            className="rounded"
+                          />
+                          <label htmlFor="mobile-show-transducer" className={`font-medium text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Show Transducer Data</label>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            id="mobile-show-manual"
+                            checked={customization.showManualData}
+                            onChange={(e) => setCustomization(prev => ({ 
+                              ...prev, 
+                              showManualData: e.target.checked 
+                            }))}
+                            className="rounded"
+                          />
+                          <label htmlFor="mobile-show-manual" className={`font-medium text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Show Manual Readings</label>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            id="mobile-show-temperature"
+                            checked={customization.showTemperatureData}
+                            onChange={(e) => setCustomization(prev => ({ 
+                              ...prev, 
+                              showTemperatureData: e.target.checked 
+                            }))}
+                            className="rounded"
+                          />
+                          <label htmlFor="mobile-show-temperature" className={`font-medium text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Show Temperature Data</label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeMobileSection === 'appearance' && (
+                  <div className={`p-4 rounded-lg border ${
+                    isDarkMode 
+                      ? 'bg-gray-800/30 border-gray-700' 
+                      : 'bg-gray-50/50 border-gray-200'
+                  }`}>
+                    <div className="space-y-4">
+                      {/* Colors */}
+                      <div>
+                        <h4 className={`font-medium text-sm mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Plot Colors</h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className={`block text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Background</label>
+                            <input
+                              type="color"
+                              value={customization.backgroundColor}
+                              onChange={(e) => setCustomization(prev => ({
+                                ...prev,
+                                backgroundColor: e.target.value
+                              }))}
+                              className="w-full h-10 rounded border cursor-pointer"
+                            />
+                          </div>
+                          <div>
+                            <label className={`block text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Plot Area</label>
+                            <input
+                              type="color"
+                              value={customization.plotAreaColor}
+                              onChange={(e) => setCustomization(prev => ({
+                                ...prev,
+                                plotAreaColor: e.target.value
+                              }))}
+                              className="w-full h-10 rounded border cursor-pointer"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Title */}
+                      <div>
+                        <div className="flex items-center space-x-3 mb-3">
+                          <input
+                            type="checkbox"
+                            id="mobile-show-title"
+                            checked={customization.title.show}
+                            onChange={(e) => setCustomization(prev => ({ 
+                              ...prev, 
+                              title: { ...prev.title, show: e.target.checked }
+                            }))}
+                            className="rounded"
+                          />
+                          <label htmlFor="mobile-show-title" className={`font-medium text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Show Title</label>
+                        </div>
+                        {customization.title.show && (
+                          <div className="space-y-3">
+                            <input
+                              type="text"
+                              value={customization.title.text}
+                              onChange={(e) => setCustomization(prev => ({
+                                ...prev,
+                                title: { ...prev.title, text: e.target.value }
+                              }))}
+                              placeholder="Enter title..."
+                              className={`w-full px-3 py-2 rounded-lg border transition-colors duration-200 ${
+                                isDarkMode 
+                                  ? 'bg-gray-700 border-gray-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500' 
+                                  : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                              }`}
+                            />
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className={`block text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Font Size</label>
+                                <input
+                                  type="number"
+                                  value={customization.title.fontSize}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    title: { ...prev.title, fontSize: parseInt(e.target.value) || 12 }
+                                  }))}
+                                  className={`w-full px-3 py-2 rounded-lg border transition-colors duration-200 ${
+                                    isDarkMode 
+                                      ? 'bg-gray-700 border-gray-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500' 
+                                      : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                                  }`}
+                                  min="8"
+                                  max="48"
+                                />
+                              </div>
+                              <div>
+                                <label className={`block text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Color</label>
+                                <input
+                                  type="color"
+                                  value={customization.title.color}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    title: { ...prev.title, color: e.target.value }
+                                  }))}
+                                  className="w-full h-10 rounded border cursor-pointer"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeMobileSection === 'wellInfo' && (
+                  <div className={`p-4 rounded-lg border ${
+                    isDarkMode 
+                      ? 'bg-gray-800/30 border-gray-700' 
+                      : 'bg-gray-50/50 border-gray-200'
+                  }`}>
+                    <div className="space-y-4">
+                      {/* Well Info Legend */}
+                      <div className="flex items-center space-x-3 mb-3">
+                        <input
+                          type="checkbox"
+                          id="mobile-show-well-info"
+                          checked={customization.wellInfoLegend.show}
+                          onChange={(e) => setCustomization(prev => ({ 
+                            ...prev, 
+                            wellInfoLegend: { ...prev.wellInfoLegend, show: e.target.checked }
+                          }))}
+                          className="rounded"
+                        />
+                        <label htmlFor="mobile-show-well-info" className={`font-medium text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Show Well Info Legend</label>
+                      </div>
+
+                      {customization.wellInfoLegend.show && (
+                        <div className="space-y-3">
+                          {/* Position Controls */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className={`block text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Horizontal Position</label>
+                              <input
+                                type="range"
+                                min="0"
+                                max={customization.width - 200}
+                                value={customization.wellInfoLegend.position.x}
+                                onChange={(e) => setCustomization(prev => ({
+                                  ...prev,
+                                  wellInfoLegend: {
+                                    ...prev.wellInfoLegend,
+                                    position: { ...prev.wellInfoLegend.position, x: parseInt(e.target.value) }
+                                  }
+                                }))}
+                                className="w-full"
+                              />
+                            </div>
+                            <div>
+                              <label className={`block text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Vertical Position</label>
+                              <input
+                                type="range"
+                                min="0"
+                                max={customization.height - 150}
+                                value={customization.wellInfoLegend.position.y}
+                                onChange={(e) => setCustomization(prev => ({
+                                  ...prev,
+                                  wellInfoLegend: {
+                                    ...prev.wellInfoLegend,
+                                    position: { ...prev.wellInfoLegend.position, y: parseInt(e.target.value) }
+                                  }
+                                }))}
+                                className="w-full"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -2613,6 +2938,7 @@ export function PlotCustomizationDialog({
                     isDarkMode={isDarkMode}
                     wellNumber={wellNumber}
                     well={well}
+                    showFullSize={true}
                   />
                 </div>
               </div>

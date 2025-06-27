@@ -83,6 +83,7 @@ interface LivePlotPreviewProps {
   isDarkMode?: boolean;
   wellNumber?: string; // For well info legend
   well?: any; // Well data for CAE number and other info
+  showFullSize?: boolean; // Show actual dimensions for mobile zoom
 }
 
 export function LivePlotPreview({ 
@@ -90,7 +91,8 @@ export function LivePlotPreview({
   plotData = [],
   isDarkMode = true,
   wellNumber,
-  well
+  well,
+  showFullSize = false
 }: LivePlotPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -151,31 +153,41 @@ export function LivePlotPreview({
     if (!ctx) return;
 
     // Calculate preview dimensions based on customization aspect ratio
-    const containerRect = container.getBoundingClientRect();
-    const maxPreviewWidth = Math.max(300, containerRect.width - 40);
-    const maxPreviewHeight = Math.max(200, containerRect.height - 40);
+    let previewWidth: number;
+    let previewHeight: number;
     
-    // Calculate aspect ratio from customization
-    let targetAspectRatio = 16/9; // default
-    if (customization.aspectRatio !== 'custom') {
-      const aspectRatios = {
-        '16:9': 16/9,
-        '4:3': 4/3,
-        '1:1': 1/1,
-        '3:2': 3/2,
-      };
-      targetAspectRatio = aspectRatios[customization.aspectRatio as keyof typeof aspectRatios] || 16/9;
+    if (showFullSize) {
+      // For mobile modal - show actual dimensions for zoom capability
+      previewWidth = customization.width;
+      previewHeight = customization.height;
     } else {
-      targetAspectRatio = customization.width / customization.height;
-    }
-    
-    // Scale to fit container while maintaining aspect ratio
-    let previewWidth = maxPreviewWidth;
-    let previewHeight = previewWidth / targetAspectRatio;
-    
-    if (previewHeight > maxPreviewHeight) {
-      previewHeight = maxPreviewHeight;
-      previewWidth = previewHeight * targetAspectRatio;
+      // For desktop preview - scale to fit container
+      const containerRect = container.getBoundingClientRect();
+      const maxPreviewWidth = Math.max(300, containerRect.width - 40);
+      const maxPreviewHeight = Math.max(200, containerRect.height - 40);
+      
+      // Calculate aspect ratio from customization
+      let targetAspectRatio = 16/9; // default
+      if (customization.aspectRatio !== 'custom') {
+        const aspectRatios = {
+          '16:9': 16/9,
+          '4:3': 4/3,
+          '1:1': 1/1,
+          '3:2': 3/2,
+        };
+        targetAspectRatio = aspectRatios[customization.aspectRatio as keyof typeof aspectRatios] || 16/9;
+      } else {
+        targetAspectRatio = customization.width / customization.height;
+      }
+      
+      // Scale to fit container while maintaining aspect ratio
+      previewWidth = maxPreviewWidth;
+      previewHeight = previewWidth / targetAspectRatio;
+      
+      if (previewHeight > maxPreviewHeight) {
+        previewHeight = maxPreviewHeight;
+        previewWidth = previewHeight * targetAspectRatio;
+      }
     }
 
     // Set canvas size
