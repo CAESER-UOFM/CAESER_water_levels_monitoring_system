@@ -2273,6 +2273,11 @@ class MrcTab(BaseRechargeTab):
             else:
                 params = self.current_curve.get('curve_coefficients', {})
             
+            logger.info(f"=== CURVE INFORMATION ===")
+            logger.info(f"Curve type: {curve_type}")
+            logger.info(f"Curve parameters: {params}")
+            logger.info(f"Curve R²: {self.current_curve.get('r_squared', 'N/A')}")
+            
             # Initialize with actual values - ensure numeric types
             logger.info("=== INITIALIZING PREDICTED LEVEL ===")
             data['predicted_level'] = pd.to_numeric(data['water_level'].values, errors='coerce')
@@ -2286,10 +2291,13 @@ class MrcTab(BaseRechargeTab):
             data['recession_group'] = (data['is_recession'] != data['is_recession'].shift()).cumsum()
             
             recession_count = 0
+            total_recession_groups = len(data[data['is_recession']].groupby('recession_group'))
+            logger.info(f"Total recession groups found: {total_recession_groups}")
+            
             for group_id, group in data[data['is_recession']].groupby('recession_group'):
                 if len(group) > 1:
                     recession_count += 1
-                    logger.info(f"Processing recession group {recession_count}, size: {len(group)}")
+                    logger.info(f"Processing recession group {recession_count}/{total_recession_groups}, size: {len(group)}")
                     
                     # Time since start of recession
                     start_time = group['timestamp'].iloc[0]
@@ -2324,6 +2332,13 @@ class MrcTab(BaseRechargeTab):
                     logger.info(f"Before assignment - predicted_level dtype: {data['predicted_level'].dtype}")
                     data.loc[group.index, 'predicted_level'] = predicted
                     logger.info(f"After assignment - predicted_level dtype: {data['predicted_level'].dtype}")
+                    
+                    # Show sample of predicted vs actual values for this group
+                    if len(group) > 0:
+                        logger.info(f"Sample comparison for group {recession_count}:")
+                        logger.info(f"  Actual:    {group['water_level'].iloc[:3].tolist()}")
+                        logger.info(f"  Predicted: {predicted[:3].tolist() if hasattr(predicted, '__len__') else [predicted]}")
+                        logger.info(f"  Difference: {(group['water_level'].iloc[:3] - predicted[:3]).tolist() if hasattr(predicted, '__len__') else [(group['water_level'].iloc[0] - predicted)]}")
             
             # Calculate deviations (positive = recharge)
             # Debug data types to understand the issue
@@ -2353,8 +2368,35 @@ class MrcTab(BaseRechargeTab):
                 logger.error(f"Predicted sample: {data['predicted_level'].iloc[0] if not data.empty else 'EMPTY'} (type: {type(data['predicted_level'].iloc[0]) if not data.empty else 'N/A'})")
                 raise
             
+            # Add detailed debugging for deviation analysis
+            logger.info("=== DEVIATION ANALYSIS ===")
+            logger.info(f"Deviation threshold: {deviation_threshold} ft")
+            logger.info(f"Deviation statistics:")
+            logger.info(f"  Min: {data['deviation'].min():.4f} ft")
+            logger.info(f"  Max: {data['deviation'].max():.4f} ft")
+            logger.info(f"  Mean: {data['deviation'].mean():.4f} ft")
+            logger.info(f"  Std: {data['deviation'].std():.4f} ft")
+            logger.info(f"  Total data points: {len(data)}")
+            
+            # Show distribution around threshold
+            positive_devs = data[data['deviation'] > 0]
+            logger.info(f"  Positive deviations: {len(positive_devs)} points")
+            if len(positive_devs) > 0:
+                logger.info(f"    Min positive: {positive_devs['deviation'].min():.4f} ft")
+                logger.info(f"    Max positive: {positive_devs['deviation'].max():.4f} ft")
+            
             # Identify recharge events (deviations above threshold)
             data['is_recharge'] = data['deviation'] > deviation_threshold
+            
+            # Debug threshold comparison
+            above_threshold = (data['deviation'] > deviation_threshold).sum()
+            logger.info(f"  Points above threshold ({deviation_threshold} ft): {above_threshold}")
+            
+            if above_threshold > 0:
+                recharge_candidates = data[data['deviation'] > deviation_threshold]
+                logger.info(f"  Recharge event deviations: {recharge_candidates['deviation'].tolist()[:10]}...")  # Show first 10
+            else:
+                logger.warning(f"  NO POINTS EXCEED THRESHOLD! All deviations are <= {deviation_threshold} ft")
             
             # Calculate recharge
             data['recharge'] = 0.0
@@ -2409,6 +2451,16 @@ class MrcTab(BaseRechargeTab):
             self.total_recharge_label.setText(f"{total_recharge:.2f} inches")
             self.annual_rate_label.setText(f"{annual_rate:.2f} inches/year")
             self.events_count_label.setText(str(len(self.recharge_events)))
+            
+            # Final summary logging
+            logger.info("=== FINAL CALCULATION SUMMARY ===")
+            logger.info(f"Total recharge events found: {len(self.recharge_events)}")
+            logger.info(f"Total recharge amount: {total_recharge:.4f} inches")
+            logger.info(f"Annual rate: {annual_rate:.4f} inches/year")
+            logger.info(f"Recession groups processed: {recession_count}")
+            logger.info(f"Deviation threshold used: {deviation_threshold} ft")
+            logger.info(f"Specific yield used: {specific_yield}")
+            logger.info("=== END CALCULATION SUMMARY ===")
             
             # Update yearly stats
             self.update_yearly_stats()
