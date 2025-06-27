@@ -1079,6 +1079,14 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 logger.debug(f"Water level tab refresh: {e}")
         
+        progress_dialog.update(initial_progress + 18, "Loading recharge tab...")
+        QApplication.processEvents()
+        if "recharge" in self._tabs:
+            try:
+                self._tabs["recharge"].sync_database_selection("CAESER_GENERAL")
+            except Exception as e:
+                logger.debug(f"Recharge tab refresh: {e}")
+        
         # For cloud databases, enable runs tab
         if self.db_manager.is_cloud_database:
             progress_dialog.update(initial_progress + 20, "Loading runs tab...")

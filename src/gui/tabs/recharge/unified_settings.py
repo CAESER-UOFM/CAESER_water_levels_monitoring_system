@@ -509,16 +509,8 @@ class UnifiedRechargeSettings(QDialog):
                     'enable_seasonal', 'seasonal_periods', 'emr_deviation_threshold']
         }
         
-        # Debug logging
-        full_min_recession = self.settings.get('min_recession_length', 'NOT_FOUND')
-        logger.info(f"[GET_METHOD_SETTINGS_DEBUG] Full settings min_recession_length: {full_min_recession}")
-        
         settings = {key: self.settings[key] for key in common_keys}
         if method in method_keys:
             settings.update({key: self.settings[key] for key in method_keys[method]})
-        
-        # Debug the result
-        result_min_recession = settings.get('min_recession_length', 'NOT_FOUND')
-        logger.info(f"[GET_METHOD_SETTINGS_DEBUG] Returned {method} settings min_recession_length: {result_min_recession}")
             
         return settings

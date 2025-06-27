@@ -280,6 +280,7 @@ class MrcTab(BaseRechargeTab):
         """
         super().__init__(parent)
         self.db_manager = db_manager
+        self.data_manager = db_manager  # Fix: set data_manager for get_db_path() method
         self.selected_wells = []
         self.well_data = {}
         self.current_well = None
@@ -3513,7 +3514,7 @@ class MrcTab(BaseRechargeTab):
             raw_data: The raw data DataFrame
             processed_data: The preprocessed data DataFrame
         """
-        logger.info(f"[PREPROCESS_DEBUG] MRC receiving shared data: {len(raw_data) if raw_data is not None else 0} raw, {len(processed_data) if processed_data is not None else 0} processed")
+        logger.info(f"MRC receiving shared data: {len(raw_data) if raw_data is not None else 0} raw, {len(processed_data) if processed_data is not None else 0} processed")
         
         self.raw_data = raw_data
         self.processed_data = processed_data
@@ -3525,7 +3526,7 @@ class MrcTab(BaseRechargeTab):
         # Update plot with new data
         self.update_plot()
         
-        logger.info("[PREPROCESS_DEBUG] MRC tab updated with shared data")
+        logger.info("MRC tab updated with shared data")
     
     def update_settings(self, settings):
         """Update MRC tab with unified settings."""

@@ -7,6 +7,7 @@ import logging
 import numpy as np
 import pandas as pd
 import re
+import sqlite3
 from datetime import datetime
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QTabWidget, QLabel, QMessageBox,
@@ -247,21 +248,25 @@ class RechargeTab(QWidget):
             self.current_well_id = well_number
             
             # Get well data using database manager
-            if hasattr(self.db_manager, 'water_level_model'):
+            if hasattr(self.db_manager, 'water_level_model') and self.db_manager.water_level_model:
                 # Use the water level model to get data
-                readings = self.db_manager.water_level_model.get_readings(well_number)
-                if readings:
-                    # Convert to DataFrame for processing
-                    import pandas as pd
-                    self.raw_data = pd.DataFrame(readings)
+                readings_df = self.db_manager.water_level_model.get_readings(well_number)
+                if readings_df is not None and not readings_df.empty:
+                    # Store the DataFrame directly
+                    self.raw_data = readings_df
                     
                     # Trigger data processing
                     self.process_well_data()
+                    logger.info(f"Loaded {len(readings_df)} readings for well {well_number}")
                 else:
                     logger.warning(f"No water level data found for well {well_number}")
                     QMessageBox.warning(self, "No Data", f"No water level data found for well {well_number}")
+                    # Clear data
+                    self.raw_data = None
+                    self.processed_data = None
             else:
                 logger.error("Water level model not available")
+                QMessageBox.critical(self, "Error", "Database connection not available")
                 
         except Exception as e:
             logger.error(f"Error loading well data: {e}")
@@ -273,8 +278,9 @@ class RechargeTab(QWidget):
             return
             
         try:
-            # Apply preprocessing based on current settings
-            self.processed_data = self.preprocess_data(self.raw_data)
+            # Apply comprehensive preprocessing based on current settings
+            logger.info(f"[PREPROCESS_DEBUG] Applying comprehensive processing with settings")
+            self.processed_data = self._comprehensive_process_data(self.raw_data.copy())
             
             # Update all method tabs with the selected well
             # Format the well as expected by the existing interface: list of (well_id, well_name) tuples
@@ -282,10 +288,21 @@ class RechargeTab(QWidget):
             
             if hasattr(self, 'rise_tab'):
                 self.rise_tab.update_well_selection(selected_wells)
+                # Share the processed data
+                if hasattr(self.rise_tab, 'set_shared_data'):
+                    self.rise_tab.set_shared_data(self.raw_data.copy(), self.processed_data.copy() if self.processed_data is not None else None)
+            
             if hasattr(self, 'mrc_tab'):
                 self.mrc_tab.update_well_selection(selected_wells)
+                # Share the processed data
+                if hasattr(self.mrc_tab, 'set_shared_data'):
+                    self.mrc_tab.set_shared_data(self.raw_data.copy(), self.processed_data.copy() if self.processed_data is not None else None)
+            
             if hasattr(self, 'emr_tab'):
                 self.emr_tab.update_well_selection(selected_wells)
+                # Share the processed data
+                if hasattr(self.emr_tab, 'set_shared_data'):
+                    self.emr_tab.set_shared_data(self.raw_data.copy(), self.processed_data.copy() if self.processed_data is not None else None)
                 
             logger.info(f"Processed data for well {self.current_well_id}: {len(self.processed_data)} records")
             
@@ -530,6 +547,17 @@ class RechargeTab(QWidget):
             import re
             
             data = raw_data.copy()
+            
+            # Standardize column names first
+            if 'timestamp_utc' in data.columns and 'water_level' in data.columns:
+                data = data.rename(columns={
+                    'timestamp_utc': 'timestamp',
+                    'water_level': 'level'
+                })
+                logger.info(f"[PREPROCESS_DEBUG] Renamed columns: timestamp_utc->timestamp, water_level->level")
+            elif 'timestamp' not in data.columns or 'level' not in data.columns:
+                logger.error("Required columns (timestamp, level) not found in data")
+                return raw_data.copy()
             
             # Make sure timestamp is datetime
             if 'timestamp' in data.columns:

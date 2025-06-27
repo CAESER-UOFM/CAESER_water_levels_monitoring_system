@@ -97,9 +97,9 @@ class BaseRechargeTab(QWidget):
             if (hasattr(self, 'show_raw_data') and self.show_raw_data.isChecked() and 
                 self.raw_data is not None and not self.raw_data.empty):
                 
-                # Ensure we have proper datetime index
-                timestamps = pd.to_datetime(self.raw_data['timestamp'])
-                levels = self.raw_data['level']
+                # Use the actual database column names
+                timestamps = pd.to_datetime(self.raw_data['timestamp_utc'])
+                levels = self.raw_data['water_level']
                 
                 # Plot with professional styling
                 ax.plot(timestamps, levels, 
@@ -163,8 +163,8 @@ class BaseRechargeTab(QWidget):
             
             # Set y-axis to show water levels with proper range
             if self.raw_data is not None and not self.raw_data.empty:
-                y_min = self.raw_data['level'].min()
-                y_max = self.raw_data['level'].max()
+                y_min = self.raw_data['water_level'].min()
+                y_max = self.raw_data['water_level'].max()
                 y_range = y_max - y_min
                 ax.set_ylim(y_min - 0.1 * y_range, y_max + 0.1 * y_range)
             
