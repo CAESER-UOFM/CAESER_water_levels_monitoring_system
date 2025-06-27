@@ -47,11 +47,12 @@ export default function HomePage() {
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mb-8">
             {/* CAESER Mascot */}
-            <div className="w-32 h-32 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full flex items-center justify-center shadow-2xl mr-8">
-              <div className="text-center">
-                <div className="text-4xl">💧</div>
-                <div className="text-xs font-bold text-white mt-1">CAESER</div>
-              </div>
+            <div className="w-32 h-32 rounded-full flex items-center justify-center shadow-2xl mr-8 overflow-hidden bg-white">
+              <img 
+                src="/caeser-mascot.png" 
+                alt="CAESER Mascot"
+                className="w-full h-full object-cover"
+              />
             </div>
             
             <div className="text-left">
@@ -116,51 +117,8 @@ export default function HomePage() {
             )}
           </div>
 
-          {/* Features Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-gradient-to-br from-blue-900/50 to-blue-800/30 backdrop-blur-sm border border-blue-700 rounded-xl p-6 hover:border-blue-500 transition-all duration-300 transform hover:scale-105">
-              <div className="flex items-center justify-center w-12 h-12 bg-blue-500/20 rounded-xl mb-4">
-                <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-white mb-2">Interactive Charts</h3>
-              <p className="text-sm text-gray-300">Touch-optimized visualization with zoom and filtering</p>
-            </div>
-
-            <div className="bg-gradient-to-br from-green-900/50 to-green-800/30 backdrop-blur-sm border border-green-700 rounded-xl p-6 hover:border-green-500 transition-all duration-300 transform hover:scale-105">
-              <div className="flex items-center justify-center w-12 h-12 bg-green-500/20 rounded-xl mb-4">
-                <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-white mb-2">Data Export</h3>
-              <p className="text-sm text-gray-300">Download data in CSV or JSON formats</p>
-            </div>
-
-            <div className="bg-gradient-to-br from-purple-900/50 to-purple-800/30 backdrop-blur-sm border border-purple-700 rounded-xl p-6 hover:border-purple-500 transition-all duration-300 transform hover:scale-105">
-              <div className="flex items-center justify-center w-12 h-12 bg-purple-500/20 rounded-xl mb-4">
-                <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-white mb-2">Well Browser</h3>
-              <p className="text-sm text-gray-300">Search and filter 44+ monitoring wells</p>
-            </div>
-
-            <div className="bg-gradient-to-br from-orange-900/50 to-orange-800/30 backdrop-blur-sm border border-orange-700 rounded-xl p-6 hover:border-orange-500 transition-all duration-300 transform hover:scale-105">
-              <div className="flex items-center justify-center w-12 h-12 bg-orange-500/20 rounded-xl mb-4">
-                <svg className="w-6 h-6 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-white mb-2">Recharge Analysis</h3>
-              <p className="text-sm text-gray-300">Access RISE and MRC calculations</p>
-            </div>
-          </div>
-
           {/* Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-600 rounded-xl p-6 text-center">
               <div className="text-3xl font-bold text-cyan-400 mb-2">44+</div>
               <div className="text-gray-300">Monitoring Wells</div>
@@ -172,6 +130,49 @@ export default function HomePage() {
             <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-600 rounded-xl p-6 text-center">
               <div className="text-3xl font-bold text-indigo-400 mb-2">3</div>
               <div className="text-gray-300">Aquifer Types</div>
+            </div>
+          </div>
+
+          {/* Features Grid - 60% smaller */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-gradient-to-br from-blue-900/50 to-blue-800/30 backdrop-blur-sm border border-blue-700 rounded-lg p-3 hover:border-blue-500 transition-all duration-300 transform hover:scale-105">
+              <div className="flex items-center justify-center w-8 h-8 bg-blue-500/20 rounded-lg mb-2">
+                <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-white mb-1 text-sm">Interactive Charts</h3>
+              <p className="text-xs text-gray-300">Touch-optimized visualization</p>
+            </div>
+
+            <div className="bg-gradient-to-br from-green-900/50 to-green-800/30 backdrop-blur-sm border border-green-700 rounded-lg p-3 hover:border-green-500 transition-all duration-300 transform hover:scale-105">
+              <div className="flex items-center justify-center w-8 h-8 bg-green-500/20 rounded-lg mb-2">
+                <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-white mb-1 text-sm">Data Export</h3>
+              <p className="text-xs text-gray-300">CSV & JSON formats</p>
+            </div>
+
+            <div className="bg-gradient-to-br from-purple-900/50 to-purple-800/30 backdrop-blur-sm border border-purple-700 rounded-lg p-3 hover:border-purple-500 transition-all duration-300 transform hover:scale-105">
+              <div className="flex items-center justify-center w-8 h-8 bg-purple-500/20 rounded-lg mb-2">
+                <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-white mb-1 text-sm">Well Browser</h3>
+              <p className="text-xs text-gray-300">Search & filter wells</p>
+            </div>
+
+            <div className="bg-gradient-to-br from-orange-900/50 to-orange-800/30 backdrop-blur-sm border border-orange-700 rounded-lg p-3 hover:border-orange-500 transition-all duration-300 transform hover:scale-105">
+              <div className="flex items-center justify-center w-8 h-8 bg-orange-500/20 rounded-lg mb-2">
+                <svg className="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-white mb-1 text-sm">Recharge Analysis</h3>
+              <p className="text-xs text-gray-300">RISE & MRC calculations</p>
             </div>
           </div>
         </div>
