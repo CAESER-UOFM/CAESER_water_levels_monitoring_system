@@ -29,10 +29,20 @@ function calculateSmartMargins(customization: PlotCustomization): {
   const MINIMUM_BORDER_MARGIN = 10; // Minimum space from image border - tight layout
   
   // Base margins for plot area - compact layout
-  let top = customization.title.show ? Math.max(50, customization.title.fontSize + 30) : 20;
+  let top = 20;
   let right = 30;
   let bottom = 75;
   let left = 60;
+  
+  // Adjust for title positioning
+  if (customization.title.show) {
+    const titleSpace = customization.title.fontSize + customization.title.distance;
+    if (customization.title.position === 'top') {
+      top = Math.max(top, titleSpace + MINIMUM_BORDER_MARGIN);
+    } else {
+      bottom = Math.max(bottom, titleSpace + MINIMUM_BORDER_MARGIN);
+    }
+  }
   
   // Adjust based on axis label distances
   if (customization.xAxis.labelPosition === 'bottom') {
@@ -77,6 +87,8 @@ export interface PlotCustomization {
     fontSize: number;
     color: string;
     show: boolean;
+    position: 'top' | 'bottom';
+    distance: number; // Distance from plot area in pixels
   };
   
   xAxis: {
@@ -163,6 +175,13 @@ export interface PlotCustomization {
   plotAreaColor: string;
   borderColor: string;
   borderWidth: number;
+  
+  // Export Settings
+  export: {
+    filename: string;
+    format: 'png' | 'jpg' | 'tiff' | 'webp';
+    downloadFolder?: string; // Optional browser download folder setting
+  };
 }
 
 interface PlotCustomizationDialogProps {
@@ -196,6 +215,8 @@ const defaultCustomization: PlotCustomization = {
     fontSize: 24,
     color: '#000000',
     show: true,
+    position: 'top',
+    distance: 20,
   },
   
   xAxis: {
@@ -281,6 +302,13 @@ const defaultCustomization: PlotCustomization = {
   plotAreaColor: '#ffffff',
   borderColor: '#000000',
   borderWidth: 1,
+  
+  // Export Settings
+  export: {
+    filename: 'well_plot_custom',
+    format: 'png',
+    downloadFolder: undefined,
+  },
 };
 
 const aspectRatios = {
@@ -1141,6 +1169,36 @@ export function PlotCustomizationDialog({
                               />
                             </div>
                           </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className={labelClass}>Position</label>
+                              <select
+                                value={customization.title.position}
+                                onChange={(e) => setCustomization(prev => ({
+                                  ...prev,
+                                  title: { ...prev.title, position: e.target.value as 'top' | 'bottom' }
+                                }))}
+                                className={inputClass}
+                              >
+                                <option value="top">Top</option>
+                                <option value="bottom">Bottom</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className={labelClass}>Distance (px)</label>
+                              <input
+                                type="number"
+                                value={customization.title.distance}
+                                onChange={(e) => setCustomization(prev => ({
+                                  ...prev,
+                                  title: { ...prev.title, distance: parseInt(e.target.value) || 20 }
+                                }))}
+                                className={inputClass}
+                                min="10"
+                                max="100"
+                              />
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1785,6 +1843,53 @@ export function PlotCustomizationDialog({
                 
                 {expandedSections.export && (
                   <div className="mt-4 p-4 rounded-lg bg-gray-500 bg-opacity-5">
+                    {/* Export Controls */}
+                    <div className="space-y-4 mb-6">
+                      <div>
+                        <label className={labelClass}>Filename</label>
+                        <input
+                          type="text"
+                          value={customization.export.filename}
+                          onChange={(e) => setCustomization(prev => ({
+                            ...prev,
+                            export: { ...prev.export, filename: e.target.value }
+                          }))}
+                          className={inputClass}
+                          placeholder="well_plot_custom"
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className={labelClass}>File Format</label>
+                          <select
+                            value={customization.export.format}
+                            onChange={(e) => setCustomization(prev => ({
+                              ...prev,
+                              export: { ...prev.export, format: e.target.value as 'png' | 'jpg' | 'tiff' | 'webp' }
+                            }))}
+                            className={inputClass}
+                          >
+                            <option value="png">PNG</option>
+                            <option value="jpg">JPG</option>
+                            <option value="tiff">TIFF</option>
+                            <option value="webp">WebP</option>
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className={labelClass}>Quality</label>
+                          <div className={`px-3 py-2 rounded-lg border ${
+                            isDarkMode 
+                              ? 'bg-gray-700 border-gray-600 text-gray-400' 
+                              : 'bg-gray-100 border-gray-300 text-gray-600'
+                          }`}>
+                            {customization.export.format === 'png' || customization.export.format === 'tiff' ? 'Lossless' : 'High'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
                     <div className={`p-4 rounded-lg ${
                       isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'
                     }`}>
@@ -1794,12 +1899,15 @@ export function PlotCustomizationDialog({
                       <div className={`text-sm space-y-1 ${
                         isDarkMode ? 'text-gray-400' : 'text-gray-600'
                       }`}>
+                        <p>Filename: {customization.export.filename}.{customization.export.format}</p>
+                        <p>Format: {customization.export.format.toUpperCase()}</p>
                         <p>Dimensions: {customization.width} × {customization.height} pixels</p>
                         <p>Resolution: {customization.dpi} DPI</p>
                         <p>Aspect Ratio: {customization.aspectRatio}</p>
                         <p>Data: {[
                           customization.showTransducerData && 'Transducer',
-                          customization.showManualData && 'Manual'
+                          customization.showManualData && 'Manual',
+                          customization.showTemperatureData && 'Temperature'
                         ].filter(Boolean).join(', ') || 'None selected'}</p>
                       </div>
                     </div>

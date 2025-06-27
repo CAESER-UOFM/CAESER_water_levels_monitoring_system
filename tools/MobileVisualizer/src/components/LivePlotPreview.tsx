@@ -30,10 +30,20 @@ function calculateSmartMarginsPreview(customization: PlotCustomization, previewS
   const MINIMUM_BORDER_MARGIN = 5; // Scaled down for preview - tight layout
   
   // Base margins for plot area - compact layout
-  let top = customization.title.show ? Math.max(25, (customization.title.fontSize * 0.6) + 15) : 10;
+  let top = 10;
   let right = 15;
   let bottom = 40;
   let left = 35;
+  
+  // Adjust for title positioning (scaled for preview)
+  if (customization.title.show) {
+    const titleSpace = (customization.title.fontSize * 0.6) + (customization.title.distance * previewScale);
+    if (customization.title.position === 'top') {
+      top = Math.max(top, titleSpace + MINIMUM_BORDER_MARGIN);
+    } else {
+      bottom = Math.max(bottom, titleSpace + MINIMUM_BORDER_MARGIN);
+    }
+  }
   
   // Adjust based on axis label distances (scaled for preview)
   const scaledXDistance = customization.xAxis.labelDistance * previewScale;
@@ -195,7 +205,14 @@ export function LivePlotPreview({
       ctx.fillStyle = customization.title.color;
       ctx.font = `${titleFontSize}px Arial, sans-serif`;
       ctx.textAlign = 'center';
-      const titleY = titleFontSize + 10; // Position title based on its font size
+      
+      let titleY;
+      if (customization.title.position === 'top') {
+        titleY = titleFontSize + (customization.title.distance * 0.5); // Scale distance for preview
+      } else {
+        titleY = previewHeight - (customization.title.distance * 0.5);
+      }
+      
       ctx.fillText(customization.title.text, previewWidth / 2, titleY);
     }
 

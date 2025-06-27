@@ -26,10 +26,20 @@ function calculateSmartMargins(customization: PlotCustomization): {
   const MINIMUM_BORDER_MARGIN = 10; // Minimum space from image border - tight layout
   
   // Base margins for plot area - compact layout
-  let top = customization.title.show ? Math.max(50, customization.title.fontSize + 30) : 20;
+  let top = 20;
   let right = 30;
   let bottom = 75;
   let left = 60;
+  
+  // Adjust for title positioning
+  if (customization.title.show) {
+    const titleSpace = customization.title.fontSize + customization.title.distance;
+    if (customization.title.position === 'top') {
+      top = Math.max(top, titleSpace + MINIMUM_BORDER_MARGIN);
+    } else {
+      bottom = Math.max(bottom, titleSpace + MINIMUM_BORDER_MARGIN);
+    }
+  }
   
   // Adjust based on axis label distances
   if (customization.xAxis.labelPosition === 'bottom') {
@@ -154,7 +164,15 @@ export async function exportCustomPlot(
       ctx.fillStyle = customization.title.color;
       ctx.font = `${customization.title.fontSize}px Arial, sans-serif`;
       ctx.textAlign = 'center';
-      ctx.fillText(customization.title.text, customization.width / 2, 40);
+      
+      let titleY;
+      if (customization.title.position === 'top') {
+        titleY = customization.title.fontSize + customization.title.distance;
+      } else {
+        titleY = customization.height - customization.title.distance;
+      }
+      
+      ctx.fillText(customization.title.text, customization.width / 2, titleY);
     }
 
     if (data.length > 0) {
@@ -447,20 +465,27 @@ export async function exportCustomPlot(
     onProgress({ stage: 'saving', percentage: 90, message: 'Saving image...' });
 
     // Convert canvas to blob and download
+    const mimeType = `image/${customization.export.format === 'jpg' ? 'jpeg' : customization.export.format}`;
+    const quality = customization.export.format === 'jpg' || customization.export.format === 'webp' ? 0.95 : 1.0;
+    
     canvas.toBlob((blob) => {
       if (!blob) throw new Error('Failed to generate image');
       
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `well_${wellNumber}_custom_plot_${customization.width}x${customization.height}_${customization.dpi}dpi.png`;
+      
+      // Use custom filename or fallback to default pattern
+      const filename = customization.export.filename || `well_${wellNumber}_custom_plot_${customization.width}x${customization.height}_${customization.dpi}dpi`;
+      link.download = `${filename}.${customization.export.format}`;
+      
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
       onProgress({ stage: 'complete', percentage: 100, message: 'Custom plot exported successfully!' });
-    }, 'image/png', 1.0);
+    }, mimeType, quality);
 
   } catch (error) {
     throw new Error(`Custom plot export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
