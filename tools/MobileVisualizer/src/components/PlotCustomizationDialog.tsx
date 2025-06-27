@@ -717,10 +717,10 @@ export function PlotCustomizationDialog({
     isDarkMode ? 'text-gray-300' : 'text-gray-700'
   }`;
 
-  const sectionHeaderClass = `flex items-center justify-between w-full p-4 cursor-pointer transition-colors rounded-lg ${
+  const sectionHeaderClass = `flex items-center justify-between w-full p-4 cursor-pointer transition-all duration-200 rounded-lg shadow-sm ${
     isDarkMode 
-      ? 'hover:bg-gray-700/50 border border-gray-600' 
-      : 'hover:bg-gray-50 border border-gray-200'
+      ? 'bg-gray-800/50 hover:bg-gray-700/70 border border-gray-600 hover:border-gray-500' 
+      : 'bg-gray-50 hover:bg-gray-100 border border-gray-200 hover:border-gray-300'
   }`;
 
   return (
@@ -732,14 +732,34 @@ export function PlotCustomizationDialog({
         }`}
       >
         {/* Header */}
-        <div className={`flex items-center justify-between p-6 border-b ${
-          isDarkMode ? 'border-gray-700' : 'border-gray-200'
+        <div className={`flex items-center justify-between p-6 border-b bg-gradient-to-r ${
+          isDarkMode 
+            ? 'border-gray-700 from-gray-800 to-gray-750' 
+            : 'border-gray-200 from-gray-50 to-white'
         }`}>
-          <h2 className={`text-xl font-bold ${
-            isDarkMode ? 'text-white' : 'text-gray-900'
-          }`}>
-            Plot Customization - Well {wellNumber}
-          </h2>
+          <div className="flex items-center space-x-3">
+            <div className={`p-2 rounded-lg ${
+              isDarkMode ? 'bg-blue-600/20' : 'bg-blue-100'
+            }`}>
+              <svg className={`w-6 h-6 ${
+                isDarkMode ? 'text-blue-400' : 'text-blue-600'
+              }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className={`text-xl font-bold ${
+                isDarkMode ? 'text-white' : 'text-gray-900'
+              }`}>
+                Plot Customization
+              </h2>
+              <p className={`text-sm ${
+                isDarkMode ? 'text-gray-400' : 'text-gray-500'
+              }`}>
+                Well {wellNumber} {well?.cae_number ? `(${well.cae_number})` : ''}
+              </p>
+            </div>
+          </div>
           <button
             onClick={onClose}
             className={`p-2 rounded-lg transition-colors ${
@@ -758,9 +778,49 @@ export function PlotCustomizationDialog({
           <div className={`w-1/3 min-w-[400px] overflow-y-auto p-6 border-r ${
             isDarkMode ? 'border-gray-700' : 'border-gray-200'
           }`}>
-            <div className="space-y-4">
+            {/* Section Navigation Overview */}
+            <div className={`mb-6 p-4 rounded-lg border ${
+              isDarkMode 
+                ? 'bg-gray-800/50 border-gray-700' 
+                : 'bg-blue-50 border-blue-200'
+            }`}>
+              <h3 className={`text-sm font-semibold mb-3 ${
+                isDarkMode ? 'text-gray-300' : 'text-gray-700'
+              }`}>
+                Customization Sections
+              </h3>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {[
+                  { key: 'dimensions', label: 'Dimensions', icon: '📐' },
+                  { key: 'data', label: 'Data', icon: '📊' },
+                  { key: 'appearance', label: 'Appearance', icon: '🎨' },
+                  { key: 'wellInfo', label: 'Well Info', icon: '📋' },
+                  { key: 'export', label: 'Export', icon: '💾' }
+                ].map(section => (
+                  <div 
+                    key={section.key}
+                    className={`flex items-center space-x-2 p-2 rounded cursor-pointer transition-colors ${
+                      expandedSections[section.key as keyof typeof expandedSections]
+                        ? (isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-100 text-blue-700')
+                        : (isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-700')
+                    }`}
+                    onClick={() => toggleSection(section.key as keyof typeof expandedSections)}
+                  >
+                    <span>{section.icon}</span>
+                    <span className="font-medium">{section.label}</span>
+                    {expandedSections[section.key as keyof typeof expandedSections] && (
+                      <div className={`w-2 h-2 rounded-full ${
+                        isDarkMode ? 'bg-blue-400' : 'bg-blue-500'
+                      }`} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-6">
               {/* Dimensions Section */}
-              <div className="mb-4">
+              <div className="pb-6 border-b border-gray-200 dark:border-gray-700">
                 <button 
                   onClick={() => toggleSection('dimensions')}
                   className={sectionHeaderClass}
@@ -769,7 +829,7 @@ export function PlotCustomizationDialog({
                     <svg className={`w-5 h-5 mr-2 ${isDarkMode ? 'text-white' : 'text-gray-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                     </svg>
-                    <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <span className={`font-semibold text-base ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                       Dimensions & Layout
                     </span>
                   </div>
@@ -786,7 +846,11 @@ export function PlotCustomizationDialog({
                 </button>
                 
                 {expandedSections.dimensions && (
-                  <div className="mt-4 space-y-4 p-4 rounded-lg bg-gray-500 bg-opacity-5">
+                  <div className={`mt-4 space-y-4 p-5 rounded-lg border ${
+                    isDarkMode 
+                      ? 'bg-gray-800/30 border-gray-700' 
+                      : 'bg-gray-50/50 border-gray-200'
+                  }`}>
                     {/* Preset Templates */}
                     <div>
                       <label className={labelClass}>Quick Start Templates</label>
@@ -878,7 +942,7 @@ export function PlotCustomizationDialog({
               </div>
 
               {/* Data Selection Section */}
-              <div className="mb-4">
+              <div className="pb-6 border-b border-gray-200 dark:border-gray-700">
                 <button 
                   onClick={() => toggleSection('data')}
                   className={sectionHeaderClass}
@@ -887,7 +951,7 @@ export function PlotCustomizationDialog({
                     <svg className={`w-5 h-5 mr-2 ${isDarkMode ? 'text-white' : 'text-gray-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
-                    <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <span className={`font-semibold text-base ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                       Data Selection
                     </span>
                   </div>
@@ -904,7 +968,11 @@ export function PlotCustomizationDialog({
                 </button>
                 
                 {expandedSections.data && (
-                  <div className="mt-4 space-y-4 p-4 rounded-lg bg-gray-500 bg-opacity-5">
+                  <div className={`mt-4 space-y-4 p-5 rounded-lg border ${
+                    isDarkMode 
+                      ? 'bg-gray-800/30 border-gray-700' 
+                      : 'bg-gray-50/50 border-gray-200'
+                  }`}>
                     {/* Data Type Selection */}
                     <div className="space-y-3">
                       <div className="flex items-center space-x-3">
@@ -1154,7 +1222,7 @@ export function PlotCustomizationDialog({
               </div>
 
               {/* Appearance Section */}
-              <div className="mb-4">
+              <div className="pb-6 border-b border-gray-200 dark:border-gray-700">
                 <button 
                   onClick={() => toggleSection('appearance')}
                   className={sectionHeaderClass}
@@ -1163,7 +1231,7 @@ export function PlotCustomizationDialog({
                     <svg className={`w-5 h-5 mr-2 ${isDarkMode ? 'text-white' : 'text-gray-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4 4 4 0 004-4V5z" />
                     </svg>
-                    <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <span className={`font-semibold text-base ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                       Appearance
                     </span>
                   </div>
@@ -1180,7 +1248,11 @@ export function PlotCustomizationDialog({
                 </button>
                 
                 {expandedSections.appearance && (
-                  <div className="mt-4 space-y-4 p-4 rounded-lg bg-gray-500 bg-opacity-5">
+                  <div className={`mt-4 space-y-4 p-5 rounded-lg border ${
+                    isDarkMode 
+                      ? 'bg-gray-800/30 border-gray-700' 
+                      : 'bg-gray-50/50 border-gray-200'
+                  }`}>
                     {/* Title Settings */}
                     <div>
                       <div className="flex items-center space-x-3 mb-3">
@@ -1905,7 +1977,7 @@ export function PlotCustomizationDialog({
               </div>
 
               {/* Well Info Legend Section */}
-              <div className="mb-4">
+              <div className="pb-6 border-b border-gray-200 dark:border-gray-700">
                 <button 
                   onClick={() => toggleSection('wellInfo')}
                   className={sectionHeaderClass}
@@ -1914,7 +1986,7 @@ export function PlotCustomizationDialog({
                     <svg className={`w-5 h-5 mr-2 ${isDarkMode ? 'text-white' : 'text-gray-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <span className={`font-semibold text-base ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                       Well Info Legend
                     </span>
                   </div>
@@ -1931,7 +2003,11 @@ export function PlotCustomizationDialog({
                 </button>
                 
                 {expandedSections.wellInfo && (
-                  <div className="mt-4 space-y-4 p-4 rounded-lg bg-gray-500 bg-opacity-5">
+                  <div className={`mt-4 space-y-4 p-5 rounded-lg border ${
+                    isDarkMode 
+                      ? 'bg-gray-800/30 border-gray-700' 
+                      : 'bg-gray-50/50 border-gray-200'
+                  }`}>
                     {/* Enable Well Info Legend */}
                     <div className="flex items-center space-x-3 mb-4">
                       <input
@@ -2267,7 +2343,7 @@ export function PlotCustomizationDialog({
               </div>
 
               {/* Export Section */}
-              <div className="mb-4">
+              <div className="pb-6">
                 <button 
                   onClick={() => toggleSection('export')}
                   className={sectionHeaderClass}
@@ -2276,7 +2352,7 @@ export function PlotCustomizationDialog({
                     <svg className={`w-5 h-5 mr-2 ${isDarkMode ? 'text-white' : 'text-gray-700'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <span className={`font-semibold text-base ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                       Export Settings
                     </span>
                   </div>
