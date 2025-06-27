@@ -544,6 +544,9 @@ export function PlotCustomizationDialog({
   const [showMobilePreview, setShowMobilePreview] = useState(false);
   const [activeMobileSection, setActiveMobileSection] = useState<keyof typeof expandedSections>('dimensions');
   
+  // Appearance sub-tabs state
+  const [activeAppearanceTab, setActiveAppearanceTab] = useState<'title' | 'axes' | 'legend'>('title');
+  
   const dialogRef = useRef<HTMLDivElement>(null);
 
   // Initialize with current data
@@ -1465,9 +1468,9 @@ export function PlotCustomizationDialog({
                         {customization.showTransducerData && (
                           <div className="space-y-2">
                             <h5 className={`font-medium text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Transducer Data</h5>
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center gap-2">
-                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Color:</label>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <label className={`block text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Color</label>
                                 <input
                                   type="color"
                                   value={customization.transducerData.color}
@@ -1475,11 +1478,11 @@ export function PlotCustomizationDialog({
                                     ...prev,
                                     transducerData: { ...prev.transducerData, color: e.target.value }
                                   }))}
-                                  className="w-8 h-6 rounded border border-gray-300 cursor-pointer"
+                                  className="w-full h-8 rounded border border-gray-300 cursor-pointer"
                                 />
                               </div>
-                              <div className="flex items-center gap-2">
-                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Width:</label>
+                              <div>
+                                <label className={`block text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Line Width</label>
                                 <input
                                   type="number"
                                   value={customization.transducerData.lineWidth}
@@ -1487,7 +1490,7 @@ export function PlotCustomizationDialog({
                                     ...prev,
                                     transducerData: { ...prev.transducerData, lineWidth: parseInt(e.target.value) || 1 }
                                   }))}
-                                  className={`w-16 px-2 py-1 text-xs rounded border ${
+                                  className={`w-full px-2 py-1 text-xs rounded border ${
                                     isDarkMode 
                                       ? 'bg-gray-700 border-gray-600 text-white' 
                                       : 'bg-white border-gray-300 text-gray-900'
@@ -1496,15 +1499,15 @@ export function PlotCustomizationDialog({
                                   max="10"
                                 />
                               </div>
-                              <div className="flex items-center gap-2">
-                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Style:</label>
+                              <div>
+                                <label className={`block text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Line Style</label>
                                 <select
                                   value={customization.transducerData.lineStyle}
                                   onChange={(e) => setCustomization(prev => ({
                                     ...prev,
                                     transducerData: { ...prev.transducerData, lineStyle: e.target.value as any }
                                   }))}
-                                  className={`w-20 px-2 py-1 text-xs rounded border ${
+                                  className={`w-full px-2 py-1 text-xs rounded border ${
                                     isDarkMode 
                                       ? 'bg-gray-700 border-gray-600 text-white' 
                                       : 'bg-white border-gray-300 text-gray-900'
@@ -1522,90 +1525,91 @@ export function PlotCustomizationDialog({
                         {customization.showManualData && (
                           <div className="space-y-2">
                             <h5 className={`font-medium text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Manual Readings</h5>
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-2">
-                                  <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Color:</label>
-                                  <input
-                                    type="color"
-                                    value={customization.manualData.color}
-                                    onChange={(e) => setCustomization(prev => ({
-                                      ...prev,
-                                      manualData: { ...prev.manualData, color: e.target.value }
-                                    }))}
-                                    className="w-8 h-6 rounded border border-gray-300 cursor-pointer"
-                                  />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Size:</label>
-                                  <input
-                                    type="number"
-                                    value={customization.manualData.pointSize}
-                                    onChange={(e) => setCustomization(prev => ({
-                                      ...prev,
-                                      manualData: { ...prev.manualData, pointSize: parseInt(e.target.value) || 4 }
-                                    }))}
-                                    className={`w-16 px-2 py-1 text-xs rounded border ${
-                                      isDarkMode 
-                                        ? 'bg-gray-700 border-gray-600 text-white' 
-                                        : 'bg-white border-gray-300 text-gray-900'
-                                    }`}
-                                    min="2"
-                                    max="20"
-                                  />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Shape:</label>
-                                  <select
-                                    value={customization.manualData.pointStyle}
-                                    onChange={(e) => setCustomization(prev => ({
-                                      ...prev,
-                                      manualData: { ...prev.manualData, pointStyle: e.target.value as any }
-                                    }))}
-                                    className={`w-20 px-2 py-1 text-xs rounded border ${
-                                      isDarkMode 
-                                        ? 'bg-gray-700 border-gray-600 text-white' 
-                                        : 'bg-white border-gray-300 text-gray-900'
-                                    }`}
-                                  >
-                                    <option value="circle">Circle</option>
-                                    <option value="square">Square</option>
-                                    <option value="triangle">Triangle</option>
-                                    <option value="diamond">Diamond</option>
-                                  </select>
-                                </div>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <label className={`block text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Fill Color</label>
+                                <input
+                                  type="color"
+                                  value={customization.manualData.color}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    manualData: { ...prev.manualData, color: e.target.value }
+                                  }))}
+                                  className="w-full h-8 rounded border border-gray-300 cursor-pointer"
+                                />
                               </div>
-                              <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-2">
-                                  <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Border:</label>
-                                  <input
-                                    type="color"
-                                    value={customization.manualData.borderColor}
-                                    onChange={(e) => setCustomization(prev => ({
-                                      ...prev,
-                                      manualData: { ...prev.manualData, borderColor: e.target.value }
-                                    }))}
-                                    className="w-8 h-6 rounded border border-gray-300 cursor-pointer"
-                                  />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Width:</label>
-                                  <input
-                                    type="number"
-                                    value={customization.manualData.borderWidth}
-                                    onChange={(e) => setCustomization(prev => ({
-                                      ...prev,
-                                      manualData: { ...prev.manualData, borderWidth: parseInt(e.target.value) || 0 }
-                                    }))}
-                                    className={`w-16 px-2 py-1 text-xs rounded border ${
-                                      isDarkMode 
-                                        ? 'bg-gray-700 border-gray-600 text-white' 
-                                        : 'bg-white border-gray-300 text-gray-900'
-                                    }`}
-                                    min="0"
-                                    max="5"
-                                  />
-                                </div>
+                              <div>
+                                <label className={`block text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Point Size</label>
+                                <input
+                                  type="number"
+                                  value={customization.manualData.pointSize}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    manualData: { ...prev.manualData, pointSize: parseInt(e.target.value) || 4 }
+                                  }))}
+                                  className={`w-full px-2 py-1 text-xs rounded border ${
+                                    isDarkMode 
+                                      ? 'bg-gray-700 border-gray-600 text-white' 
+                                      : 'bg-white border-gray-300 text-gray-900'
+                                  }`}
+                                  min="2"
+                                  max="20"
+                                />
+                              </div>
+                              <div>
+                                <label className={`block text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Point Shape</label>
+                                <select
+                                  value={customization.manualData.pointStyle}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    manualData: { ...prev.manualData, pointStyle: e.target.value as any }
+                                  }))}
+                                  className={`w-full px-2 py-1 text-xs rounded border ${
+                                    isDarkMode 
+                                      ? 'bg-gray-700 border-gray-600 text-white' 
+                                      : 'bg-white border-gray-300 text-gray-900'
+                                  }`}
+                                >
+                                  <option value="circle">Circle</option>
+                                  <option value="square">Square</option>
+                                  <option value="triangle">Triangle</option>
+                                  <option value="diamond">Diamond</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <label className={`block text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Border Color</label>
+                                <input
+                                  type="color"
+                                  value={customization.manualData.borderColor}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    manualData: { ...prev.manualData, borderColor: e.target.value }
+                                  }))}
+                                  className="w-full h-8 rounded border border-gray-300 cursor-pointer"
+                                />
+                              </div>
+                              <div>
+                                <label className={`block text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Border Width</label>
+                                <input
+                                  type="number"
+                                  value={customization.manualData.borderWidth}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    manualData: { ...prev.manualData, borderWidth: parseInt(e.target.value) || 0 }
+                                  }))}
+                                  className={`w-full px-2 py-1 text-xs rounded border ${
+                                    isDarkMode 
+                                      ? 'bg-gray-700 border-gray-600 text-white' 
+                                      : 'bg-white border-gray-300 text-gray-900'
+                                  }`}
+                                  min="0"
+                                  max="5"
+                                />
+                              </div>
+                              <div>
+                                {/* Empty div for grid alignment */}
                               </div>
                             </div>
                           </div>
@@ -1614,9 +1618,9 @@ export function PlotCustomizationDialog({
                         {customization.showTemperatureData && (
                           <div className="space-y-2">
                             <h5 className={`font-medium text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Temperature Data</h5>
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center gap-2">
-                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Color:</label>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <label className={`block text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Line Color</label>
                                 <input
                                   type="color"
                                   value={customization.temperatureData.color}
@@ -1624,11 +1628,11 @@ export function PlotCustomizationDialog({
                                     ...prev,
                                     temperatureData: { ...prev.temperatureData, color: e.target.value }
                                   }))}
-                                  className="w-8 h-6 rounded border border-gray-300 cursor-pointer"
+                                  className="w-full h-8 rounded border border-gray-300 cursor-pointer"
                                 />
                               </div>
-                              <div className="flex items-center gap-2">
-                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Width:</label>
+                              <div>
+                                <label className={`block text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Line Width</label>
                                 <input
                                   type="number"
                                   value={customization.temperatureData.lineWidth}
@@ -1636,7 +1640,7 @@ export function PlotCustomizationDialog({
                                     ...prev,
                                     temperatureData: { ...prev.temperatureData, lineWidth: parseInt(e.target.value) || 1 }
                                   }))}
-                                  className={`w-16 px-2 py-1 text-xs rounded border ${
+                                  className={`w-full px-2 py-1 text-xs rounded border ${
                                     isDarkMode 
                                       ? 'bg-gray-700 border-gray-600 text-white' 
                                       : 'bg-white border-gray-300 text-gray-900'
@@ -1644,6 +1648,9 @@ export function PlotCustomizationDialog({
                                   min="1"
                                   max="10"
                                 />
+                              </div>
+                              <div>
+                                {/* Empty div for grid alignment */}
                               </div>
                             </div>
                           </div>
@@ -2242,9 +2249,10 @@ export function PlotCustomizationDialog({
                       )}
                     </div>
 
-                    {/* Enhanced Legend Settings */}
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-3">
+                    {/* Legend Tab */}
+                    {activeAppearanceTab === 'legend' && (
+                      <div className="space-y-4">
+                        <div className="flex items-center space-x-3">
                         <input
                           type="checkbox"
                           id="show-legend"
@@ -2404,7 +2412,8 @@ export function PlotCustomizationDialog({
                           </div>
                         </div>
                       )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
