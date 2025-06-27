@@ -102,6 +102,7 @@ export interface PlotCustomization {
     tickFontSize: number;
     labelPosition: 'bottom' | 'top';
     labelDistance: number; // Distance from axis line in pixels
+    tickDistance: number; // Distance of tick labels from axis line in pixels
   };
   
   yAxis: {
@@ -115,6 +116,7 @@ export interface PlotCustomization {
     tickFontSize: number;
     labelPosition: 'left' | 'right';
     labelDistance: number; // Distance from axis line in pixels
+    tickDistance: number; // Distance of tick labels from axis line in pixels
     significantFigures: number; // Number of significant figures for tick labels
   };
   
@@ -129,6 +131,7 @@ export interface PlotCustomization {
     tickCount: number;
     tickFontSize: number;
     labelDistance: number;
+    tickDistance: number; // Distance of tick labels from axis line in pixels
     significantFigures: number;
     show: boolean; // Whether to show right axis
   };
@@ -251,7 +254,8 @@ const defaultCustomization: PlotCustomization = {
     tickCount: 5,
     tickFontSize: 12,
     labelPosition: 'bottom',
-    labelDistance: 40,
+    labelDistance: 50,
+    tickDistance: 15,
   },
   
   yAxis: {
@@ -265,6 +269,7 @@ const defaultCustomization: PlotCustomization = {
     tickFontSize: 12,
     labelPosition: 'left',
     labelDistance: 45,
+    tickDistance: 10,
     significantFigures: 3,
   },
   
@@ -278,6 +283,7 @@ const defaultCustomization: PlotCustomization = {
     tickCount: 5,
     tickFontSize: 12,
     labelDistance: 45,
+    tickDistance: 10,
     significantFigures: 2,
     show: true, // Auto-show when temperature data is enabled
   },
