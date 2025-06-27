@@ -159,24 +159,26 @@ export function WellStatisticsPanel({ databaseId, wellNumber }: WellStatisticsPa
       </div>
 
       {/* Quick Summary - Always visible */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4">
         <div className="text-center">
           <div className="text-xl font-bold text-blue-600 flex items-center justify-center">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m0 0l7-7m-7 7h18" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
             {statistics.levels.min.toFixed(2)} ft
           </div>
           <div className="text-xs text-gray-600">Minimum Level</div>
+          <div className="text-xs text-gray-500">{formatDate(statistics.levels.minDate)}</div>
         </div>
         <div className="text-center">
           <div className="text-xl font-bold text-red-600 flex items-center justify-center">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m0 0l-7 7m7-7H3" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
             </svg>
             {statistics.levels.max.toFixed(2)} ft
           </div>
           <div className="text-xs text-gray-600">Maximum Level</div>
+          <div className="text-xs text-gray-500">{formatDate(statistics.levels.maxDate)}</div>
         </div>
         <div className="text-center">
           <div className="text-xl font-bold text-green-600 flex items-center justify-center">
@@ -186,6 +188,15 @@ export function WellStatisticsPanel({ databaseId, wellNumber }: WellStatisticsPa
             {statistics.levels.average.toFixed(2)} ft
           </div>
           <div className="text-xs text-gray-600">Average Level</div>
+        </div>
+        <div className="text-center">
+          <div className="text-xl font-bold text-purple-600 flex items-center justify-center">
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4" />
+            </svg>
+            {statistics.levels.range.toFixed(2)} ft
+          </div>
+          <div className="text-xs text-gray-600">Range</div>
         </div>
         <div className="text-center">
           <div className={`text-xl font-bold flex items-center justify-center ${getTrendColor(statistics.trend.direction)}`}>
@@ -200,40 +211,6 @@ export function WellStatisticsPanel({ databaseId, wellNumber }: WellStatisticsPa
       {/* Detailed Statistics - Collapsible */}
       {isExpanded && (
         <div className="mt-6 space-y-6">
-          {/* Water Level Statistics */}
-          <div>
-            <h4 className="font-medium text-gray-900 mb-3">Detailed Water Level Statistics</h4>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium text-gray-700">Minimum Level:</span>
-                  <span className="ml-2">{statistics.levels.min.toFixed(2)} ft</span>
-                  <div className="text-xs text-gray-500 ml-2">on {formatDate(statistics.levels.minDate)}</div>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Maximum Level:</span>
-                  <span className="ml-2">{statistics.levels.max.toFixed(2)} ft</span>
-                  <div className="text-xs text-gray-500 ml-2">on {formatDate(statistics.levels.maxDate)}</div>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Average Level:</span>
-                  <span className="ml-2">{statistics.levels.average.toFixed(2)} ft</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Total Range:</span>
-                  <span className="ml-2">{statistics.levels.range.toFixed(2)} ft</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Total Readings:</span>
-                  <span className="ml-2">{statistics.totalReadings.toLocaleString()}</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Data Duration:</span>
-                  <span className="ml-2">{statistics.dataRange.totalDays > 0 ? (statistics.dataRange.totalDays / 365.25).toFixed(1) : '0'} years</span>
-                </div>
-              </div>
-            </div>
-          </div>
 
           {/* Data Range */}
           <div>
