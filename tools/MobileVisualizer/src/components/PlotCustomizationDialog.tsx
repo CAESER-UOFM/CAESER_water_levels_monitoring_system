@@ -236,7 +236,7 @@ const defaultCustomization: PlotCustomization = {
     tickFontSize: 12,
     labelDistance: 65,
     significantFigures: 2,
-    show: false,
+    show: true, // Auto-show when temperature data is enabled
   },
   
   legend: {
