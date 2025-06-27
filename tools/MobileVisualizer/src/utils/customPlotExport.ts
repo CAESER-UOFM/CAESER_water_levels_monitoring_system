@@ -489,8 +489,8 @@ export async function exportCustomPlot(
       }
       
       if (customization.wellInfoLegend.fields.dataRange && data.length > 0) {
-        const startDate = new Date(data[0].timestamp_utc || data[0].timestamp).toLocaleDateString();
-        const endDate = new Date(data[data.length - 1].timestamp_utc || data[data.length - 1].timestamp).toLocaleDateString();
+        const startDate = new Date(data[0].timestamp).toLocaleDateString();
+        const endDate = new Date(data[data.length - 1].timestamp).toLocaleDateString();
         wellInfo.push(`Range: ${startDate} - ${endDate}`);
       }
       
