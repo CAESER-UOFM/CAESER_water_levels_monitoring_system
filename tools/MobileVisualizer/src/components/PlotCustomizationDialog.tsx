@@ -2980,17 +2980,20 @@ export function PlotCustomizationDialog({
               
               {/* Full Image Viewer - Scrollable and Zoomable */}
               <div className="flex-1 overflow-auto">
-                <div className="min-h-full flex items-center justify-center p-4">
-                  <div className="bg-white rounded-lg shadow-2xl max-w-none">
-                    <LivePlotPreview
-                      customization={customization}
-                      plotData={plotData}
-                      isDarkMode={false}
-                      wellNumber={wellNumber}
-                      well={well}
-                      showFullSize={true}
-                    />
-                  </div>
+                <div className="bg-white" style={{ 
+                  width: `${customization.width}px`, 
+                  height: `${customization.height}px`,
+                  minWidth: `${customization.width}px`,
+                  minHeight: `${customization.height}px`
+                }}>
+                  <LivePlotPreview
+                    customization={customization}
+                    plotData={plotData}
+                    isDarkMode={false}
+                    wellNumber={wellNumber}
+                    well={well}
+                    showFullSize={true}
+                  />
                 </div>
               </div>
               
