@@ -26,10 +26,10 @@ function calculateSmartMargins(customization: PlotCustomization): {
   const MINIMUM_BORDER_MARGIN = 10; // Minimum space from image border - tight layout
   
   // Base margins for plot area - compact layout
-  let top = customization.title.show ? Math.max(40, customization.title.fontSize + 20) : 20;
-  let right = 40;
-  let bottom = 60;
-  let left = 70;
+  let top = customization.title.show ? Math.max(50, customization.title.fontSize + 30) : 20;
+  let right = 30;
+  let bottom = 75;
+  let left = 60;
   
   // Adjust based on axis label distances
   if (customization.xAxis.labelPosition === 'bottom') {
@@ -303,7 +303,7 @@ export async function exportCustomPlot(
         const x = xScale(timestamp);
         const date = new Date(timestamp);
         const label = date.toLocaleDateString();
-        ctx.fillText(label, x, plotY + plotHeight + 20);
+        ctx.fillText(label, x, plotY + plotHeight + 35);
       }
 
       // Y-axis ticks (water levels)

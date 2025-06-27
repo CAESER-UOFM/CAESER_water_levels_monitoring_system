@@ -29,10 +29,10 @@ function calculateSmartMargins(customization: PlotCustomization): {
   const MINIMUM_BORDER_MARGIN = 10; // Minimum space from image border - tight layout
   
   // Base margins for plot area - compact layout
-  let top = customization.title.show ? Math.max(40, customization.title.fontSize + 20) : 20;
-  let right = 40;
-  let bottom = 60;
-  let left = 70;
+  let top = customization.title.show ? Math.max(50, customization.title.fontSize + 30) : 20;
+  let right = 30;
+  let bottom = 75;
+  let left = 60;
   
   // Adjust based on axis label distances
   if (customization.xAxis.labelPosition === 'bottom') {
@@ -179,8 +179,8 @@ interface PlotCustomizationDialogProps {
 
 const defaultCustomization: PlotCustomization = {
   // Dimensions and Layout
-  width: 1920,
-  height: 1080,
+  width: 1200,
+  height: 800,
   aspectRatio: '16:9',
   dpi: 300,
   

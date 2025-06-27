@@ -30,10 +30,10 @@ function calculateSmartMarginsPreview(customization: PlotCustomization, previewS
   const MINIMUM_BORDER_MARGIN = 5; // Scaled down for preview - tight layout
   
   // Base margins for plot area - compact layout
-  let top = customization.title.show ? Math.max(20, (customization.title.fontSize * 0.6) + 10) : 10;
-  let right = 20;
-  let bottom = 30;
-  let left = 40;
+  let top = customization.title.show ? Math.max(25, (customization.title.fontSize * 0.6) + 15) : 10;
+  let right = 15;
+  let bottom = 40;
+  let left = 35;
   
   // Adjust based on axis label distances (scaled for preview)
   const scaledXDistance = customization.xAxis.labelDistance * previewScale;
@@ -436,7 +436,7 @@ export function LivePlotPreview({
         const tickTime = minTime + ((maxTime - minTime) / xTickCount) * i;
         const tickDate = new Date(tickTime);
         const x = plotX + (plotWidth / xTickCount) * i;
-        const tickY = customization.xAxis.labelPosition === 'top' ? plotY - 5 : plotY + plotHeight + 15;
+        const tickY = customization.xAxis.labelPosition === 'top' ? plotY - 5 : plotY + plotHeight + 25;
         ctx.fillText(tickDate.toLocaleDateString(), x, tickY);
       }
 
