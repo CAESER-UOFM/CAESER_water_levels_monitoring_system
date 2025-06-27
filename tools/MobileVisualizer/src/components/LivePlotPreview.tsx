@@ -20,6 +20,46 @@ function formatWithSignificantFigures(value: number, sigFigs: number): string {
   }
 }
 
+// Smart margin calculation for preview (scaled down)
+function calculateSmartMarginsPreview(customization: PlotCustomization, previewScale: number = 0.5): {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+} {
+  const MINIMUM_BORDER_MARGIN = 15; // Scaled down for preview
+  
+  // Base margins for plot area
+  let top = customization.title.show ? Math.max(30, (customization.title.fontSize * 0.8) + 20) : 15;
+  let right = 30;
+  let bottom = 40;
+  let left = 50;
+  
+  // Adjust based on axis label distances (scaled for preview)
+  const scaledXDistance = customization.xAxis.labelDistance * previewScale;
+  const scaledYDistance = customization.yAxis.labelDistance * previewScale;
+  const scaledRightDistance = customization.rightAxis.labelDistance * previewScale;
+  
+  if (customization.xAxis.labelPosition === 'bottom') {
+    bottom = Math.max(bottom, scaledXDistance + (customization.xAxis.fontSize * 0.8) + MINIMUM_BORDER_MARGIN);
+  } else {
+    top = Math.max(top, scaledXDistance + (customization.xAxis.fontSize * 0.8) + MINIMUM_BORDER_MARGIN);
+  }
+  
+  if (customization.yAxis.labelPosition === 'left') {
+    left = Math.max(left, scaledYDistance + (customization.yAxis.fontSize * 0.8) + MINIMUM_BORDER_MARGIN);
+  } else {
+    right = Math.max(right, scaledYDistance + (customization.yAxis.fontSize * 0.8) + MINIMUM_BORDER_MARGIN);
+  }
+  
+  // Adjust for right axis if shown
+  if (customization.showTemperatureData && customization.rightAxis.show) {
+    right = Math.max(right, scaledRightDistance + (customization.rightAxis.fontSize * 0.8) + MINIMUM_BORDER_MARGIN);
+  }
+  
+  return { top, right, bottom, left };
+}
+
 interface WaterLevelData {
   timestamp: string;
   water_level: number;
@@ -141,14 +181,9 @@ export function LivePlotPreview({
       ctx.strokeRect(0, 0, previewWidth, previewHeight);
     }
 
-    // Calculate plot margins based on title and labels
-    const titleFontSize = customization.title.show ? Math.max(12, Math.min(customization.title.fontSize * 0.8, 24)) : 0; // Scale down for preview but don't cap too low
-    const margin = {
-      top: customization.title.show ? Math.max(titleFontSize + 15, 30) : 20,
-      right: 40,
-      bottom: 60,
-      left: 80
-    };
+    // Calculate plot margins using smart margin calculation
+    const titleFontSize = customization.title.show ? Math.max(12, Math.min(customization.title.fontSize * 0.8, 24)) : 0;
+    const margin = calculateSmartMarginsPreview(customization, 0.5);
 
     const plotWidth = previewWidth - margin.left - margin.right;
     const plotHeight = previewHeight - margin.top - margin.bottom;

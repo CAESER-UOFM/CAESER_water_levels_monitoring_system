@@ -16,6 +16,42 @@ function formatWithSignificantFigures(value: number, sigFigs: number): string {
   }
 }
 
+// Smart margin calculation for export (full resolution)
+function calculateSmartMargins(customization: PlotCustomization): {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+} {
+  const MINIMUM_BORDER_MARGIN = 30; // Minimum space from image border
+  
+  // Base margins for plot area
+  let top = customization.title.show ? Math.max(60, customization.title.fontSize + 40) : 30;
+  let right = 60;
+  let bottom = 80;
+  let left = 100;
+  
+  // Adjust based on axis label distances
+  if (customization.xAxis.labelPosition === 'bottom') {
+    bottom = Math.max(bottom, customization.xAxis.labelDistance + customization.xAxis.fontSize + MINIMUM_BORDER_MARGIN);
+  } else {
+    top = Math.max(top, customization.xAxis.labelDistance + customization.xAxis.fontSize + MINIMUM_BORDER_MARGIN);
+  }
+  
+  if (customization.yAxis.labelPosition === 'left') {
+    left = Math.max(left, customization.yAxis.labelDistance + customization.yAxis.fontSize + MINIMUM_BORDER_MARGIN);
+  } else {
+    right = Math.max(right, customization.yAxis.labelDistance + customization.yAxis.fontSize + MINIMUM_BORDER_MARGIN);
+  }
+  
+  // Adjust for right axis if shown
+  if (customization.showTemperatureData && customization.rightAxis.show) {
+    right = Math.max(right, customization.rightAxis.labelDistance + customization.rightAxis.fontSize + MINIMUM_BORDER_MARGIN);
+  }
+  
+  return { top, right, bottom, left };
+}
+
 interface WaterLevelData {
   timestamp: string;
   water_level: number;
@@ -101,13 +137,8 @@ export async function exportCustomPlot(
 
     onProgress({ stage: 'rendering', percentage: 70, message: 'Rendering plot elements...' });
 
-    // Calculate plot area (leaving space for title, labels, legend)
-    const margin = {
-      top: customization.title.show ? 60 : 20,
-      right: 60,
-      bottom: 80,
-      left: 100
-    };
+    // Calculate plot area using smart margin calculation
+    const margin = calculateSmartMargins(customization);
 
     const plotWidth = customization.width - margin.left - margin.right;
     const plotHeight = customization.height - margin.top - margin.bottom;

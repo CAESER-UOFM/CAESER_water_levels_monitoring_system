@@ -19,6 +19,42 @@ function formatWithSignificantFigures(value: number, sigFigs: number): string {
   }
 }
 
+// Smart margin calculation to ensure labels don't get too close to borders
+function calculateSmartMargins(customization: PlotCustomization): {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+} {
+  const MINIMUM_BORDER_MARGIN = 30; // Minimum space from image border
+  
+  // Base margins for plot area
+  let top = customization.title.show ? Math.max(60, customization.title.fontSize + 40) : 30;
+  let right = 60;
+  let bottom = 80;
+  let left = 100;
+  
+  // Adjust based on axis label distances
+  if (customization.xAxis.labelPosition === 'bottom') {
+    bottom = Math.max(bottom, customization.xAxis.labelDistance + customization.xAxis.fontSize + MINIMUM_BORDER_MARGIN);
+  } else {
+    top = Math.max(top, customization.xAxis.labelDistance + customization.xAxis.fontSize + MINIMUM_BORDER_MARGIN);
+  }
+  
+  if (customization.yAxis.labelPosition === 'left') {
+    left = Math.max(left, customization.yAxis.labelDistance + customization.yAxis.fontSize + MINIMUM_BORDER_MARGIN);
+  } else {
+    right = Math.max(right, customization.yAxis.labelDistance + customization.yAxis.fontSize + MINIMUM_BORDER_MARGIN);
+  }
+  
+  // Adjust for right axis if shown
+  if (customization.showTemperatureData && customization.rightAxis.show) {
+    right = Math.max(right, customization.rightAxis.labelDistance + customization.rightAxis.fontSize + MINIMUM_BORDER_MARGIN);
+  }
+  
+  return { top, right, bottom, left };
+}
+
 export interface PlotCustomization {
   // Dimensions and Layout
   width: number;
@@ -172,7 +208,7 @@ const defaultCustomization: PlotCustomization = {
     tickCount: 5,
     tickFontSize: 12,
     labelPosition: 'bottom',
-    labelDistance: 40,
+    labelDistance: 65,
   },
   
   yAxis: {
@@ -185,7 +221,7 @@ const defaultCustomization: PlotCustomization = {
     tickCount: 5,
     tickFontSize: 12,
     labelPosition: 'left',
-    labelDistance: 50,
+    labelDistance: 65,
     significantFigures: 3,
   },
   
@@ -198,7 +234,7 @@ const defaultCustomization: PlotCustomization = {
     gridLines: 5,
     tickCount: 5,
     tickFontSize: 12,
-    labelDistance: 50,
+    labelDistance: 65,
     significantFigures: 2,
     show: false,
   },
