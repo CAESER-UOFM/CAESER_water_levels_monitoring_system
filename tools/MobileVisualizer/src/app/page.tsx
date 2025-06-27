@@ -46,8 +46,8 @@ export default function HomePage() {
         {/* Hero Section */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mb-8">
-            {/* CAESER Mascot */}
-            <div className="w-32 h-32 rounded-full flex items-center justify-center shadow-2xl mr-8 overflow-hidden bg-white">
+            {/* CAESER Mascot with breathing animation */}
+            <div className="w-32 h-32 rounded-full flex items-center justify-center shadow-2xl mr-8 overflow-hidden bg-white animate-pulse-gentle">
               <img 
                 src="/caeser-mascot.png" 
                 alt="CAESER Mascot"

@@ -68,6 +68,21 @@
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background-color: rgb(107 114 128);
   }
+  
+  /* CAESER Mascot breathing animation */
+  .animate-pulse-gentle {
+    animation: gentle-breathing 4s ease-in-out infinite;
+  }
+}
+
+/* Breathing animation keyframes */
+@keyframes gentle-breathing {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
 }
 
 /* Mobile optimizations */
