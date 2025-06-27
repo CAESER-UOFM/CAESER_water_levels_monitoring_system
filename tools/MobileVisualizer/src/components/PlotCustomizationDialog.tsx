@@ -2235,11 +2235,6 @@ export function PlotCustomizationDialog({
                           </div>
                         </div>
 
-                        {/* Info Note */}
-                        <div className={`text-xs p-3 rounded ${isDarkMode ? 'bg-blue-900 bg-opacity-30 text-blue-200' : 'bg-blue-50 text-blue-700'}`}>
-                          <p className="mb-1"><strong>Note:</strong> The well info legend displays statistics from your well data.</p>
-                          <p>Use the horizontal and vertical sliders above to position the legend anywhere on your plot.</p>
-                        </div>
                       </div>
                     )}
                   </div>
