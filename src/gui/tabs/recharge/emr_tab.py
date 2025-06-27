@@ -21,10 +21,10 @@ class EmrTab(BaseRechargeTab):
     Currently under development.
     """
     
-    def __init__(self, data_manager, parent=None):
+    def __init__(self, db_manager, parent=None):
         """Initialize the EMR tab."""
         super().__init__(parent)
-        self.data_manager = data_manager
+        self.db_manager = db_manager
         self.parent = parent
         self.setup_ui()
         

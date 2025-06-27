@@ -8,25 +8,27 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 import io
 import shutil
+from ...database.user_repository import UserRepository
+from ...database.password_manager import PasswordManager
 
 logger = logging.getLogger(__name__)
 
 class UserAuthService:
     """
     Service for user authentication and management.
-    Handles user login, verification, and management of user credentials stored in Google Drive.
+    Handles user login, verification, and management of user credentials using database storage.
     """
     
     _instance = None
     
     @classmethod
-    def get_instance(cls, drive_service=None, settings_handler=None):
+    def get_instance(cls, drive_service=None, settings_handler=None, db_path=None):
         """Get or create the singleton instance of UserAuthService"""
         if cls._instance is None and drive_service is not None and settings_handler is not None:
-            cls._instance = cls(drive_service, settings_handler)
+            cls._instance = cls(drive_service, settings_handler, db_path)
         return cls._instance
     
-    def __init__(self, drive_service, settings_handler):
+    def __init__(self, drive_service, settings_handler, db_path=None):
         """Initialize the user authentication service."""
         if UserAuthService._instance is not None:
             raise Exception("This class is a singleton. Use get_instance() instead.")
@@ -35,45 +37,69 @@ class UserAuthService:
         self.settings_handler = settings_handler
         self.users_file_name = "water_levels_users.json"
         self.local_users_path = Path.home() / '.water_levels' / self.users_file_name
-        self.users = {}
         self.current_user = None
+        self.current_user_data = None
         self.is_guest = False
+        
+        # Database components
+        if db_path:
+            self.user_repository = UserRepository(Path(db_path))
+        else:
+            # Fallback to default users database
+            config_dir = Path(__file__).parent.parent.parent.parent / "config"
+            users_db_path = config_dir / "users.db"
+            self.user_repository = UserRepository(users_db_path)
         
     def initialize(self) -> bool:
         """
         Initialize the user authentication service.
-        Creates a default users file with admin user if it doesn't exist.
+        Always ensures admin/admin user exists.
         
         Returns:
             True if initialization successful, False otherwise
         """
         try:
-            # Create directory for local users file if it doesn't exist
-            os.makedirs(os.path.dirname(self.local_users_path), exist_ok=True)
+            logger.info("Creating/verifying admin user...")
             
-            # Check if we have a local file
-            if not os.path.exists(self.local_users_path):
-                # Create default users file
-                self._create_default_users_file()
-                logger.info("Created default users file locally")
-                # Load the default users we just created
-                self._load_users()
+            # Always try to create admin user - if it exists, it will just fail gracefully
+            password_hash, salt = PasswordManager.hash_password("admin")
+            success, message = self.user_repository.create_user(
+                username="admin",
+                password_hash=password_hash,
+                salt=salt,
+                display_name="Administrator",
+                role="admin"
+            )
+            
+            if success:
+                logger.info("Created admin user (username: admin, password: admin)")
             else:
-                # Don't load users yet - we'll do it when needed
-                logger.debug("Users file exists, will load when needed")
-                self.users = {}
+                # Check if it failed because user already exists
+                existing_user = self.user_repository.get_user_by_username("admin")
+                if existing_user:
+                    logger.info("Admin user already exists")
+                else:
+                    logger.error(f"Failed to create admin user: {message}")
+                    return False
             
-            return True
+            # Verify admin user exists
+            admin_user = self.user_repository.get_user_by_username("admin")
+            if admin_user:
+                logger.info("Admin user verified - login should work with admin/admin")
+                return True
+            else:
+                logger.error("Admin user verification failed")
+                return False
             
         except Exception as e:
             logger.error(f"Error initializing user authentication service: {e}")
             return False
     
-    def _create_default_users_file(self):
-        """Create a default users file with an admin user."""
+    def _legacy_create_default_users_file(self):
+        """Legacy method - kept for potential fallback scenarios."""
         default_users = {
             "admin": {
-                "password": "admin",  # Default password should be changed
+                "password": "admin",
                 "name": "Administrator",
                 "role": "admin"
             }
@@ -82,26 +108,22 @@ class UserAuthService:
         with open(self.local_users_path, 'w') as f:
             json.dump(default_users, f, indent=4)
     
-    def _load_users(self):
-        """Load users from the local users file."""
+    def _save_users_backup(self):
+        """Legacy method - kept for Google Drive sync compatibility."""
         try:
-            if os.path.exists(self.local_users_path):
-                with open(self.local_users_path, 'r') as f:
-                    self.users = json.load(f)
-                logger.debug(f"Loaded {len(self.users)} users from {self.local_users_path}")
-            else:
-                logger.warning(f"Users file not found at {self.local_users_path}")
-                self.users = {}
-        except Exception as e:
-            logger.error(f"Error loading users: {e}")
-            self.users = {}
-    
-    def _save_users(self):
-        """Save users to the local users file."""
-        try:
+            # Create a backup JSON for Google Drive sync if needed
+            users_list = self.user_repository.list_users()
+            users_dict = {}
+            for user in users_list:
+                users_dict[user['username']] = {
+                    'name': user['display_name'],
+                    'role': user['role'],
+                    'password': '[ENCRYPTED]'  # Don't expose real passwords
+                }
+            
             with open(self.local_users_path, 'w') as f:
-                json.dump(self.users, f, indent=4)
-            logger.debug(f"Saved {len(self.users)} users to {self.local_users_path}")
+                json.dump(users_dict, f, indent=4)
+            logger.debug(f"Saved {len(users_dict)} users backup to {self.local_users_path}")
             
             # Upload to Google Drive if authenticated
             if self.drive_service.authenticated:
@@ -109,7 +131,7 @@ class UserAuthService:
             
             return True
         except Exception as e:
-            logger.error(f"Error saving users: {e}")
+            logger.error(f"Error saving users backup: {e}")
             return False
     
     def _find_users_file_id(self):
@@ -268,30 +290,35 @@ class UserAuthService:
         Returns:
             Tuple of (success, message)
         """
-        # Load users if not already loaded
-        if not self.users:
-            self._load_users()
+        try:
+            if not username or not password:
+                return False, "Username and password are required"
             
-        # Ensure admin user exists
-        if "admin" not in self.users:
-            logger.warning("Admin user not found in users file, creating default admin user")
-            self.users["admin"] = {
-                "password": "admin",
-                "name": "Administrator",
-                "role": "admin"
-            }
-            self._save_users()
+            # Get user from database
+            user = self.user_repository.get_user_by_username(username)
+            if not user:
+                logger.warning(f"Login attempt for non-existent user: {username}")
+                return False, "Invalid username or password"
             
-        if username not in self.users:
-            return False, f"User {username} not found"
+            # Verify password
+            if not PasswordManager.verify_password(password, user['password_hash'], user['salt']):
+                logger.warning(f"Invalid password for user: {username}")
+                return False, "Invalid username or password"
             
-        if self.users[username]["password"] != password:
-            return False, "Invalid password"
+            # Update last login
+            self.user_repository.update_last_login(user['id'])
             
-        self.current_user = username
-        self.is_guest = False
-        logger.info(f"User {username} logged in successfully")
-        return True, "Login successful"
+            # Set current user
+            self.current_user = username
+            self.current_user_data = user
+            self.is_guest = False
+            
+            logger.info(f"User {username} logged in successfully")
+            return True, "Login successful"
+            
+        except Exception as e:
+            logger.error(f"Error during login: {e}")
+            return False, "Login failed due to system error"
     
     def login_as_guest(self) -> Tuple[bool, str]:
         """
@@ -313,9 +340,11 @@ class UserAuthService:
     
     def logout(self):
         """Log out the current user."""
+        if self.current_user:
+            logger.info(f"User {self.current_user} logged out")
         self.current_user = None
+        self.current_user_data = None
         self.is_guest = False
-        logger.info("User logged out")
     
     def is_authenticated(self) -> bool:
         """Check if a user is currently authenticated."""
@@ -323,22 +352,23 @@ class UserAuthService:
     
     def is_admin(self) -> bool:
         """Check if the current user is an admin."""
-        if not self.current_user or self.is_guest:
+        if not self.current_user or self.is_guest or not self.current_user_data:
             return False
-        return self.users.get(self.current_user, {}).get("role") == "admin"
+        return self.current_user_data.get("role") == "admin"
     
     def get_current_user_info(self) -> Dict:
         """Get information about the current user."""
         if self.is_guest:
             return {
                 "username": "guest",
-                "name": "Guest",
+                "display_name": "Guest",
                 "role": "guest"
             }
-        elif self.current_user:
-            user_info = self.users.get(self.current_user, {}).copy()
-            user_info.pop("password", None)  # Remove password from the returned info
-            user_info["username"] = self.current_user
+        elif self.current_user and self.current_user_data:
+            user_info = self.current_user_data.copy()
+            # Remove sensitive information
+            user_info.pop("password_hash", None)
+            user_info.pop("salt", None)
             return user_info
         else:
             return {}
@@ -351,33 +381,33 @@ class UserAuthService:
             username: The username for the new user
             password: The password for the new user
             name: The display name for the new user
-            role: The role for the new user (admin or tech)
+            role: The role for the new user (admin, user, guest)
             
         Returns:
             Tuple of (success: bool, message: str)
         """
         try:
-            # Check if user already exists
-            if username in self.users:
-                return False, f"User {username} already exists"
+            # Validate password strength
+            is_strong, strength_message = PasswordManager.is_strong_password(password)
+            if not is_strong:
+                return False, f"Password too weak: {strength_message}"
             
-            # Validate role
-            if role not in ["admin", "tech"]:
-                return False, f"Invalid role: {role}"
+            # Hash password
+            password_hash, salt = PasswordManager.hash_password(password)
             
-            # Add user
-            self.users[username] = {
-                "password": password,
-                "name": name,
-                "role": role
-            }
+            # Create user in database
+            success, message = self.user_repository.create_user(
+                username=username,
+                password_hash=password_hash,
+                salt=salt,
+                display_name=name,
+                role=role
+            )
             
-            # Save users
-            if self._save_users():
+            if success:
                 logger.info(f"Added user {username}")
-                return True, f"User {username} added successfully"
-            else:
-                return False, "Failed to save users"
+            
+            return success, message
             
         except Exception as e:
             logger.error(f"Error adding user: {e}")
@@ -397,24 +427,46 @@ class UserAuthService:
             Tuple of (success: bool, message: str)
         """
         try:
-            # Check if user exists
-            if username not in self.users:
+            # Get user from database
+            user = self.user_repository.get_user_by_username(username)
+            if not user:
                 return False, f"User {username} not found"
             
-            # Update user
-            if password:
-                self.users[username]["password"] = password
-            if name:
-                self.users[username]["name"] = name
-            if role and role in ["admin", "tech"]:
-                self.users[username]["role"] = role
+            update_data = {}
             
-            # Save users
-            if self._save_users():
+            # Update password if provided
+            if password:
+                # Validate password strength
+                is_strong, strength_message = PasswordManager.is_strong_password(password)
+                if not is_strong:
+                    return False, f"Password too weak: {strength_message}"
+                
+                # Hash new password
+                password_hash, salt = PasswordManager.hash_password(password)
+                update_data['password_hash'] = password_hash
+                update_data['salt'] = salt
+            
+            # Update display name if provided
+            if name:
+                update_data['display_name'] = name
+            
+            # Update role if provided
+            if role:
+                update_data['role'] = role
+            
+            if not update_data:
+                return False, "No updates provided"
+            
+            # Update user in database
+            success, message = self.user_repository.update_user(user['id'], **update_data)
+            
+            if success:
                 logger.info(f"Updated user {username}")
-                return True, f"User {username} updated successfully"
-            else:
-                return False, "Failed to save users"
+                # Update current user data if it's the same user
+                if self.current_user == username:
+                    self.current_user_data = self.user_repository.get_user_by_username(username)
+            
+            return success, message
             
         except Exception as e:
             logger.error(f"Error updating user: {e}")
@@ -431,25 +483,28 @@ class UserAuthService:
             Tuple of (success: bool, message: str)
         """
         try:
-            # Check if user exists
-            if username not in self.users:
+            # Get user from database
+            user = self.user_repository.get_user_by_username(username)
+            if not user:
                 return False, f"User {username} not found"
             
             # Check if it's the last admin
-            if self.users[username]["role"] == "admin":
-                admin_count = sum(1 for user in self.users.values() if user["role"] == "admin")
-                if admin_count <= 1:
+            if user["role"] == "admin":
+                admin_users = self.user_repository.get_admin_users()
+                if len(admin_users) <= 1:
                     return False, "Cannot delete the last admin user"
             
-            # Delete user
-            del self.users[username]
+            # Check if user is currently logged in
+            if self.current_user == username:
+                return False, "Cannot delete currently logged in user"
             
-            # Save users
-            if self._save_users():
+            # Delete user from database
+            success, message = self.user_repository.delete_user(user['id'])
+            
+            if success:
                 logger.info(f"Deleted user {username}")
-                return True, f"User {username} deleted successfully"
-            else:
-                return False, "Failed to save users"
+            
+            return success, message
             
         except Exception as e:
             logger.error(f"Error deleting user: {e}")
@@ -460,16 +515,10 @@ class UserAuthService:
         Get a list of all users.
         
         Returns:
-            List of user dictionaries
+            List of user dictionaries (without sensitive info)
         """
         try:
-            users_list = []
-            for username, user_info in self.users.items():
-                user_dict = user_info.copy()
-                user_dict.pop("password", None)  # Remove password from the returned info
-                user_dict["username"] = username
-                users_list.append(user_dict)
-            return users_list
+            return self.user_repository.list_users()
         except Exception as e:
             logger.error(f"Error getting users: {e}")
             return [] 

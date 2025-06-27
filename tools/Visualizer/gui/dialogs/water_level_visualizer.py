@@ -22,8 +22,7 @@ from ..managers.export_manager import ExportManager
 from ..managers.map_handler import MapHandler
 from ..managers.central_data_store import CentralDataStore
 from ..utils.theme_manager import ThemeManager
-# Import the new recharge tab
-from ..tabs.recharge.recharge_tab import RechargeTab
+# Recharge tab moved to main app
 # Import the new plot controls dialog
 from .plot_controls_dialog import PlotControlsDialog
 
@@ -441,9 +440,7 @@ class WaterLevelVisualizer(QDialog):
         self.tab_widget.addTab(plot_tab, "Plot View")
         self.tab_widget.addTab(map_tab, "Map View")
         
-        # Add Recharge Estimates tab
-        self.recharge_tab = RechargeTab(self.data_manager)
-        self.tab_widget.addTab(self.recharge_tab, "Recharge Estimates")
+        # Recharge Estimates tab moved to main app
         
         # Connect tab change signal to update map when switching to map tab
         self.tab_widget.currentChanged.connect(self.on_tab_changed)
@@ -1373,17 +1370,7 @@ class WaterLevelVisualizer(QDialog):
             print("[MAIN_PLOT_DEBUG] Calling update_plot() directly")
             self.update_plot()
             
-            # Update recharge tab with selected wells
-            if hasattr(self, 'recharge_tab'):
-                # Format the selected wells as tuples of (well_id, well_name)
-                formatted_wells = []
-                for row_idx in selected_rows:
-                    row = row_idx.row()
-                    well_id = self.well_table.item(row, 0).text()
-                    well_name = self.well_table.item(row, 1).text() if self.well_table.columnCount() > 1 else well_id
-                    formatted_wells.append((well_id, well_name))
-                
-                self.recharge_tab.update_well_selection(formatted_wells)
+            # Recharge tab moved to main app
         else:
             # No wells selected, update the plot controls dialog if it exists
             if hasattr(self, 'plot_controls_dialog') and self.plot_controls_dialog:
@@ -1419,18 +1406,7 @@ class WaterLevelVisualizer(QDialog):
         # Update map when switching to map tab
         if index == 1:  # Map View tab
             self.update_map_display()
-        elif self.tab_widget.tabText(index) == "Recharge Estimates":
-            # Update recharge tab with currently selected wells when switching to it
-            if hasattr(self, 'recharge_tab'):
-                # Get currently selected wells with proper formatting
-                selected_rows = self.well_table.selectionModel().selectedRows()
-                formatted_wells = []
-                for row_idx in selected_rows:
-                    row = row_idx.row()
-                    well_id = self.well_table.item(row, 0).text()  # Well Number
-                    cae_number = self.well_table.item(row, 1).text() if self.well_table.columnCount() > 1 else well_id  # CAE Number
-                    formatted_wells.append((well_id, cae_number))
-                self.recharge_tab.update_well_selection(formatted_wells)
+        # Recharge tab moved to main app
     
     def update_map_display(self):
         """Update the map with well locations and selected wells using improved map handler."""

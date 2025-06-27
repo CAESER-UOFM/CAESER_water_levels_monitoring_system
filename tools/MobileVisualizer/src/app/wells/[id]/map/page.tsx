@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 
@@ -39,14 +39,17 @@ interface WellLocation {
 export default function MapPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const databaseId = params.id as string;
-  const highlightWell = params.highlight as string || null;
+  const highlightWell = searchParams.get('highlight');
 
   const [wells, setWells] = useState<WellLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedAquifer, setSelectedAquifer] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [isLegendExpanded, setIsLegendExpanded] = useState(true);
+  const [resetMapView, setResetMapView] = useState<(() => void) | null>(null);
 
   useEffect(() => {
     const loadWellLocations = async () => {
@@ -146,13 +149,32 @@ export default function MapPage() {
                 </svg>
               </button>
               <div>
-                <h1 className="text-lg font-semibold text-gray-900">Wells Map</h1>
+                <h1 className="text-lg font-semibold text-gray-900">
+                  Wells Map
+                  {highlightWell && (
+                    <span className="ml-2 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                      Showing Well {highlightWell}
+                    </span>
+                  )}
+                </h1>
                 <p className="text-xs text-gray-500">{filteredWells.length} of {wells.length} wells</p>
               </div>
             </div>
 
             {/* Right side - Compact controls */}
             <div className="flex items-center space-x-2">
+              {resetMapView && (
+                <button
+                  onClick={resetMapView}
+                  className="btn-outline text-xs px-2 py-1.5 flex items-center space-x-1"
+                  title="Reset to initial view"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span>Reset View</span>
+                </button>
+              )}
               <button
                 onClick={handleBackToWells}
                 className="btn-outline text-xs px-2 py-1.5"
@@ -209,29 +231,71 @@ export default function MapPage() {
               highlightWell={highlightWell}
               onWellClick={handleWellClick}
               databaseId={databaseId}
+              onResetReady={setResetMapView}
             />
             
-            {/* Floating Legend - Bottom Left */}
-            <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg border border-gray-200 p-3 z-10">
-              <h3 className="text-xs font-medium text-gray-900 mb-2">Legend</h3>
-              <div className="space-y-1.5">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                  <span className="text-xs text-gray-700">Has Data</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                  <span className="text-xs text-gray-700">Limited Data</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 rounded-full bg-gray-400"></div>
-                  <span className="text-xs text-gray-700">No Data</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                  <span className="text-xs text-gray-700">Highlighted</span>
-                </div>
+            {/* Collapsible Legend - Top Left */}
+            <div className="absolute top-4 left-4 bg-white rounded-lg shadow-xl border-2 border-gray-300 z-[1000]" style={{zIndex: 1000}}>
+              {/* Legend Header - Always Visible */}
+              <div 
+                className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50 rounded-t-lg"
+                onClick={() => setIsLegendExpanded(!isLegendExpanded)}
+              >
+                <h3 className="text-sm font-semibold text-gray-900">Legend</h3>
+                <svg 
+                  className={`w-4 h-4 text-gray-600 transition-transform duration-200 ${isLegendExpanded ? 'rotate-180' : ''}`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </div>
+              
+              {/* Collapsible Content */}
+              {isLegendExpanded && (
+                <div className="px-3 pb-3">
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-3">
+                      <svg width="20" height="20" viewBox="0 0 20 20" className="flex-shrink-0">
+                        <circle cx="10" cy="10" r="9" fill="#ffffff" stroke="#059669" strokeWidth="1.5"/>
+                        <circle cx="10" cy="10" r="6" fill="#10b981" stroke="#059669" strokeWidth="1"/>
+                        <circle cx="10" cy="10" r="2" fill="#ffffff"/>
+                      </svg>
+                      <span className="text-sm text-gray-700 font-medium">Has Data</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <svg width="20" height="20" viewBox="0 0 20 20" className="flex-shrink-0">
+                        <circle cx="10" cy="10" r="9" fill="#ffffff" stroke="#d97706" strokeWidth="1.5"/>
+                        <circle cx="10" cy="10" r="6" fill="#f59e0b" stroke="#d97706" strokeWidth="1"/>
+                        <circle cx="10" cy="10" r="2" fill="#ffffff"/>
+                      </svg>
+                      <span className="text-sm text-gray-700 font-medium">Limited Data</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <svg width="20" height="20" viewBox="0 0 20 20" className="flex-shrink-0">
+                        <circle cx="10" cy="10" r="9" fill="#ffffff" stroke="#4b5563" strokeWidth="1.5"/>
+                        <circle cx="10" cy="10" r="6" fill="#6b7280" stroke="#4b5563" strokeWidth="1"/>
+                        <circle cx="10" cy="10" r="2" fill="#ffffff"/>
+                      </svg>
+                      <span className="text-sm text-gray-700 font-medium">No Data</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <svg width="20" height="20" viewBox="0 0 20 20" className="flex-shrink-0">
+                        <circle cx="10" cy="10" r="12" fill="none" stroke="#ef4444" strokeWidth="1.5" opacity="0.7"/>
+                        <circle cx="10" cy="10" r="9" fill="#ffffff" stroke="#dc2626" strokeWidth="1.5"/>
+                        <circle cx="10" cy="10" r="6" fill="#ef4444" stroke="#dc2626" strokeWidth="1"/>
+                        <circle cx="10" cy="10" r="2" fill="#ffffff"/>
+                        <circle cx="10" cy="10" r="1" fill="#dc2626"/>
+                      </svg>
+                      <span className="text-sm text-gray-700 font-medium">Highlighted</span>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-2 border-t border-gray-200">
+                    <p className="text-xs text-gray-500">Click pins for details</p>
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}

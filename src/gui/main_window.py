@@ -28,6 +28,7 @@ matplotlib.rcParams['font.size'] = 10
 from .tabs.database_tab import DatabaseTab
 from .tabs.barologger_tab import BarologgerTab
 from .tabs.water_level_tab import WaterLevelTab
+from .tabs.recharge.recharge_tab import RechargeTab
 from .tabs.water_level_runs_tab import WaterLevelRunsTab
 from ..database.manager import DatabaseManager
 from .handlers.settings_handler import SettingsHandler
@@ -85,8 +86,17 @@ class MainWindow(QMainWindow):
         # Initialize Cloud database handler (will be set after authentication)
         self.cloud_db_handler = None
         
-        # Initialize user authentication service
-        self.user_auth_service = UserAuthService.get_instance(self.drive_service, self.settings_handler)
+        # Initialize user authentication service with users database
+        config_dir = Path.cwd() / "config"
+        config_dir.mkdir(exist_ok=True)  # Ensure config directory exists
+        users_db_path = config_dir / "users.db"
+        logger.info(f"Using users database path: {users_db_path}")
+        self.user_auth_service = UserAuthService.get_instance(self.drive_service, self.settings_handler, str(users_db_path))
+        
+        # Initialize the user auth service (create admin user)
+        if not self.user_auth_service.initialize():
+            QMessageBox.critical(self, "Error", "Failed to initialize user authentication service")
+            return
         
         # Set user auth service in database manager for change tracking
         self.db_manager.set_user_auth_service(self.user_auth_service)
@@ -166,7 +176,7 @@ class MainWindow(QMainWindow):
     
     def show_login_dialog(self):
         """Show the login dialog and handle authentication"""
-        login_dialog = LoginDialog(self)
+        login_dialog = LoginDialog(self, auth_service=self.user_auth_service)
         
         # Set login mode to always require authentication
         login_dialog.set_force_login(True)
@@ -561,10 +571,11 @@ class MainWindow(QMainWindow):
         self._add_database_tab()
         self._add_barologger_tab()
         self._add_water_level_tab()
+        self._add_recharge_tab()
         self._add_water_level_runs_tab()
         
         # Initially disable runs tab and style it appropriately (no database loaded)
-        self.tab_widget.setTabEnabled(3, False)
+        self.tab_widget.setTabEnabled(4, False)
         self._update_runs_tab_style(False)
         
         # Add tab widget to main layout
@@ -1077,14 +1088,14 @@ class MainWindow(QMainWindow):
                     self._tabs["water_level_runs"].refresh_data()
                 except Exception as e:
                     logger.debug(f"Runs tab refresh: {e}")
-            self.tab_widget.setTabEnabled(3, True)  # Enable runs tab
+            self.tab_widget.setTabEnabled(4, True)  # Enable runs tab
             self._update_runs_tab_style(True)  # Style as enabled/cloud
         else:
-            self.tab_widget.setTabEnabled(3, False)  # Disable runs tab for local
+            self.tab_widget.setTabEnabled(4, False)  # Disable runs tab for local
             self._update_runs_tab_style(False)  # Style as disabled/local
         
         # Enable the other tabs
-        for i in range(3):  # Database, Barologger, Water Level tabs
+        for i in range(4):  # Database, Barologger, Water Level, Recharge tabs
             self.tab_widget.setTabEnabled(i, True)
         
         # Close progress dialog
@@ -1775,36 +1786,10 @@ class MainWindow(QMainWindow):
         # User menu
         user_menu = menu_bar.addMenu("User")
         
-        # Add submenu for user credentials
-        user_credentials_menu = QMenu("Edit User Credentials", self)
-        user_menu.addMenu(user_credentials_menu)
-        
-        # Load users from the users.json file
-        config_dir = Path.cwd() / "config"
-        users_file = config_dir / "users.json"
-        
-        if users_file.exists():
-            try:
-                with open(users_file, 'r') as f:
-                    user_data = json.load(f)
-                    
-                    # Add each user as a menu item
-                    for user in user_data.get('users', []):
-                        username = user.get('username')
-                        display_name = user.get('display_name', username)
-                        
-                        # Create action for this user
-                        user_action = QAction(f"{display_name} ({username})", self)
-                        user_action.triggered.connect(lambda checked, u=username: self.edit_user_credentials(u))
-                        user_credentials_menu.addAction(user_action)
-                        
-                    # Add separator and "Add New User" option
-                    user_credentials_menu.addSeparator()
-                    add_user_action = QAction("Add New User", self)
-                    add_user_action.triggered.connect(lambda: self.edit_user_credentials(None))
-                    user_credentials_menu.addAction(add_user_action)
-            except Exception as e:
-                logger.error(f"Error loading users for menu: {e}")
+        # Add user management action
+        manage_users_action = QAction("Manage Users", self)
+        manage_users_action.triggered.connect(self.show_user_management)
+        user_menu.addAction(manage_users_action)
         
         # Add user status to status bar
         self.login_status_label = QLabel("Admin")
@@ -2019,6 +2004,15 @@ class MainWindow(QMainWindow):
             
             # Update status bar
             self.status_bar.showMessage("Data refresh complete", 3000)  # Show for 3 seconds
+    
+    def show_user_management(self):
+        """Show the user management dialog"""
+        try:
+            dialog = UserManagementDialog(self.user_auth_service, self)
+            dialog.exec_()
+        except Exception as e:
+            logger.error(f"Error opening user management dialog: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to open user management: {str(e)}")
 
     def moveEvent(self, event: QMoveEvent):
         """Handle window move events with debounce approach"""
@@ -2544,6 +2538,12 @@ class MainWindow(QMainWindow):
         tab = WaterLevelTab(self.db_manager)
         self._tabs["water_level"] = tab
         self.tab_widget.addTab(tab, "Water Levels")
+        
+    def _add_recharge_tab(self):
+        """Add the recharge tab"""
+        tab = RechargeTab(self.db_manager)
+        self._tabs["recharge"] = tab
+        self.tab_widget.addTab(tab, "Recharge")
         
     def _add_water_level_runs_tab(self):
         """Add the water level runs tab"""

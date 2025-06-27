@@ -17,11 +17,12 @@ class LoginDialog(QDialog):
     driveLoginRequested = pyqtSignal()
     guestLoginRequested = pyqtSignal()  # Add the missing signal
     
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, auth_service=None):
         super().__init__(parent)
         
         self.setWindowTitle("Login")
         self.setMinimumWidth(340)  # Reduced by 15% from 400
+        self.auth_service = auth_service
         
         self.setup_ui()
     
@@ -311,9 +312,14 @@ class LoginDialog(QDialog):
     
     def handle_guest_login(self):
         """Handle guest login button click"""
-        # Guest mode doesn't require any different privileges anymore
-        # Simply accept the dialog - no more signal emission needed
-        self.accept()
+        if self.auth_service:
+            success, message = self.auth_service.login_as_guest()
+            if success:
+                self.accept()
+            else:
+                self.show_animated_message(f"Guest login failed: {message}")
+        else:
+            self.show_animated_message("Authentication service not available.")
     
     def handle_login(self):
         """Handle login button click"""
@@ -324,12 +330,15 @@ class LoginDialog(QDialog):
             self.show_animated_message("Please enter both username and password.")
             return
         
-        # Validate credentials against users.json
-        if self.validate_credentials(username, password):
-            # Valid credentials - no more signal emission needed
-            self.accept()
+        # Validate credentials using authentication service
+        if self.auth_service:
+            success, message = self.auth_service.login(username, password)
+            if success:
+                self.accept()
+            else:
+                self.show_animated_message(message)
         else:
-            self.show_animated_message("Invalid username or password.")
+            self.show_animated_message("Authentication service not available.")
     
     def show_animated_message(self, message):
         """Show an animated error message inside the dialog"""
@@ -364,7 +373,7 @@ class LoginDialog(QDialog):
         self.fade_in.start()
     
     def validate_credentials(self, username, password):
-        """Validate user credentials against users.json"""
+        """Validate user credentials - fallback method for legacy support"""
         # Look for config/users.json
         config_dir = Path.cwd() / "config"
         users_file = config_dir / "users.json"

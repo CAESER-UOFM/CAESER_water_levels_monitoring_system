@@ -11,7 +11,7 @@ from datetime import datetime
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QTabWidget, QLabel, QMessageBox,
     QSplitter, QHBoxLayout, QGroupBox, QPushButton, QDialog,
-    QProgressDialog, QApplication
+    QProgressDialog, QApplication, QComboBox
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 
@@ -34,16 +34,16 @@ class RechargeTab(QWidget):
     Contains sub-tabs for different methods: RISE, MRC, and EMR.
     """
     
-    def __init__(self, data_manager, parent=None):
+    def __init__(self, db_manager, parent=None):
         """
         Initialize the recharge tab.
         
         Args:
-            data_manager: Data manager providing access to well data
+            db_manager: Database manager providing access to well data
             parent: Parent widget
         """
         super().__init__(parent)
-        self.data_manager = data_manager
+        self.db_manager = db_manager
         self.selected_wells = []
         
         # Initialize unified settings
@@ -78,7 +78,7 @@ class RechargeTab(QWidget):
         
         # Info label at the top
         info_label = QLabel(
-            "Select wells from the main 'Available Wells' table to analyze for recharge estimation. "
+            "Select a well below to analyze for recharge estimation. "
             "Unconfined aquifer wells are recommended for water table fluctuation methods."
         )
         info_label.setWordWrap(True)
@@ -127,9 +127,221 @@ class RechargeTab(QWidget):
         
         layout.addLayout(header_layout)
         
+        # Add well selection controls
+        well_selection = self.create_well_selection()
+        layout.addWidget(well_selection)
+        
         # Create recharge methods tabs
         recharge_methods = self.create_recharge_methods()
         layout.addWidget(recharge_methods)
+    
+    def create_well_selection(self):
+        """Create well selection controls."""
+        from PyQt5.QtWidgets import QComboBox, QHBoxLayout
+        import sqlite3
+        
+        group_box = QGroupBox("Well Selection")
+        layout = QVBoxLayout(group_box)
+        
+        # Create horizontal layout for dropdowns
+        selection_layout = QHBoxLayout()
+        
+        # Aquifer filter dropdown
+        aquifer_label = QLabel("Filter by Aquifer:")
+        selection_layout.addWidget(aquifer_label)
+        
+        self.aquifer_combo = QComboBox()
+        self.aquifer_combo.setMinimumWidth(150)
+        self.aquifer_combo.currentTextChanged.connect(self.on_aquifer_filter_changed)
+        selection_layout.addWidget(self.aquifer_combo)
+        
+        # Well selection dropdown
+        well_label = QLabel("Select Well:")
+        selection_layout.addWidget(well_label)
+        
+        self.well_combo = QComboBox()
+        self.well_combo.setMinimumWidth(200)
+        self.well_combo.currentTextChanged.connect(self.on_well_selected)
+        selection_layout.addWidget(self.well_combo)
+        
+        # Add stretch to push everything to the left
+        selection_layout.addStretch()
+        
+        layout.addLayout(selection_layout)
+        
+        # Load initial data
+        self.load_aquifer_filters()
+        self.load_wells()
+        
+        return group_box
+    
+    def load_aquifer_filters(self):
+        """Load aquifer options for filtering."""
+        if not self.db_manager or not self.db_manager.current_db:
+            return
+            
+        try:
+            with sqlite3.connect(self.db_manager.current_db) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT DISTINCT aquifer FROM wells WHERE aquifer IS NOT NULL ORDER BY aquifer")
+                aquifers = cursor.fetchall()
+                
+                self.aquifer_combo.clear()
+                self.aquifer_combo.addItem("All Aquifers", None)
+                
+                for aquifer in aquifers:
+                    self.aquifer_combo.addItem(aquifer[0], aquifer[0])
+                    
+        except Exception as e:
+            logger.error(f"Error loading aquifer filters: {e}")
+    
+    def load_wells(self, aquifer_filter=None):
+        """Load wells for selection, optionally filtered by aquifer."""
+        if not self.db_manager or not self.db_manager.current_db:
+            return
+            
+        try:
+            with sqlite3.connect(self.db_manager.current_db) as conn:
+                cursor = conn.cursor()
+                
+                if aquifer_filter:
+                    cursor.execute("""
+                        SELECT well_number, aquifer, latitude, longitude 
+                        FROM wells 
+                        WHERE aquifer = ? 
+                        ORDER BY well_number
+                    """, (aquifer_filter,))
+                else:
+                    cursor.execute("""
+                        SELECT well_number, aquifer, latitude, longitude 
+                        FROM wells 
+                        ORDER BY well_number
+                    """)
+                    
+                wells = cursor.fetchall()
+                
+                self.well_combo.clear()
+                self.well_combo.addItem("-- Select Well --", None)
+                
+                for well in wells:
+                    well_number, aquifer, lat, lng = well
+                    display_text = f"{well_number}"
+                    if aquifer:
+                        display_text += f" ({aquifer})"
+                    self.well_combo.addItem(display_text, well_number)
+                    
+        except Exception as e:
+            logger.error(f"Error loading wells: {e}")
+    
+    def on_aquifer_filter_changed(self, aquifer_text):
+        """Handle aquifer filter change."""
+        aquifer_value = self.aquifer_combo.currentData()
+        self.load_wells(aquifer_value)
+    
+    def on_well_selected(self, well_text):
+        """Handle well selection."""
+        well_number = self.well_combo.currentData()
+        if well_number:
+            logger.info(f"Selected well: {well_number}")
+            self.load_well_data(well_number)
+        else:
+            # Clear data when no well selected
+            self.current_well_id = None
+            self.raw_data = None
+            self.processed_data = None
+            
+            # Clear well selection in method tabs
+            if hasattr(self, 'rise_tab'):
+                self.rise_tab.update_well_selection([])
+            if hasattr(self, 'mrc_tab'):
+                self.mrc_tab.update_well_selection([])
+            if hasattr(self, 'emr_tab'):
+                self.emr_tab.update_well_selection([])
+    
+    def load_well_data(self, well_number):
+        """Load and process data for the selected well."""
+        try:
+            # Store current well
+            self.current_well_id = well_number
+            
+            # Get well data using database manager
+            if hasattr(self.db_manager, 'water_level_model'):
+                # Use the water level model to get data
+                readings = self.db_manager.water_level_model.get_readings(well_number)
+                if readings:
+                    # Convert to DataFrame for processing
+                    import pandas as pd
+                    self.raw_data = pd.DataFrame(readings)
+                    
+                    # Trigger data processing
+                    self.process_well_data()
+                else:
+                    logger.warning(f"No water level data found for well {well_number}")
+                    QMessageBox.warning(self, "No Data", f"No water level data found for well {well_number}")
+            else:
+                logger.error("Water level model not available")
+                
+        except Exception as e:
+            logger.error(f"Error loading well data: {e}")
+            QMessageBox.critical(self, "Error", f"Error loading well data: {str(e)}")
+    
+    def process_well_data(self):
+        """Process the loaded well data and update all method tabs."""
+        if self.raw_data is None or self.raw_data.empty:
+            return
+            
+        try:
+            # Apply preprocessing based on current settings
+            self.processed_data = self.preprocess_data(self.raw_data)
+            
+            # Update all method tabs with the selected well
+            # Format the well as expected by the existing interface: list of (well_id, well_name) tuples
+            selected_wells = [(self.current_well_id, self.current_well_id)]
+            
+            if hasattr(self, 'rise_tab'):
+                self.rise_tab.update_well_selection(selected_wells)
+            if hasattr(self, 'mrc_tab'):
+                self.mrc_tab.update_well_selection(selected_wells)
+            if hasattr(self, 'emr_tab'):
+                self.emr_tab.update_well_selection(selected_wells)
+                
+            logger.info(f"Processed data for well {self.current_well_id}: {len(self.processed_data)} records")
+            
+        except Exception as e:
+            logger.error(f"Error processing well data: {e}")
+    
+    def preprocess_data(self, raw_data):
+        """Apply preprocessing to raw well data based on current settings."""
+        # This is a simplified version - you may want to implement more sophisticated preprocessing
+        # based on the settings from the unified settings dialog
+        
+        processed = raw_data.copy()
+        
+        # Basic preprocessing steps
+        # 1. Remove NaN values
+        processed = processed.dropna()
+        
+        # 2. Sort by timestamp
+        if 'timestamp_utc' in processed.columns:
+            processed = processed.sort_values('timestamp_utc')
+        elif 'timestamp' in processed.columns:
+            processed = processed.sort_values('timestamp')
+            
+        return processed
+    
+    def sync_database_selection(self, db_name: str):
+        """Handle database selection changes from main app."""
+        logger.debug(f"Recharge tab syncing to database: {db_name}")
+        
+        # Reload well data when database changes
+        if hasattr(self, 'aquifer_combo') and hasattr(self, 'well_combo'):
+            self.load_aquifer_filters()
+            self.load_wells()
+        
+        # Clear current selection
+        self.current_well_id = None
+        self.raw_data = None
+        self.processed_data = None
     
     def create_recharge_methods(self):
         """Create the tab widget for different recharge methods."""
@@ -140,9 +352,9 @@ class RechargeTab(QWidget):
         self.methods_tab = QTabWidget()
         
         # Create tabs for each method
-        self.rise_tab = RiseTab(self.data_manager, self)
-        self.mrc_tab = MrcTab(self.data_manager, self)
-        self.emr_tab = EmrTab(self.data_manager, self)
+        self.rise_tab = RiseTab(self.db_manager, self)
+        self.mrc_tab = MrcTab(self.db_manager, self)
+        self.emr_tab = EmrTab(self.db_manager, self)
         
         # Initialize tabs with current settings
         self.propagate_settings_to_tabs()
@@ -244,7 +456,7 @@ class RechargeTab(QWidget):
             
             # Load raw data
             logger.info(f"[PREPROCESS_DEBUG] Loading raw data for well {well_id}")
-            raw_data = self.data_manager.get_well_data(well_id, downsample=None)
+            raw_data = self.db_manager.get_well_data(well_id, downsample=None)
             
             if raw_data is None or raw_data.empty:
                 logger.warning(f"[PREPROCESS_DEBUG] No data found for well {well_id}")

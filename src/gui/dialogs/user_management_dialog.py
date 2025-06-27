@@ -84,7 +84,7 @@ class UserManagementDialog(QDialog):
             self.users_table.setItem(row, 0, username_item)
             
             # Name
-            name_item = QTableWidgetItem(user["name"])
+            name_item = QTableWidgetItem(user["display_name"])
             name_item.setFlags(name_item.flags() & ~Qt.ItemIsEditable)
             self.users_table.setItem(row, 1, name_item)
             
@@ -214,7 +214,7 @@ class EditUserDialog(QDialog):
         user = next((u for u in users if u["username"] == self.username), None)
         
         if user:
-            self.name_edit.setText(user["name"])
+            self.name_edit.setText(user["display_name"])
             self.role_combo.setCurrentText(user["role"])
     
     def save_user(self):

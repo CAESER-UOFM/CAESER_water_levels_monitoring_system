@@ -23,12 +23,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 import pandas as pd
 from scipy import signal
 
-# Add the parent directory to the path to import from db package
-current_dir = os.path.dirname(__file__)
-visualizer_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
-sys.path.insert(0, visualizer_dir)
-
-from db.rise_database import RiseDatabase
+from .db.rise_database import RiseDatabase
 from .base_recharge_tab import BaseRechargeTab
 
 logger = logging.getLogger(__name__)
@@ -38,17 +33,17 @@ class RiseTab(BaseRechargeTab):
     Tab implementing the RISE method for recharge estimation.
     """
     
-    def __init__(self, data_manager, parent=None):
+    def __init__(self, db_manager, parent=None):
         """
         Initialize the RISE tab.
         
         Args:
-            data_manager: Data manager providing access to well data
+            db_manager: Database manager providing access to well data
             parent: Parent widget
         """
         super().__init__(parent)
-        self.data_manager = data_manager
-        logger.info(f"[DEBUG] RISE tab initialized with data_manager type: {type(data_manager).__name__}")
+        self.db_manager = db_manager
+        logger.info(f"[DEBUG] RISE tab initialized with db_manager type: {type(db_manager).__name__}")
         self.selected_wells = []
         self.well_data = {}
         self.current_well = None
@@ -160,12 +155,10 @@ class RiseTab(BaseRechargeTab):
         """Initialize the RISE database connection and tables."""
         try:
             # Get database path from data manager
-            if hasattr(self.data_manager, 'db_path'):
-                db_path = self.data_manager.db_path
-            elif hasattr(self.data_manager, '_db_manager') and hasattr(self.data_manager._db_manager, 'current_db'):
-                db_path = self.data_manager._db_manager.current_db
+            if hasattr(self.db_manager, 'current_db'):
+                db_path = self.db_manager.current_db
             else:
-                logger.warning("Could not get database path from data manager")
+                logger.warning("Could not get database path from db manager")
                 return
             
             # Initialize RISE database manager

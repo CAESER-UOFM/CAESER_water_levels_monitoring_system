@@ -6,6 +6,7 @@ from .initializer import DatabaseInitializer
 from .models.well import WellModel
 from .models.water_level import WaterLevelModel
 from .models.barologger import BarologgerModel
+from .user_repository import UserRepository
 from typing import List, Dict, Optional, Tuple
 from sqlite3.dbapi2 import Connection
 import queue
@@ -39,6 +40,7 @@ class DatabaseManager(QObject):
         self._well_model = None
         self._water_level_model = None
         self._baro_model = None
+        self._user_repository = None
         self._connection_pool = queue.Queue(maxsize=5)  # Pool size of 5
         self.is_google_drive_db = False
         self.google_drive_handler = None
@@ -208,6 +210,15 @@ class DatabaseManager(QObject):
             if hasattr(self._baro_model, 'set_db_manager'):
                 self._baro_model.set_db_manager(self)
         return self._baro_model
+    
+    @property
+    def user_repository(self):
+        if self._user_repository is None and self.current_db:
+            self._user_repository = UserRepository(self.current_db)
+            # Set the db_manager reference
+            if hasattr(self._user_repository, 'set_db_manager'):
+                self._user_repository.set_db_manager(self)
+        return self._user_repository
     
     @property
     def has_unsaved_changes(self):
@@ -393,6 +404,7 @@ class DatabaseManager(QObject):
             self._well_model = None
             self._water_level_model = None
             self._baro_model = None
+            self._user_repository = None
 
             # Clear connection pool
             logger.debug("Starting connection pool cleanup loop")

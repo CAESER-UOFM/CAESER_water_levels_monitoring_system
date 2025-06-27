@@ -26,12 +26,7 @@ import pandas as pd
 from scipy import signal, optimize
 from scipy.stats import linregress
 
-# Add the parent directory to the path to import from db package
-current_dir = os.path.dirname(__file__)
-visualizer_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
-sys.path.insert(0, visualizer_dir)
-
-from db.mrc_database import MrcDatabase
+from .db.mrc_database import MrcDatabase
 try:
     from .base_recharge_tab import BaseRechargeTab
     from .settings_persistence import SettingsPersistence
@@ -275,16 +270,16 @@ class MrcTab(BaseRechargeTab):
     Tab implementing the MRC method for recharge estimation.
     """
     
-    def __init__(self, data_manager, parent=None):
+    def __init__(self, db_manager, parent=None):
         """
         Initialize the MRC tab.
         
         Args:
-            data_manager: Data manager providing access to well data
+            db_manager: Database manager providing access to well data
             parent: Parent widget
         """
         super().__init__(parent)
-        self.data_manager = data_manager
+        self.db_manager = db_manager
         self.selected_wells = []
         self.well_data = {}
         self.current_well = None
