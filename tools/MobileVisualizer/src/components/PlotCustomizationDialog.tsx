@@ -1,0 +1,1827 @@
+'use client';
+
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { LivePlotPreview } from './LivePlotPreview';
+// Using regular SVG icons instead of lucide-react
+
+// Utility function to format numbers with significant figures
+function formatWithSignificantFigures(value: number, sigFigs: number): string {
+  if (value === 0) return '0';
+  
+  const magnitude = Math.floor(Math.log10(Math.abs(value)));
+  const precision = sigFigs - magnitude - 1;
+  
+  if (precision >= 0) {
+    return value.toFixed(precision);
+  } else {
+    const factor = Math.pow(10, -precision);
+    return (Math.round(value / factor) * factor).toString();
+  }
+}
+
+export interface PlotCustomization {
+  // Dimensions and Layout
+  width: number;
+  height: number;
+  aspectRatio: 'custom' | '16:9' | '4:3' | '1:1' | '3:2';
+  dpi: number;
+  
+  // Data Filtering
+  showTransducerData: boolean;
+  showManualData: boolean;
+  showTemperatureData: boolean;
+  dateRange: {
+    start: string;
+    end: string;
+  } | null;
+  
+  // Plot Appearance
+  title: {
+    text: string;
+    fontSize: number;
+    color: string;
+    show: boolean;
+  };
+  
+  xAxis: {
+    label: string;
+    fontSize: number;
+    color: string;
+    showGrid: boolean;
+    gridColor: string;
+    gridLines: number;
+    tickCount: number;
+    tickFontSize: number;
+    labelPosition: 'bottom' | 'top';
+    labelDistance: number; // Distance from axis line in pixels
+  };
+  
+  yAxis: {
+    label: string;
+    fontSize: number;
+    color: string;
+    showGrid: boolean;
+    gridColor: string;
+    gridLines: number;
+    tickCount: number;
+    tickFontSize: number;
+    labelPosition: 'left' | 'right';
+    labelDistance: number; // Distance from axis line in pixels
+    significantFigures: number; // Number of significant figures for tick labels
+  };
+  
+  // Right axis for temperature
+  rightAxis: {
+    label: string;
+    fontSize: number;
+    color: string;
+    showGrid: boolean;
+    gridColor: string;
+    gridLines: number;
+    tickCount: number;
+    tickFontSize: number;
+    labelDistance: number;
+    significantFigures: number;
+    show: boolean; // Whether to show right axis
+  };
+  
+  legend: {
+    show: boolean;
+    position: 'top-left' | 'top-center' | 'top-right' | 'middle-left' | 'middle-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' | 'below-x-axis';
+    fontSize: number;
+    backgroundColor: string;
+    textColor: string;
+    borderColor: string;
+    borderWidth: number;
+    padding: number;
+    backgroundOpacity: number;
+  };
+  
+  // Data Series Styling
+  transducerData: {
+    color: string;
+    lineWidth: number;
+    lineStyle: 'solid' | 'dashed' | 'dotted';
+    pointSize: number;
+    showPoints: boolean;
+  };
+  
+  manualData: {
+    color: string;
+    pointSize: number;
+    pointStyle: 'circle' | 'square' | 'triangle' | 'diamond';
+    borderWidth: number;
+    borderColor: string;
+  };
+  
+  temperatureData: {
+    color: string;
+    lineWidth: number;
+    pointSize: number;
+    showPoints: boolean;
+    yAxisSide: 'left' | 'right'; // Secondary y-axis
+  };
+  
+  // Background and Colors
+  backgroundColor: string;
+  plotAreaColor: string;
+  borderColor: string;
+  borderWidth: number;
+}
+
+interface PlotCustomizationDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onExport: (customization: PlotCustomization) => void;
+  databaseId: string;
+  wellNumber: string;
+  well: any; // Well type from API
+  currentTimeRange: { start: string; end: string } | null;
+  plotData?: any[]; // Current plot data to reuse
+  isDarkMode?: boolean;
+}
+
+const defaultCustomization: PlotCustomization = {
+  // Dimensions and Layout
+  width: 1920,
+  height: 1080,
+  aspectRatio: '16:9',
+  dpi: 300,
+  
+  // Data Filtering
+  showTransducerData: true,
+  showManualData: true,
+  showTemperatureData: false,
+  dateRange: null,
+  
+  // Plot Appearance
+  title: {
+    text: 'Water Level Data',
+    fontSize: 24,
+    color: '#000000',
+    show: true,
+  },
+  
+  xAxis: {
+    label: 'Date',
+    fontSize: 14,
+    color: '#000000',
+    showGrid: true,
+    gridColor: '#e0e0e0',
+    gridLines: 5,
+    tickCount: 5,
+    tickFontSize: 12,
+    labelPosition: 'bottom',
+    labelDistance: 40,
+  },
+  
+  yAxis: {
+    label: 'Water Level (ft)',
+    fontSize: 14,
+    color: '#000000',
+    showGrid: true,
+    gridColor: '#e0e0e0',
+    gridLines: 5,
+    tickCount: 5,
+    tickFontSize: 12,
+    labelPosition: 'left',
+    labelDistance: 50,
+    significantFigures: 3,
+  },
+  
+  rightAxis: {
+    label: 'Temperature (°C)',
+    fontSize: 14,
+    color: '#f59e0b',
+    showGrid: false,
+    gridColor: '#ffe0b3',
+    gridLines: 5,
+    tickCount: 5,
+    tickFontSize: 12,
+    labelDistance: 50,
+    significantFigures: 2,
+    show: false,
+  },
+  
+  legend: {
+    show: true,
+    position: 'top-right',
+    fontSize: 12,
+    backgroundColor: '#ffffff',
+    textColor: '#000000',
+    borderColor: '#cccccc',
+    borderWidth: 1,
+    padding: 8,
+    backgroundOpacity: 0.9,
+  },
+  
+  // Data Series Styling
+  transducerData: {
+    color: '#2563eb',
+    lineWidth: 2,
+    lineStyle: 'solid',
+    pointSize: 4,
+    showPoints: false,
+  },
+  
+  manualData: {
+    color: '#dc2626',
+    pointSize: 6,
+    pointStyle: 'circle',
+    borderWidth: 1,
+    borderColor: '#000000',
+  },
+  
+  temperatureData: {
+    color: '#f59e0b',
+    lineWidth: 2,
+    pointSize: 3,
+    showPoints: false,
+    yAxisSide: 'right',
+  },
+  
+  // Background and Colors
+  backgroundColor: '#ffffff',
+  plotAreaColor: '#ffffff',
+  borderColor: '#000000',
+  borderWidth: 1,
+};
+
+const aspectRatios = {
+  'custom': { width: 1, height: 1 },
+  '16:9': { width: 16, height: 9 },
+  '4:3': { width: 4, height: 3 },
+  '1:1': { width: 1, height: 1 },
+  '3:2': { width: 3, height: 2 },
+};
+
+const presetTemplates = {
+  'publication': {
+    name: 'Publication Ready',
+    description: 'Clean, professional layout suitable for academic papers',
+    config: {
+      width: 2400,
+      height: 1600,
+      aspectRatio: '3:2' as const,
+      dpi: 300,
+      backgroundColor: '#ffffff',
+      plotAreaColor: '#ffffff',
+      borderColor: '#000000',
+      borderWidth: 2,
+      title: {
+        fontSize: 28,
+        color: '#000000',
+        show: true,
+      },
+      xAxis: {
+        fontSize: 18,
+        color: '#000000',
+        showGrid: true,
+        gridColor: '#e0e0e0',
+      },
+      yAxis: {
+        fontSize: 18,
+        color: '#000000',
+        showGrid: true,
+        gridColor: '#e0e0e0',
+      },
+      legend: {
+        show: true,
+        position: 'top' as const,
+        fontSize: 16,
+        backgroundColor: '#ffffff',
+        textColor: '#000000',
+      },
+      transducerData: {
+        color: '#1f77b4',
+        lineWidth: 3,
+        pointSize: 0,
+        showPoints: false,
+      },
+      manualData: {
+        color: '#d62728',
+        pointSize: 8,
+        pointStyle: 'circle' as const,
+      },
+    }
+  },
+  'presentation': {
+    name: 'Presentation',
+    description: 'High contrast, large text for presentations and slides',
+    config: {
+      width: 1920,
+      height: 1080,
+      aspectRatio: '16:9' as const,
+      dpi: 150,
+      backgroundColor: '#ffffff',
+      plotAreaColor: '#f8f9fa',
+      borderColor: '#343a40',
+      borderWidth: 3,
+      title: {
+        fontSize: 36,
+        color: '#343a40',
+        show: true,
+      },
+      xAxis: {
+        fontSize: 24,
+        color: '#343a40',
+        showGrid: true,
+        gridColor: '#dee2e6',
+      },
+      yAxis: {
+        fontSize: 24,
+        color: '#343a40',
+        showGrid: true,
+        gridColor: '#dee2e6',
+      },
+      legend: {
+        show: true,
+        position: 'top' as const,
+        fontSize: 20,
+        backgroundColor: '#ffffff',
+        textColor: '#343a40',
+      },
+      transducerData: {
+        color: '#007bff',
+        lineWidth: 4,
+        pointSize: 0,
+        showPoints: false,
+      },
+      manualData: {
+        color: '#dc3545',
+        pointSize: 10,
+        pointStyle: 'circle' as const,
+      },
+    }
+  },
+  'print': {
+    name: 'Print Optimized',
+    description: 'Optimized for black & white printing with patterns',
+    config: {
+      width: 2100,
+      height: 1500,
+      aspectRatio: '4:3' as const,
+      dpi: 600,
+      backgroundColor: '#ffffff',
+      plotAreaColor: '#ffffff',
+      borderColor: '#000000',
+      borderWidth: 2,
+      title: {
+        fontSize: 24,
+        color: '#000000',
+        show: true,
+      },
+      xAxis: {
+        fontSize: 16,
+        color: '#000000',
+        showGrid: true,
+        gridColor: '#cccccc',
+      },
+      yAxis: {
+        fontSize: 16,
+        color: '#000000',
+        showGrid: true,
+        gridColor: '#cccccc',
+      },
+      legend: {
+        show: true,
+        position: 'top' as const,
+        fontSize: 14,
+        backgroundColor: '#ffffff',
+        textColor: '#000000',
+      },
+      transducerData: {
+        color: '#000000',
+        lineWidth: 2,
+        pointSize: 0,
+        showPoints: false,
+      },
+      manualData: {
+        color: '#000000',
+        pointSize: 6,
+        pointStyle: 'square' as const,
+      },
+    }
+  }
+};
+
+export function PlotCustomizationDialog({
+  isOpen,
+  onClose,
+  onExport,
+  databaseId,
+  wellNumber,
+  well,
+  currentTimeRange,
+  plotData,
+  isDarkMode = true
+}: PlotCustomizationDialogProps) {
+  const [customization, setCustomization] = useState<PlotCustomization>(defaultCustomization);
+  const [expandedSections, setExpandedSections] = useState<{
+    dimensions: boolean;
+    data: boolean;
+    appearance: boolean;
+    export: boolean;
+  }>({ dimensions: true, data: false, appearance: false, export: false });
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Initialize with current data
+  useEffect(() => {
+    if (isOpen && currentTimeRange) {
+      setCustomization(prev => ({
+        ...prev,
+        title: {
+          ...prev.title,
+          text: `Well ${wellNumber} - Water Level Data`,
+        },
+        dateRange: currentTimeRange,
+      }));
+    }
+  }, [isOpen, wellNumber, currentTimeRange]);
+
+  // Handle aspect ratio changes
+  const handleAspectRatioChange = useCallback((ratio: string) => {
+    if (ratio === 'custom') {
+      setCustomization(prev => ({
+        ...prev,
+        aspectRatio: 'custom',
+      }));
+    } else {
+      const { width: ratioW, height: ratioH } = aspectRatios[ratio as keyof typeof aspectRatios];
+      const baseWidth = 1920;
+      const newHeight = Math.round((baseWidth * ratioH) / ratioW);
+      
+      setCustomization(prev => ({
+        ...prev,
+        aspectRatio: ratio as PlotCustomization['aspectRatio'],
+        width: baseWidth,
+        height: newHeight,
+      }));
+    }
+  }, []);
+
+  // Handle dimension changes
+  const handleDimensionChange = useCallback((dimension: 'width' | 'height', value: number) => {
+    setCustomization(prev => {
+      if (prev.aspectRatio !== 'custom') {
+        const { width: ratioW, height: ratioH } = aspectRatios[prev.aspectRatio];
+        if (dimension === 'width') {
+          return {
+            ...prev,
+            width: value,
+            height: Math.round((value * ratioH) / ratioW),
+          };
+        } else {
+          return {
+            ...prev,
+            width: Math.round((value * ratioW) / ratioH),
+            height: value,
+          };
+        }
+      }
+      
+      return {
+        ...prev,
+        [dimension]: value,
+      };
+    });
+  }, []);
+
+  // Apply preset template - only apply layout/quality settings, preserve data selection and colors
+  const applyPreset = useCallback((presetKey: keyof typeof presetTemplates) => {
+    const preset = presetTemplates[presetKey];
+    setCustomization(prev => ({
+      ...prev,
+      // Apply layout settings only
+      width: preset.config.width,
+      height: preset.config.height,
+      aspectRatio: preset.config.aspectRatio,
+      dpi: preset.config.dpi,
+      // Apply only font sizes but preserve all colors and content
+      title: {
+        ...prev.title,
+        fontSize: preset.config.title.fontSize,
+        // Preserve user's title text and color
+      },
+      // Apply axis font sizes but preserve all other settings
+      xAxis: {
+        ...prev.xAxis,
+        fontSize: preset.config.xAxis.fontSize,
+        // Preserve user's labels, colors, and grid settings
+      },
+      yAxis: {
+        ...prev.yAxis,
+        fontSize: preset.config.yAxis.fontSize,
+        // Preserve user's labels, colors, and grid settings
+      },
+      // Apply legend font size but preserve all other settings
+      legend: {
+        ...prev.legend,
+        fontSize: preset.config.legend.fontSize,
+        // Preserve user's show/position/colors
+      },
+      // Apply only sizing settings to data series, preserve all colors
+      transducerData: {
+        ...prev.transducerData,
+        lineWidth: preset.config.transducerData.lineWidth,
+        pointSize: preset.config.transducerData.pointSize,
+        showPoints: preset.config.transducerData.showPoints,
+        // Preserve user's color choice
+      },
+      manualData: {
+        ...prev.manualData,
+        pointSize: preset.config.manualData.pointSize,
+        pointStyle: preset.config.manualData.pointStyle,
+        // Preserve user's color choice
+      },
+      // Preserve ALL data selection and user customizations
+      dateRange: prev.dateRange,
+      showTransducerData: prev.showTransducerData,
+      showManualData: prev.showManualData,
+      showTemperatureData: prev.showTemperatureData,
+      backgroundColor: prev.backgroundColor,
+      plotAreaColor: prev.plotAreaColor,
+      borderColor: prev.borderColor,
+      borderWidth: prev.borderWidth,
+    }));
+  }, [wellNumber]);
+
+  // Reset to defaults
+  const handleReset = useCallback(() => {
+    setCustomization({
+      ...defaultCustomization,
+      title: {
+        ...defaultCustomization.title,
+        text: `Well ${wellNumber} - Water Level Data`,
+      },
+      dateRange: currentTimeRange,
+    });
+  }, [wellNumber, currentTimeRange]);
+
+  // Handle export
+  const handleExport = useCallback(() => {
+    onExport(customization);
+  }, [onExport, customization]);
+
+  // Toggle section expansion
+  const toggleSection = useCallback((section: keyof typeof expandedSections) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  }, []);
+
+  if (!isOpen) return null;
+
+  const inputClass = `w-full px-3 py-2 rounded-lg border transition-colors duration-200 ${
+    isDarkMode 
+      ? 'bg-gray-700 border-gray-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500' 
+      : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+  }`;
+
+  const labelClass = `block text-sm font-medium mb-1 ${
+    isDarkMode ? 'text-gray-300' : 'text-gray-700'
+  }`;
+
+  const sectionHeaderClass = `flex items-center justify-between w-full p-4 cursor-pointer transition-colors rounded-lg ${
+    isDarkMode 
+      ? 'hover:bg-gray-700/50 border border-gray-600' 
+      : 'hover:bg-gray-50 border border-gray-200'
+  }`;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div 
+        ref={dialogRef}
+        className={`w-full max-w-7xl h-[90vh] flex flex-col rounded-xl shadow-2xl ${
+          isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
+        }`}
+      >
+        {/* Header */}
+        <div className={`flex items-center justify-between p-6 border-b ${
+          isDarkMode ? 'border-gray-700' : 'border-gray-200'
+        }`}>
+          <h2 className={`text-xl font-bold ${
+            isDarkMode ? 'text-white' : 'text-gray-900'
+          }`}>
+            Plot Customization - Well {wellNumber}
+          </h2>
+          <button
+            onClick={onClose}
+            className={`p-2 rounded-lg transition-colors ${
+              isDarkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-600'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Main Content - Side by Side Layout */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left Panel - Controls */}
+          <div className={`w-1/3 min-w-[400px] overflow-y-auto p-6 border-r ${
+            isDarkMode ? 'border-gray-700' : 'border-gray-200'
+          }`}>
+            <div className="space-y-4">
+              {/* Dimensions Section */}
+              <div className="mb-4">
+                <button 
+                  onClick={() => toggleSection('dimensions')}
+                  className={sectionHeaderClass}
+                >
+                  <div className="flex items-center">
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                    </svg>
+                    <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      Dimensions & Layout
+                    </span>
+                  </div>
+                  <svg 
+                    className={`w-5 h-5 transition-transform duration-200 ${
+                      expandedSections.dimensions ? 'rotate-180' : ''
+                    } ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {expandedSections.dimensions && (
+                  <div className="mt-4 space-y-4 p-4 rounded-lg bg-gray-500 bg-opacity-5">
+                    {/* Preset Templates */}
+                    <div>
+                      <label className={labelClass}>Quick Start Templates</label>
+                      <div className="grid grid-cols-1 gap-2">
+                        {Object.entries(presetTemplates).map(([key, preset]) => (
+                          <button
+                            key={key}
+                            onClick={() => applyPreset(key as keyof typeof presetTemplates)}
+                            className={`text-left p-3 rounded-lg border transition-all duration-200 ${
+                              isDarkMode 
+                                ? 'bg-gray-700/50 border-gray-600 hover:border-cyan-500 hover:bg-gray-700' 
+                                : 'bg-gray-50 border-gray-300 hover:border-blue-500 hover:bg-blue-50'
+                            }`}
+                          >
+                            <div className={`font-medium text-sm ${
+                              isDarkMode ? 'text-white' : 'text-gray-900'
+                            }`}>
+                              {preset.name}
+                            </div>
+                            <div className={`text-xs ${
+                              isDarkMode ? 'text-gray-400' : 'text-gray-600'
+                            }`}>
+                              {preset.config.width}×{preset.config.height} • {preset.config.dpi} DPI
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Aspect Ratio */}
+                    <div>
+                      <label className={labelClass}>Aspect Ratio</label>
+                      <select
+                        value={customization.aspectRatio}
+                        onChange={(e) => handleAspectRatioChange(e.target.value)}
+                        className={inputClass}
+                      >
+                        <option value="16:9">16:9 (Widescreen)</option>
+                        <option value="4:3">4:3 (Standard)</option>
+                        <option value="3:2">3:2 (Photo)</option>
+                        <option value="1:1">1:1 (Square)</option>
+                        <option value="custom">Custom</option>
+                      </select>
+                    </div>
+
+                    {/* Dimensions */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={labelClass}>Width (px)</label>
+                        <input
+                          type="number"
+                          value={customization.width}
+                          onChange={(e) => handleDimensionChange('width', parseInt(e.target.value) || 0)}
+                          className={inputClass}
+                          min="100"
+                          max="4000"
+                        />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Height (px)</label>
+                        <input
+                          type="number"
+                          value={customization.height}
+                          onChange={(e) => handleDimensionChange('height', parseInt(e.target.value) || 0)}
+                          className={inputClass}
+                          min="100"
+                          max="4000"
+                          disabled={customization.aspectRatio !== 'custom'}
+                        />
+                      </div>
+                    </div>
+
+                    {/* DPI */}
+                    <div>
+                      <label className={labelClass}>DPI (Resolution)</label>
+                      <select
+                        value={customization.dpi}
+                        onChange={(e) => setCustomization(prev => ({ ...prev, dpi: parseInt(e.target.value) }))}
+                        className={inputClass}
+                      >
+                        <option value="72">72 DPI (Screen)</option>
+                        <option value="150">150 DPI (Good Quality)</option>
+                        <option value="300">300 DPI (Print Quality)</option>
+                        <option value="600">600 DPI (High Resolution)</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Data Selection Section */}
+              <div className="mb-4">
+                <button 
+                  onClick={() => toggleSection('data')}
+                  className={sectionHeaderClass}
+                >
+                  <div className="flex items-center">
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      Data Selection
+                    </span>
+                  </div>
+                  <svg 
+                    className={`w-5 h-5 transition-transform duration-200 ${
+                      expandedSections.data ? 'rotate-180' : ''
+                    } ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {expandedSections.data && (
+                  <div className="mt-4 space-y-4 p-4 rounded-lg bg-gray-500 bg-opacity-5">
+                    {/* Data Type Selection */}
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          id="transducer-data"
+                          checked={customization.showTransducerData}
+                          onChange={(e) => setCustomization(prev => ({ 
+                            ...prev, 
+                            showTransducerData: e.target.checked 
+                          }))}
+                          className="rounded"
+                        />
+                        <label htmlFor="transducer-data" className={labelClass}>
+                          Show Transducer Data
+                        </label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          id="manual-data"
+                          checked={customization.showManualData}
+                          onChange={(e) => setCustomization(prev => ({ 
+                            ...prev, 
+                            showManualData: e.target.checked 
+                          }))}
+                          className="rounded"
+                        />
+                        <label htmlFor="manual-data" className={labelClass}>
+                          Show Manual Readings
+                        </label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          id="temperature-data"
+                          checked={customization.showTemperatureData}
+                          onChange={(e) => setCustomization(prev => ({ 
+                            ...prev, 
+                            showTemperatureData: e.target.checked 
+                          }))}
+                          className="rounded"
+                        />
+                        <label htmlFor="temperature-data" className={labelClass}>
+                          Show Temperature Data
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Data Series Colors */}
+                    {(customization.showTransducerData || customization.showManualData || customization.showTemperatureData) && (
+                      <div className="space-y-3">
+                        <h4 className={`font-medium text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Data Series Styling</h4>
+                        
+                        {customization.showTransducerData && (
+                          <div className="space-y-2">
+                            <h5 className={`font-medium text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Transducer Data</h5>
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2">
+                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Color:</label>
+                                <input
+                                  type="color"
+                                  value={customization.transducerData.color}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    transducerData: { ...prev.transducerData, color: e.target.value }
+                                  }))}
+                                  className="w-8 h-6 rounded border border-gray-300 cursor-pointer"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Width:</label>
+                                <input
+                                  type="number"
+                                  value={customization.transducerData.lineWidth}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    transducerData: { ...prev.transducerData, lineWidth: parseInt(e.target.value) || 1 }
+                                  }))}
+                                  className={`w-16 px-2 py-1 text-xs rounded border ${
+                                    isDarkMode 
+                                      ? 'bg-gray-700 border-gray-600 text-white' 
+                                      : 'bg-white border-gray-300 text-gray-900'
+                                  }`}
+                                  min="1"
+                                  max="10"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Style:</label>
+                                <select
+                                  value={customization.transducerData.lineStyle}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    transducerData: { ...prev.transducerData, lineStyle: e.target.value as any }
+                                  }))}
+                                  className={`w-20 px-2 py-1 text-xs rounded border ${
+                                    isDarkMode 
+                                      ? 'bg-gray-700 border-gray-600 text-white' 
+                                      : 'bg-white border-gray-300 text-gray-900'
+                                  }`}
+                                >
+                                  <option value="solid">Solid</option>
+                                  <option value="dashed">Dashed</option>
+                                  <option value="dotted">Dotted</option>
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {customization.showManualData && (
+                          <div className="space-y-2">
+                            <h5 className={`font-medium text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Manual Readings</h5>
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
+                                  <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Color:</label>
+                                  <input
+                                    type="color"
+                                    value={customization.manualData.color}
+                                    onChange={(e) => setCustomization(prev => ({
+                                      ...prev,
+                                      manualData: { ...prev.manualData, color: e.target.value }
+                                    }))}
+                                    className="w-8 h-6 rounded border border-gray-300 cursor-pointer"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Size:</label>
+                                  <input
+                                    type="number"
+                                    value={customization.manualData.pointSize}
+                                    onChange={(e) => setCustomization(prev => ({
+                                      ...prev,
+                                      manualData: { ...prev.manualData, pointSize: parseInt(e.target.value) || 4 }
+                                    }))}
+                                    className={`w-16 px-2 py-1 text-xs rounded border ${
+                                      isDarkMode 
+                                        ? 'bg-gray-700 border-gray-600 text-white' 
+                                        : 'bg-white border-gray-300 text-gray-900'
+                                    }`}
+                                    min="2"
+                                    max="20"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Shape:</label>
+                                  <select
+                                    value={customization.manualData.pointStyle}
+                                    onChange={(e) => setCustomization(prev => ({
+                                      ...prev,
+                                      manualData: { ...prev.manualData, pointStyle: e.target.value as any }
+                                    }))}
+                                    className={`w-20 px-2 py-1 text-xs rounded border ${
+                                      isDarkMode 
+                                        ? 'bg-gray-700 border-gray-600 text-white' 
+                                        : 'bg-white border-gray-300 text-gray-900'
+                                    }`}
+                                  >
+                                    <option value="circle">Circle</option>
+                                    <option value="square">Square</option>
+                                    <option value="triangle">Triangle</option>
+                                    <option value="diamond">Diamond</option>
+                                  </select>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
+                                  <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Border:</label>
+                                  <input
+                                    type="color"
+                                    value={customization.manualData.borderColor}
+                                    onChange={(e) => setCustomization(prev => ({
+                                      ...prev,
+                                      manualData: { ...prev.manualData, borderColor: e.target.value }
+                                    }))}
+                                    className="w-8 h-6 rounded border border-gray-300 cursor-pointer"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Width:</label>
+                                  <input
+                                    type="number"
+                                    value={customization.manualData.borderWidth}
+                                    onChange={(e) => setCustomization(prev => ({
+                                      ...prev,
+                                      manualData: { ...prev.manualData, borderWidth: parseInt(e.target.value) || 0 }
+                                    }))}
+                                    className={`w-16 px-2 py-1 text-xs rounded border ${
+                                      isDarkMode 
+                                        ? 'bg-gray-700 border-gray-600 text-white' 
+                                        : 'bg-white border-gray-300 text-gray-900'
+                                    }`}
+                                    min="0"
+                                    max="5"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {customization.showTemperatureData && (
+                          <div className="space-y-2">
+                            <h5 className={`font-medium text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Temperature Data</h5>
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2">
+                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Color:</label>
+                                <input
+                                  type="color"
+                                  value={customization.temperatureData.color}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    temperatureData: { ...prev.temperatureData, color: e.target.value }
+                                  }))}
+                                  className="w-8 h-6 rounded border border-gray-300 cursor-pointer"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Width:</label>
+                                <input
+                                  type="number"
+                                  value={customization.temperatureData.lineWidth}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    temperatureData: { ...prev.temperatureData, lineWidth: parseInt(e.target.value) || 1 }
+                                  }))}
+                                  className={`w-16 px-2 py-1 text-xs rounded border ${
+                                    isDarkMode 
+                                      ? 'bg-gray-700 border-gray-600 text-white' 
+                                      : 'bg-white border-gray-300 text-gray-900'
+                                  }`}
+                                  min="1"
+                                  max="10"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Appearance Section */}
+              <div className="mb-4">
+                <button 
+                  onClick={() => toggleSection('appearance')}
+                  className={sectionHeaderClass}
+                >
+                  <div className="flex items-center">
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4 4 4 0 004-4V5z" />
+                    </svg>
+                    <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      Appearance
+                    </span>
+                  </div>
+                  <svg 
+                    className={`w-5 h-5 transition-transform duration-200 ${
+                      expandedSections.appearance ? 'rotate-180' : ''
+                    } ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {expandedSections.appearance && (
+                  <div className="mt-4 space-y-4 p-4 rounded-lg bg-gray-500 bg-opacity-5">
+                    {/* Title Settings */}
+                    <div>
+                      <div className="flex items-center space-x-3 mb-3">
+                        <input
+                          type="checkbox"
+                          id="show-title"
+                          checked={customization.title.show}
+                          onChange={(e) => setCustomization(prev => ({ 
+                            ...prev, 
+                            title: { ...prev.title, show: e.target.checked }
+                          }))}
+                          className="rounded"
+                        />
+                        <label htmlFor="show-title" className={`font-medium text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Show Title</label>
+                      </div>
+                      
+                      {customization.title.show && (
+                        <div className="space-y-3">
+                          <div>
+                            <label className={labelClass}>Title Text</label>
+                            <input
+                              type="text"
+                              value={customization.title.text}
+                              onChange={(e) => setCustomization(prev => ({
+                                ...prev,
+                                title: { ...prev.title, text: e.target.value }
+                              }))}
+                              className={inputClass}
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className={labelClass}>Font Size</label>
+                              <input
+                                type="number"
+                                value={customization.title.fontSize}
+                                onChange={(e) => setCustomization(prev => ({
+                                  ...prev,
+                                  title: { ...prev.title, fontSize: parseInt(e.target.value) || 12 }
+                                }))}
+                                className={inputClass}
+                                min="8"
+                                max="48"
+                              />
+                            </div>
+                            <div>
+                              <label className={labelClass}>Color</label>
+                              <input
+                                type="color"
+                                value={customization.title.color}
+                                onChange={(e) => setCustomization(prev => ({
+                                  ...prev,
+                                  title: { ...prev.title, color: e.target.value }
+                                }))}
+                                className="w-full h-8 rounded border"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Enhanced Axis Settings */}
+                    <div className="space-y-4">
+                      <h4 className={`font-medium text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Axis Configuration</h4>
+                      
+                      {/* X-Axis */}
+                      <div className="space-y-3">
+                        <h5 className={`font-medium text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>X-Axis (Date)</h5>
+                        <div className="space-y-2">
+                          <div>
+                            <label className={labelClass}>Label</label>
+                            <input
+                              type="text"
+                              value={customization.xAxis.label}
+                              onChange={(e) => setCustomization(prev => ({
+                                ...prev,
+                                xAxis: { ...prev.xAxis, label: e.target.value }
+                              }))}
+                              className={inputClass}
+                            />
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Label Font</label>
+                              <input
+                                type="number"
+                                value={customization.xAxis.fontSize}
+                                onChange={(e) => setCustomization(prev => ({
+                                  ...prev,
+                                  xAxis: { ...prev.xAxis, fontSize: parseInt(e.target.value) || 12 }
+                                }))}
+                                className={`w-full px-2 py-1 text-xs rounded border ${
+                                  isDarkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                                min="8"
+                                max="72"
+                              />
+                            </div>
+                            <div>
+                              <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Tick Font</label>
+                              <input
+                                type="number"
+                                value={customization.xAxis.tickFontSize}
+                                onChange={(e) => setCustomization(prev => ({
+                                  ...prev,
+                                  xAxis: { ...prev.xAxis, tickFontSize: parseInt(e.target.value) || 10 }
+                                }))}
+                                className={`w-full px-2 py-1 text-xs rounded border ${
+                                  isDarkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                                min="6"
+                                max="48"
+                              />
+                            </div>
+                            <div>
+                              <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Tick Count</label>
+                              <input
+                                type="number"
+                                value={customization.xAxis.tickCount}
+                                onChange={(e) => setCustomization(prev => ({
+                                  ...prev,
+                                  xAxis: { ...prev.xAxis, tickCount: parseInt(e.target.value) || 5 }
+                                }))}
+                                className={`w-full px-2 py-1 text-xs rounded border ${
+                                  isDarkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                                min="2"
+                                max="10"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Grid Lines</label>
+                              <input
+                                type="number"
+                                value={customization.xAxis.gridLines}
+                                onChange={(e) => setCustomization(prev => ({
+                                  ...prev,
+                                  xAxis: { ...prev.xAxis, gridLines: parseInt(e.target.value) || 5 }
+                                }))}
+                                className={`w-full px-2 py-1 text-xs rounded border ${
+                                  isDarkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                                min="0"
+                                max="20"
+                              />
+                            </div>
+                            <div>
+                              <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Position</label>
+                              <select
+                                value={customization.xAxis.labelPosition}
+                                onChange={(e) => setCustomization(prev => ({
+                                  ...prev,
+                                  xAxis: { ...prev.xAxis, labelPosition: e.target.value as any }
+                                }))}
+                                className={`w-full px-2 py-1 text-xs rounded border ${
+                                  isDarkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                              >
+                                <option value="bottom">Bottom</option>
+                                <option value="top">Top</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Distance</label>
+                              <input
+                                type="number"
+                                value={customization.xAxis.labelDistance}
+                                onChange={(e) => setCustomization(prev => ({
+                                  ...prev,
+                                  xAxis: { ...prev.xAxis, labelDistance: parseInt(e.target.value) || 40 }
+                                }))}
+                                className={`w-full px-2 py-1 text-xs rounded border ${
+                                  isDarkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                                min="10"
+                                max="100"
+                                title="Distance of label from axis line (pixels)"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Y-Axis */}
+                      <div className="space-y-3">
+                        <h5 className={`font-medium text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Y-Axis (Water Level)</h5>
+                        <div className="space-y-2">
+                          <div>
+                            <label className={labelClass}>Label</label>
+                            <input
+                              type="text"
+                              value={customization.yAxis.label}
+                              onChange={(e) => setCustomization(prev => ({
+                                ...prev,
+                                yAxis: { ...prev.yAxis, label: e.target.value }
+                              }))}
+                              className={inputClass}
+                            />
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Label Font</label>
+                              <input
+                                type="number"
+                                value={customization.yAxis.fontSize}
+                                onChange={(e) => setCustomization(prev => ({
+                                  ...prev,
+                                  yAxis: { ...prev.yAxis, fontSize: parseInt(e.target.value) || 12 }
+                                }))}
+                                className={`w-full px-2 py-1 text-xs rounded border ${
+                                  isDarkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                                min="8"
+                                max="72"
+                              />
+                            </div>
+                            <div>
+                              <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Tick Font</label>
+                              <input
+                                type="number"
+                                value={customization.yAxis.tickFontSize}
+                                onChange={(e) => setCustomization(prev => ({
+                                  ...prev,
+                                  yAxis: { ...prev.yAxis, tickFontSize: parseInt(e.target.value) || 10 }
+                                }))}
+                                className={`w-full px-2 py-1 text-xs rounded border ${
+                                  isDarkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                                min="6"
+                                max="48"
+                              />
+                            </div>
+                            <div>
+                              <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Tick Count</label>
+                              <input
+                                type="number"
+                                value={customization.yAxis.tickCount}
+                                onChange={(e) => setCustomization(prev => ({
+                                  ...prev,
+                                  yAxis: { ...prev.yAxis, tickCount: parseInt(e.target.value) || 5 }
+                                }))}
+                                className={`w-full px-2 py-1 text-xs rounded border ${
+                                  isDarkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                                min="2"
+                                max="10"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Grid Lines</label>
+                              <input
+                                type="number"
+                                value={customization.yAxis.gridLines}
+                                onChange={(e) => setCustomization(prev => ({
+                                  ...prev,
+                                  yAxis: { ...prev.yAxis, gridLines: parseInt(e.target.value) || 5 }
+                                }))}
+                                className={`w-full px-2 py-1 text-xs rounded border ${
+                                  isDarkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                                min="0"
+                                max="20"
+                              />
+                            </div>
+                            <div>
+                              <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Position</label>
+                              <select
+                                value={customization.yAxis.labelPosition}
+                                onChange={(e) => setCustomization(prev => ({
+                                  ...prev,
+                                  yAxis: { ...prev.yAxis, labelPosition: e.target.value as any }
+                                }))}
+                                className={`w-full px-2 py-1 text-xs rounded border ${
+                                  isDarkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                              >
+                                <option value="left">Left</option>
+                                <option value="right">Right</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Distance</label>
+                              <input
+                                type="number"
+                                value={customization.yAxis.labelDistance}
+                                onChange={(e) => setCustomization(prev => ({
+                                  ...prev,
+                                  yAxis: { ...prev.yAxis, labelDistance: parseInt(e.target.value) || 50 }
+                                }))}
+                                className={`w-full px-2 py-1 text-xs rounded border ${
+                                  isDarkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                                min="10"
+                                max="100"
+                                title="Distance of label from axis line (pixels)"
+                              />
+                            </div>
+                          </div>
+                          <div className="mt-2">
+                            <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Significant Figures</label>
+                            <input
+                              type="number"
+                              value={customization.yAxis.significantFigures}
+                              onChange={(e) => setCustomization(prev => ({
+                                ...prev,
+                                yAxis: { ...prev.yAxis, significantFigures: parseInt(e.target.value) || 3 }
+                              }))}
+                              className={`w-full px-2 py-1 text-xs rounded border ${
+                                isDarkMode 
+                                  ? 'bg-gray-700 border-gray-600 text-white' 
+                                  : 'bg-white border-gray-300 text-gray-900'
+                              }`}
+                              min="1"
+                              max="6"
+                              title="Number of significant figures for tick labels"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Axis (Temperature) */}
+                      {customization.showTemperatureData && (
+                        <div className="space-y-3">
+                          <div className="flex items-center space-x-3">
+                            <input
+                              type="checkbox"
+                              id="show-right-axis"
+                              checked={customization.rightAxis.show}
+                              onChange={(e) => setCustomization(prev => ({ 
+                                ...prev, 
+                                rightAxis: { ...prev.rightAxis, show: e.target.checked }
+                              }))}
+                              className="rounded"
+                            />
+                            <h5 className={`font-medium text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Show Right Axis (Temperature)</h5>
+                          </div>
+                          
+                          {customization.rightAxis.show && (
+                            <div className="space-y-2">
+                              <div>
+                                <label className={labelClass}>Label</label>
+                                <input
+                                  type="text"
+                                  value={customization.rightAxis.label}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    rightAxis: { ...prev.rightAxis, label: e.target.value }
+                                  }))}
+                                  className={inputClass}
+                                />
+                              </div>
+                              <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                  <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Label Font</label>
+                                  <input
+                                    type="number"
+                                    value={customization.rightAxis.fontSize}
+                                    onChange={(e) => setCustomization(prev => ({
+                                      ...prev,
+                                      rightAxis: { ...prev.rightAxis, fontSize: parseInt(e.target.value) || 12 }
+                                    }))}
+                                    className={`w-full px-2 py-1 text-xs rounded border ${
+                                      isDarkMode 
+                                        ? 'bg-gray-700 border-gray-600 text-white' 
+                                        : 'bg-white border-gray-300 text-gray-900'
+                                    }`}
+                                    min="8"
+                                    max="72"
+                                  />
+                                </div>
+                                <div>
+                                  <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Tick Font</label>
+                                  <input
+                                    type="number"
+                                    value={customization.rightAxis.tickFontSize}
+                                    onChange={(e) => setCustomization(prev => ({
+                                      ...prev,
+                                      rightAxis: { ...prev.rightAxis, tickFontSize: parseInt(e.target.value) || 10 }
+                                    }))}
+                                    className={`w-full px-2 py-1 text-xs rounded border ${
+                                      isDarkMode 
+                                        ? 'bg-gray-700 border-gray-600 text-white' 
+                                        : 'bg-white border-gray-300 text-gray-900'
+                                    }`}
+                                    min="6"
+                                    max="48"
+                                  />
+                                </div>
+                                <div>
+                                  <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Tick Count</label>
+                                  <input
+                                    type="number"
+                                    value={customization.rightAxis.tickCount}
+                                    onChange={(e) => setCustomization(prev => ({
+                                      ...prev,
+                                      rightAxis: { ...prev.rightAxis, tickCount: parseInt(e.target.value) || 5 }
+                                    }))}
+                                    className={`w-full px-2 py-1 text-xs rounded border ${
+                                      isDarkMode 
+                                        ? 'bg-gray-700 border-gray-600 text-white' 
+                                        : 'bg-white border-gray-300 text-gray-900'
+                                    }`}
+                                    min="2"
+                                    max="10"
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Distance</label>
+                                  <input
+                                    type="number"
+                                    value={customization.rightAxis.labelDistance}
+                                    onChange={(e) => setCustomization(prev => ({
+                                      ...prev,
+                                      rightAxis: { ...prev.rightAxis, labelDistance: parseInt(e.target.value) || 50 }
+                                    }))}
+                                    className={`w-full px-2 py-1 text-xs rounded border ${
+                                      isDarkMode 
+                                        ? 'bg-gray-700 border-gray-600 text-white' 
+                                        : 'bg-white border-gray-300 text-gray-900'
+                                    }`}
+                                    min="10"
+                                    max="100"
+                                    title="Distance of label from axis line (pixels)"
+                                  />
+                                </div>
+                                <div>
+                                  <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Sig Figs</label>
+                                  <input
+                                    type="number"
+                                    value={customization.rightAxis.significantFigures}
+                                    onChange={(e) => setCustomization(prev => ({
+                                      ...prev,
+                                      rightAxis: { ...prev.rightAxis, significantFigures: parseInt(e.target.value) || 2 }
+                                    }))}
+                                    className={`w-full px-2 py-1 text-xs rounded border ${
+                                      isDarkMode 
+                                        ? 'bg-gray-700 border-gray-600 text-white' 
+                                        : 'bg-white border-gray-300 text-gray-900'
+                                    }`}
+                                    min="1"
+                                    max="6"
+                                    title="Number of significant figures for tick labels"
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-3 mt-2">
+                                <input
+                                  type="checkbox"
+                                  id="right-axis-grid"
+                                  checked={customization.rightAxis.showGrid}
+                                  onChange={(e) => setCustomization(prev => ({ 
+                                    ...prev, 
+                                    rightAxis: { ...prev.rightAxis, showGrid: e.target.checked }
+                                  }))}
+                                  className="rounded"
+                                />
+                                <label htmlFor="right-axis-grid" className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Show Grid Lines</label>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Enhanced Legend Settings */}
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          id="show-legend"
+                          checked={customization.legend.show}
+                          onChange={(e) => setCustomization(prev => ({ 
+                            ...prev, 
+                            legend: { ...prev.legend, show: e.target.checked }
+                          }))}
+                          className="rounded"
+                        />
+                        <label htmlFor="show-legend" className={`font-medium text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Show Legend</label>
+                      </div>
+                      
+                      {customization.legend.show && (
+                        <div className="space-y-4">
+                          {/* Position Controls */}
+                          <div>
+                            <label className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Position</label>
+                            <select
+                              value={customization.legend.position}
+                              onChange={(e) => setCustomization(prev => ({
+                                ...prev,
+                                legend: { ...prev.legend, position: e.target.value as any }
+                              }))}
+                              className={inputClass}
+                            >
+                              <option value="top-left">Top Left</option>
+                              <option value="top-center">Top Center</option>
+                              <option value="top-right">Top Right</option>
+                              <option value="middle-left">Middle Left</option>
+                              <option value="middle-right">Middle Right</option>
+                              <option value="bottom-left">Bottom Left</option>
+                              <option value="bottom-center">Bottom Center</option>
+                              <option value="bottom-right">Bottom Right</option>
+                              <option value="below-x-axis">Below X-Axis</option>
+                            </select>
+                          </div>
+
+                          {/* Typography Controls */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Font Size</label>
+                              <input
+                                type="number"
+                                value={customization.legend.fontSize}
+                                onChange={(e) => setCustomization(prev => ({
+                                  ...prev,
+                                  legend: { ...prev.legend, fontSize: parseInt(e.target.value) || 12 }
+                                }))}
+                                className={`w-full px-2 py-1 text-xs rounded border ${
+                                  isDarkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                                min="8"
+                                max="72"
+                              />
+                            </div>
+                            <div>
+                              <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Padding</label>
+                              <input
+                                type="number"
+                                value={customization.legend.padding}
+                                onChange={(e) => setCustomization(prev => ({
+                                  ...prev,
+                                  legend: { ...prev.legend, padding: parseInt(e.target.value) || 8 }
+                                }))}
+                                className={`w-full px-2 py-1 text-xs rounded border ${
+                                  isDarkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                                min="2"
+                                max="20"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Color Controls */}
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2">
+                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Text:</label>
+                                <input
+                                  type="color"
+                                  value={customization.legend.textColor}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    legend: { ...prev.legend, textColor: e.target.value }
+                                  }))}
+                                  className="w-8 h-6 rounded border border-gray-300 cursor-pointer"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Background:</label>
+                                <input
+                                  type="color"
+                                  value={customization.legend.backgroundColor}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    legend: { ...prev.legend, backgroundColor: e.target.value }
+                                  }))}
+                                  className="w-8 h-6 rounded border border-gray-300 cursor-pointer"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Border:</label>
+                                <input
+                                  type="color"
+                                  value={customization.legend.borderColor}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    legend: { ...prev.legend, borderColor: e.target.value }
+                                  }))}
+                                  className="w-8 h-6 rounded border border-gray-300 cursor-pointer"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2">
+                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Opacity:</label>
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max="1"
+                                  step="0.1"
+                                  value={customization.legend.backgroundOpacity}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    legend: { ...prev.legend, backgroundOpacity: parseFloat(e.target.value) }
+                                  }))}
+                                  className="w-16"
+                                />
+                                <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                  {Math.round(customization.legend.backgroundOpacity * 100)}%
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Border Width:</label>
+                                <input
+                                  type="number"
+                                  value={customization.legend.borderWidth}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    legend: { ...prev.legend, borderWidth: parseInt(e.target.value) || 0 }
+                                  }))}
+                                  className={`w-16 px-2 py-1 text-xs rounded border ${
+                                    isDarkMode 
+                                      ? 'bg-gray-700 border-gray-600 text-white' 
+                                      : 'bg-white border-gray-300 text-gray-900'
+                                  }`}
+                                  min="0"
+                                  max="5"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Export Section */}
+              <div className="mb-4">
+                <button 
+                  onClick={() => toggleSection('export')}
+                  className={sectionHeaderClass}
+                >
+                  <div className="flex items-center">
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      Export Settings
+                    </span>
+                  </div>
+                  <svg 
+                    className={`w-5 h-5 transition-transform duration-200 ${
+                      expandedSections.export ? 'rotate-180' : ''
+                    } ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {expandedSections.export && (
+                  <div className="mt-4 p-4 rounded-lg bg-gray-500 bg-opacity-5">
+                    <div className={`p-4 rounded-lg ${
+                      isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'
+                    }`}>
+                      <h4 className={`font-medium mb-2 text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                      }`}>Export Summary</h4>
+                      <div className={`text-sm space-y-1 ${
+                        isDarkMode ? 'text-gray-400' : 'text-gray-600'
+                      }`}>
+                        <p>Dimensions: {customization.width} × {customization.height} pixels</p>
+                        <p>Resolution: {customization.dpi} DPI</p>
+                        <p>Aspect Ratio: {customization.aspectRatio}</p>
+                        <p>Data: {[
+                          customization.showTransducerData && 'Transducer',
+                          customization.showManualData && 'Manual'
+                        ].filter(Boolean).join(', ') || 'None selected'}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Panel - Live Preview */}
+          <div className="flex-1 flex flex-col">
+            <div className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+              <h3 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                Live Preview
+              </h3>
+              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                See your customizations in real-time
+              </p>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <LivePlotPreview
+                customization={customization}
+                plotData={plotData}
+                isDarkMode={isDarkMode}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className={`flex items-center justify-between p-4 border-t ${
+          isDarkMode ? 'border-gray-700' : 'border-gray-200'
+        }`}>
+          <button
+            onClick={handleReset}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+              isDarkMode 
+                ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' 
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>Reset</span>
+          </button>
+          
+          <div className="flex space-x-3">
+            <button
+              onClick={onClose}
+              className={`px-6 py-2 rounded-lg transition-colors ${
+                isDarkMode 
+                  ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' 
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+              }`}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleExport}
+              className="flex items-center space-x-2 px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white rounded-lg transition-all duration-300"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <span>Export Plot</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
