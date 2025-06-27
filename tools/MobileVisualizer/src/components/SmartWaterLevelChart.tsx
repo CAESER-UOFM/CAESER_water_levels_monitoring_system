@@ -19,6 +19,7 @@ export interface SmartWaterLevelChartProps {
     dataRange: { start: string; end: string } | null;
     isHighRes: boolean;
     zoomedRange?: { start: string; end: string } | null;
+    currentData?: any[];
   }) => void;
 }
 
@@ -125,7 +126,13 @@ export const SmartWaterLevelChart = React.forwardRef<
           start: sortedData[0].timestamp_utc,
           end: sortedData[sortedData.length - 1].timestamp_utc
         },
-        isHighRes: currentSamplingRate !== 'daily'
+        isHighRes: currentSamplingRate !== 'daily',
+        currentData: sortedData.map(reading => ({
+          timestamp: reading.timestamp_utc,
+          water_level: reading.water_level,
+          temperature: reading.temperature,
+          reading_type: reading.data_source === 'manual' ? 'manual' : 'transducer'
+        }))
       });
     }
   }, [data.length, currentSamplingRate, totalDataSpanDays]); // Removed onInfoUpdate to prevent loops

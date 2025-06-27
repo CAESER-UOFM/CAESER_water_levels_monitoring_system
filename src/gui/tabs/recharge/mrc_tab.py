@@ -1969,7 +1969,7 @@ class MrcTab(BaseRechargeTab):
             
             # Score from recession rate consistency
             if 'data' in segment and len(segment['data']) > 2:
-                levels = segment['data']['level'].values
+                levels = segment['data']['water_level'].values
                 daily_changes = abs(levels[1:] - levels[:-1])
                 if len(daily_changes) > 0:
                     consistency_score = 1.0 - min(daily_changes.std() / daily_changes.mean(), 1.0)
@@ -3799,6 +3799,44 @@ class MrcTab(BaseRechargeTab):
         finally:
             # Re-enable session saving
             self.session_saving_enabled = True
+    
+    def save_curve(self):
+        """Save the current curve by opening the curve fitting dialog."""
+        try:
+            if not self.recession_segments:
+                QMessageBox.warning(self, "No Data", 
+                    "No recession segments available. Please identify segments first.")
+                return False
+                
+            # Open the curve fitting dialog which handles saving
+            dialog = InteractiveCurveFittingDialog(
+                self.recession_segments,
+                parent=self,
+                mrc_db=self.mrc_db,
+                well_id=self.current_well
+            )
+            
+            if dialog.exec_() == QDialog.Accepted:
+                # Get the saved curve ID from the dialog
+                if hasattr(dialog, 'current_curve') and dialog.current_curve and 'id' in dialog.current_curve:
+                    saved_curve_id = dialog.current_curve['id']
+                    # Update main tab's current_curve with the saved ID
+                    if self.current_curve:
+                        self.current_curve['id'] = saved_curve_id
+                    else:
+                        self.current_curve = {'id': saved_curve_id}
+                    logger.info(f"Updated main tab current_curve with saved ID: {saved_curve_id}")
+                
+                # Reload segments and curves after successful save
+                self.load_segments_for_well(self.current_well)
+                self.load_curves_for_well(self.current_well)
+                return True
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error opening curve fitting dialog: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to save curve: {str(e)}")
+            return False
 
 
 class LoadSegmentsDialog(QDialog):

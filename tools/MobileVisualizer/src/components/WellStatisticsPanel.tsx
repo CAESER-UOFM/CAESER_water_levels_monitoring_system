@@ -46,9 +46,10 @@ interface WellStatistics {
 interface WellStatisticsPanelProps {
   databaseId: string;
   wellNumber: string;
+  isDarkMode?: boolean; // Optional theme prop
 }
 
-export function WellStatisticsPanel({ databaseId, wellNumber }: WellStatisticsPanelProps) {
+export function WellStatisticsPanel({ databaseId, wellNumber, isDarkMode = true }: WellStatisticsPanelProps) {
   const [statistics, setStatistics] = useState<WellStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -117,10 +118,16 @@ export function WellStatisticsPanel({ databaseId, wellNumber }: WellStatisticsPa
 
   if (loading) {
     return (
-      <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6 shadow-xl">
+      <div className={`backdrop-blur-sm border rounded-xl p-6 shadow-xl transition-colors duration-300 ${
+        isDarkMode 
+          ? 'bg-gray-800/50 border-gray-700' 
+          : 'bg-white border-gray-200'
+      }`}>
         <div className="flex items-center justify-center py-8">
           <LoadingSpinner size="small" />
-          <span className="ml-2 text-gray-300">Loading statistics...</span>
+          <span className={`ml-2 transition-colors duration-300 ${
+            isDarkMode ? 'text-gray-300' : 'text-gray-600'
+          }`}>Loading statistics...</span>
         </div>
       </div>
     );
@@ -128,9 +135,15 @@ export function WellStatisticsPanel({ databaseId, wellNumber }: WellStatisticsPa
 
   if (error) {
     return (
-      <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6 shadow-xl">
+      <div className={`backdrop-blur-sm border rounded-xl p-6 shadow-xl transition-colors duration-300 ${
+        isDarkMode 
+          ? 'bg-gray-800/50 border-gray-700' 
+          : 'bg-white border-gray-200'
+      }`}>
         <div className="text-center py-4">
-          <p className="text-red-400 text-sm">{error}</p>
+          <p className={`text-sm transition-colors duration-300 ${
+            isDarkMode ? 'text-red-400' : 'text-red-600'
+          }`}>{error}</p>
         </div>
       </div>
     );
@@ -141,15 +154,27 @@ export function WellStatisticsPanel({ databaseId, wellNumber }: WellStatisticsPa
   }
 
   return (
-    <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6 shadow-xl">
+    <div className={`backdrop-blur-sm border rounded-xl p-6 shadow-xl transition-colors duration-300 ${
+      isDarkMode 
+        ? 'bg-gray-800/50 border-gray-700' 
+        : 'bg-white border-gray-200'
+    }`}>
       {/* Header - Always visible */}
       <div 
-        className="flex items-center justify-between cursor-pointer hover:bg-gray-700/30 -m-6 p-6 rounded-lg"
+        className={`flex items-center justify-between cursor-pointer -m-6 p-6 rounded-lg transition-colors duration-300 ${
+          isDarkMode 
+            ? 'hover:bg-gray-700/30' 
+            : 'hover:bg-gray-50'
+        }`}
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <h3 className="text-lg font-semibold text-white">Well Statistics & Insights</h3>
+        <h3 className={`text-lg font-semibold transition-colors duration-300 ${
+          isDarkMode ? 'text-white' : 'text-gray-900'
+        }`}>Well Statistics & Insights</h3>
         <svg 
-          className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+          className={`w-5 h-5 transition-all duration-200 ${
+            isDarkMode ? 'text-gray-400' : 'text-gray-600'
+          } ${isExpanded ? 'rotate-180' : ''}`}
           fill="none" 
           stroke="currentColor" 
           viewBox="0 0 24 24"

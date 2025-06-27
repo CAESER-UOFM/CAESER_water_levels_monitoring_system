@@ -1463,6 +1463,18 @@ export function PlotCustomizationDialog({
                                   className={inputClass}
                                 />
                               </div>
+                              <div>
+                                <label className={labelClass}>Color</label>
+                                <input
+                                  type="color"
+                                  value={customization.rightAxis.color}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    rightAxis: { ...prev.rightAxis, color: e.target.value }
+                                  }))}
+                                  className="w-16 h-8 rounded border border-gray-300 cursor-pointer"
+                                />
+                              </div>
                               <div className="grid grid-cols-3 gap-2">
                                 <div>
                                   <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Label Font</label>

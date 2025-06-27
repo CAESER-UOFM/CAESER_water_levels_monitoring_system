@@ -7,7 +7,9 @@ import { WellInfoPanel } from '@/components/WellInfoPanel';
 import { WellStatisticsPanel } from '@/components/WellStatisticsPanel';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { ExportDialog, type ExportOptions } from '@/components/ExportDialog';
+import { PlotCustomizationDialog, type PlotCustomization } from '@/components/PlotCustomizationDialog';
 import { exportWaterLevelDataWithProgress } from '@/utils/dataExport';
+import { exportCustomPlot } from '@/utils/customPlotExport';
 import type { Well } from '@/lib/api/api';
 
 export default function PlotViewerPage() {
@@ -20,6 +22,7 @@ export default function PlotViewerPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showPlotCustomization, setShowPlotCustomization] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState<{stage: string; percentage: number; message: string} | null>(null);
   const [currentTimeRange, setCurrentTimeRange] = useState<{ start: string; end: string } | null>(null);
@@ -30,13 +33,16 @@ export default function PlotViewerPage() {
     samplingRate: string;
     dataRange: { start: string; end: string } | null;
     isHighRes: boolean;
+    currentData?: any[];
   }>({ 
     totalPoints: 0, 
     displayedPoints: 0, 
     samplingRate: 'Loading...',
     dataRange: null,
-    isHighRes: false
+    isHighRes: false,
+    currentData: []
   });
+  const [isDarkMode, setIsDarkMode] = useState(true); // Default to dark mode
 
   // Handle chart info updates - stable callback
   const updateChartInfo = useCallback((info: typeof chartInfo) => {
@@ -85,6 +91,54 @@ export default function PlotViewerPage() {
   const handleExportData = useCallback(() => {
     setShowExportDialog(true);
   }, []);
+
+  const handleCustomizePlot = useCallback(() => {
+    setShowPlotCustomization(true);
+  }, []);
+
+  const handleCustomPlotExport = useCallback(async (customization: PlotCustomization) => {
+    if (!well || !currentTimeRange) return;
+
+    setIsExporting(true);
+    setShowPlotCustomization(false);
+    setExportProgress({ stage: 'preparing', percentage: 0, message: 'Preparing custom plot export...' });
+
+    try {
+      const abortController = new AbortController();
+      
+      await exportCustomPlot(
+        databaseId,
+        wellNumber,
+        well,
+        customization,
+        (progress) => {
+          setExportProgress(progress);
+        },
+        abortController.signal
+      );
+
+      // Success - close dialog after a brief delay
+      setTimeout(() => {
+        setExportProgress(null);
+        setIsExporting(false);
+      }, 1500);
+
+    } catch (error) {
+      console.error('Custom plot export failed:', error);
+      
+      setExportProgress({ 
+        stage: 'error', 
+        percentage: 0, 
+        message: `Custom plot export failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      });
+
+      // Reset after showing error
+      setTimeout(() => {
+        setExportProgress(null);
+        setIsExporting(false);
+      }, 3000);
+    }
+  }, [databaseId, wellNumber, well, currentTimeRange]);
 
   const handleExportDialogClose = useCallback(() => {
     if (!isExporting) {
@@ -152,10 +206,16 @@ export default function PlotViewerPage() {
 
   if (loading && !well) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-blue-900 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${
+        isDarkMode 
+          ? 'bg-gradient-to-br from-gray-900 via-slate-900 to-blue-900' 
+          : 'bg-gray-50'
+      }`}>
         <div className="text-center">
           <LoadingSpinner size="large" />
-          <p className="mt-4 text-gray-300">Loading well data...</p>
+          <p className={`mt-4 transition-colors duration-300 ${
+            isDarkMode ? 'text-gray-300' : 'text-gray-600'
+          }`}>Loading well data...</p>
         </div>
       </div>
     );
@@ -163,19 +223,33 @@ export default function PlotViewerPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-blue-900 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${
+        isDarkMode 
+          ? 'bg-gradient-to-br from-gray-900 via-slate-900 to-blue-900' 
+          : 'bg-gray-50'
+      }`}>
         <div className="text-center max-w-md mx-auto px-4">
-          <svg className="w-16 h-16 text-red-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-16 h-16 mx-auto mb-4 transition-colors duration-300 ${
+            isDarkMode ? 'text-red-400' : 'text-red-500'
+          }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
           </svg>
-          <h1 className="text-xl font-semibold text-white mb-2">
+          <h1 className={`text-xl font-semibold mb-2 transition-colors duration-300 ${
+            isDarkMode ? 'text-white' : 'text-gray-900'
+          }`}>
             Error Loading Data
           </h1>
-          <p className="text-gray-300 mb-4">{error}</p>
+          <p className={`mb-4 transition-colors duration-300 ${
+            isDarkMode ? 'text-gray-300' : 'text-gray-600'
+          }`}>{error}</p>
           <div className="space-x-3">
             <button
               onClick={handleBackToWells}
-              className="bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600 hover:border-gray-500 text-gray-300 hover:text-white font-medium py-2 px-4 rounded-lg transition-all duration-300"
+              className={`font-medium py-2 px-4 rounded-lg transition-all duration-300 ${
+                isDarkMode 
+                  ? 'bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600 hover:border-gray-500 text-gray-300 hover:text-white' 
+                  : 'bg-white hover:bg-gray-50 border border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900'
+              }`}
             >
               ← Back to Wells
             </button>
@@ -196,15 +270,27 @@ export default function PlotViewerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-blue-900">
+    <div className={`min-h-screen transition-colors duration-300 ${
+      isDarkMode 
+        ? 'bg-gradient-to-br from-gray-900 via-slate-900 to-blue-900' 
+        : 'bg-gray-50'
+    }`}>
       {/* Header */}
-      <div className="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700 sticky top-0 z-10">
+      <div className={`backdrop-blur-sm border-b sticky top-0 z-10 transition-colors duration-300 ${
+        isDarkMode 
+          ? 'bg-gray-800/50 border-gray-700' 
+          : 'bg-white/90 border-gray-200'
+      }`}>
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <button
                 onClick={handleBackToWells}
-                className="p-2 text-gray-400 hover:text-white transition-colors mobile-touch-target"
+                className={`p-2 transition-colors mobile-touch-target ${
+                  isDarkMode 
+                    ? 'text-gray-400 hover:text-white' 
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
                 title="Back to wells"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -212,7 +298,11 @@ export default function PlotViewerPage() {
                 </svg>
               </button>
               <div>
-                <h1 className="text-xl font-semibold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+                <h1 className={`text-xl font-semibold transition-colors duration-300 ${
+                  isDarkMode 
+                    ? 'bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent' 
+                    : 'text-gray-900'
+                }`}>
                   Well {well.well_number}
                 </h1>
               </div>
@@ -220,9 +310,34 @@ export default function PlotViewerPage() {
             
             {/* Action Buttons */}
             <div className="flex items-center space-x-2">
+              {/* Theme Toggle */}
+              <button
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className={`p-2 rounded-lg transition-all duration-300 ${
+                  isDarkMode 
+                    ? 'bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600 text-gray-300 hover:text-white' 
+                    : 'bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-600 hover:text-gray-900'
+                }`}
+                title={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}
+              >
+                {isDarkMode ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                  </svg>
+                )}
+              </button>
+
               <button
                 onClick={handleViewOnMap}
-                className="bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600 hover:border-gray-500 text-gray-300 hover:text-white font-medium py-2 px-3 rounded-lg transition-all duration-300 text-sm"
+                className={`font-medium py-2 px-3 rounded-lg transition-all duration-300 text-sm ${
+                  isDarkMode 
+                    ? 'bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600 hover:border-gray-500 text-gray-300 hover:text-white' 
+                    : 'bg-white hover:bg-gray-50 border border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900'
+                }`}
                 title="View well location on map"
               >
                 <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -234,7 +349,11 @@ export default function PlotViewerPage() {
               
               <button
                 onClick={handleViewRecharge}
-                className="bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600 hover:border-gray-500 text-gray-300 hover:text-white font-medium py-2 px-3 rounded-lg transition-all duration-300 text-sm"
+                className={`font-medium py-2 px-3 rounded-lg transition-all duration-300 text-sm ${
+                  isDarkMode 
+                    ? 'bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600 hover:border-gray-500 text-gray-300 hover:text-white' 
+                    : 'bg-white hover:bg-gray-50 border border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900'
+                }`}
                 title="View recharge calculations"
               >
                 <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -242,6 +361,7 @@ export default function PlotViewerPage() {
                 </svg>
                 <span className="hidden sm:inline">Recharge</span>
               </button>
+              
               
               {/* Export Button */}
               <button
@@ -269,19 +389,27 @@ export default function PlotViewerPage() {
           totalPoints={chartInfo.totalPoints}
           displayedPoints={chartInfo.displayedPoints}
           samplingRate={chartInfo.samplingRate}
+          isDarkMode={isDarkMode}
         />
 
         {/* Well Statistics Panel */}
         <WellStatisticsPanel 
           databaseId={databaseId}
           wellNumber={wellNumber}
+          isDarkMode={isDarkMode}
         />
 
         {/* Chart */}
-        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6 shadow-xl">
+        <div className={`backdrop-blur-sm border rounded-xl p-6 shadow-xl transition-colors duration-300 ${
+          isDarkMode 
+            ? 'bg-gray-800/50 border-gray-700' 
+            : 'bg-white border-gray-200'
+        }`}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex-1"></div>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className={`text-lg font-semibold transition-colors duration-300 ${
+              isDarkMode ? 'text-white' : 'text-gray-900'
+            }`}>
               Water Level Data
             </h2>
             <div className="flex-1 flex justify-end">
@@ -298,7 +426,11 @@ export default function PlotViewerPage() {
                   }
                 }}
                 disabled={loading}
-                className="px-3 py-1 bg-cyan-900/50 text-cyan-300 text-sm rounded-lg hover:bg-cyan-800/50 disabled:opacity-50 transition-colors border border-cyan-600"
+                className={`px-3 py-1 text-sm rounded-lg disabled:opacity-50 transition-colors border ${
+                  isDarkMode 
+                    ? 'bg-cyan-900/50 text-cyan-300 hover:bg-cyan-800/50 border-cyan-600' 
+                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-300'
+                }`}
               >
                 Back to Overview
               </button>
@@ -311,14 +443,35 @@ export default function PlotViewerPage() {
                     }
                   }}
                   disabled={loading}
-                  className="px-3 py-1 bg-gray-700/50 text-gray-300 text-sm rounded-lg hover:bg-gray-600/50 disabled:opacity-50 transition-colors border border-gray-600"
+                  className={`px-3 py-1 text-sm rounded-lg disabled:opacity-50 transition-colors border ${
+                    isDarkMode 
+                      ? 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50 border-gray-600' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300'
+                  }`}
                 >
                   Reset Zoom
                 </button>
               )}
+              {/* Plot Customization Button - inside chart controls */}
+              <button
+                onClick={handleCustomizePlot}
+                className={`px-3 py-1 text-sm rounded-lg transition-colors border ${
+                  isDarkMode 
+                    ? 'bg-purple-900/50 text-purple-300 hover:bg-purple-800/50 border-purple-600' 
+                    : 'bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-300'
+                }`}
+                title="Customize plot appearance and export"
+              >
+                <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                </svg>
+                Customize Plot
+              </button>
               {/* Loading indicator */}
               {loading && (
-                <div className="flex items-center space-x-2 text-sm text-gray-300">
+                <div className={`flex items-center space-x-2 text-sm transition-colors duration-300 ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>
                   <LoadingSpinner size="small" />
                   <span>Updating...</span>
                 </div>
@@ -350,14 +503,35 @@ export default function PlotViewerPage() {
         isLoading={isExporting}
       />
 
+      {/* Plot Customization Dialog */}
+      <PlotCustomizationDialog
+        isOpen={showPlotCustomization}
+        onClose={() => setShowPlotCustomization(false)}
+        onExport={handleCustomPlotExport}
+        databaseId={databaseId}
+        wellNumber={wellNumber}
+        well={well}
+        currentTimeRange={currentTimeRange}
+        plotData={chartInfo.currentData}
+        isDarkMode={isDarkMode}
+      />
+
       {/* Export Progress Overlay */}
       {isExporting && exportProgress && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60">
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 w-full max-w-md mx-4">
+          <div className={`border rounded-lg p-6 w-full max-w-md mx-4 transition-colors duration-300 ${
+            isDarkMode 
+              ? 'bg-gray-800 border-gray-700' 
+              : 'bg-white border-gray-200'
+          }`}>
             <div className="text-center">
-              <h3 className="text-lg font-semibold text-white mb-4">Exporting Data</h3>
+              <h3 className={`text-lg font-semibold mb-4 transition-colors duration-300 ${
+                isDarkMode ? 'text-white' : 'text-gray-900'
+              }`}>Exporting Data</h3>
               
-              <div className="w-full bg-gray-700 rounded-full h-2 mb-4">
+              <div className={`w-full rounded-full h-2 mb-4 transition-colors duration-300 ${
+                isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
+              }`}>
                 <div 
                   className={`h-2 rounded-full transition-all duration-300 ${
                     exportProgress.stage === 'error' ? 'bg-red-500' :
@@ -370,16 +544,20 @@ export default function PlotViewerPage() {
               </div>
               
               <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-300">
+                <p className={`text-sm font-medium transition-colors duration-300 ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>
                   {exportProgress.message}
                 </p>
-                <p className="text-xs text-gray-400">
+                <p className={`text-xs transition-colors duration-300 ${
+                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                }`}>
                   {exportProgress.percentage}% complete
                 </p>
               </div>
 
               {exportProgress.stage === 'complete' && (
-                <div className="mt-4 flex items-center justify-center text-green-400">
+                <div className="mt-4 flex items-center justify-center text-green-500">
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
@@ -390,7 +568,11 @@ export default function PlotViewerPage() {
               {(exportProgress.stage === 'error' || exportProgress.stage === 'cancelled') && (
                 <button
                   onClick={handleExportDialogClose}
-                  className="mt-4 px-4 py-2 bg-gray-700 text-gray-300 rounded-md hover:bg-gray-600 transition-colors"
+                  className={`mt-4 px-4 py-2 rounded-md transition-colors ${
+                    isDarkMode 
+                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
                 >
                   Close
                 </button>
