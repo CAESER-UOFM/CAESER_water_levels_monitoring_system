@@ -27,13 +27,13 @@ function calculateSmartMarginsPreview(customization: PlotCustomization, previewS
   bottom: number;
   left: number;
 } {
-  const MINIMUM_BORDER_MARGIN = 15; // Scaled down for preview
+  const MINIMUM_BORDER_MARGIN = 5; // Scaled down for preview - tight layout
   
-  // Base margins for plot area
-  let top = customization.title.show ? Math.max(30, (customization.title.fontSize * 0.8) + 20) : 15;
-  let right = 30;
-  let bottom = 40;
-  let left = 50;
+  // Base margins for plot area - compact layout
+  let top = customization.title.show ? Math.max(20, (customization.title.fontSize * 0.6) + 10) : 10;
+  let right = 20;
+  let bottom = 30;
+  let left = 40;
   
   // Adjust based on axis label distances (scaled for preview)
   const scaledXDistance = customization.xAxis.labelDistance * previewScale;

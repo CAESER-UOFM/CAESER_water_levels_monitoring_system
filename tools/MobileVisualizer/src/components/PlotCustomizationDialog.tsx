@@ -26,13 +26,13 @@ function calculateSmartMargins(customization: PlotCustomization): {
   bottom: number;
   left: number;
 } {
-  const MINIMUM_BORDER_MARGIN = 30; // Minimum space from image border
+  const MINIMUM_BORDER_MARGIN = 10; // Minimum space from image border - tight layout
   
-  // Base margins for plot area
-  let top = customization.title.show ? Math.max(60, customization.title.fontSize + 40) : 30;
-  let right = 60;
-  let bottom = 80;
-  let left = 100;
+  // Base margins for plot area - compact layout
+  let top = customization.title.show ? Math.max(40, customization.title.fontSize + 20) : 20;
+  let right = 40;
+  let bottom = 60;
+  let left = 70;
   
   // Adjust based on axis label distances
   if (customization.xAxis.labelPosition === 'bottom') {
@@ -208,7 +208,7 @@ const defaultCustomization: PlotCustomization = {
     tickCount: 5,
     tickFontSize: 12,
     labelPosition: 'bottom',
-    labelDistance: 65,
+    labelDistance: 40,
   },
   
   yAxis: {
@@ -221,7 +221,7 @@ const defaultCustomization: PlotCustomization = {
     tickCount: 5,
     tickFontSize: 12,
     labelPosition: 'left',
-    labelDistance: 65,
+    labelDistance: 45,
     significantFigures: 3,
   },
   
@@ -234,7 +234,7 @@ const defaultCustomization: PlotCustomization = {
     gridLines: 5,
     tickCount: 5,
     tickFontSize: 12,
-    labelDistance: 65,
+    labelDistance: 45,
     significantFigures: 2,
     show: true, // Auto-show when temperature data is enabled
   },
