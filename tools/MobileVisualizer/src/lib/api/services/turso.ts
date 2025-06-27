@@ -854,6 +854,49 @@ export class TursoService {
     }
   }
 
+  async getWellStatistics(wellNumber: string): Promise<any | null> {
+    try {
+      const query = `
+        SELECT 
+          well_number, total_readings, data_start_date, data_end_date,
+          total_days, min_water_level, max_water_level, avg_water_level,
+          min_level_date, max_level_date, trend_direction, trend_change_per_year,
+          highest_month, lowest_month, readings_last_30_days, last_reading_date
+        FROM well_statistics 
+        WHERE well_number = ?
+      `;
+
+      const result = await this.execute(query, [wellNumber]);
+
+      if (result.rows.length === 0) {
+        return null;
+      }
+
+      const row = this.rowToObject(result.columns, result.rows[0]);
+      return {
+        well_number: row.well_number,
+        total_readings: Number(row.total_readings),
+        data_start_date: row.data_start_date,
+        data_end_date: row.data_end_date,
+        total_days: Number(row.total_days),
+        min_water_level: Number(row.min_water_level),
+        max_water_level: Number(row.max_water_level),
+        avg_water_level: Number(row.avg_water_level),
+        min_level_date: row.min_level_date,
+        max_level_date: row.max_level_date,
+        trend_direction: row.trend_direction,
+        trend_change_per_year: Number(row.trend_change_per_year),
+        highest_month: row.highest_month,
+        lowest_month: row.lowest_month,
+        readings_last_30_days: Number(row.readings_last_30_days),
+        last_reading_date: row.last_reading_date
+      };
+    } catch (error) {
+      console.error(`Failed to get well statistics for ${wellNumber}:`, error);
+      return null;
+    }
+  }
+
   async getDatabaseStats(): Promise<{ wellsCount: number; readingsCount: number; lastUpdate: string | null }> {
     try {
       const wellsResult = await this.execute('SELECT COUNT(*) as count FROM wells');
