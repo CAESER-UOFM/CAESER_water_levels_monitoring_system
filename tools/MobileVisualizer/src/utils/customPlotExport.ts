@@ -87,12 +87,12 @@ export async function exportCustomPlot(
     onProgress({ stage: 'loading', percentage: 10, message: 'Loading water level data...' });
 
     // Fetch the data based on customization settings
-    const dataUrl = `/.netlify/functions/data/${databaseId}/${wellNumber}`;
+    const dataUrl = `/.netlify/functions/data/${databaseId}/water/${wellNumber}`;
     const params = new URLSearchParams();
     
     if (customization.dateRange) {
-      params.append('start', customization.dateRange.start);
-      params.append('end', customization.dateRange.end);
+      params.append('startDate', customization.dateRange.start);
+      params.append('endDate', customization.dateRange.end);
     }
     
     const response = await fetch(`${dataUrl}?${params}`);
