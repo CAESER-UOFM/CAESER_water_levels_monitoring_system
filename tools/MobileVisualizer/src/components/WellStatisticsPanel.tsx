@@ -161,8 +161,12 @@ export function WellStatisticsPanel({ databaseId, wellNumber }: WellStatisticsPa
       {/* Quick Summary - Always visible */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
         <div className="text-center">
-          <div className="text-xl font-bold text-blue-600">{statistics.totalReadings.toLocaleString()}</div>
-          <div className="text-xs text-gray-600">Total Readings</div>
+          <div className="text-xl font-bold text-blue-600">{statistics.levels.min.toFixed(2)} ft</div>
+          <div className="text-xs text-gray-600">Minimum Level</div>
+        </div>
+        <div className="text-center">
+          <div className="text-xl font-bold text-red-600">{statistics.levels.max.toFixed(2)} ft</div>
+          <div className="text-xs text-gray-600">Maximum Level</div>
         </div>
         <div className="text-center">
           <div className="text-xl font-bold text-green-600">{statistics.levels.average.toFixed(2)} ft</div>
@@ -172,12 +176,9 @@ export function WellStatisticsPanel({ databaseId, wellNumber }: WellStatisticsPa
           <div className={`text-xl font-bold flex items-center justify-center ${getTrendColor(statistics.trend.direction)}`}>
             {getTrendIcon(statistics.trend.direction)}
             <span className="ml-1">{statistics.trend.direction}</span>
+            <span className="ml-1 text-sm">({statistics.trend.changePerYear.toFixed(2)} ft/yr)</span>
           </div>
           <div className="text-xs text-gray-600">Trend</div>
-        </div>
-        <div className="text-center">
-          <div className="text-xl font-bold text-orange-600">{Math.max(statistics.dataRange.totalDays, 0)}</div>
-          <div className="text-xs text-gray-600">Days of Data</div>
         </div>
       </div>
 
@@ -186,7 +187,7 @@ export function WellStatisticsPanel({ databaseId, wellNumber }: WellStatisticsPa
         <div className="mt-6 space-y-6">
           {/* Water Level Statistics */}
           <div>
-            <h4 className="font-medium text-gray-900 mb-3">Water Level Statistics</h4>
+            <h4 className="font-medium text-gray-900 mb-3">Detailed Water Level Statistics</h4>
             <div className="bg-gray-50 rounded-lg p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
@@ -206,6 +207,14 @@ export function WellStatisticsPanel({ databaseId, wellNumber }: WellStatisticsPa
                 <div>
                   <span className="font-medium text-gray-700">Total Range:</span>
                   <span className="ml-2">{statistics.levels.range.toFixed(2)} ft</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">Total Readings:</span>
+                  <span className="ml-2">{statistics.totalReadings.toLocaleString()}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">Data Duration:</span>
+                  <span className="ml-2">{statistics.dataRange.totalDays > 0 ? (statistics.dataRange.totalDays / 365.25).toFixed(1) : '0'} years</span>
                 </div>
               </div>
             </div>
