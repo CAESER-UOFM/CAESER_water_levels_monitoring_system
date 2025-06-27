@@ -114,7 +114,8 @@ export default function PlotViewerPage() {
         (progress) => {
           setExportProgress(progress);
         },
-        abortController.signal
+        abortController.signal,
+        chartInfo.currentData // Pass existing data to avoid re-fetching
       );
 
       // Success - close dialog after a brief delay

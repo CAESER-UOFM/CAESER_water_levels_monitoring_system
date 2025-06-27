@@ -81,30 +81,39 @@ export async function exportCustomPlot(
   well: Well,
   customization: PlotCustomization,
   onProgress: (progress: CustomPlotExportProgress) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  existingData?: WaterLevelData[] // Optional existing data to avoid re-fetching
 ): Promise<void> {
   try {
-    onProgress({ stage: 'loading', percentage: 10, message: 'Loading water level data...' });
+    let data: WaterLevelData[];
 
-    // Fetch the data based on customization settings
-    const dataUrl = `/.netlify/functions/data/${databaseId}/water/${wellNumber}`;
-    const params = new URLSearchParams();
-    
-    if (customization.dateRange) {
-      params.append('startDate', customization.dateRange.start);
-      params.append('endDate', customization.dateRange.end);
+    if (existingData && existingData.length > 0) {
+      onProgress({ stage: 'processing', percentage: 20, message: 'Using existing plot data...' });
+      data = existingData;
+    } else {
+      onProgress({ stage: 'loading', percentage: 10, message: 'Loading water level data...' });
+
+      // Fetch the data based on customization settings
+      const dataUrl = `/.netlify/functions/data/${databaseId}/water/${wellNumber}`;
+      const params = new URLSearchParams();
+      
+      if (customization.dateRange) {
+        params.append('startDate', customization.dateRange.start);
+        params.append('endDate', customization.dateRange.end);
+      }
+      
+      const response = await fetch(`${dataUrl}?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch data');
+      
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || 'Failed to load data');
+
+      data = result.data;
     }
-    
-    const response = await fetch(`${dataUrl}?${params}`);
-    if (!response.ok) throw new Error('Failed to fetch data');
-    
-    const result = await response.json();
-    if (!result.success) throw new Error(result.error || 'Failed to load data');
 
     onProgress({ stage: 'processing', percentage: 30, message: 'Processing data...' });
 
-    // Filter data based on customization
-    let data: WaterLevelData[] = result.data;
+    // Filter data based on customization if needed (existingData might already be filtered)
     
     if (!customization.showTransducerData) {
       data = data.filter(d => d.reading_type !== 'transducer');
