@@ -389,12 +389,12 @@ export class TursoService {
       let queryParams: any[] = [wellNumber];
 
       if (startDate) {
-        whereConditions.push('timestamp_utc >= ?');
+        whereConditions.push('reading_date >= ?');
         queryParams.push(startDate);
       }
 
       if (endDate) {
-        whereConditions.push('timestamp_utc <= ?');
+        whereConditions.push('reading_date <= ?');
         queryParams.push(endDate);
       }
 
@@ -402,11 +402,11 @@ export class TursoService {
 
       let query = `
         SELECT 
-          id, well_number, timestamp_utc, julian_timestamp,
-          water_level, temperature, baro_flag, level_flag
+          well_number, reading_date as timestamp_utc, 
+          water_level, temperature
         FROM water_level_readings 
         WHERE ${whereClause}
-        ORDER BY timestamp_utc ASC
+        ORDER BY reading_date ASC
       `;
 
       // Apply downsampling if requested
@@ -419,23 +419,19 @@ export class TursoService {
           query = `
             WITH time_intervals AS (
               SELECT 
-                id, well_number, timestamp_utc, julian_timestamp,
-                water_level, temperature, baro_flag, level_flag,
+                well_number, reading_date, 
+                water_level, temperature,
                 -- Group readings into time intervals
-                (CAST((julianday(timestamp_utc) - julianday('1970-01-01')) * 24 * 60 AS INTEGER) / ${intervalMinutes}) * ${intervalMinutes} as interval_group
+                (CAST((julianday(reading_date) - julianday('1970-01-01')) * 24 * 60 AS INTEGER) / ${intervalMinutes}) * ${intervalMinutes} as interval_group
               FROM water_level_readings 
               WHERE ${whereClause}
             ),
             aggregated AS (
               SELECT 
-                MIN(id) as id,
                 well_number,
                 datetime(julianday('1970-01-01') + (interval_group / (24.0 * 60))) as timestamp_utc,
-                AVG(julian_timestamp) as julian_timestamp,
                 AVG(water_level) as water_level,
-                AVG(temperature) as temperature,
-                MIN(baro_flag) as baro_flag,
-                MIN(level_flag) as level_flag
+                AVG(temperature) as temperature
               FROM time_intervals
               GROUP BY well_number, interval_group
             )
@@ -455,9 +451,9 @@ export class TursoService {
             query = `
               SELECT * FROM (
                 SELECT 
-                  id, well_number, timestamp_utc, julian_timestamp,
-                  water_level, temperature, baro_flag, level_flag,
-                  ROW_NUMBER() OVER (ORDER BY timestamp_utc) as row_num
+                  well_number, reading_date as timestamp_utc,
+                  water_level, temperature,
+                  ROW_NUMBER() OVER (ORDER BY reading_date) as row_num
                 FROM water_level_readings 
                 WHERE ${whereClause}
               ) WHERE row_num % ${skipFactor} = 1
@@ -948,7 +944,7 @@ export class TursoService {
 
   private mapRowToReading(row: any): WaterLevelReading {
     return {
-      id: Number(row.id),
+      id: row.id ? Number(row.id) : Date.now(), // Use timestamp as fallback ID
       well_number: String(row.well_number),
       timestamp_utc: String(row.timestamp_utc),
       julian_timestamp: row.julian_timestamp ? Number(row.julian_timestamp) : undefined,
