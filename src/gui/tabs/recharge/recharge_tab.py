@@ -183,7 +183,7 @@ class RechargeTab(QWidget):
                 if shal_index != -1:
                     self.aquifer_combo.setCurrentIndex(shal_index)
                     # Trigger the filter change to load SHAL wells immediately
-                    self.on_aquifer_filter_changed(self.aquifer_combo.currentText())
+                    self.load_wells("SHAL")
                     
         except Exception as e:
             logger.error(f"Error loading aquifer filters: {e}")
@@ -197,6 +197,7 @@ class RechargeTab(QWidget):
             with sqlite3.connect(self.db_manager.current_db) as conn:
                 cursor = conn.cursor()
                 
+                logger.info(f"[FILTER_DEBUG] Loading wells with aquifer_filter='{aquifer_filter}'")
                 if aquifer_filter:
                     cursor.execute("""
                         SELECT well_number, aquifer, latitude, longitude 
@@ -212,6 +213,7 @@ class RechargeTab(QWidget):
                     """)
                     
                 wells = cursor.fetchall()
+                logger.info(f"[FILTER_DEBUG] Found {len(wells)} wells after filtering")
                 
                 self.well_combo.clear()
                 self.well_combo.addItem("-- Select Well --", None)
@@ -223,12 +225,15 @@ class RechargeTab(QWidget):
                         display_text += f" ({aquifer})"
                     self.well_combo.addItem(display_text, well_number)
                     
+                logger.info(f"[FILTER_DEBUG] Added {len(wells)} wells to dropdown")
+                    
         except Exception as e:
             logger.error(f"Error loading wells: {e}")
     
     def on_aquifer_filter_changed(self, aquifer_text):
         """Handle aquifer filter change."""
         aquifer_value = self.aquifer_combo.currentData()
+        logger.info(f"[FILTER_DEBUG] Aquifer filter changed to: text='{aquifer_text}', data='{aquifer_value}'")
         self.load_wells(aquifer_value)
     
     def on_well_selected(self, well_text):

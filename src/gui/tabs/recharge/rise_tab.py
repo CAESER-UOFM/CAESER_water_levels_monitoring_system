@@ -1264,15 +1264,28 @@ class RiseTab(BaseRechargeTab):
             # Ensure data is sorted by timestamp
             if 'timestamp' in data.columns:
                 data = data.sort_values('timestamp')
-                level_col = 'level'
+                level_col = 'water_level'
                 timestamp_col = 'timestamp'
-                logger.info(f"DEBUG: Using 'timestamp' column and 'level' column from DataFrame")
+                logger.info(f"DEBUG: Using 'timestamp' column and 'water_level' column from DataFrame")
             else:
-                # Data is likely a Series with DatetimeIndex
+                # Data is likely a DataFrame with timestamp_utc column
                 data = data.sort_index()
-                level_col = data.columns[0] if isinstance(data, pd.DataFrame) else data.name
-                timestamp_col = data.index
-                logger.info(f"DEBUG: Using DatetimeIndex and column '{level_col}'")
+                # Look for water_level column specifically, don't just use first column
+                if 'water_level' in data.columns:
+                    level_col = 'water_level'
+                elif isinstance(data, pd.DataFrame):
+                    level_col = data.columns[0]
+                else:
+                    level_col = data.name
+                
+                # Look for timestamp column
+                if 'timestamp_utc' in data.columns:
+                    timestamp_col = 'timestamp_utc'
+                elif 'timestamp' in data.columns:
+                    timestamp_col = 'timestamp'
+                else:
+                    timestamp_col = data.index
+                logger.info(f"DEBUG: Using timestamp column '{timestamp_col}' and level column '{level_col}'")
             
             # DEBUG: Check for NaN values in the level column
             nan_count = data[level_col].isna().sum()
@@ -1325,11 +1338,15 @@ class RiseTab(BaseRechargeTab):
             # Identify water years
             if isinstance(timestamp_col, str):
                 data['water_year'] = data.apply(
-                    lambda row: self.get_water_year(row[timestamp_col]), axis=1
+                    lambda row: self.get_water_year(pd.to_datetime(row[timestamp_col])), axis=1
                 )
             else:
-                # When timestamp is the index
-                data['water_year'] = [self.get_water_year(ts) for ts in data.index]
+                # When timestamp is the index and it's actually datetime
+                if isinstance(data.index, pd.DatetimeIndex):
+                    data['water_year'] = [self.get_water_year(ts) for ts in data.index]
+                else:
+                    logger.error("No valid timestamp found for water year calculation")
+                    return
             
             # Create daily rise records, which serve as individual "events"
             daily_rises = []
@@ -2597,11 +2614,13 @@ class RiseTab(BaseRechargeTab):
                 downsample_method = 'median'
             
             if resample_rule != "none":
-                # Set timestamp as index for resampling
+                # Set timestamp as index for resampling - handle both column naming conventions
                 if 'timestamp' in data.columns:
                     logger.info(f"Downsampling to {resample_rule} intervals using {downsample_method}")
-                    
                     data = data.set_index('timestamp')
+                elif 'timestamp_utc' in data.columns:
+                    logger.info(f"Downsampling to {resample_rule} intervals using {downsample_method} (using timestamp_utc)")
+                    data = data.set_index('timestamp_utc')
                 else:
                     logger.error("Cannot resample: no timestamp column found")
                     logger.error("ERROR: Cannot resample - no timestamp column found")
@@ -2622,29 +2641,48 @@ class RiseTab(BaseRechargeTab):
                     return
                 
                 try:
+                    # DEBUG: Check data types before resampling
+                    logger.info(f"[RESAMPLE_DEBUG] Data columns: {list(data.columns)}")
+                    logger.info(f"[RESAMPLE_DEBUG] Data dtypes: {data.dtypes.to_dict()}")
+                    logger.info(f"[RESAMPLE_DEBUG] Data shape: {data.shape}")
+                    logger.info(f"[RESAMPLE_DEBUG] Index type: {type(data.index)}")
+                    
+                    if 'water_level' in data.columns:
+                        logger.info(f"[RESAMPLE_DEBUG] First 5 water_level values: {data['water_level'].head().tolist()}")
+                        logger.info(f"[RESAMPLE_DEBUG] Water_level dtype: {data['water_level'].dtype}")
+                        logger.info(f"[RESAMPLE_DEBUG] Unique data types in water_level: {data['water_level'].apply(type).unique()}")
+                    
+                    # Ensure water_level column is numeric before resampling
+                    if 'water_level' in data.columns:
+                        data['water_level'] = pd.to_numeric(data['water_level'], errors='coerce')
+                        # Remove any rows with NaN water levels after conversion
+                        data = data.dropna(subset=['water_level'])
+                        logger.info(f"[RESAMPLE_DEBUG] After numeric conversion - dtype: {data['water_level'].dtype}")
+                    
                     method = downsample_method
                     # Group by the resampling period and aggregate
                     original_length = len(data)
+                    # Only resample numeric columns to avoid string aggregation errors
+                    numeric_columns = data.select_dtypes(include=[np.number]).columns.tolist()
                     if method == "mean":
-                        data = data.resample(resample_rule).mean()
+                        data = data[numeric_columns].resample(resample_rule).mean()
                     elif method == "median":
-                        data = data.resample(resample_rule).median()
+                        data = data[numeric_columns].resample(resample_rule).median()
                     elif method == "last":
-                        data = data.resample(resample_rule).last()
+                        data = data[numeric_columns].resample(resample_rule).last()
                     else:
                         # Default to median if method not found
-                        data = data.resample(resample_rule).median()
+                        data = data[numeric_columns].resample(resample_rule).median()
                         
                     logger.info(f"Downsampled from {original_length} to {len(data)} points ({len(data)/original_length*100:.1f}%)")
                     logger.debug(f"Downsampled data using {method} to {resample_rule} intervals, resulting in {len(data)} points")
                 except Exception as e:
-                    logger.error(f"Error during resampling: {e}")
-                    logger.error(f"ERROR during resampling: {e}")
-                    QMessageBox.warning(
-                        self, "Resampling Error", 
-                        f"Failed to downsample data: {str(e)}"
-                    )
-                    return
+                    logger.error(f"[RESAMPLE_DEBUG] Error during resampling: {e}")
+                    logger.error(f"[RESAMPLE_DEBUG] Error type: {type(e)}")
+                    import traceback
+                    logger.error(f"[RESAMPLE_DEBUG] Full traceback: {traceback.format_exc()}")
+                    # Continue without downsampling rather than stopping completely
+                    pass
             
             # Step 3: Apply smoothing if selected (get settings from global settings)
             # Get smoothing parameters from unified settings

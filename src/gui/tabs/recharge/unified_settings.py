@@ -194,7 +194,7 @@ class UnifiedRechargeSettings(QDialog):
         
         self.rise_threshold = QDoubleSpinBox()
         self.rise_threshold.setRange(0.01, 10.0)
-        self.rise_threshold.setValue(0.2)
+        self.rise_threshold.setValue(0.05)
         self.rise_threshold.setSuffix(" ft")
         self.rise_threshold.setDecimals(2)
         rise_layout.addRow("Rise Threshold:", self.rise_threshold)
@@ -367,7 +367,7 @@ class UnifiedRechargeSettings(QDialog):
             'outlier_threshold': 3.0,
             
             # RISE specific
-            'rise_threshold': 0.2,
+            'rise_threshold': 0.05,  # Optimized threshold for realistic event detection (0.01 too sensitive, 0.1 too restrictive)
             'window_type': 'Trailing (recommended)',
             'min_time_between_events': 1,
             'max_rise_rate': 10.0,

@@ -64,10 +64,10 @@ export default function WellsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-blue-900 flex items-center justify-center">
         <div className="text-center">
           <LoadingSpinner size="large" />
-          <p className="mt-4 text-gray-600">Loading database...</p>
+          <p className="mt-4 text-gray-300">Loading database...</p>
         </div>
       </div>
     );
@@ -75,18 +75,18 @@ export default function WellsPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-blue-900 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
-          <svg className="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-16 h-16 text-red-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
           </svg>
-          <h1 className="text-xl font-semibold text-gray-900 mb-2">
+          <h1 className="text-xl font-semibold text-white mb-2">
             Database Error
           </h1>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-gray-300 mb-4">{error}</p>
           <button
             onClick={handleBackToDatabases}
-            className="btn-primary"
+            className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-all duration-300"
           >
             ← Back to Databases
           </button>
@@ -100,26 +100,36 @@ export default function WellsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-blue-900">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <div className="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700 sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <button
                 onClick={handleBackToDatabases}
-                className="p-2 text-gray-600 hover:text-gray-900 transition-colors mobile-touch-target"
+                className="p-2 text-gray-400 hover:text-white transition-colors mobile-touch-target"
                 title="Back to databases"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
+              
+              {/* Small CAESER mascot - hidden but accessible */}
+              <div className="w-8 h-8 rounded-full overflow-hidden opacity-30 hover:opacity-70 transition-opacity duration-300">
+                <img 
+                  src="/caeser-mascot.png" 
+                  alt="CAESER"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              
               <div>
-                <h1 className="text-xl font-semibold text-gray-900">
+                <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
                   {database.name}
                 </h1>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-300">
                   {database.wellsCount} wells available
                 </p>
               </div>
@@ -129,7 +139,7 @@ export default function WellsPage() {
             <div className="flex items-center space-x-3">
               <button
                 onClick={handleViewMap}
-                className="btn-outline text-sm px-3 py-2"
+                className="bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600 hover:border-gray-500 text-gray-300 hover:text-white font-medium py-2 px-3 rounded-lg transition-all duration-300 text-sm"
                 title="View wells on map"
               >
                 <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -140,7 +150,7 @@ export default function WellsPage() {
               </button>
               
               {/* Database Info Badge */}
-              <div className="hidden md:flex items-center space-x-2 text-sm text-gray-500">
+              <div className="hidden md:flex items-center space-x-2 text-sm text-gray-400">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
                 </svg>

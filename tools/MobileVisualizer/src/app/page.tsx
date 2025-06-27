@@ -44,10 +44,11 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-blue-900">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <div className="flex items-center justify-center mb-8">
-            {/* CAESER Mascot with breathing animation - 1.2x larger, transparent background */}
-            <div className="w-40 h-40 rounded-full flex items-center justify-center shadow-2xl mr-8 overflow-hidden animate-pulse-gentle">
+        <div className="text-center mb-8 md:mb-12">
+          {/* Mobile: Stacked layout, Desktop: Side by side */}
+          <div className="flex flex-col md:flex-row items-center justify-center mb-6 md:mb-8">
+            {/* CAESER Mascot with breathing animation */}
+            <div className="w-24 h-24 md:w-40 md:h-40 rounded-full flex items-center justify-center shadow-2xl mb-4 md:mb-0 md:mr-8 overflow-hidden animate-pulse-gentle">
               <img 
                 src="/caeser-mascot.png" 
                 alt="CAESER Mascot"
@@ -55,24 +56,24 @@ export default function HomePage() {
               />
             </div>
             
-            <div className="text-left">
-              <h1 className="text-5xl font-bold bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent mb-4">
+            <div className="text-center md:text-left">
+              <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent mb-2 md:mb-4">
                 CAESER
               </h1>
-              <h2 className="text-3xl font-bold text-white mb-2">
+              <h2 className="text-xl md:text-3xl font-bold text-white mb-2">
                 Water Levels Visualizer
               </h2>
-              <p className="text-xl text-gray-300 max-w-2xl">
+              <p className="text-sm md:text-xl text-gray-300 max-w-2xl px-4 md:px-0">
                 Mobile-optimized groundwater monitoring platform from the CAESER research database
               </p>
             </div>
           </div>
           
-          <div className="flex items-center justify-center space-x-2 text-gray-400 mb-8">
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <div className="flex items-center justify-center space-x-2 text-gray-400 mb-6 md:mb-8">
+            <svg className="w-4 h-4 md:w-5 md:h-5" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
-            <span className="text-sm font-medium">Advanced Hydrological Analysis Platform</span>
+            <span className="text-xs md:text-sm font-medium">Advanced Hydrological Analysis Platform</span>
           </div>
         </div>
 
@@ -118,61 +119,61 @@ export default function HomePage() {
           </div>
 
           {/* Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-600 rounded-xl p-6 text-center">
-              <div className="text-3xl font-bold text-cyan-400 mb-2">44+</div>
-              <div className="text-gray-300">Monitoring Wells</div>
+          <div className="grid grid-cols-3 md:grid-cols-3 gap-3 md:gap-6 mb-6 md:mb-8">
+            <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-600 rounded-lg md:rounded-xl p-3 md:p-6 text-center">
+              <div className="text-xl md:text-3xl font-bold text-cyan-400 mb-1 md:mb-2">44+</div>
+              <div className="text-xs md:text-base text-gray-300">Monitoring Wells</div>
             </div>
-            <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-600 rounded-xl p-6 text-center">
-              <div className="text-3xl font-bold text-blue-400 mb-2">4.9M+</div>
-              <div className="text-gray-300">Water Level Readings</div>
+            <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-600 rounded-lg md:rounded-xl p-3 md:p-6 text-center">
+              <div className="text-xl md:text-3xl font-bold text-blue-400 mb-1 md:mb-2">4.9M+</div>
+              <div className="text-xs md:text-base text-gray-300">Water Level Readings</div>
             </div>
-            <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-600 rounded-xl p-6 text-center">
-              <div className="text-3xl font-bold text-indigo-400 mb-2">3</div>
-              <div className="text-gray-300">Aquifer Types</div>
+            <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-600 rounded-lg md:rounded-xl p-3 md:p-6 text-center">
+              <div className="text-xl md:text-3xl font-bold text-indigo-400 mb-1 md:mb-2">3</div>
+              <div className="text-xs md:text-base text-gray-300">Aquifer Types</div>
             </div>
           </div>
 
-          {/* Features Grid - 30% smaller than before */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className="bg-gradient-to-br from-blue-900/50 to-blue-800/30 backdrop-blur-sm border border-blue-700 rounded-md p-2 hover:border-blue-500 transition-all duration-300 transform hover:scale-105">
-              <div className="flex items-center justify-center w-6 h-6 bg-blue-500/20 rounded-md mb-1">
-                <svg className="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {/* Features Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            <div className="bg-gradient-to-br from-blue-900/50 to-blue-800/30 backdrop-blur-sm border border-blue-700 rounded-lg p-3 md:p-4 hover:border-blue-500 transition-all duration-300 transform hover:scale-105">
+              <div className="flex items-center justify-center w-8 h-8 md:w-10 md:h-10 bg-blue-500/20 rounded-lg mb-2 md:mb-3">
+                <svg className="w-4 h-4 md:w-5 md:h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               </div>
-              <h3 className="font-medium text-white mb-0.5 text-xs">Interactive Charts</h3>
-              <p className="text-xs text-gray-300 leading-tight">Touch-optimized</p>
+              <h3 className="font-medium text-white mb-1 text-sm md:text-base">Interactive Charts</h3>
+              <p className="text-xs md:text-sm text-gray-300 leading-tight">Touch-optimized</p>
             </div>
 
-            <div className="bg-gradient-to-br from-green-900/50 to-green-800/30 backdrop-blur-sm border border-green-700 rounded-md p-2 hover:border-green-500 transition-all duration-300 transform hover:scale-105">
-              <div className="flex items-center justify-center w-6 h-6 bg-green-500/20 rounded-md mb-1">
-                <svg className="w-3 h-3 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-gradient-to-br from-green-900/50 to-green-800/30 backdrop-blur-sm border border-green-700 rounded-lg p-3 md:p-4 hover:border-green-500 transition-all duration-300 transform hover:scale-105">
+              <div className="flex items-center justify-center w-8 h-8 md:w-10 md:h-10 bg-green-500/20 rounded-lg mb-2 md:mb-3">
+                <svg className="w-4 h-4 md:w-5 md:h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
               </div>
-              <h3 className="font-medium text-white mb-0.5 text-xs">Data Export</h3>
-              <p className="text-xs text-gray-300 leading-tight">CSV & JSON</p>
+              <h3 className="font-medium text-white mb-1 text-sm md:text-base">Data Export</h3>
+              <p className="text-xs md:text-sm text-gray-300 leading-tight">CSV & JSON</p>
             </div>
 
-            <div className="bg-gradient-to-br from-purple-900/50 to-purple-800/30 backdrop-blur-sm border border-purple-700 rounded-md p-2 hover:border-purple-500 transition-all duration-300 transform hover:scale-105">
-              <div className="flex items-center justify-center w-6 h-6 bg-purple-500/20 rounded-md mb-1">
-                <svg className="w-3 h-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-gradient-to-br from-purple-900/50 to-purple-800/30 backdrop-blur-sm border border-purple-700 rounded-lg p-3 md:p-4 hover:border-purple-500 transition-all duration-300 transform hover:scale-105">
+              <div className="flex items-center justify-center w-8 h-8 md:w-10 md:h-10 bg-purple-500/20 rounded-lg mb-2 md:mb-3">
+                <svg className="w-4 h-4 md:w-5 md:h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
-              <h3 className="font-medium text-white mb-0.5 text-xs">Well Browser</h3>
-              <p className="text-xs text-gray-300 leading-tight">Search & filter</p>
+              <h3 className="font-medium text-white mb-1 text-sm md:text-base">Well Browser</h3>
+              <p className="text-xs md:text-sm text-gray-300 leading-tight">Search & filter</p>
             </div>
 
-            <div className="bg-gradient-to-br from-orange-900/50 to-orange-800/30 backdrop-blur-sm border border-orange-700 rounded-md p-2 hover:border-orange-500 transition-all duration-300 transform hover:scale-105">
-              <div className="flex items-center justify-center w-6 h-6 bg-orange-500/20 rounded-md mb-1">
-                <svg className="w-3 h-3 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-gradient-to-br from-orange-900/50 to-orange-800/30 backdrop-blur-sm border border-orange-700 rounded-lg p-3 md:p-4 hover:border-orange-500 transition-all duration-300 transform hover:scale-105">
+              <div className="flex items-center justify-center w-8 h-8 md:w-10 md:h-10 bg-orange-500/20 rounded-lg mb-2 md:mb-3">
+                <svg className="w-4 h-4 md:w-5 md:h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
               </div>
-              <h3 className="font-medium text-white mb-0.5 text-xs">Recharge Analysis</h3>
-              <p className="text-xs text-gray-300 leading-tight">RISE & MRC</p>
+              <h3 className="font-medium text-white mb-1 text-sm md:text-base">Recharge Analysis</h3>
+              <p className="text-xs md:text-sm text-gray-300 leading-tight">RISE & MRC</p>
             </div>
           </div>
         </div>

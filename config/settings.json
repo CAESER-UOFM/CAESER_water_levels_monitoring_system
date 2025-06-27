@@ -1,5 +1,5 @@
 {
-    "local_db_directory": "",
+    "local_db_directory": "/Users/bmac/Library/CloudStorage/OneDrive-TheUniversityofMemphis/UofM/CAESER/2025/CAESER_water_levels_monitoring_system",
     "use_google_drive_db": true,
     "google_drive_auto_check": false,
     "google_drive_folder_id": "1vGoxkS-HQ0n0u0ToNcYL_wJGZ02RDhAK",
@@ -9,5 +9,9 @@
     "field_data_folders": [
         "1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW"
     ],
-    "consolidated_field_data_folder": ""
+    "consolidated_field_data_folder": "",
+    "service_account_key_path": "/Users/bmac/Downloads/water-levels-monitoring-451921-bfb891f4bf7c.json",
+    "transducer_watch_folder": "/Users/bmac/Library/CloudStorage/OneDrive-TheUniversityofMemphis/UofM/CAESER/2025/CAESER_water_levels_monitoring_system",
+    "barologger_watch_folder": "/Users/bmac/Library/CloudStorage/OneDrive-TheUniversityofMemphis/UofM/CAESER/2025/CAESER_water_levels_monitoring_system",
+    "water_level_watch_folder": "/Users/bmac/Library/CloudStorage/OneDrive-TheUniversityofMemphis/UofM/CAESER/2025/CAESER_water_levels_monitoring_system"
 }
