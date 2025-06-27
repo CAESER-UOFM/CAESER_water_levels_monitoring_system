@@ -23,7 +23,50 @@
 
 ## Recent Major Changes:
 
-### Mobile Responsive Plot Customization - COMPLETE! (Latest)
+### Mobile Layout Redesign - MAJOR IMPROVEMENT! (Latest)
+- **SUCCESSFULLY DEPLOYED**: https://water-level-visualizer-mobile.netlify.app  
+- **✅ ALWAYS-VISIBLE PLOT**: Plot now always shown with high quality (same as desktop)
+- **✅ NO MORE MODAL**: Removed poor-quality preview modal system
+- **✅ BETTER UX**: 60% plot preview + 40% controls layout
+
+**Mobile Layout Transformation:**
+- **📱 Split Layout**: Plot takes 60% of screen (top), controls 40% (bottom)  
+- **🎯 High Quality**: Same plot quality as desktop version - no more cut-off or low resolution
+- **🎛️ Smart Controls**: Collapsible bottom panel with scrollable controls sections
+- **⚡ Real-time**: Users see changes immediately as they adjust settings
+- **🚀 Quick Export**: Export button prominently placed in controls header
+
+**User Experience Improvements:**
+- **🔍 Visual Feedback**: Users can see exactly what they'll download
+- **📐 Proper Scaling**: Plot scales correctly for mobile screens while maintaining quality
+- **👆 Touch Optimized**: All controls remain touch-friendly and accessible
+- **💨 No Loading**: Instant preview updates without modal delays
+
+**Technical Implementation:**
+- Removed `showMobilePreview` state and modal code entirely
+- Split mobile layout into plot preview container and controls panel
+- LivePlotPreview with `showFullSize={false}` for proper mobile scaling
+- Maximum height constraints for controls to preserve plot visibility
+
+### Plot Customization UI Improvements - COMPLETE!
+- **SUCCESSFULLY DEPLOYED**: https://water-level-visualizer-mobile.netlify.app
+- **✅ IMPROVED ALIGNMENT**: Fixed data series styling with consistent grid layouts
+- **✅ SUB-TABS ADDED**: Organized appearance section with Title, Axes, and Legend tabs
+
+**Data Series Styling Improvements:**
+- **🎯 Grid Layouts**: Replaced flexbox with grid for consistent field alignment
+- **📐 Consistent Sizing**: All input fields now have uniform width and spacing
+- **🏷️ Better Labels**: Improved label consistency and clarity across all sections
+- **📊 Organized Controls**: Transducer, manual, and temperature data controls now properly aligned
+
+**Appearance Section Organization:**
+- **📑 Sub-tabs Navigation**: Title, Axes, and Legend tabs for better organization
+- **🎨 Title Tab**: Contains title settings and general plot colors
+- **📏 Axes Tab**: X-axis, Y-axis, and right axis (temperature) configuration
+- **🏷️ Legend Tab**: All legend positioning and styling options
+- **✨ Visual Separation**: Clear boundaries between different styling categories
+
+### Mobile Responsive Plot Customization - COMPLETE!
 - **SUCCESSFULLY DEPLOYED**: https://water-level-visualizer-mobile.netlify.app
 - **✅ FULLY FUNCTIONAL**: All mobile panels now have complete control content
 

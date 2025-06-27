@@ -542,6 +542,7 @@ export function PlotCustomizationDialog({
   // Mobile responsive state
   const [isMobile, setIsMobile] = useState(false);
   const [activeMobileSection, setActiveMobileSection] = useState<keyof typeof expandedSections>('dimensions');
+  const [showFullImageViewer, setShowFullImageViewer] = useState(false);
   
   // Appearance sub-tabs state
   const [activeAppearanceTab, setActiveAppearanceTab] = useState<'title' | 'axes' | 'legend'>('title');
@@ -819,9 +820,12 @@ export function PlotCustomizationDialog({
                 }`}>
                   📏 Actual plot size: {customization.width}×{customization.height}px • Scroll to explore
                 </div>
-                <div className="h-full overflow-auto border rounded ${
-                  isDarkMode ? 'border-gray-600' : 'border-gray-300'
-                }">
+                <div 
+                  className={`h-full overflow-auto border rounded cursor-pointer transition-all hover:shadow-lg relative ${
+                    isDarkMode ? 'border-gray-600 hover:border-blue-500' : 'border-gray-300 hover:border-blue-400'
+                  }`}
+                  onClick={() => setShowFullImageViewer(true)}
+                >
                   <LivePlotPreview
                     customization={customization}
                     plotData={plotData}
@@ -830,6 +834,12 @@ export function PlotCustomizationDialog({
                     well={well}
                     showFullSize={true}
                   />
+                  {/* Tap to enlarge hint */}
+                  <div className={`absolute bottom-2 right-2 px-2 py-1 rounded text-xs pointer-events-none ${
+                    isDarkMode ? 'bg-gray-800/80 text-gray-300' : 'bg-white/80 text-gray-600'
+                  }`}>
+                    👆 Tap to enlarge
+                  </div>
                 </div>
               </div>
             </div>
@@ -854,7 +864,7 @@ export function PlotCustomizationDialog({
                         : 'bg-blue-500 hover:bg-blue-600 text-white'
                     }`}
                   >
-                    🚀 Export
+                    📱 Export
                   </button>
                 </div>
                 <select
@@ -886,19 +896,30 @@ export function PlotCustomizationDialog({
                     <h3 className={`text-lg font-semibold mb-4 ${
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>
-                      💾 Export Settings
+                      💾 Export Information
                     </h3>
-                    <div className="space-y-4">
-                      <button
-                        onClick={handleExport}
-                        className={`w-full px-4 py-3 rounded-lg font-medium transition-colors ${
-                          isDarkMode 
-                            ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                            : 'bg-blue-500 hover:bg-blue-600 text-white'
-                        }`}
-                      >
-                        🚀 Export Plot
-                      </button>
+                    <div className="space-y-3">
+                      <div className={`p-3 rounded-lg ${
+                        isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'
+                      }`}>
+                        <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                          <div className="flex justify-between">
+                            <span>Resolution:</span>
+                            <span className="font-medium">{customization.width} × {customization.height}px</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>DPI:</span>
+                            <span className="font-medium">{customization.dpi}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Format:</span>
+                            <span className="font-medium">{customization.export?.format || 'PNG'}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        💡 Use the "📱 Export" button in the header to download your customized plot, or tap the plot preview to view it full-screen.
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2937,6 +2958,60 @@ export function PlotCustomizationDialog({
         </div>
         )}
 
+        {/* Full-Screen Image Viewer Modal (Mobile Only) */}
+        {isMobile && showFullImageViewer && (
+          <div className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-[70] p-4">
+            <div className="w-full h-full flex flex-col">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-4 text-white">
+                <div>
+                  <h3 className="text-lg font-semibold">Plot Preview</h3>
+                  <p className="text-sm text-gray-300">{customization.width}×{customization.height}px @ {customization.dpi} DPI</p>
+                </div>
+                <button
+                  onClick={() => setShowFullImageViewer(false)}
+                  className="p-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 text-white"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              {/* Full Image Viewer - Scrollable and Zoomable */}
+              <div className="flex-1 overflow-auto">
+                <div className="min-h-full flex items-center justify-center p-4">
+                  <div className="bg-white rounded-lg shadow-2xl max-w-none">
+                    <LivePlotPreview
+                      customization={customization}
+                      plotData={plotData}
+                      isDarkMode={false}
+                      wellNumber={wellNumber}
+                      well={well}
+                      showFullSize={true}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Modal Footer */}
+              <div className="flex items-center justify-between p-4 text-white">
+                <div className="text-sm text-gray-300">
+                  📱 Pinch to zoom • Swipe to pan
+                </div>
+                <button
+                  onClick={() => {
+                    setShowFullImageViewer(false);
+                    handleExport();
+                  }}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
+                >
+                  🚀 Export This Plot
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className={`flex items-center justify-between p-4 border-t ${
