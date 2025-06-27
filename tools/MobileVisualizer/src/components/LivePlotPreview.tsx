@@ -182,7 +182,7 @@ export function LivePlotPreview({
     }
 
     // Calculate plot margins using smart margin calculation
-    const titleFontSize = customization.title.show ? Math.max(12, Math.min(customization.title.fontSize * 0.8, 24)) : 0;
+    const titleFontSize = customization.title.show ? Math.max(8, customization.title.fontSize * 0.6) : 0; // Scale down for preview, no upper limit
     const margin = calculateSmartMarginsPreview(customization, 0.5);
 
     const plotWidth = previewWidth - margin.left - margin.right;
@@ -395,8 +395,8 @@ export function LivePlotPreview({
       ctx.stroke();
 
       // Draw axis labels
-      const xLabelFontSize = Math.min(customization.xAxis.fontSize * 0.8, 14);
-      const yLabelFontSize = Math.min(customization.yAxis.fontSize * 0.8, 14);
+      const xLabelFontSize = customization.xAxis.fontSize * 0.6; // Scale down for preview, no upper limit
+      const yLabelFontSize = customization.yAxis.fontSize * 0.6; // Scale down for preview, no upper limit
       
       // X-axis label
       ctx.fillStyle = customization.xAxis.color;
@@ -423,8 +423,8 @@ export function LivePlotPreview({
       ctx.restore();
 
       // Draw axis tick labels with proper font sizes and counts
-      const xTickFontSize = Math.min(customization.xAxis.tickFontSize * 0.7, 10);
-      const yTickFontSize = Math.min(customization.yAxis.tickFontSize * 0.7, 10);
+      const xTickFontSize = customization.xAxis.tickFontSize * 0.5; // Scale down for preview, no upper limit
+      const yTickFontSize = customization.yAxis.tickFontSize * 0.5; // Scale down for preview, no upper limit
       
       // X-axis ticks
       ctx.fillStyle = customization.xAxis.color;
@@ -477,7 +477,7 @@ export function LivePlotPreview({
           ctx.stroke();
           
           // Draw right axis label
-          const rightLabelFontSize = Math.min(customization.rightAxis.fontSize * 0.8, 14);
+          const rightLabelFontSize = customization.rightAxis.fontSize * 0.6; // Scale down for preview, no upper limit
           ctx.fillStyle = customization.rightAxis.color;
           ctx.font = `${rightLabelFontSize}px Arial, sans-serif`;
           ctx.save();
@@ -490,7 +490,7 @@ export function LivePlotPreview({
           ctx.restore();
           
           // Draw right axis ticks
-          const rightTickFontSize = Math.min(customization.rightAxis.tickFontSize * 0.7, 10);
+          const rightTickFontSize = customization.rightAxis.tickFontSize * 0.5; // Scale down for preview, no upper limit
           ctx.fillStyle = customization.rightAxis.color;
           ctx.font = `${rightTickFontSize}px Arial, sans-serif`;
           ctx.textAlign = 'left';
@@ -535,7 +535,7 @@ export function LivePlotPreview({
 
       if (legendItems.length > 0) {
         // Use the actual font size from customization
-        const legendFontSize = Math.max(8, Math.min(customization.legend.fontSize * 0.8, 16)); // Scale for preview
+        const legendFontSize = Math.max(6, customization.legend.fontSize * 0.6); // Scale down for preview, no upper limit
         const legendPadding = Math.max(4, customization.legend.padding * 0.5); // Scale padding for preview
         const lineHeight = legendFontSize + 4;
         const indicatorWidth = 20;
