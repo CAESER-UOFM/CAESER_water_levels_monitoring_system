@@ -471,6 +471,100 @@ export async function exportCustomPlot(
       }
     }
 
+    // Draw well info legend if enabled
+    if (customization.wellInfoLegend.show && data.length > 0) {
+      // Calculate well statistics
+      const wellInfo = [];
+      
+      if (customization.wellInfoLegend.fields.wellNumber && wellNumber) {
+        wellInfo.push(`Well: ${wellNumber}`);
+      }
+      
+      if (customization.wellInfoLegend.fields.caeNumber && well?.cae_number) {
+        wellInfo.push(`CAE: ${well.cae_number}`);
+      }
+      
+      if (customization.wellInfoLegend.fields.totalReadings) {
+        wellInfo.push(`Readings: ${data.length}`);
+      }
+      
+      if (customization.wellInfoLegend.fields.dataRange && data.length > 0) {
+        const startDate = new Date(data[0].timestamp_utc || data[0].timestamp).toLocaleDateString();
+        const endDate = new Date(data[data.length - 1].timestamp_utc || data[data.length - 1].timestamp).toLocaleDateString();
+        wellInfo.push(`Range: ${startDate} - ${endDate}`);
+      }
+      
+      if (customization.wellInfoLegend.fields.levelStats) {
+        const waterLevels = data.map(d => d.water_level);
+        const minLevel = Math.min(...waterLevels);
+        const maxLevel = Math.max(...waterLevels);
+        const avgLevel = waterLevels.reduce((sum, level) => sum + level, 0) / waterLevels.length;
+        wellInfo.push(`Min: ${minLevel.toFixed(2)} ft`);
+        wellInfo.push(`Max: ${maxLevel.toFixed(2)} ft`);
+        wellInfo.push(`Avg: ${avgLevel.toFixed(2)} ft`);
+      }
+      
+      if (customization.wellInfoLegend.fields.trend && data.length >= 2) {
+        const firstLevel = data[0].water_level;
+        const lastLevel = data[data.length - 1].water_level;
+        const trend = lastLevel > firstLevel ? 'Rising' : lastLevel < firstLevel ? 'Falling' : 'Stable';
+        const change = Math.abs(lastLevel - firstLevel);
+        wellInfo.push(`Trend: ${trend} (${change.toFixed(2)} ft)`);
+      }
+
+      if (wellInfo.length > 0) {
+        // Use full resolution font size and padding
+        const wellInfoFontSize = customization.wellInfoLegend.fontSize;
+        const wellInfoPadding = customization.wellInfoLegend.padding;
+        const lineHeight = wellInfoFontSize + 4;
+        
+        // Measure text to fit background properly
+        ctx.font = `${wellInfoFontSize}px Arial, sans-serif`;
+        let maxTextWidth = 0;
+        wellInfo.forEach(info => {
+          const textWidth = ctx.measureText(info).width;
+          maxTextWidth = Math.max(maxTextWidth, textWidth);
+        });
+        
+        // Calculate legend dimensions that fit content
+        const wellInfoWidth = maxTextWidth + wellInfoPadding * 2;
+        const wellInfoHeight = wellInfo.length * lineHeight + wellInfoPadding * 2;
+
+        // Use absolute position from customization (full resolution)
+        const wellInfoX = Math.max(0, Math.min(customization.width - wellInfoWidth, customization.wellInfoLegend.position.x));
+        const wellInfoY = Math.max(0, Math.min(customization.height - wellInfoHeight, customization.wellInfoLegend.position.y));
+
+        // Draw well info legend background with opacity
+        const bgColor = customization.wellInfoLegend.backgroundColor;
+        const opacity = customization.wellInfoLegend.backgroundOpacity;
+        
+        // Convert hex to rgba for opacity
+        const r = parseInt(bgColor.slice(1, 3), 16);
+        const g = parseInt(bgColor.slice(3, 5), 16);
+        const b = parseInt(bgColor.slice(5, 7), 16);
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+        ctx.fillRect(wellInfoX, wellInfoY, wellInfoWidth, wellInfoHeight);
+        
+        // Draw well info legend border if enabled
+        if (customization.wellInfoLegend.borderWidth > 0) {
+          ctx.strokeStyle = customization.wellInfoLegend.borderColor;
+          ctx.lineWidth = customization.wellInfoLegend.borderWidth;
+          ctx.strokeRect(wellInfoX, wellInfoY, wellInfoWidth, wellInfoHeight);
+        }
+
+        // Draw well info text
+        ctx.font = `${wellInfoFontSize}px Arial, sans-serif`;
+        ctx.fillStyle = customization.wellInfoLegend.textColor;
+        ctx.textAlign = 'left';
+        
+        wellInfo.forEach((info, index) => {
+          const textY = wellInfoY + wellInfoPadding + (index * lineHeight) + wellInfoFontSize;
+          const textX = wellInfoX + wellInfoPadding;
+          ctx.fillText(info, textX, textY);
+        });
+      }
+    }
+
     onProgress({ stage: 'saving', percentage: 90, message: 'Saving image...' });
 
     // Convert canvas to blob and download

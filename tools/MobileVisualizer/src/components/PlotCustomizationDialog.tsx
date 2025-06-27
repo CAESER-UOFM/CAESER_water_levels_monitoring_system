@@ -170,6 +170,28 @@ export interface PlotCustomization {
     yAxisSide: 'left' | 'right'; // Secondary y-axis
   };
   
+  // Well Info Legend (Second Legend)
+  wellInfoLegend: {
+    show: boolean;
+    position: { x: number; y: number }; // Draggable position in pixels
+    fontSize: number;
+    backgroundColor: string;
+    textColor: string;
+    borderColor: string;
+    borderWidth: number;
+    padding: number;
+    backgroundOpacity: number;
+    isDraggable: boolean;
+    fields: {
+      wellNumber: boolean;
+      caeNumber: boolean;
+      totalReadings: boolean;
+      dataRange: boolean;
+      levelStats: boolean;
+      trend: boolean;
+    };
+  };
+  
   // Background and Colors
   backgroundColor: string;
   plotAreaColor: string;
@@ -295,6 +317,28 @@ const defaultCustomization: PlotCustomization = {
     pointSize: 3,
     showPoints: false,
     yAxisSide: 'right',
+  },
+  
+  // Well Info Legend (Second Legend)
+  wellInfoLegend: {
+    show: false,
+    position: { x: 50, y: 50 }, // Default position in top-left area
+    fontSize: 12,
+    backgroundColor: '#ffffff',
+    textColor: '#000000',
+    borderColor: '#cccccc',
+    borderWidth: 1,
+    padding: 8,
+    backgroundOpacity: 0.9,
+    isDraggable: true,
+    fields: {
+      wellNumber: true,
+      caeNumber: true,
+      totalReadings: true,
+      dataRange: true,
+      levelStats: true,
+      trend: false, // Advanced statistic, off by default
+    },
   },
   
   // Background and Colors
@@ -485,20 +529,40 @@ export function PlotCustomizationDialog({
     dimensions: boolean;
     data: boolean;
     appearance: boolean;
+    wellInfo: boolean;
     export: boolean;
-  }>({ dimensions: true, data: false, appearance: false, export: false });
+  }>({ dimensions: true, data: false, appearance: false, wellInfo: false, export: false });
   const dialogRef = useRef<HTMLDivElement>(null);
 
   // Initialize with current data
   useEffect(() => {
     if (isOpen && currentTimeRange) {
+      // Generate filename with CAE number and date range
+      const generateFilename = () => {
+        const caeNumber = well?.cae_number || wellNumber;
+        const startDate = new Date(currentTimeRange.start);
+        const endDate = new Date(currentTimeRange.end);
+        
+        // Format: CAE_YYYY-MM_to_YYYY-MM
+        const startYear = startDate.getFullYear();
+        const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
+        const endYear = endDate.getFullYear();
+        const endMonth = String(endDate.getMonth() + 1).padStart(2, '0');
+        
+        return `${caeNumber}_${startYear}-${startMonth}_to_${endYear}-${endMonth}`;
+      };
+
       setCustomization(prev => ({
         ...prev,
         title: {
           ...prev.title,
-          text: `Well ${wellNumber} - Water Level Data`,
+          text: `Well ${wellNumber}${well?.cae_number ? ` (${well.cae_number})` : ''}`,
         },
         dateRange: currentTimeRange,
+        export: {
+          ...prev.export,
+          filename: generateFilename(),
+        },
       }));
     }
   }, [isOpen, wellNumber, currentTimeRange]);
@@ -1815,6 +1879,341 @@ export function PlotCustomizationDialog({
                 )}
               </div>
 
+              {/* Well Info Legend Section */}
+              <div className="mb-4">
+                <button 
+                  onClick={() => toggleSection('wellInfo')}
+                  className={sectionHeaderClass}
+                >
+                  <div className="flex items-center">
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      Well Info Legend
+                    </span>
+                  </div>
+                  <svg 
+                    className={`w-5 h-5 transition-transform duration-200 ${
+                      expandedSections.wellInfo ? 'rotate-180' : ''
+                    } ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {expandedSections.wellInfo && (
+                  <div className="mt-4 space-y-4 p-4 rounded-lg bg-gray-500 bg-opacity-5">
+                    {/* Enable Well Info Legend */}
+                    <div className="flex items-center space-x-3 mb-4">
+                      <input
+                        type="checkbox"
+                        id="show-well-info"
+                        checked={customization.wellInfoLegend.show}
+                        onChange={(e) => setCustomization(prev => ({ 
+                          ...prev, 
+                          wellInfoLegend: { ...prev.wellInfoLegend, show: e.target.checked }
+                        }))}
+                        className="rounded"
+                      />
+                      <label 
+                        htmlFor="show-well-info" 
+                        className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}
+                      >
+                        Show Well Statistics & Insights
+                      </label>
+                    </div>
+
+                    {customization.wellInfoLegend.show && (
+                      <div className="space-y-4">
+                        {/* Field Selection */}
+                        <div>
+                          <h5 className={`font-medium text-sm mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                            Information Fields
+                          </h5>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                id="field-well-number"
+                                checked={customization.wellInfoLegend.fields.wellNumber}
+                                onChange={(e) => setCustomization(prev => ({ 
+                                  ...prev, 
+                                  wellInfoLegend: { 
+                                    ...prev.wellInfoLegend, 
+                                    fields: { ...prev.wellInfoLegend.fields, wellNumber: e.target.checked }
+                                  }
+                                }))}
+                                className="rounded"
+                              />
+                              <label htmlFor="field-well-number" className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                Well Number
+                              </label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                id="field-cae-number"
+                                checked={customization.wellInfoLegend.fields.caeNumber}
+                                onChange={(e) => setCustomization(prev => ({ 
+                                  ...prev, 
+                                  wellInfoLegend: { 
+                                    ...prev.wellInfoLegend, 
+                                    fields: { ...prev.wellInfoLegend.fields, caeNumber: e.target.checked }
+                                  }
+                                }))}
+                                className="rounded"
+                              />
+                              <label htmlFor="field-cae-number" className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                CAE Number
+                              </label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                id="field-total-readings"
+                                checked={customization.wellInfoLegend.fields.totalReadings}
+                                onChange={(e) => setCustomization(prev => ({ 
+                                  ...prev, 
+                                  wellInfoLegend: { 
+                                    ...prev.wellInfoLegend, 
+                                    fields: { ...prev.wellInfoLegend.fields, totalReadings: e.target.checked }
+                                  }
+                                }))}
+                                className="rounded"
+                              />
+                              <label htmlFor="field-total-readings" className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                Total Readings
+                              </label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                id="field-data-range"
+                                checked={customization.wellInfoLegend.fields.dataRange}
+                                onChange={(e) => setCustomization(prev => ({ 
+                                  ...prev, 
+                                  wellInfoLegend: { 
+                                    ...prev.wellInfoLegend, 
+                                    fields: { ...prev.wellInfoLegend.fields, dataRange: e.target.checked }
+                                  }
+                                }))}
+                                className="rounded"
+                              />
+                              <label htmlFor="field-data-range" className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                Date Range
+                              </label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                id="field-level-stats"
+                                checked={customization.wellInfoLegend.fields.levelStats}
+                                onChange={(e) => setCustomization(prev => ({ 
+                                  ...prev, 
+                                  wellInfoLegend: { 
+                                    ...prev.wellInfoLegend, 
+                                    fields: { ...prev.wellInfoLegend.fields, levelStats: e.target.checked }
+                                  }
+                                }))}
+                                className="rounded"
+                              />
+                              <label htmlFor="field-level-stats" className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                Level Statistics
+                              </label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                id="field-trend"
+                                checked={customization.wellInfoLegend.fields.trend}
+                                onChange={(e) => setCustomization(prev => ({ 
+                                  ...prev, 
+                                  wellInfoLegend: { 
+                                    ...prev.wellInfoLegend, 
+                                    fields: { ...prev.wellInfoLegend.fields, trend: e.target.checked }
+                                  }
+                                }))}
+                                className="rounded"
+                              />
+                              <label htmlFor="field-trend" className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                Trend Analysis
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Styling Controls */}
+                        <div>
+                          <h5 className={`font-medium text-sm mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                            Appearance
+                          </h5>
+                          <div className="space-y-3">
+                            {/* Font Size and Padding */}
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-2">
+                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Font Size:</label>
+                                <input
+                                  type="number"
+                                  value={customization.wellInfoLegend.fontSize}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    wellInfoLegend: { ...prev.wellInfoLegend, fontSize: parseInt(e.target.value) || 12 }
+                                  }))}
+                                  className={`w-16 px-2 py-1 text-xs rounded border ${
+                                    isDarkMode 
+                                      ? 'bg-gray-700 border-gray-600 text-white' 
+                                      : 'bg-white border-gray-300 text-gray-900'
+                                  }`}
+                                  min="8"
+                                  max="24"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Padding:</label>
+                                <input
+                                  type="number"
+                                  value={customization.wellInfoLegend.padding}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    wellInfoLegend: { ...prev.wellInfoLegend, padding: parseInt(e.target.value) || 8 }
+                                  }))}
+                                  className={`w-16 px-2 py-1 text-xs rounded border ${
+                                    isDarkMode 
+                                      ? 'bg-gray-700 border-gray-600 text-white' 
+                                      : 'bg-white border-gray-300 text-gray-900'
+                                  }`}
+                                  min="4"
+                                  max="20"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Colors */}
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-2">
+                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Text:</label>
+                                <input
+                                  type="color"
+                                  value={customization.wellInfoLegend.textColor}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    wellInfoLegend: { ...prev.wellInfoLegend, textColor: e.target.value }
+                                  }))}
+                                  className="w-8 h-6 rounded border border-gray-300 cursor-pointer"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Background:</label>
+                                <input
+                                  type="color"
+                                  value={customization.wellInfoLegend.backgroundColor}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    wellInfoLegend: { ...prev.wellInfoLegend, backgroundColor: e.target.value }
+                                  }))}
+                                  className="w-8 h-6 rounded border border-gray-300 cursor-pointer"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Opacity:</label>
+                                <input
+                                  type="range"
+                                  value={customization.wellInfoLegend.backgroundOpacity * 100}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    wellInfoLegend: { ...prev.wellInfoLegend, backgroundOpacity: parseInt(e.target.value) / 100 }
+                                  }))}
+                                  className="w-16"
+                                  min="0"
+                                  max="100"
+                                />
+                                <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                  {Math.round(customization.wellInfoLegend.backgroundOpacity * 100)}%
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Border */}
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-2">
+                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Border:</label>
+                                <input
+                                  type="color"
+                                  value={customization.wellInfoLegend.borderColor}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    wellInfoLegend: { ...prev.wellInfoLegend, borderColor: e.target.value }
+                                  }))}
+                                  className="w-8 h-6 rounded border border-gray-300 cursor-pointer"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Width:</label>
+                                <input
+                                  type="number"
+                                  value={customization.wellInfoLegend.borderWidth}
+                                  onChange={(e) => setCustomization(prev => ({
+                                    ...prev,
+                                    wellInfoLegend: { ...prev.wellInfoLegend, borderWidth: parseInt(e.target.value) || 0 }
+                                  }))}
+                                  className={`w-16 px-2 py-1 text-xs rounded border ${
+                                    isDarkMode 
+                                      ? 'bg-gray-700 border-gray-600 text-white' 
+                                      : 'bg-white border-gray-300 text-gray-900'
+                                  }`}
+                                  min="0"
+                                  max="5"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Draggable Toggle */}
+                            <div className="flex items-center space-x-3">
+                              <input
+                                type="checkbox"
+                                id="wellinfo-draggable"
+                                checked={customization.wellInfoLegend.isDraggable}
+                                onChange={(e) => setCustomization(prev => ({ 
+                                  ...prev, 
+                                  wellInfoLegend: { ...prev.wellInfoLegend, isDraggable: e.target.checked }
+                                }))}
+                                className="rounded"
+                              />
+                              <label 
+                                htmlFor="wellinfo-draggable" 
+                                className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}
+                              >
+                                Enable draggable positioning
+                              </label>
+                            </div>
+
+                            {/* Position Display */}
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-2">
+                                <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Position:</label>
+                                <span className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                  X: {customization.wellInfoLegend.position.x}, Y: {customization.wellInfoLegend.position.y}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Info Note */}
+                        <div className={`text-xs p-3 rounded ${isDarkMode ? 'bg-blue-900 bg-opacity-30 text-blue-200' : 'bg-blue-50 text-blue-700'}`}>
+                          <p className="mb-1"><strong>Note:</strong> The well info legend displays statistics from your well data.</p>
+                          <p>When draggable is enabled, you can click and drag the legend to any position on the plot preview.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Export Section */}
               <div className="mb-4">
                 <button 
@@ -1932,6 +2331,8 @@ export function PlotCustomizationDialog({
                 customization={customization}
                 plotData={plotData}
                 isDarkMode={isDarkMode}
+                wellNumber={wellNumber}
+                well={well}
               />
             </div>
           </div>

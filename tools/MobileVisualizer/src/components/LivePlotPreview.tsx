@@ -81,12 +81,16 @@ interface LivePlotPreviewProps {
   customization: PlotCustomization;
   plotData?: WaterLevelData[]; // Use existing plot data
   isDarkMode?: boolean;
+  wellNumber?: string; // For well info legend
+  well?: any; // Well data for CAE number and other info
 }
 
 export function LivePlotPreview({ 
   customization, 
   plotData = [],
-  isDarkMode = true 
+  isDarkMode = true,
+  wellNumber,
+  well
 }: LivePlotPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -659,7 +663,102 @@ export function LivePlotPreview({
       }
     }
 
-  }, [customization, data]);
+    // Draw well info legend if enabled
+    if (customization.wellInfoLegend.show && data.length > 0) {
+      // Calculate well statistics
+      const wellInfo = [];
+      
+      if (customization.wellInfoLegend.fields.wellNumber && wellNumber) {
+        wellInfo.push(`Well: ${wellNumber}`);
+      }
+      
+      if (customization.wellInfoLegend.fields.caeNumber && well?.cae_number) {
+        wellInfo.push(`CAE: ${well.cae_number}`);
+      }
+      
+      if (customization.wellInfoLegend.fields.totalReadings) {
+        wellInfo.push(`Readings: ${data.length}`);
+      }
+      
+      if (customization.wellInfoLegend.fields.dataRange && data.length > 0) {
+        const startDate = new Date(data[0].timestamp).toLocaleDateString();
+        const endDate = new Date(data[data.length - 1].timestamp).toLocaleDateString();
+        wellInfo.push(`Range: ${startDate} - ${endDate}`);
+      }
+      
+      if (customization.wellInfoLegend.fields.levelStats) {
+        const waterLevels = data.map(d => d.water_level);
+        const minLevel = Math.min(...waterLevels);
+        const maxLevel = Math.max(...waterLevels);
+        const avgLevel = waterLevels.reduce((sum, level) => sum + level, 0) / waterLevels.length;
+        wellInfo.push(`Min: ${minLevel.toFixed(2)} ft`);
+        wellInfo.push(`Max: ${maxLevel.toFixed(2)} ft`);
+        wellInfo.push(`Avg: ${avgLevel.toFixed(2)} ft`);
+      }
+      
+      if (customization.wellInfoLegend.fields.trend && data.length >= 2) {
+        const firstLevel = data[0].water_level;
+        const lastLevel = data[data.length - 1].water_level;
+        const trend = lastLevel > firstLevel ? 'Rising' : lastLevel < firstLevel ? 'Falling' : 'Stable';
+        const change = Math.abs(lastLevel - firstLevel);
+        wellInfo.push(`Trend: ${trend} (${change.toFixed(2)} ft)`);
+      }
+
+      if (wellInfo.length > 0) {
+        // Use the actual font size from customization
+        const wellInfoFontSize = Math.max(6, customization.wellInfoLegend.fontSize * 0.6); // Scale down for preview
+        const wellInfoPadding = Math.max(4, customization.wellInfoLegend.padding * 0.5); // Scale padding for preview
+        const lineHeight = wellInfoFontSize + 3;
+        
+        // Measure text to fit background properly
+        ctx.font = `${wellInfoFontSize}px Arial, sans-serif`;
+        let maxTextWidth = 0;
+        wellInfo.forEach(info => {
+          const textWidth = ctx.measureText(info).width;
+          maxTextWidth = Math.max(maxTextWidth, textWidth);
+        });
+        
+        // Calculate legend dimensions that fit content
+        const wellInfoWidth = maxTextWidth + wellInfoPadding * 2;
+        const wellInfoHeight = wellInfo.length * lineHeight + wellInfoPadding * 2;
+
+        // Scale position for preview (the position is in plot coordinates)
+        const previewScale = 0.5;
+        const wellInfoX = Math.max(0, Math.min(previewWidth - wellInfoWidth, customization.wellInfoLegend.position.x * previewScale));
+        const wellInfoY = Math.max(0, Math.min(previewHeight - wellInfoHeight, customization.wellInfoLegend.position.y * previewScale));
+
+        // Draw well info legend background with opacity
+        const bgColor = customization.wellInfoLegend.backgroundColor;
+        const opacity = customization.wellInfoLegend.backgroundOpacity;
+        
+        // Convert hex to rgba for opacity
+        const r = parseInt(bgColor.slice(1, 3), 16);
+        const g = parseInt(bgColor.slice(3, 5), 16);
+        const b = parseInt(bgColor.slice(5, 7), 16);
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+        ctx.fillRect(wellInfoX, wellInfoY, wellInfoWidth, wellInfoHeight);
+        
+        // Draw well info legend border if enabled
+        if (customization.wellInfoLegend.borderWidth > 0) {
+          ctx.strokeStyle = customization.wellInfoLegend.borderColor;
+          ctx.lineWidth = Math.max(0.5, customization.wellInfoLegend.borderWidth * 0.5); // Scale for preview
+          ctx.strokeRect(wellInfoX, wellInfoY, wellInfoWidth, wellInfoHeight);
+        }
+
+        // Draw well info text
+        ctx.font = `${wellInfoFontSize}px Arial, sans-serif`;
+        ctx.fillStyle = customization.wellInfoLegend.textColor;
+        ctx.textAlign = 'left';
+        
+        wellInfo.forEach((info, index) => {
+          const textY = wellInfoY + wellInfoPadding + (index * lineHeight) + wellInfoFontSize;
+          const textX = wellInfoX + wellInfoPadding;
+          ctx.fillText(info, textX, textY);
+        });
+      }
+    }
+
+  }, [customization, data, wellNumber, well]);
 
   if (data.length === 0) {
     return (
