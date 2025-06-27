@@ -2397,6 +2397,12 @@ class MrcTab(BaseRechargeTab):
                 logger.info(f"  Recharge event deviations: {recharge_candidates['deviation'].tolist()[:10]}...")  # Show first 10
             else:
                 logger.warning(f"  NO POINTS EXCEED THRESHOLD! All deviations are <= {deviation_threshold} ft")
+                logger.warning(f"  Suggested threshold: Try {max(0.001, data['deviation'].max() * 0.5):.4f} ft")
+                
+                # Show some examples near the threshold
+                if len(positive_devs) > 0:
+                    near_threshold = positive_devs.nlargest(5, 'deviation')['deviation']
+                    logger.warning(f"  Largest positive deviations: {near_threshold.tolist()}")
             
             # Calculate recharge
             data['recharge'] = 0.0
@@ -2460,6 +2466,15 @@ class MrcTab(BaseRechargeTab):
             logger.info(f"Recession groups processed: {recession_count}")
             logger.info(f"Deviation threshold used: {deviation_threshold} ft")
             logger.info(f"Specific yield used: {specific_yield}")
+            
+            if len(self.recharge_events) == 0:
+                logger.error("🚨 ZERO RECHARGE EVENTS DETECTED!")
+                logger.error("This indicates one of these issues:")
+                logger.error("1. Deviation threshold too high - no deviations exceed threshold")
+                logger.error("2. Curve fitting too tight - predicted levels match actual too closely")
+                logger.error("3. All deviations are negative - recession curve is above actual data")
+                logger.error("Check the deviation analysis above to diagnose the specific cause.")
+            
             logger.info("=== END CALCULATION SUMMARY ===")
             
             # Update yearly stats

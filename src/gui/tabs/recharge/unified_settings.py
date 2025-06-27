@@ -256,7 +256,7 @@ class UnifiedRechargeSettings(QDialog):
         
         self.mrc_deviation_threshold = QDoubleSpinBox()
         self.mrc_deviation_threshold.setRange(0.01, 5.0)
-        self.mrc_deviation_threshold.setValue(0.1)
+        self.mrc_deviation_threshold.setValue(0.03)
         self.mrc_deviation_threshold.setSuffix(" ft")
         recharge_layout.addRow("Deviation Threshold:", self.mrc_deviation_threshold)
         
@@ -375,7 +375,7 @@ class UnifiedRechargeSettings(QDialog):
             # MRC specific
             'min_recession_length': 10,
             'fluctuation_tolerance': 0.01,
-            'mrc_deviation_threshold': 0.1,
+            'mrc_deviation_threshold': 0.03,  # Lowered from 0.1 to detect subtle recharge signals
             'use_precipitation': False,
             'precip_threshold': 0.1,
             'precip_lag': 2,
