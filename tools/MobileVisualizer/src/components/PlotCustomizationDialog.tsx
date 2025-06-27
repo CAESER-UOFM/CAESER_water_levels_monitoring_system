@@ -259,7 +259,7 @@ const defaultCustomization: PlotCustomization = {
   },
   
   yAxis: {
-    label: 'Water Level (ft)',
+    label: 'Water Level (m)',
     fontSize: 14,
     color: '#000000',
     showGrid: true,
@@ -276,7 +276,7 @@ const defaultCustomization: PlotCustomization = {
   rightAxis: {
     label: 'Temperature (°C)',
     fontSize: 14,
-    color: '#f59e0b',
+    color: '#dc2626',
     showGrid: false,
     gridColor: '#ffe0b3',
     gridLines: 5,
@@ -310,7 +310,7 @@ const defaultCustomization: PlotCustomization = {
   },
   
   manualData: {
-    color: '#dc2626',
+    color: '#059669',
     pointSize: 6,
     pointStyle: 'circle',
     borderWidth: 1,
@@ -318,7 +318,7 @@ const defaultCustomization: PlotCustomization = {
   },
   
   temperatureData: {
-    color: '#f59e0b',
+    color: '#dc2626',
     lineWidth: 2,
     pointSize: 3,
     showPoints: false,
@@ -988,8 +988,6 @@ export function PlotCustomizationDialog({
                                 ? 'bg-gray-700 border-gray-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500' 
                                 : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
                             }`}
-                            min="400"
-                            max="4000"
                           />
                         </div>
                         <div>
@@ -1003,8 +1001,6 @@ export function PlotCustomizationDialog({
                                 ? 'bg-gray-700 border-gray-600 text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500' 
                                 : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
                             }`}
-                            min="300"
-                            max="3000"
                           />
                         </div>
                       </div>
@@ -1390,8 +1386,6 @@ export function PlotCustomizationDialog({
                           value={customization.width}
                           onChange={(e) => handleDimensionChange('width', parseInt(e.target.value) || 0)}
                           className={inputClass}
-                          min="100"
-                          max="4000"
                         />
                       </div>
                       <div>
@@ -1401,8 +1395,6 @@ export function PlotCustomizationDialog({
                           value={customization.height}
                           onChange={(e) => handleDimensionChange('height', parseInt(e.target.value) || 0)}
                           className={inputClass}
-                          min="100"
-                          max="4000"
                           disabled={customization.aspectRatio !== 'custom'}
                         />
                       </div>
@@ -1544,8 +1536,6 @@ export function PlotCustomizationDialog({
                                       ? 'bg-gray-700 border-gray-600 text-white' 
                                       : 'bg-white border-gray-300 text-gray-900'
                                   }`}
-                                  min="1"
-                                  max="10"
                                 />
                               </div>
                               <div>
@@ -1601,8 +1591,6 @@ export function PlotCustomizationDialog({
                                       ? 'bg-gray-700 border-gray-600 text-white' 
                                       : 'bg-white border-gray-300 text-gray-900'
                                   }`}
-                                  min="2"
-                                  max="20"
                                 />
                               </div>
                               <div>
@@ -1653,8 +1641,6 @@ export function PlotCustomizationDialog({
                                       ? 'bg-gray-700 border-gray-600 text-white' 
                                       : 'bg-white border-gray-300 text-gray-900'
                                   }`}
-                                  min="0"
-                                  max="5"
                                 />
                               </div>
                               <div>
@@ -1694,8 +1680,6 @@ export function PlotCustomizationDialog({
                                       ? 'bg-gray-700 border-gray-600 text-white' 
                                       : 'bg-white border-gray-300 text-gray-900'
                                   }`}
-                                  min="1"
-                                  max="10"
                                 />
                               </div>
                               <div>
@@ -1783,8 +1767,6 @@ export function PlotCustomizationDialog({
                                   title: { ...prev.title, fontSize: parseInt(e.target.value) || 12 }
                                 }))}
                                 className={inputClass}
-                                min="8"
-                                max="48"
                               />
                             </div>
                             <div>
@@ -1825,8 +1807,6 @@ export function PlotCustomizationDialog({
                                   title: { ...prev.title, distance: parseInt(e.target.value) || 20 }
                                 }))}
                                 className={inputClass}
-                                min="10"
-                                max="100"
                               />
                             </div>
                           </div>
@@ -1869,8 +1849,6 @@ export function PlotCustomizationDialog({
                                     ? 'bg-gray-700 border-gray-600 text-white' 
                                     : 'bg-white border-gray-300 text-gray-900'
                                 }`}
-                                min="8"
-                                max="72"
                               />
                             </div>
                             <div>
@@ -1887,8 +1865,6 @@ export function PlotCustomizationDialog({
                                     ? 'bg-gray-700 border-gray-600 text-white' 
                                     : 'bg-white border-gray-300 text-gray-900'
                                 }`}
-                                min="6"
-                                max="48"
                               />
                             </div>
                             <div>
@@ -1905,8 +1881,6 @@ export function PlotCustomizationDialog({
                                     ? 'bg-gray-700 border-gray-600 text-white' 
                                     : 'bg-white border-gray-300 text-gray-900'
                                 }`}
-                                min="2"
-                                max="10"
                               />
                             </div>
                           </div>
@@ -2020,8 +1994,6 @@ export function PlotCustomizationDialog({
                                     ? 'bg-gray-700 border-gray-600 text-white' 
                                     : 'bg-white border-gray-300 text-gray-900'
                                 }`}
-                                min="8"
-                                max="72"
                               />
                             </div>
                             <div>
@@ -2038,8 +2010,6 @@ export function PlotCustomizationDialog({
                                     ? 'bg-gray-700 border-gray-600 text-white' 
                                     : 'bg-white border-gray-300 text-gray-900'
                                 }`}
-                                min="6"
-                                max="48"
                               />
                             </div>
                             <div>
@@ -2056,8 +2026,6 @@ export function PlotCustomizationDialog({
                                     ? 'bg-gray-700 border-gray-600 text-white' 
                                     : 'bg-white border-gray-300 text-gray-900'
                                 }`}
-                                min="2"
-                                max="10"
                               />
                             </div>
                           </div>
@@ -2356,8 +2324,6 @@ export function PlotCustomizationDialog({
                                     ? 'bg-gray-700 border-gray-600 text-white' 
                                     : 'bg-white border-gray-300 text-gray-900'
                                 }`}
-                                min="8"
-                                max="72"
                               />
                             </div>
                             <div>
@@ -2453,8 +2419,6 @@ export function PlotCustomizationDialog({
                                       ? 'bg-gray-700 border-gray-600 text-white' 
                                       : 'bg-white border-gray-300 text-gray-900'
                                   }`}
-                                  min="0"
-                                  max="5"
                                 />
                               </div>
                             </div>
@@ -2757,8 +2721,6 @@ export function PlotCustomizationDialog({
                                       ? 'bg-gray-700 border-gray-600 text-white' 
                                       : 'bg-white border-gray-300 text-gray-900'
                                   }`}
-                                  min="0"
-                                  max="5"
                                 />
                               </div>
                             </div>
