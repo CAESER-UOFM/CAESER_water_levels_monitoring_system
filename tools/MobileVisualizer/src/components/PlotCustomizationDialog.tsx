@@ -2195,7 +2195,7 @@ export function PlotCustomizationDialog({
                                     }))}
                                     className="flex-1"
                                     min="0"
-                                    max="800"
+                                    max={customization.width - 50}
                                     step="10"
                                   />
                                   <span className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`} style={{ minWidth: '35px' }}>
@@ -2223,7 +2223,7 @@ export function PlotCustomizationDialog({
                                     }))}
                                     className="flex-1"
                                     min="0"
-                                    max="600"
+                                    max={customization.height - 50}
                                     step="10"
                                   />
                                   <span className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`} style={{ minWidth: '35px' }}>
