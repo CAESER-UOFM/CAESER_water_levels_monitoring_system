@@ -871,20 +871,20 @@ export class TursoService {
       const row = this.rowToObject(result.columns, result.rows[0]);
       return {
         well_number: row.well_number,
-        total_readings: Number(row.total_readings),
+        total_readings: row.total_readings ? Number(row.total_readings) : 0,
         data_start_date: row.data_start_date,
         data_end_date: row.data_end_date,
-        total_days: Number(row.total_days),
-        min_water_level: Number(row.min_water_level),
-        max_water_level: Number(row.max_water_level),
-        avg_water_level: Number(row.avg_water_level),
+        total_days: row.total_days ? Number(row.total_days) : 0,
+        min_water_level: row.min_water_level ? Number(row.min_water_level) : 0,
+        max_water_level: row.max_water_level ? Number(row.max_water_level) : 0,
+        avg_water_level: row.avg_water_level ? Number(row.avg_water_level) : 0,
         min_level_date: row.min_level_date,
         max_level_date: row.max_level_date,
         trend_direction: row.trend_direction,
-        trend_change_per_year: Number(row.trend_change_per_year),
+        trend_change_per_year: row.trend_change_per_year ? Number(row.trend_change_per_year) : 0,
         highest_month: row.highest_month,
         lowest_month: row.lowest_month,
-        readings_last_30_days: Number(row.readings_last_30_days),
+        readings_last_30_days: row.readings_last_30_days ? Number(row.readings_last_30_days) : 0,
         last_reading_date: row.last_reading_date
       };
     } catch (error) {
