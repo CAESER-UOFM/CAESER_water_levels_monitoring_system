@@ -497,7 +497,7 @@ export class TursoService {
 
       const query = `
         SELECT 
-          id, well_number, measurement_date_utc, dtw_avg, water_level,
+          well_number, measurement_date_utc, dtw_avg, water_level,
           comments, data_source
         FROM manual_level_readings 
         WHERE ${whereClause}
@@ -512,10 +512,10 @@ export class TursoService {
         firstRow: result.rows[0]
       });
 
-      const manualReadings = result.rows.map(row => {
+      const manualReadings = result.rows.map((row, index) => {
         const obj = this.rowToObject(result.columns, row);
         const reading = {
-          id: Number(obj.id),
+          id: Date.now() + index, // Generate unique ID since table doesn't have one
           well_number: String(obj.well_number),
           timestamp_utc: String(obj.measurement_date_utc), // Map measurement_date_utc to timestamp_utc
           julian_timestamp: undefined,
@@ -557,7 +557,7 @@ export class TursoService {
 
       const query = `
         SELECT 
-          id, well_number, timestamp_utc, water_level, temperature
+          well_number, timestamp_utc, water_level, temperature
         FROM telemetry_level_readings 
         WHERE ${whereClause}
         ORDER BY timestamp_utc ASC
@@ -565,10 +565,10 @@ export class TursoService {
 
       const result = await this.execute(query, queryParams);
 
-      return result.rows.map(row => {
+      return result.rows.map((row, index) => {
         const obj = this.rowToObject(result.columns, row);
         return {
-          id: Number(obj.id),
+          id: Date.now() + index, // Generate unique ID since table doesn't have one
           well_number: String(obj.well_number),
           timestamp_utc: String(obj.timestamp_utc),
           julian_timestamp: undefined,
