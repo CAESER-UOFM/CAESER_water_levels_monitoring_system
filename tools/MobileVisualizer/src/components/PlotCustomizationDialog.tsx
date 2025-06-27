@@ -1387,7 +1387,7 @@ export function PlotCustomizationDialog({
                               </select>
                             </div>
                             <div>
-                              <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Distance</label>
+                              <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Label Distance</label>
                               <input
                                 type="number"
                                 value={customization.xAxis.labelDistance}
@@ -1403,6 +1403,25 @@ export function PlotCustomizationDialog({
                                 min="10"
                                 max="100"
                                 title="Distance of label from axis line (pixels)"
+                              />
+                            </div>
+                            <div>
+                              <label className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Tick Distance</label>
+                              <input
+                                type="number"
+                                value={customization.xAxis.tickDistance}
+                                onChange={(e) => setCustomization(prev => ({
+                                  ...prev,
+                                  xAxis: { ...prev.xAxis, tickDistance: parseInt(e.target.value) || 15 }
+                                }))}
+                                className={`w-full px-2 py-1 text-xs rounded border ${
+                                  isDarkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                                min="5"
+                                max="50"
+                                title="Distance of tick labels from axis line (pixels)"
                               />
                             </div>
                           </div>
