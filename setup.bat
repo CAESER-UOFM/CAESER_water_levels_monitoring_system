@@ -121,7 +121,7 @@ python -m pip install --upgrade pip >nul
 python -m pip install numpy pandas matplotlib requests packaging >nul
 python -m pip install google-api-python-client google-auth-oauthlib >nul
 python -m pip install PyQt5==5.15.10 PyQt5_sip==12.13.0 PyQtWebEngine==5.15.6 >nul
-python -m pip install scipy folium branca pillow psutil >nul
+python -m pip install scipy folium branca pillow psutil bcrypt >nul
 
 REM Copy application files
 echo    [*] [7/7] Copying application files...
