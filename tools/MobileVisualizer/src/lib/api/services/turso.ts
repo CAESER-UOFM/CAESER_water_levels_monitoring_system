@@ -899,48 +899,16 @@ export class TursoService {
 
   async getDatabaseStats(): Promise<{ wellsCount: number; readingsCount: number; lastUpdate: string | null }> {
     try {
+      // Use fast queries instead of counting millions of rows
       const wellsResult = await this.execute('SELECT COUNT(*) as count FROM wells');
       
-      // Start with main readings table
-      let totalReadings = 0;
-      let lastUpdate: string | null = null;
+      // Get total readings from the statistics table (much faster)
+      const readingsResult = await this.execute('SELECT SUM(total_readings) as total FROM well_statistics');
+      const totalReadings = Number(readingsResult.rows[0][0]) || 0;
       
-      // Count from water_level_readings (main table)
-      const transducerReadingsResult = await this.execute('SELECT COUNT(*) as count FROM water_level_readings');
-      totalReadings += Number(transducerReadingsResult.rows[0][0]);
-      
-      // Get timestamp from main table
-      const mainTimestampResult = await this.execute('SELECT MAX(timestamp_utc) as last_update FROM water_level_readings');
-      lastUpdate = mainTimestampResult.rows[0][0] ? String(mainTimestampResult.rows[0][0]) : null;
-      
-      // Try to count from other tables if they exist
-      try {
-        const manualReadingsResult = await this.execute('SELECT COUNT(*) as count FROM manual_level_readings');
-        totalReadings += Number(manualReadingsResult.rows[0][0]);
-        
-        // Check for later timestamp
-        const manualTimestampResult = await this.execute('SELECT MAX(timestamp_utc) as last_update FROM manual_level_readings');
-        const manualTimestamp = manualTimestampResult.rows[0][0] ? String(manualTimestampResult.rows[0][0]) : null;
-        if (manualTimestamp && (!lastUpdate || manualTimestamp > lastUpdate)) {
-          lastUpdate = manualTimestamp;
-        }
-      } catch (err) {
-        console.log('manual_level_readings table not found, skipping');
-      }
-      
-      try {
-        const telemetryReadingsResult = await this.execute('SELECT COUNT(*) as count FROM telemetry_level_readings');
-        totalReadings += Number(telemetryReadingsResult.rows[0][0]);
-        
-        // Check for later timestamp
-        const telemetryTimestampResult = await this.execute('SELECT MAX(timestamp_utc) as last_update FROM telemetry_level_readings');
-        const telemetryTimestamp = telemetryTimestampResult.rows[0][0] ? String(telemetryTimestampResult.rows[0][0]) : null;
-        if (telemetryTimestamp && (!lastUpdate || telemetryTimestamp > lastUpdate)) {
-          lastUpdate = telemetryTimestamp;
-        }
-      } catch (err) {
-        console.log('telemetry_level_readings table not found, skipping');
-      }
+      // Get last update from statistics table
+      const lastUpdateResult = await this.execute('SELECT MAX(last_reading_date) as last_update FROM well_statistics');
+      const lastUpdate = lastUpdateResult.rows[0][0] ? String(lastUpdateResult.rows[0][0]) : null;
 
       return {
         wellsCount: Number(wellsResult.rows[0][0]),
