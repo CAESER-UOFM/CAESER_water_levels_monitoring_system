@@ -122,22 +122,22 @@ class RiseTab(BaseRechargeTab):
             # Apply smoothing if enabled in settings
             if settings.get('enable_smoothing', False):
                 window = settings.get('smoothing_window', 3)
-                if 'level' in data.columns:
-                    data['level'] = data['level'].rolling(window=window, center=False).mean()
+                if 'water_level' in data.columns:
+                    data['water_level'] = data['water_level'].rolling(window=window, center=False).mean()
                     logger.info(f"[PROCESS_DEBUG] Applied smoothing with window {window}")
             
             # Drop NaN values
             data = data.dropna()
             
             # Final validation to ensure no NaN/Inf values remain
-            if 'level' in data.columns:
-                if data['level'].isna().any():
-                    logger.warning(f"Removing {data['level'].isna().sum()} remaining NaN values")
-                    data = data.dropna(subset=['level'])
+            if 'water_level' in data.columns:
+                if data['water_level'].isna().any():
+                    logger.warning(f"Removing {data['water_level'].isna().sum()} remaining NaN values")
+                    data = data.dropna(subset=['water_level'])
                     
-                if not np.isfinite(data['level']).all():
+                if not np.isfinite(data['water_level']).all():
                     logger.warning("Found non-finite values in level data, removing them")
-                    data = data[np.isfinite(data['level'])]
+                    data = data[np.isfinite(data['water_level'])]
             
             logger.info(f"[PROCESS_DEBUG] Data processing complete: {len(raw_data)} -> {len(data)} points")
             return data
@@ -908,11 +908,11 @@ class RiseTab(BaseRechargeTab):
         if 'timestamp' in df.columns:
             df['timestamp'] = pd.to_datetime(df['timestamp'])
         
-        # Ensure level column is numeric to prevent string subtraction errors
-        if 'level' in df.columns:
-            df['level'] = pd.to_numeric(df['level'], errors='coerce')
+        # Ensure water_level column is numeric to prevent string subtraction errors
+        if 'water_level' in df.columns:
+            df['water_level'] = pd.to_numeric(df['water_level'], errors='coerce')
             # Drop any rows where level conversion failed (resulted in NaN)
-            df = df.dropna(subset=['level'])
+            df = df.dropna(subset=['water_level'])
         
         return df
     
@@ -2521,8 +2521,8 @@ class RiseTab(BaseRechargeTab):
                 logger.info(f"Data date range: {data['timestamp'].min()} to {data['timestamp'].max()}")
             
             # Log original data stats
-            if 'level' in data.columns:
-                logger.info(f"Raw water levels: min={data['level'].min():.2f}ft, max={data['level'].max():.2f}ft, range={data['level'].max()-data['level'].min():.2f}ft")
+            if 'water_level' in data.columns:
+                logger.info(f"Raw water levels: min={data['water_level'].min():.2f}ft, max={data['water_level'].max():.2f}ft, range={data['water_level'].max()-data['water_level'].min():.2f}ft")
             
             # Step 1: Flag and handle outliers/pump cycles (simplified - using global settings)
             # Get outlier removal parameters from unified settings
@@ -2540,9 +2540,9 @@ class RiseTab(BaseRechargeTab):
                 logger.info(f"Applying outlier removal with threshold {outlier_threshold} standard deviations")
                 
                 # Calculate z-scores for water levels
-                mean_level = data['level'].mean()
-                std_level = data['level'].std()
-                z_scores = abs((data['level'] - mean_level) / std_level)
+                mean_level = data['water_level'].mean()
+                std_level = data['water_level'].std()
+                z_scores = abs((data['water_level'] - mean_level) / std_level)
                 
                 # Mark outliers
                 outliers = z_scores > outlier_threshold
@@ -2550,10 +2550,10 @@ class RiseTab(BaseRechargeTab):
                 logger.info(f"Flagged {outlier_count} points ({outlier_count/len(data)*100:.1f}%) as outliers")
                 
                 # Remove outliers by setting to NaN
-                data.loc[outliers, 'level'] = np.nan
+                data.loc[outliers, 'water_level'] = np.nan
                 
                 # Optional: interpolate small gaps
-                data['level'] = data['level'].interpolate(method='linear', limit=12)  # Limit to 3 hours at 15-min intervals
+                data['water_level'] = data['water_level'].interpolate(method='linear', limit=12)  # Limit to 3 hours at 15-min intervals
                 
                 logger.info("Outlier removal and interpolation complete")
             else:
@@ -2668,8 +2668,8 @@ class RiseTab(BaseRechargeTab):
                 logger.info(f"Applying {window}-point moving average filter (centered={center})")
                 
                 # Apply smoothing
-                if 'level' in data.columns:  # If using timestamp column
-                    data['level'] = data['level'].rolling(window=window, center=center, min_periods=min_periods).mean()
+                if 'water_level' in data.columns:  # If using timestamp column
+                    data['water_level'] = data['water_level'].rolling(window=window, center=center, min_periods=min_periods).mean()
                 else:  # If data is a Series or has index as timestamp
                     data = data.rolling(window=window, center=center, min_periods=min_periods).mean()
                 
@@ -2686,8 +2686,8 @@ class RiseTab(BaseRechargeTab):
                 logger.info("Reset index after resampling")
             
             # Calculate rises to check if we have anything to work with
-            if 'level' in data.columns:
-                rises = data['level'].diff()
+            if 'water_level' in data.columns:
+                rises = data['water_level'].diff()
                 positive_rises = rises[rises > 0]
                 max_rise = positive_rises.max() if len(positive_rises) > 0 else 0
                 logger.info(f"After processing: {len(positive_rises)} positive rises, max rise={max_rise:.4f}ft")
@@ -3354,15 +3354,15 @@ class CompareCalculationsDialog(QDialog):
                 threshold = settings.get('outlier_threshold', 3.0)
                 logger.info(f"[PROCESS_DEBUG] Removing outliers with threshold: {threshold} std dev")
                 
-                mean_level = processed_data['level'].mean()
-                std_level = processed_data['level'].std()
+                mean_level = processed_data['water_level'].mean()
+                std_level = processed_data['water_level'].std()
                 lower_bound = mean_level - threshold * std_level
                 upper_bound = mean_level + threshold * std_level
                 
                 before_count = len(processed_data)
                 processed_data = processed_data[
-                    (processed_data['level'] >= lower_bound) & 
-                    (processed_data['level'] <= upper_bound)
+                    (processed_data['water_level'] >= lower_bound) & 
+                    (processed_data['water_level'] <= upper_bound)
                 ]
                 after_count = len(processed_data)
                 logger.info(f"[PROCESS_DEBUG] Outlier removal: {before_count} -> {after_count} points")
@@ -3376,7 +3376,7 @@ class CompareCalculationsDialog(QDialog):
                 
                 if smoothing_type == 'Moving Average':
                     # Simple moving average
-                    processed_data['level'] = processed_data['level'].rolling(
+                    processed_data['water_level'] = processed_data['water_level'].rolling(
                         window=window_size, center=True, min_periods=1
                     ).mean()
                 

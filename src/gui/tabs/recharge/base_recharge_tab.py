@@ -97,9 +97,13 @@ class BaseRechargeTab(QWidget):
             if (hasattr(self, 'show_raw_data') and self.show_raw_data.isChecked() and 
                 self.raw_data is not None and not self.raw_data.empty):
                 
-                # Use the actual database column names
-                timestamps = pd.to_datetime(self.raw_data['timestamp_utc'])
-                levels = self.raw_data['water_level']
+                # Use the standardized column names (after processing)
+                if 'timestamp_utc' in self.raw_data.columns:
+                    timestamps = pd.to_datetime(self.raw_data['timestamp_utc'])
+                    levels = self.raw_data['water_level']
+                else:
+                    timestamps = pd.to_datetime(self.raw_data['timestamp'])
+                    levels = self.raw_data['water_level']
                 
                 # Plot with professional styling
                 ax.plot(timestamps, levels, 
@@ -114,9 +118,12 @@ class BaseRechargeTab(QWidget):
                 self.processed_data is not None and not self.processed_data.empty):
                 
                 # Handle different column formats
-                if 'timestamp' in self.processed_data.columns:
+                if 'timestamp_utc' in self.processed_data.columns:
+                    proc_timestamps = pd.to_datetime(self.processed_data['timestamp_utc'])
+                    proc_levels = self.processed_data['water_level']
+                elif 'timestamp' in self.processed_data.columns:
                     proc_timestamps = pd.to_datetime(self.processed_data['timestamp'])
-                    proc_levels = self.processed_data['level']
+                    proc_levels = self.processed_data['water_level']
                 else:
                     # If timestamp is the index
                     proc_timestamps = self.processed_data.index
@@ -263,8 +270,8 @@ class BaseRechargeTab(QWidget):
         # Check column names and rename if necessary
         if 'timestamp_utc' in df.columns and 'water_level' in df.columns:
             df = df.rename(columns={
-                'timestamp_utc': 'timestamp',
-                'water_level': 'level'
+                'timestamp_utc': 'timestamp'
+                # Keep 'water_level' as is - don't rename to 'level'
             })
         
         # Make sure timestamp is datetime

@@ -172,8 +172,18 @@ class RechargeTab(QWidget):
                 self.aquifer_combo.clear()
                 self.aquifer_combo.addItem("All Aquifers", None)
                 
-                for aquifer in aquifers:
+                shal_index = -1  # Track SHAL aquifer index for default selection
+                for i, aquifer in enumerate(aquifers):
                     self.aquifer_combo.addItem(aquifer[0], aquifer[0])
+                    # Check if this is the SHAL aquifer (case-insensitive)
+                    if aquifer[0].upper() == "SHAL":
+                        shal_index = i + 1  # +1 because "All Aquifers" is at index 0
+                
+                # Set SHAL as default selection if it exists
+                if shal_index != -1:
+                    self.aquifer_combo.setCurrentIndex(shal_index)
+                    # Trigger the filter change to load SHAL wells immediately
+                    self.on_aquifer_filter_changed(self.aquifer_combo.currentText())
                     
         except Exception as e:
             logger.error(f"Error loading aquifer filters: {e}")
@@ -551,12 +561,12 @@ class RechargeTab(QWidget):
             # Standardize column names first
             if 'timestamp_utc' in data.columns and 'water_level' in data.columns:
                 data = data.rename(columns={
-                    'timestamp_utc': 'timestamp',
-                    'water_level': 'level'
+                    'timestamp_utc': 'timestamp'
+                    # Keep water_level as water_level
                 })
-                logger.info(f"[PREPROCESS_DEBUG] Renamed columns: timestamp_utc->timestamp, water_level->level")
-            elif 'timestamp' not in data.columns or 'level' not in data.columns:
-                logger.error("Required columns (timestamp, level) not found in data")
+                logger.info(f"[PREPROCESS_DEBUG] Renamed columns: timestamp_utc->timestamp, keeping water_level")
+            elif 'timestamp' not in data.columns or 'water_level' not in data.columns:
+                logger.error("Required columns (timestamp, water_level) not found in data")
                 return raw_data.copy()
             
             # Make sure timestamp is datetime
@@ -584,7 +594,7 @@ class RechargeTab(QWidget):
                     else:
                         agg_func = 'median'
                     
-                    data = data.set_index('timestamp').resample(freq_code).agg({'level': agg_func}).reset_index()
+                    data = data.set_index('timestamp').resample(freq_code).agg({'water_level': agg_func}).reset_index()
                     data = data.dropna()
                     logger.info(f"[PREPROCESS_DEBUG] Applied {freq_code} downsampling using {agg_func}")
             
@@ -594,7 +604,7 @@ class RechargeTab(QWidget):
                 smoothing_type = self.settings.get('smoothing_type', 'Moving Average')
                 
                 if smoothing_type == 'Moving Average':
-                    data['level'] = data['level'].rolling(window=window, center=True).mean()
+                    data['water_level'] = data['water_level'].rolling(window=window, center=True).mean()
                 
                 data = data.dropna()
                 logger.info(f"[PREPROCESS_DEBUG] Applied {smoothing_type} smoothing with window {window}")
@@ -602,13 +612,13 @@ class RechargeTab(QWidget):
             # Remove outliers if enabled
             if self.settings.get('remove_outliers', False):
                 threshold = self.settings.get('outlier_threshold', 3.0)
-                z_scores = np.abs((data['level'] - data['level'].mean()) / data['level'].std())
+                z_scores = np.abs((data['water_level'] - data['water_level'].mean()) / data['water_level'].std())
                 data = data[z_scores < threshold]
                 logger.info(f"[PREPROCESS_DEBUG] Removed outliers with threshold {threshold}")
             
             # Final validation
             data = data.dropna()
-            data = data[~data['level'].isin([np.inf, -np.inf])]
+            data = data[~data['water_level'].isin([np.inf, -np.inf])]
             
             logger.info(f"[PREPROCESS_DEBUG] Preprocessing complete: {len(data)} points")
             return data
@@ -836,7 +846,7 @@ class RechargeTab(QWidget):
                     return validation_results
             
             # Check for numeric water level data
-            if not pd.api.types.is_numeric_dtype(raw_data['level']):
+            if not pd.api.types.is_numeric_dtype(raw_data['water_level']):
                 validation_results['errors'].append("Water level column must contain numeric data")
                 validation_results['success'] = False
                 return validation_results
@@ -863,7 +873,7 @@ class RechargeTab(QWidget):
                 validation_results['warnings'].append(f"Found {len(large_gaps)} data gaps larger than 1 week (max: {max_gap_days:.1f} days)")
             
             # Check for valid water level range
-            level_stats = raw_data['level'].describe()
+            level_stats = raw_data['water_level'].describe()
             validation_results['data_stats']['level_stats'] = level_stats.to_dict()
             
             # Check for outliers or unrealistic values

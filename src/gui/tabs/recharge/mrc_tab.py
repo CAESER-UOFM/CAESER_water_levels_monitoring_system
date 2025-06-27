@@ -1529,22 +1529,22 @@ class MrcTab(BaseRechargeTab):
             # Apply smoothing if enabled in settings
             if settings.get('enable_smoothing', False):
                 window = settings.get('smoothing_window', 3)
-                if 'level' in data.columns:
-                    data['level'] = data['level'].rolling(window=window, center=False).mean()
+                if 'water_level' in data.columns:
+                    data['water_level'] = data['water_level'].rolling(window=window, center=False).mean()
                     logger.info(f"[PROCESS_DEBUG] Applied smoothing with window {window}")
             
             # Drop NaN values
             data = data.dropna()
             
             # Final validation to ensure no NaN/Inf values remain
-            if 'level' in data.columns:
-                if data['level'].isna().any():
-                    logger.warning(f"Removing {data['level'].isna().sum()} remaining NaN values")
-                    data = data.dropna(subset=['level'])
+            if 'water_level' in data.columns:
+                if data['water_level'].isna().any():
+                    logger.warning(f"Removing {data['water_level'].isna().sum()} remaining NaN values")
+                    data = data.dropna(subset=['water_level'])
                     
-                if not np.isfinite(data['level']).all():
+                if not np.isfinite(data['water_level']).all():
                     logger.warning("Found non-finite values in level data, removing them")
-                    data = data[np.isfinite(data['level'])]
+                    data = data[np.isfinite(data['water_level'])]
             
             logger.info(f"[PROCESS_DEBUG] Data processing complete: {len(raw_data)} -> {len(data)} points")
             return data
@@ -1836,8 +1836,8 @@ class MrcTab(BaseRechargeTab):
             # Apply smoothing if enabled
             if settings.get('enable_smoothing', False):
                 window = settings.get('smoothing_window', 3)
-                if 'level' in data.columns:
-                    data['level'] = data['level'].rolling(window=window, center=False).mean()
+                if 'water_level' in data.columns:
+                    data['water_level'] = data['water_level'].rolling(window=window, center=False).mean()
             
             # Drop NaN values
             data = data.dropna()
@@ -1893,7 +1893,7 @@ class MrcTab(BaseRechargeTab):
             
             # Calculate daily changes
             data = self.processed_data.copy()
-            data['change'] = data['level'].diff()
+            data['change'] = data['water_level'].diff()
             
             # Find recession periods with fluctuation tolerance
             # Allow small upticks during recession
@@ -2117,7 +2117,7 @@ class MrcTab(BaseRechargeTab):
                     seg_data = segment['data'].copy()
                     seg_data['time_days'] = (seg_data['timestamp'] - seg_data['timestamp'].iloc[0]).dt.total_seconds() / 86400
                     # Normalize to start at the initial level (more intuitive for recession)
-                    seg_data['normalized_level'] = seg_data['level'] - seg_data['level'].iloc[0]
+                    seg_data['normalized_level'] = seg_data['water_level'] - seg_data['water_level'].iloc[0]
                     all_data.append(seg_data)
             
             if not all_data:
@@ -2252,16 +2252,16 @@ class MrcTab(BaseRechargeTab):
             logger.info(f"Data dtypes: {data.dtypes.to_dict()}")
             
             # Log sample of data before conversion
-            if not data.empty and 'level' in data.columns:
-                logger.info(f"BEFORE conversion - First 3 level values: {data['level'].head(3).tolist()}")
-                logger.info(f"BEFORE conversion - Level dtype: {data['level'].dtype}")
+            if not data.empty and 'water_level' in data.columns:
+                logger.info(f"BEFORE conversion - First 3 level values: {data['water_level'].head(3).tolist()}")
+                logger.info(f"BEFORE conversion - Level dtype: {data['water_level'].dtype}")
             
-            # Ensure level column is numeric before calculations
-            if 'level' in data.columns:
-                data['level'] = pd.to_numeric(data['level'], errors='coerce')
-                data = data.dropna(subset=['level'])
-                logger.info(f"AFTER conversion - Level dtype: {data['level'].dtype}")
-                logger.info(f"AFTER conversion - First 3 level values: {data['level'].head(3).tolist()}")
+            # Ensure water_level column is numeric before calculations
+            if 'water_level' in data.columns:
+                data['water_level'] = pd.to_numeric(data['water_level'], errors='coerce')
+                data = data.dropna(subset=['water_level'])
+                logger.info(f"AFTER conversion - Level dtype: {data['water_level'].dtype}")
+                logger.info(f"AFTER conversion - First 3 level values: {data['water_level'].head(3).tolist()}")
             
             # Calculate predicted levels based on curve
             curve_type = self.current_curve['curve_type']
@@ -2273,13 +2273,13 @@ class MrcTab(BaseRechargeTab):
             
             # Initialize with actual values - ensure numeric types
             logger.info("=== INITIALIZING PREDICTED LEVEL ===")
-            data['predicted_level'] = pd.to_numeric(data['level'].values, errors='coerce')
+            data['predicted_level'] = pd.to_numeric(data['water_level'].values, errors='coerce')
             logger.info(f"Predicted level dtype after initialization: {data['predicted_level'].dtype}")
             data['deviation'] = 0.0
             
             # For each recession period, calculate predicted values
             logger.info("=== CALCULATING RECESSION PERIODS ===")
-            data['change'] = data['level'].diff()
+            data['change'] = data['water_level'].diff()
             data['is_recession'] = data['change'] < 0
             data['recession_group'] = (data['is_recession'] != data['is_recession'].shift()).cumsum()
             
@@ -2325,29 +2325,29 @@ class MrcTab(BaseRechargeTab):
             
             # Calculate deviations (positive = recharge)
             # Debug data types to understand the issue
-            logger.info(f"Level column dtype: {data['level'].dtype}, sample values: {data['level'].head().tolist()}")
+            logger.info(f"Level column dtype: {data['water_level'].dtype}, sample values: {data['water_level'].head().tolist()}")
             logger.info(f"Predicted level column dtype: {data['predicted_level'].dtype}, sample values: {data['predicted_level'].head().tolist()}")
             
             # Force conversion to numeric - this should fix the string subtraction error
             try:
                 logger.info("=== ATTEMPTING DEVIATION CALCULATION ===")
-                logger.info(f"BEFORE final conversion - Level dtype: {data['level'].dtype}")
+                logger.info(f"BEFORE final conversion - Level dtype: {data['water_level'].dtype}")
                 logger.info(f"BEFORE final conversion - Predicted dtype: {data['predicted_level'].dtype}")
                 
-                data['level'] = pd.to_numeric(data['level'], errors='coerce')
+                data['water_level'] = pd.to_numeric(data['water_level'], errors='coerce')
                 data['predicted_level'] = pd.to_numeric(data['predicted_level'], errors='coerce')
                 
-                logger.info(f"AFTER final conversion - Level dtype: {data['level'].dtype}")
+                logger.info(f"AFTER final conversion - Level dtype: {data['water_level'].dtype}")
                 logger.info(f"AFTER final conversion - Predicted dtype: {data['predicted_level'].dtype}")
-                logger.info(f"Level sample after conversion: {data['level'].head(3).tolist()}")
+                logger.info(f"Level sample after conversion: {data['water_level'].head(3).tolist()}")
                 logger.info(f"Predicted sample after conversion: {data['predicted_level'].head(3).tolist()}")
                 
                 logger.info("About to calculate deviation...")
-                data['deviation'] = data['level'] - data['predicted_level']
+                data['deviation'] = data['water_level'] - data['predicted_level']
                 logger.info("Successfully calculated deviations!")
             except Exception as e:
                 logger.error(f"Error in deviation calculation: {e}")
-                logger.error(f"Level sample: {data['level'].iloc[0] if not data.empty else 'EMPTY'} (type: {type(data['level'].iloc[0]) if not data.empty else 'N/A'})")
+                logger.error(f"Level sample: {data['water_level'].iloc[0] if not data.empty else 'EMPTY'} (type: {type(data['water_level'].iloc[0]) if not data.empty else 'N/A'})")
                 logger.error(f"Predicted sample: {data['predicted_level'].iloc[0] if not data.empty else 'EMPTY'} (type: {type(data['predicted_level'].iloc[0]) if not data.empty else 'N/A'})")
                 raise
             
@@ -2538,7 +2538,7 @@ class MrcTab(BaseRechargeTab):
                     if 'data' in segment and segment['data'] is not None and len(segment['data']) > 0:
                         seg_data = segment['data']
                         label = 'Recession Segments' if i == 0 else ""
-                        ax.plot(seg_data['timestamp'], seg_data['level'], 
+                        ax.plot(seg_data['timestamp'], seg_data['water_level'], 
                                'r-', linewidth=2, alpha=0.7, label=label)
             
             # Plot recession curve and deviations (only if data exists and is properly calculated)
@@ -2556,7 +2556,7 @@ class MrcTab(BaseRechargeTab):
                     # Highlight recharge events
                     recharge_data = data[data['is_recharge']]
                     if len(recharge_data) > 0:
-                        ax.scatter(recharge_data['timestamp'], recharge_data['level'], 
+                        ax.scatter(recharge_data['timestamp'], recharge_data['water_level'], 
                                  c='blue', s=30, marker='o', edgecolors='darkblue', linewidth=1,
                                  zorder=10, label='Recharge Events', alpha=0.7)
             
@@ -3119,8 +3119,8 @@ class MrcTab(BaseRechargeTab):
                 warnings.append(f"Data frequency ({median_interval}) is less than daily")
         
         # Check for negative or zero water levels
-        if 'level' in data.columns:
-            negative_levels = data[data['level'] <= 0]
+        if 'water_level' in data.columns:
+            negative_levels = data[data['water_level'] <= 0]
             if len(negative_levels) > 0:
                 warnings.append(f"Found {len(negative_levels)} non-positive water levels")
         
@@ -4679,8 +4679,8 @@ class InteractiveCurveFittingDialog(QDialog):
                         times = list(range(len(segment_data)))
                     
                     # Get levels
-                    if 'level' in segment_data.columns:
-                        levels = segment_data['level'].tolist()
+                    if 'water_level' in segment_data.columns:
+                        levels = segment_data['water_level'].tolist()
                     elif 'normalized_level' in segment_data.columns:
                         levels = segment_data['normalized_level'].tolist()
                     else:
