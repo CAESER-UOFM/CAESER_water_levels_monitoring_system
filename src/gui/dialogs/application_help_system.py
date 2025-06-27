@@ -100,6 +100,9 @@ class ApplicationHelpSystem(QDialog):
         # Water Level Runs tab help
         self.create_runs_tab_help()
         
+        # Recharge tab help
+        self.create_recharge_tab_help()
+        
         # Auto Sync help
         self.create_auto_sync_help()
         
@@ -160,6 +163,11 @@ class ApplicationHelpSystem(QDialog):
             <td style="padding: 8px;"><b>Water Level Runs</b></td>
             <td style="padding: 8px;">Field data collection coordination</td>
             <td style="padding: 8px;">Run creation, Google Drive sync, field data management</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px;"><b>Recharge</b></td>
+            <td style="padding: 8px;">Groundwater recharge analysis</td>
+            <td style="padding: 8px;">RISE and MRC methods, recharge quantification, scientific analysis</td>
         </tr>
         </table>
         
@@ -1313,6 +1321,209 @@ class ApplicationHelpSystem(QDialog):
         
         self.help_tabs.addTab(tab, "📋 Runs")
         
+    def create_recharge_tab_help(self):
+        """Create Recharge tab help."""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        
+        scroll_area = QScrollArea()
+        scroll_widget = QWidget()
+        scroll_layout = QVBoxLayout(scroll_widget)
+        
+        recharge_help_html = """
+        <h2>💧 Recharge Tab - Groundwater Recharge Analysis</h2>
+        
+        <h3>Purpose & Overview</h3>
+        <p>The Recharge tab provides scientific methods for estimating groundwater recharge from water level data. 
+        It implements proven Water Table Fluctuation (WTF) techniques to quantify how much water enters the 
+        aquifer from precipitation and other sources. This analysis is essential for water resource management, 
+        sustainability assessments, and understanding aquifer dynamics.</p>
+        
+        <h3>🎯 Key Concepts</h3>
+        <ul>
+        <li><b>Water Table Fluctuation (WTF):</b> Water level rises in unconfined aquifers represent recharge events</li>
+        <li><b>Specific Yield:</b> The volume of water released per unit area per unit decline in water table</li>
+        <li><b>Recharge Events:</b> Discrete periods when water enters the aquifer, typically after precipitation</li>
+        <li><b>Recession Periods:</b> Times when water levels decline due to natural discharge</li>
+        <li><b>Annual Recharge:</b> Total groundwater recharge over a water year period</li>
+        </ul>
+        
+        <h3>🔘 Available Methods</h3>
+        
+        <h4>RISE Method - Water Level Rise Detection</h4>
+        <ul>
+        <li><b>Principle:</b> Identifies rapid water level rises that exceed a threshold</li>
+        <li><b>Best for:</b> Clear recharge signals with high-frequency data</li>
+        <li><b>Advantages:</b> Simple, fast, intuitive interpretation</li>
+        <li><b>Key Parameters:</b> Rise threshold, minimum time between events</li>
+        <li><b>When to use:</b> Good data quality, distinct recharge events</li>
+        </ul>
+        
+        <h4>MRC Method - Master Recession Curve</h4>
+        <ul>
+        <li><b>Principle:</b> Fits recession curve to decline periods, identifies deviations as recharge</li>
+        <li><b>Best for:</b> Datasets with clear recession periods and variable data quality</li>
+        <li><b>Advantages:</b> Statistically robust, handles noise well</li>
+        <li><b>Key Parameters:</b> Recession length, fluctuation tolerance, deviation threshold</li>
+        <li><b>When to use:</b> Complex signals, need statistical validation</li>
+        </ul>
+        
+        <h4>EMR Method - Episodic Master Recession (Future)</h4>
+        <ul>
+        <li><b>Principle:</b> Links recharge events to specific rainfall episodes</li>
+        <li><b>Additional Requirements:</b> Precipitation time series data</li>
+        <li><b>Status:</b> Under development - will be added in future update</li>
+        </ul>
+        
+        <h3>🔘 Interface Guide</h3>
+        
+        <h4>Well Selection</h4>
+        <ul>
+        <li><b>Available Wells Table:</b> Shows all wells with aquifer type filtering</li>
+        <li><b>Filtering:</b> Use dropdown to show only unconfined aquifer wells</li>
+        <li><b>Selection:</b> Click wells to select for analysis</li>
+        <li><b>Multi-well Analysis:</b> Select multiple wells for comparison</li>
+        </ul>
+        
+        <h4>Global Settings</h4>
+        <ul>
+        <li><b>Specific Yield:</b> Critical parameter for all recharge calculations</li>
+        <li><b>Water Year Start:</b> Defines annual recharge calculation period</li>
+        <li><b>Data Processing:</b> Outlier removal, smoothing, and downsampling options</li>
+        <li><b>Apply to All:</b> Settings shared across all analysis methods</li>
+        </ul>
+        
+        <h4>Method Tabs</h4>
+        <ul>
+        <li><b>Method-specific Parameters:</b> Each tab has parameters tuned for that method</li>
+        <li><b>Event Selection:</b> Configure which events to include in calculations</li>
+        <li><b>Visualization:</b> Interactive plots showing water levels and identified events</li>
+        <li><b>Results Export:</b> Save recharge data and plots for reporting</li>
+        </ul>
+        
+        <h3>📊 Essential Requirements</h3>
+        
+        <h4>Data Requirements</h4>
+        <ul>
+        <li><b>Well Type:</b> Must be in unconfined aquifer (water table well)</li>
+        <li><b>Data Frequency:</b> Hourly or better recommended, daily minimum</li>
+        <li><b>Data Duration:</b> At least 90 days, preferably 1+ years</li>
+        <li><b>Data Quality:</b> Continuous time series with minimal gaps</li>
+        <li><b>Barometric Compensation:</b> Water levels should be corrected for atmospheric pressure</li>
+        </ul>
+        
+        <h4>Site Conditions</h4>
+        <ul>
+        <li><b>Unconfined Aquifer:</b> Water level represents actual water table</li>
+        <li><b>Minimal Pumping:</b> Little to no influence from nearby pumping wells</li>
+        <li><b>Natural Conditions:</b> Representative of aquifer response to recharge</li>
+        <li><b>Known Specific Yield:</b> Accurate estimate essential for quantitative results</li>
+        </ul>
+        
+        <h3>📊 Basic Workflow</h3>
+        
+        <h4>Getting Started</h4>
+        <ol>
+        <li><b>Select Wells:</b> Choose unconfined aquifer wells from the table</li>
+        <li><b>Configure Global Settings:</b> Set specific yield and water year parameters</li>
+        <li><b>Choose Method:</b> Select RISE for simple analysis or MRC for robust analysis</li>
+        <li><b>Set Parameters:</b> Adjust method-specific parameters for your data</li>
+        <li><b>Run Analysis:</b> Execute calculation and review results</li>
+        <li><b>Validate Results:</b> Compare with precipitation patterns and hydrogeologic understanding</li>
+        </ol>
+        
+        <h4>Parameter Selection Guidelines</h4>
+        <ul>
+        <li><b>Start with defaults:</b> Initial parameters work for most datasets</li>
+        <li><b>Validate against known events:</b> Adjust parameters to capture known recharge periods</li>
+        <li><b>Consider data quality:</b> Noisier data may need higher thresholds</li>
+        <li><b>Site-specific tuning:</b> Adjust based on local hydrogeology and climate</li>
+        </ul>
+        
+        <h3>💡 Tips & Best Practices</h3>
+        
+        <h4>Data Preparation</h4>
+        <ul>
+        <li><b>Quality control:</b> Remove obvious outliers and sensor malfunctions</li>
+        <li><b>Gap analysis:</b> Ensure adequate data coverage for analysis period</li>
+        <li><b>Barometric correction:</b> Use properly compensated water level data</li>
+        <li><b>Coordinate systems:</b> Ensure consistent elevation references</li>
+        </ul>
+        
+        <h4>Method Selection</h4>
+        <ul>
+        <li><b>RISE method:</b> Best for clear signals and quick results</li>
+        <li><b>MRC method:</b> Better for complex data and statistical validation</li>
+        <li><b>Compare methods:</b> Run both methods and compare results</li>
+        <li><b>Validate results:</b> Check against precipitation records when available</li>
+        </ul>
+        
+        <h4>Parameter Optimization</h4>
+        <ul>
+        <li><b>Iterative approach:</b> Start conservative, adjust based on results</li>
+        <li><b>Site calibration:</b> Use local knowledge to validate parameter choices</li>
+        <li><b>Sensitivity analysis:</b> Test range of parameter values</li>
+        <li><b>Documentation:</b> Record parameter choices and rationale</li>
+        </ul>
+        
+        <h3>🔧 Troubleshooting</h3>
+        
+        <h4>No Recharge Events Detected</h4>
+        <ul>
+        <li><b>Check thresholds:</b> Parameters may be too strict for your data</li>
+        <li><b>Data quality:</b> Ensure adequate signal-to-noise ratio</li>
+        <li><b>Time period:</b> Analysis period may not include significant recharge</li>
+        <li><b>Aquifer type:</b> Verify well is in unconfined aquifer</li>
+        </ul>
+        
+        <h4>Too Many Small Events</h4>
+        <ul>
+        <li><b>Increase thresholds:</b> Raise minimum rise or deviation thresholds</li>
+        <li><b>Data smoothing:</b> Apply smoothing to reduce noise</li>
+        <li><b>Minimum event spacing:</b> Increase time between events</li>
+        <li><b>Outlier removal:</b> Remove data spikes that aren't real recharge</li>
+        </ul>
+        
+        <h4>Unrealistic Recharge Estimates</h4>
+        <ul>
+        <li><b>Specific yield:</b> Most common issue - verify Sy value is appropriate</li>
+        <li><b>Data units:</b> Check that water levels are in correct units</li>
+        <li><b>Method assumptions:</b> Verify site meets method requirements</li>
+        <li><b>Regional comparison:</b> Compare with other local recharge estimates</li>
+        </ul>
+        
+        <h4>Poor Statistical Fit (MRC Method)</h4>
+        <ul>
+        <li><b>Recession length:</b> May need longer minimum recession periods</li>
+        <li><b>Fluctuation tolerance:</b> Adjust allowable variation during recession</li>
+        <li><b>Data period:</b> Ensure adequate recession periods in dataset</li>
+        <li><b>External influences:</b> Check for pumping or other non-natural effects</li>
+        </ul>
+        
+        <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 10px; margin: 10px 0;">
+        <b>⚠️ Important Limitations:</b> These methods assume the well is in an unconfined aquifer where 
+        water level rises directly represent recharge. They are NOT suitable for confined aquifers, 
+        wells significantly affected by pumping, or situations where lateral groundwater flow dominates.
+        </div>
+        
+        <div style="background-color: #d1ecf1; border: 1px solid #bee5eb; border-radius: 4px; padding: 10px; margin: 10px 0;">
+        <b>🎯 Key Success Factor:</b> Accurate specific yield is critical for reliable recharge estimates. 
+        Consider using a range of Sy values to bracket uncertainty, and validate results against 
+        precipitation patterns and regional hydrogeologic understanding.
+        </div>
+        """
+        
+        content = QTextEdit()
+        content.setHtml(recharge_help_html)
+        content.setReadOnly(True)
+        scroll_layout.addWidget(content)
+        
+        scroll_area.setWidget(scroll_widget)
+        scroll_area.setWidgetResizable(True)
+        layout.addWidget(scroll_area)
+        
+        self.help_tabs.addTab(tab, "💧 Recharge")
+        
     def create_auto_sync_help(self):
         """Create Auto Sync help."""
         tab = QWidget()
@@ -1847,8 +2058,9 @@ water_levels_monitoring/
             "barologger": 2,
             "water_level": 3,
             "runs": 4,
-            "auto_sync": 5,
-            "cloud": 6
+            "recharge": 5,
+            "auto_sync": 6,
+            "cloud": 7
         }
         
         if tab_name.lower() in tab_mapping:

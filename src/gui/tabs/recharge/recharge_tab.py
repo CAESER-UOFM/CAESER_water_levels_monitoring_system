@@ -24,7 +24,7 @@ from .unified_settings import UnifiedRechargeSettings
 # Import Phase 5 components
 from .settings_persistence import SettingsPersistence
 from .user_preferences import UserPreferencesDialog
-from .help_system import RechargeHelpSystem
+# from .help_system import RechargeHelpSystem  # Now handled by main app help
 
 logger = logging.getLogger(__name__)
 
@@ -105,25 +105,7 @@ class RechargeTab(QWidget):
         
         
         # Preferences button removed - using global settings instead
-        
-        # Help button
-        self.help_btn = QPushButton("❓ Help")
-        self.help_btn.setMaximumWidth(80)
-        self.help_btn.setToolTip("Open help system and method guidance")
-        self.help_btn.clicked.connect(self.open_help_system)
-        self.help_btn.setStyleSheet("""
-            QPushButton {
-                padding: 5px 10px;
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                background-color: #f8f9fa;
-            }
-            QPushButton:hover {
-                background-color: #e9ecef;
-                border-color: #adb5bd;
-            }
-        """)
-        header_layout.addWidget(self.help_btn)
+        # Help button removed - now handled by main application help system
         
         layout.addLayout(header_layout)
         
@@ -1228,19 +1210,8 @@ DATA QUALITY TIPS:
             logger.error(f"Error opening preferences dialog: {e}")
             QMessageBox.critical(self, "Preferences Error", f"Failed to open preferences: {str(e)}")
             
-    def open_help_system(self):
-        """Open the help system."""
-        try:
-            # Create help system dialog
-            help_system = RechargeHelpSystem(self)
-            help_system.show()
-            
-            logger.info("Help system opened")
-            
-        except Exception as e:
-            logger.error(f"Error opening help system: {e}")
-            QMessageBox.critical(self, "Help Error", f"Failed to open help system: {str(e)}")
-            
+    # open_help_system method removed - now handled by main application help system
+    
     def on_preferences_changed(self, preferences):
         """Handle preference changes."""
         try:
