@@ -808,19 +808,21 @@ export function PlotCustomizationDialog({
         {/* Main Content - Responsive Layout */}
         {isMobile ? (
           <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Mobile Plot Preview - Always Visible */}
-            <div className="flex-1 overflow-hidden p-4">
-              <div className={`h-full rounded-lg border p-2 ${
+            {/* Mobile Plot Preview - Always Visible at Full Resolution */}
+            <div className="flex-1 overflow-auto p-4">
+              <div className={`rounded-lg border p-2 ${
                 isDarkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-gray-50'
               }`}>
-                <LivePlotPreview
-                  customization={customization}
-                  plotData={plotData}
-                  isDarkMode={isDarkMode}
-                  wellNumber={wellNumber}
-                  well={well}
-                  showFullSize={false}
-                />
+                <div className="overflow-auto">
+                  <LivePlotPreview
+                    customization={customization}
+                    plotData={plotData}
+                    isDarkMode={isDarkMode}
+                    wellNumber={wellNumber}
+                    well={well}
+                    showFullSize={true}
+                  />
+                </div>
               </div>
             </div>
 
