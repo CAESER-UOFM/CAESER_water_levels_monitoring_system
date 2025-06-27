@@ -970,30 +970,22 @@ export function PlotCustomizationDialog({
                     {/* Preset Templates */}
                     <div>
                       <label className={labelClass}>Quick Start Templates</label>
-                      <div className="grid grid-cols-1 gap-2">
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            applyPreset(e.target.value as keyof typeof presetTemplates);
+                          }
+                        }}
+                        value=""
+                        className={inputClass}
+                      >
+                        <option value="">Select a template...</option>
                         {Object.entries(presetTemplates).map(([key, preset]) => (
-                          <button
-                            key={key}
-                            onClick={() => applyPreset(key as keyof typeof presetTemplates)}
-                            className={`text-left p-3 rounded-lg border transition-all duration-200 ${
-                              isDarkMode 
-                                ? 'bg-gray-700/50 border-gray-600 hover:border-cyan-500 hover:bg-gray-700' 
-                                : 'bg-gray-50 border-gray-300 hover:border-blue-500 hover:bg-blue-50'
-                            }`}
-                          >
-                            <div className={`font-medium text-sm ${
-                              isDarkMode ? 'text-white' : 'text-gray-900'
-                            }`}>
-                              {preset.name}
-                            </div>
-                            <div className={`text-xs ${
-                              isDarkMode ? 'text-gray-400' : 'text-gray-600'
-                            }`}>
-                              {preset.config.width}×{preset.config.height} • {preset.config.dpi} DPI
-                            </div>
-                          </button>
+                          <option key={key} value={key}>
+                            {preset.name} ({preset.config.width}×{preset.config.height}, {preset.config.dpi} DPI)
+                          </option>
                         ))}
-                      </div>
+                      </select>
                     </div>
                     
                     {/* Aspect Ratio */}
