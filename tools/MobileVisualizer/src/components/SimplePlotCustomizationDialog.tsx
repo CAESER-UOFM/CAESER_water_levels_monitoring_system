@@ -452,27 +452,17 @@ export function SimplePlotCustomizationDialog({
                 onClick={openImageViewer}
               >
                 {selectedTemplate ? (
-                  <div className="relative flex items-center justify-center p-4">
-                    <div className="bg-white rounded-lg overflow-hidden" style={{ 
-                      width: `${customization.width * 0.25}px`,
-                      height: `${customization.height * 0.25}px`
-                    }}>
-                      <div style={{ 
-                        transform: 'scale(0.25)', 
-                        transformOrigin: 'center center',
-                        width: `${customization.width}px`, 
-                        height: `${customization.height}px`
-                      }}>
-                        <LivePlotPreview
-                          customization={customization}
-                          plotData={processedData}
-                          isDarkMode={false}
-                          wellNumber={wellNumber}
-                          well={well}
-                          showFullSize={true}
-                          skipDataProcessing={true}
-                        />
-                      </div>
+                  <div className="relative">
+                    <div className="bg-white rounded-lg overflow-hidden flex items-center justify-center" style={{ minHeight: '300px' }}>
+                      <LivePlotPreview
+                        customization={customization}
+                        plotData={processedData}
+                        isDarkMode={false}
+                        wellNumber={wellNumber}
+                        well={well}
+                        showFullSize={false}
+                        skipDataProcessing={true}
+                      />
                     </div>
                     <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-lg pointer-events-none">
                       <div className="text-white text-center">
