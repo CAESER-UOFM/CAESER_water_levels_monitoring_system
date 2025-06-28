@@ -453,26 +453,54 @@ export function SimplePlotCustomizationDialog({
               >
                 {selectedTemplate ? (
                   <div className="relative">
-                    <div className="bg-white rounded-lg overflow-hidden flex items-center justify-center" style={{ minHeight: '300px' }}>
-                      <div 
-                        className="origin-center"
-                        style={{ 
-                          transform: `scale(${Math.min(400 / customization.width, 250 / customization.height)})`,
-                          width: `${customization.width}px`,
-                          height: `${customization.height}px`
-                        }}
-                      >
-                        <LivePlotPreview
-                          customization={customization}
-                          plotData={processedData}
-                          isDarkMode={false}
-                          wellNumber={wellNumber}
-                          well={well}
-                          showFullSize={true}
-                          skipDataProcessing={true}
-                        />
-                      </div>
-                    </div>
+                    {(() => {
+                      // Calculate the scale factor to fit the plot in preview area
+                      const maxPreviewWidth = 400;
+                      const maxPreviewHeight = 300;
+                      const scaleFactor = Math.min(
+                        maxPreviewWidth / customization.width,
+                        maxPreviewHeight / customization.height
+                      );
+                      const previewWidth = customization.width * scaleFactor;
+                      const previewHeight = customization.height * scaleFactor;
+                      
+                      console.log('Preview scaling:', {
+                        originalSize: `${customization.width}x${customization.height}`,
+                        scaleFactor,
+                        previewSize: `${previewWidth}x${previewHeight}`,
+                        maxArea: `${maxPreviewWidth}x${maxPreviewHeight}`
+                      });
+                      
+                      return (
+                        <div 
+                          className="bg-white rounded-lg overflow-hidden flex items-center justify-center p-4"
+                          style={{ 
+                            width: `${previewWidth + 32}px`, // +32 for padding
+                            height: `${previewHeight + 32}px`,
+                            margin: '0 auto'
+                          }}
+                        >
+                          <div 
+                            style={{ 
+                              transform: `scale(${scaleFactor})`,
+                              transformOrigin: 'center center',
+                              width: `${customization.width}px`,
+                              height: `${customization.height}px`
+                            }}
+                          >
+                            <LivePlotPreview
+                              customization={customization}
+                              plotData={processedData}
+                              isDarkMode={false}
+                              wellNumber={wellNumber}
+                              well={well}
+                              showFullSize={true}
+                              skipDataProcessing={true}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })()}
                     <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-lg pointer-events-none">
                       <div className="text-white text-center">
                         <div className="w-12 h-12 mx-auto mb-2 rounded-full bg-white bg-opacity-20 flex items-center justify-center">

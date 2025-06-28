@@ -1373,27 +1373,54 @@ class MainWindow(QMainWindow):
                 logger.info(f"Draft cleaned up after successful upload for: {self.db_manager.cloud_project_name}")
             
             # Get ACTUAL Google Drive timestamp after upload (not generated timestamp)
-            # Force refresh of project list to get latest timestamps
-            cloud_projects = self.cloud_db_handler.list_projects(force_refresh=True)
-            actual_cloud_time = None
-            for project in cloud_projects:
-                if project['name'] == self.db_manager.cloud_project_name:
-                    actual_cloud_time = project.get('modified_time', '')
-                    break
-            
-            if actual_cloud_time:
-                self.db_manager.cloud_download_time = actual_cloud_time
+            try:
+                # Small delay to ensure Google Drive has processed the upload
+                import time
+                time.sleep(1)
                 
-                # Update version tracking with ACTUAL Google Drive timestamp
+                # Get fresh project list to get latest timestamps
+                cloud_projects = self.cloud_db_handler.list_projects()
+                actual_cloud_time = None
+                for project in cloud_projects:
+                    if project['name'] == self.db_manager.cloud_project_name:
+                        actual_cloud_time = project.get('modified_time', '')
+                        break
+                
+                if actual_cloud_time:
+                    self.db_manager.cloud_download_time = actual_cloud_time
+                    
+                    # Update version tracking with ACTUAL Google Drive timestamp
+                    self.cloud_db_handler.update_local_version_tracking(
+                        self.db_manager.cloud_project_name, 
+                        actual_cloud_time,  # Use actual Google Drive timestamp
+                        self.db_manager.temp_db_path,
+                        "upload"
+                    )
+                    logger.info(f"Version tracking updated with actual Google Drive timestamp: {actual_cloud_time}")
+                else:
+                    logger.warning("Could not get actual Google Drive timestamp after upload - using fallback")
+                    # Fallback to generated timestamp if we can't get actual one
+                    from datetime import datetime
+                    fallback_time = datetime.now().isoformat() + 'Z'
+                    self.db_manager.cloud_download_time = fallback_time
+                    self.cloud_db_handler.update_local_version_tracking(
+                        self.db_manager.cloud_project_name, 
+                        fallback_time,
+                        self.db_manager.temp_db_path,
+                        "upload"
+                    )
+            except Exception as e:
+                logger.error(f"Error getting actual timestamp after upload: {e}")
+                # Fallback to generated timestamp
+                from datetime import datetime
+                fallback_time = datetime.now().isoformat() + 'Z'
+                self.db_manager.cloud_download_time = fallback_time
                 self.cloud_db_handler.update_local_version_tracking(
                     self.db_manager.cloud_project_name, 
-                    actual_cloud_time,  # Use actual Google Drive timestamp
+                    fallback_time,
                     self.db_manager.temp_db_path,
                     "upload"
                 )
-                logger.info(f"Version tracking updated with actual Google Drive timestamp: {actual_cloud_time}")
-            else:
-                logger.warning("Could not get actual Google Drive timestamp after upload")
             
             logger.info("Local database is now the current cloud version - no download needed")
             
