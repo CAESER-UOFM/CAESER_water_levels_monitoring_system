@@ -610,6 +610,15 @@ export function PlotCustomizationDialog({
   const dialogRef = useRef<HTMLDivElement>(null);
   const imageViewerRef = useRef<HTMLDivElement>(null);
 
+  // Debug effect to log zoom/pan changes
+  useEffect(() => {
+    console.log('Zoom/Pan state changed:', { 
+      zoomLevel, 
+      panPosition, 
+      transform: `translate(-50%, -50%) translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomLevel})` 
+    });
+  }, [zoomLevel, panPosition]);
+
   // Reset image viewer state when opening
   const openImageViewer = useCallback(() => {
     setZoomLevel(1);
@@ -619,16 +628,20 @@ export function PlotCustomizationDialog({
 
   // Zoom controls
   const handleZoomIn = useCallback(() => {
-    const newZoom = Math.min(zoomLevel * 1.5, 5);
-    console.log('Zoom In:', { from: zoomLevel, to: newZoom });
-    setZoomLevel(newZoom);
-  }, [zoomLevel]);
+    setZoomLevel(prev => {
+      const newZoom = Math.min(prev * 1.5, 5);
+      console.log('Zoom In:', { from: prev, to: newZoom });
+      return newZoom;
+    });
+  }, []);
 
   const handleZoomOut = useCallback(() => {
-    const newZoom = Math.max(zoomLevel / 1.5, 0.1);
-    console.log('Zoom Out:', { from: zoomLevel, to: newZoom });
-    setZoomLevel(newZoom);
-  }, [zoomLevel]);
+    setZoomLevel(prev => {
+      const newZoom = Math.max(prev / 1.5, 0.1);
+      console.log('Zoom Out:', { from: prev, to: newZoom });
+      return newZoom;
+    });
+  }, []);
 
   const handleFitToScreen = useCallback(() => {
     console.log('Fit to Screen: resetting zoom and pan');
@@ -666,10 +679,12 @@ export function PlotCustomizationDialog({
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    const newZoom = Math.min(Math.max(zoomLevel * delta, 0.1), 5);
-    console.log('Wheel Zoom:', { from: zoomLevel, to: newZoom, deltaY: e.deltaY });
-    setZoomLevel(newZoom);
-  }, [zoomLevel]);
+    setZoomLevel(prev => {
+      const newZoom = Math.min(Math.max(prev * delta, 0.1), 5);
+      console.log('Wheel Zoom:', { from: prev, to: newZoom, deltaY: e.deltaY });
+      return newZoom;
+    });
+  }, []);
 
   // Touch gesture helpers
   const getDistance = (touch1: React.Touch, touch2: React.Touch) => {
@@ -3209,6 +3224,7 @@ export function PlotCustomizationDialog({
                     backgroundColor: 'white',
                     border: '2px solid red' // Temporary debug border to see if container is visible
                   }}
+                  onTransitionEnd={() => console.log('Transform transition ended')}
                 >
                   <LivePlotPreview
                     customization={customization}
