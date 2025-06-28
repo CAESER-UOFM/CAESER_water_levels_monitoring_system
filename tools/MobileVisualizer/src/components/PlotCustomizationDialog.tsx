@@ -621,8 +621,10 @@ export function PlotCustomizationDialog({
 
   // Reset image viewer state when opening
   const openImageViewer = useCallback(() => {
+    console.log('Opening image viewer - resetting zoom and pan');
     setZoomLevel(1);
     setPanPosition({ x: 0, y: 0 });
+    setIsDragging(false); // Ensure not dragging
     setShowFullImageViewer(true);
   }, []);
 
@@ -663,12 +665,12 @@ export function PlotCustomizationDialog({
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDragging) return;
     
-    const deltaX = e.clientX - lastPointerPosition.x;
-    const deltaY = e.clientY - lastPointerPosition.y;
+    const deltaX = (e.clientX - lastPointerPosition.x) * 0.5; // Reduce sensitivity by 50%
+    const deltaY = (e.clientY - lastPointerPosition.y) * 0.5;
     
     setPanPosition(prev => {
-      // Limit pan range to keep image somewhat visible
-      const maxPan = Math.max(customization.width, customization.height) * 0.5;
+      // Much tighter bounds - only allow small movements
+      const maxPan = Math.min(customization.width, customization.height) * 0.15; // Reduced from 0.5 to 0.15
       return {
         x: Math.max(-maxPan, Math.min(maxPan, prev.x + deltaX)),
         y: Math.max(-maxPan, Math.min(maxPan, prev.y + deltaY))
@@ -731,12 +733,12 @@ export function PlotCustomizationDialog({
     } else if (e.touches.length === 1 && isDragging) {
       // Single touch drag
       const touch = e.touches[0];
-      const deltaX = touch.clientX - lastPointerPosition.x;
-      const deltaY = touch.clientY - lastPointerPosition.y;
+      const deltaX = (touch.clientX - lastPointerPosition.x) * 0.5; // Reduce sensitivity by 50%
+      const deltaY = (touch.clientY - lastPointerPosition.y) * 0.5;
       
       setPanPosition(prev => {
-        // Limit pan range to keep image somewhat visible
-        const maxPan = Math.max(customization.width, customization.height) * 0.5;
+        // Much tighter bounds - only allow small movements
+        const maxPan = Math.min(customization.width, customization.height) * 0.15; // Reduced from 0.5 to 0.15
         return {
           x: Math.max(-maxPan, Math.min(maxPan, prev.x + deltaX)),
           y: Math.max(-maxPan, Math.min(maxPan, prev.y + deltaY))
