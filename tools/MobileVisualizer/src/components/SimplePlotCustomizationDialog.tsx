@@ -453,7 +453,11 @@ export function SimplePlotCustomizationDialog({
               >
                 {selectedTemplate ? (
                   <div className="relative">
-                    <div className="bg-white rounded-lg overflow-hidden flex items-center justify-center" style={{ minHeight: '300px' }}>
+                    <div className="bg-white rounded-lg overflow-hidden flex items-center justify-center" style={{ 
+                      width: `${customization.width * 0.25}px`,
+                      height: `${customization.height * 0.25}px`,
+                      minHeight: 'auto'
+                    }}>
                       <div style={{ 
                         transform: 'scale(0.25)', 
                         transformOrigin: 'center center',
