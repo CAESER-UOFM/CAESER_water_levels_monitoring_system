@@ -54,6 +54,7 @@ class DatabaseManager(QObject):
         self.temp_db_path = None
         self.is_cloud_modified = False
         self.change_tracker = None
+        self.draft_changes_description = None  # Store existing draft description
         
     def set_google_drive_handler(self, handler):
         """Set the Google Drive handler for database operations"""

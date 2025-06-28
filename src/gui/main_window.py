@@ -48,6 +48,7 @@ from .dialogs.application_help_system import ApplicationHelpSystem
 from .handlers.auto_updater import AutoUpdater
 from .handlers.version_checker import VersionChecker
 from .dialogs.unified_credentials_dialog import UnifiedCredentialsDialog
+from .dialogs.draft_selection_dialog import DraftSelectionDialog
 
 logger = logging.getLogger(__name__)
 
@@ -997,6 +998,33 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Project Not Found", 
                               f"Cloud project '{project_name}' not found.")
             return
+        
+        # Check for existing draft
+        has_draft = self.cloud_db_handler.has_draft(project_name)
+        prefer_draft = False
+        
+        if has_draft:
+            draft_info = self.cloud_db_handler.get_draft_info(project_name)
+            
+            # Show enhanced draft selection dialog
+            dialog = DraftSelectionDialog(
+                project_name,
+                draft_info,
+                project_info,
+                self
+            )
+            
+            if dialog.exec_() == QDialog.Accepted:
+                selection = dialog.get_selection()
+                if selection == 'draft':
+                    prefer_draft = True
+                elif selection == 'cloud':
+                    prefer_draft = False
+                    # Clear the draft since user chose to download fresh
+                    self.cloud_db_handler.clear_draft(project_name)
+            else:
+                # User cancelled
+                return
             
         # Note: No lock checking needed for downloading - locks are only for collaborative editing
         # We'll check/acquire locks when the user tries to save changes back to cloud
@@ -1018,7 +1046,7 @@ class MainWindow(QMainWindow):
             progress_dialog.update(overall_progress, status_message)
             QApplication.processEvents()
         
-        temp_path = self.cloud_db_handler.download_database(project_name, project_info, download_progress_callback)
+        temp_path = self.cloud_db_handler.download_database(project_name, project_info, download_progress_callback, prefer_draft)
         if not temp_path:
             progress_dialog.close()
             logger.error("Download failed - no temporary path returned")
@@ -1033,11 +1061,33 @@ class MainWindow(QMainWindow):
         # Open as cloud database
         self.db_manager.open_cloud_database(temp_path, project_name, project_info)
         
+        # Store download time for draft version tracking
+        self.db_manager.cloud_download_time = project_info.get('modified_time', '')
+        
+        # If we loaded a draft, mark it as modified since it has unsaved changes
+        if prefer_draft and has_draft:
+            self.db_manager.is_cloud_modified = True
+            # Store the existing draft changes description for later use
+            self.db_manager.draft_changes_description = draft_info.get('changes_description', '')
+            logger.info("Draft loaded - marking as modified with unsaved changes")
+        else:
+            # Clear draft description if not loading a draft
+            self.db_manager.draft_changes_description = None
+        
         # Update UI for cloud mode
         self._update_cloud_ui(True, project_name)
         
+        # Determine display name based on whether draft was loaded
+        if prefer_draft and has_draft:
+            display_name = f"{project_name} (Draft)"
+            # Update UI to show draft state with modifications
+            self.save_cloud_btn.setEnabled(True)
+            self.cloud_mode_label.setText(f"Cloud: {project_name} (Draft - Has Changes)")
+        else:
+            display_name = f"{project_name} (Cloud)"
+        
         # Complete opening
-        self._complete_database_opening(f"{project_name} (Cloud)", start_time)
+        self._complete_database_opening(display_name, start_time)
         
     def _complete_database_opening(self, display_name: str, start_time: float):
         """Complete the database opening process"""
@@ -1197,6 +1247,7 @@ class MainWindow(QMainWindow):
             self.db_manager.cloud_project_name,
             current_user,
             self.db_manager.change_tracker,
+            self.db_manager.draft_changes_description,
             self
         )
         
@@ -1206,23 +1257,32 @@ class MainWindow(QMainWindow):
         # Get change description
         changes_desc = dialog.get_changes_description()
         
-        # Show progress
-        progress_dialog.show("Saving to cloud...", "Saving Changes")
-        progress_dialog.update(20, "Creating backup...")
-        QApplication.processEvents()
+        # Show progress with always on top
+        progress_dialog.show("Saving to cloud...", "Saving Changes", cancelable=False)
         
-        # Save to cloud
+        # Make sure progress dialog stays on top
+        if progress_dialog.progress_dialog:
+            progress_dialog.progress_dialog.setWindowFlags(
+                progress_dialog.progress_dialog.windowFlags() | Qt.WindowStaysOnTopHint
+            )
+            progress_dialog.progress_dialog.show()
+        
+        # Create progress callback
+        def save_progress_callback(progress_percent, status_message):
+            progress_dialog.update(progress_percent, status_message)
+            QApplication.processEvents()
+        
+        # Save to cloud with progress tracking
         success = self.cloud_db_handler.save_database(
             self.db_manager.cloud_project_name,
             self.db_manager.cloud_project_info,
             self.db_manager.temp_db_path,
             current_user,
             changes_desc,
-            self.db_manager.change_tracker
+            self.db_manager.change_tracker,
+            save_progress_callback
         )
         
-        progress_dialog.update(100, "Save complete")
-        QApplication.processEvents()
         progress_dialog.close()
         
         if success:
@@ -1240,6 +1300,37 @@ class MainWindow(QMainWindow):
         else:
             QMessageBox.critical(self, "Save Failed", "Failed to save database to cloud.")
             return False
+
+    def _save_as_draft_on_close(self) -> bool:
+        """Save current changes as a local draft when closing the app"""
+        try:
+            if not self.db_manager.is_cloud_database:
+                return True
+                
+            # Get change description from change tracker
+            changes_desc = ""
+            if self.db_manager.change_tracker and self.db_manager.change_tracker.changes:
+                changes_desc = self.db_manager.change_tracker.get_manual_changes_description()
+            
+            # Save the draft
+            success = self.cloud_db_handler.save_as_draft(
+                self.db_manager.cloud_project_name,
+                self.db_manager.temp_db_path,
+                self.db_manager.cloud_download_time,
+                changes_desc
+            )
+            
+            if success:
+                logger.info(f"Draft saved successfully for project: {self.db_manager.cloud_project_name}")
+                return True
+            else:
+                QMessageBox.warning(self, "Draft Save Failed", "Failed to save draft. Continue closing anyway?")
+                return True  # Allow closing even if draft save fails
+                
+        except Exception as e:
+            logger.error(f"Error saving draft on close: {e}")
+            QMessageBox.warning(self, "Draft Save Error", f"Error saving draft: {e}. Continue closing anyway?")
+            return True  # Allow closing even if draft save fails
 
     def _sync_database(self):
         """Sync the current database with Google Drive"""
@@ -1427,21 +1518,33 @@ class MainWindow(QMainWindow):
             # Check for unsaved cloud database changes
             if (hasattr(self, 'db_manager') and self.db_manager and 
                 self.db_manager.is_cloud_database and self.db_manager.is_cloud_modified):
-                reply = QMessageBox.question(
-                    self,
-                    "Unsaved Changes",
-                    "You have unsaved changes in the cloud database.\n"
-                    "Do you want to save before closing?",
-                    QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel
+                # Show draft-aware dialog for unsaved cloud changes
+                from .dialogs.save_options_dialog import SaveOptionsDialog
+                
+                dialog = SaveOptionsDialog(
+                    self.db_manager.cloud_project_name,
+                    self.db_manager.change_tracker,
+                    self
                 )
                 
-                if reply == QMessageBox.Save:
+                result = dialog.exec_()
+                if result != QDialog.Accepted:
+                    # User cancelled
+                    event.ignore()
+                    return
+                    
+                choice = dialog.get_choice()
+                if choice == "save_cloud":
+                    # Save to cloud before closing
                     if not self._save_to_cloud():
                         event.ignore()
                         return
-                elif reply == QMessageBox.Cancel:
-                    event.ignore()
-                    return
+                elif choice == "save_draft":
+                    # Save as local draft
+                    if not self._save_as_draft_on_close():
+                        event.ignore()
+                        return
+                # If choice == "discard", continue to close without saving
             
             # Clean up cloud database resources
             if hasattr(self, 'cloud_db_handler') and self.cloud_db_handler:

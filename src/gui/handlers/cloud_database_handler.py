@@ -7,7 +7,8 @@ import time
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple
-from googleapiclient.http import MediaIoBaseDownload, MediaFileUpload
+from googleapiclient.http import MediaIoBaseDownload, MediaFileUpload, MediaIoBaseUpload
+from .draft_manager import DraftManager
 from googleapiclient.errors import HttpError
 import io
 import uuid
@@ -30,6 +31,7 @@ class CloudDatabaseHandler:
         self.projects_folder_id = None
         self.temp_files = []  # Track temp files for cleanup
         self.cache_dir = self._get_cache_directory()
+        self.draft_manager = DraftManager(self.cache_dir)  # Initialize draft manager
         
     def get_projects_folder_id(self):
         """Get the projects folder ID from settings"""
@@ -195,7 +197,7 @@ class CloudDatabaseHandler:
             logger.error(f"Error getting database info: {e}")
             return None
             
-    def download_database(self, project_name: str, project_info: Dict, progress_callback=None) -> Optional[str]:
+    def download_database(self, project_name: str, project_info: Dict, progress_callback=None, prefer_draft=False) -> Optional[str]:
         """
         Download a database to a temporary location, using cache if available.
         
@@ -203,11 +205,23 @@ class CloudDatabaseHandler:
             project_name: Name of the project
             project_info: Project information dictionary
             progress_callback: Optional callback function for progress updates
+            prefer_draft: If True, prefer loading draft over cloud download
             
         Returns:
             Path to the temporary database file
         """
         try:
+            # Check for existing draft first if requested
+            if prefer_draft and self.has_draft(project_name):
+                logger.info(f"Loading existing draft for {project_name}")
+                if progress_callback:
+                    progress_callback(50, "Loading existing draft...")
+                
+                draft_path = self.load_draft(project_name)
+                if draft_path:
+                    if progress_callback:
+                        progress_callback(100, "Draft loaded successfully")
+                    return draft_path
             # Check if we have a valid cached version
             cloud_modified_time = project_info.get('modified_time', '')
             if self._is_cache_valid(project_name, cloud_modified_time):
@@ -317,7 +331,7 @@ class CloudDatabaseHandler:
             
     def save_database(self, project_name: str, project_info: Dict, 
                      temp_db_path: str, user_name: str, changes_desc: str, 
-                     change_tracker=None) -> bool:
+                     change_tracker=None, progress_callback=None) -> bool:
         """
         Save database to cloud with backup and change tracking.
         
@@ -328,6 +342,7 @@ class CloudDatabaseHandler:
             user_name: Name of the user making changes
             changes_desc: Description of changes
             change_tracker: Optional ChangeTracker instance for detailed change logging
+            progress_callback: Optional callback for progress updates (progress_percent, message)
             
         Returns:
             True if successful, False otherwise
@@ -338,27 +353,39 @@ class CloudDatabaseHandler:
                 return False
                 
             # 1. Create backup of current database
+            if progress_callback:
+                progress_callback(10, "Creating backup...")
             if not self._create_backup(service, project_info, user_name):
                 logger.warning("Failed to create backup, continuing anyway")
                 
-            # 2. Upload new database
-            if not self._upload_database(service, project_info, temp_db_path):
+            # 2. Upload new database (this is the main time-consuming operation)
+            if progress_callback:
+                progress_callback(20, "Starting database upload...")
+            if not self._upload_database(service, project_info, temp_db_path, progress_callback):
                 logger.error("Failed to upload database")
                 return False
                 
             # 3. Update change log
+            if progress_callback:
+                progress_callback(90, "Updating change log...")
             self._update_change_log(service, project_info, user_name, changes_desc)
             
             # 4. Save detailed change tracking if available
+            if progress_callback:
+                progress_callback(95, "Saving change details...")
             if change_tracker and change_tracker.changes:
                 self._save_detailed_changes(service, project_info, change_tracker)
             
             # 5. Clean old backups
+            if progress_callback:
+                progress_callback(98, "Cleaning up old backups...")
             self._cleanup_backups(service, project_info)
             
             # 6. Release lock
             self._release_lock(service, project_info)
             
+            if progress_callback:
+                progress_callback(100, "Save completed successfully!")
             logger.info(f"Successfully saved database for project: {project_name}")
             return True
             
@@ -422,26 +449,63 @@ class CloudDatabaseHandler:
             logger.error(f"Error creating backup folder: {e}")
             return None
             
-    def _upload_database(self, service, project_info: Dict, temp_db_path: str) -> bool:
+    def _upload_database(self, service, project_info: Dict, temp_db_path: str, progress_callback=None) -> bool:
         """Upload the database file"""
         try:
+            import os
+            file_size = os.path.getsize(temp_db_path)
+            logger.info(f"Starting database upload: {file_size} bytes")
+            
             media = MediaFileUpload(
                 temp_db_path,
                 mimetype='application/x-sqlite3',
-                resumable=True
+                resumable=True,
+                chunksize=1024*1024  # 1MB chunks for better progress
             )
             
-            # Update existing file
-            service.files().update(
-                fileId=project_info['database_id'],
-                media_body=media
-            ).execute()
+            # Update existing file with timeout
+            import socket
+            original_timeout = socket.getdefaulttimeout()
+            socket.setdefaulttimeout(300)  # 5 minute timeout
+            
+            try:
+                request = service.files().update(
+                    fileId=project_info['database_id'],
+                    media_body=media
+                )
+                
+                response = None
+                retries = 0
+                max_retries = 3
+                
+                while response is None and retries < max_retries:
+                    try:
+                        status, response = request.next_chunk()
+                        if status:
+                            # Map upload progress (0-100%) to overall save progress (20-85%)
+                            upload_progress = int(status.progress() * 100)
+                            overall_progress = 20 + int(upload_progress * 0.65)  # 65% of total for upload
+                            logger.info(f"Upload progress: {upload_progress}%")
+                            
+                            # Call progress callback with real upload progress
+                            if progress_callback:
+                                progress_callback(overall_progress, f"Uploading database... {upload_progress}%")
+                    except Exception as chunk_error:
+                        retries += 1
+                        logger.warning(f"Upload chunk error (attempt {retries}): {chunk_error}")
+                        if retries >= max_retries:
+                            raise chunk_error
+                
+            finally:
+                socket.setdefaulttimeout(original_timeout)
             
             logger.info("Database uploaded successfully")
             return True
             
         except Exception as e:
             logger.error(f"Error uploading database: {e}")
+            import traceback
+            logger.error(f"Upload error details: {traceback.format_exc()}")
             return False
             
     def _update_change_log(self, service, project_info: Dict, user_name: str, changes_desc: str):
@@ -481,8 +545,9 @@ class CloudDatabaseHandler:
             changes_data['changes'] = changes_data['changes'][:50]
             
             # Upload updated file
-            media = MediaFileUpload(
-                io.BytesIO(json.dumps(changes_data, indent=2).encode('utf-8')),
+            json_content = io.BytesIO(json.dumps(changes_data, indent=2).encode('utf-8'))
+            media = MediaIoBaseUpload(
+                json_content,
                 mimetype='application/json',
                 resumable=True
             )
@@ -611,8 +676,9 @@ class CloudDatabaseHandler:
                 return
             
             # Upload changes file
-            media = MediaFileUpload(
-                io.BytesIO(json.dumps(changes_data, indent=2).encode('utf-8')),
+            json_content = io.BytesIO(json.dumps(changes_data, indent=2).encode('utf-8'))
+            media = MediaIoBaseUpload(
+                json_content,
                 mimetype='application/json',
                 resumable=True
             )
@@ -669,3 +735,44 @@ class CloudDatabaseHandler:
                 logger.error(f"Error cleaning up temp file {temp_file}: {e}")
                 
         self.temp_files.clear()
+    
+    # Draft Management Methods
+    def has_draft(self, project_name: str) -> bool:
+        """Check if a draft exists for the project."""
+        return self.draft_manager.has_draft(project_name)
+    
+    def get_draft_info(self, project_name: str) -> Optional[Dict]:
+        """Get draft information."""
+        return self.draft_manager.get_draft_info(project_name)
+    
+    def save_as_draft(self, project_name: str, temp_db_path: str, 
+                      original_download_time: str, changes_description: str = None) -> bool:
+        """Save current state as a local draft."""
+        return self.draft_manager.save_draft(
+            project_name, temp_db_path, original_download_time, changes_description
+        )
+    
+    def load_draft(self, project_name: str) -> Optional[str]:
+        """Load a draft database."""
+        return self.draft_manager.load_draft(project_name, self.cache_dir)
+    
+    def clear_draft(self, project_name: str) -> bool:
+        """Clear a draft after successful upload."""
+        return self.draft_manager.clear_draft(project_name)
+    
+    def check_draft_version_changes(self, project_name: str) -> Dict:
+        """Check if cloud version changed since draft was created."""
+        try:
+            # Get current cloud version
+            projects = self.list_projects()
+            project_info = next((p for p in projects if p['name'] == project_name), None)
+            
+            if not project_info:
+                return {'changed': False, 'info': None}
+            
+            current_cloud_time = project_info.get('modified_time')
+            return self.draft_manager.check_version_changes(project_name, current_cloud_time)
+            
+        except Exception as e:
+            logger.error(f"Error checking draft version changes: {e}")
+            return {'changed': False, 'info': None}

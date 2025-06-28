@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 class SaveToCloudDialog(QDialog):
     """Dialog for saving database changes to cloud with change tracking"""
     
-    def __init__(self, project_name, user_name, change_tracker=None, parent=None):
+    def __init__(self, project_name, user_name, change_tracker=None, existing_description=None, parent=None):
         """
         Initialize the save to cloud dialog.
         
@@ -16,12 +16,14 @@ class SaveToCloudDialog(QDialog):
             project_name: Name of the project being saved
             user_name: Name of the current user
             change_tracker: Optional ChangeTracker instance for showing tracked changes
+            existing_description: Optional existing description from draft
             parent: Parent widget
         """
         super().__init__(parent)
         self.project_name = project_name
         self.user_name = user_name
         self.change_tracker = change_tracker
+        self.existing_description = existing_description
         self.changes_description = ""
         
         self.setup_ui()
@@ -86,8 +88,12 @@ class SaveToCloudDialog(QDialog):
         
         self.change_text = QTextEdit()
         
-        # Pre-populate with tracked changes if available
-        if self.change_tracker and self.change_tracker.changes:
+        # Pre-populate with existing draft description or tracked changes
+        if self.existing_description:
+            # Use existing draft description (preserves previous description)
+            self.change_text.setPlainText(self.existing_description)
+        elif self.change_tracker and self.change_tracker.changes:
+            # Use tracked changes if no existing description
             suggested_description = self.change_tracker.get_manual_changes_description()
             if suggested_description and suggested_description != "No manual changes made":
                 self.change_text.setPlainText(suggested_description)

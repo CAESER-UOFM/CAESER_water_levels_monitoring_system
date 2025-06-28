@@ -646,47 +646,71 @@ export function PlotCustomizationDialog({
     return Math.max(fitZoom * 0.95, 0.3); // 95% of fit with absolute minimum of 30%
   }, [customization.width, customization.height]);
 
-  // Zoom controls with smoother focal point adjustment
+  // Stable zoom button handlers - iteration 2
   const handleZoomIn = useCallback(() => {
     setZoomLevel(prev => {
-      const newZoom = Math.min(prev * 1.15, 3); // Smaller steps for smoother zoom
+      const newZoom = Math.min(prev * 1.2, 3); // Slightly larger increments for buttons
       
-      // Defer pan adjustment to next frame to reduce jumping
-      requestAnimationFrame(() => {
-        setPanPosition(currentPan => {
-          const zoomChange = newZoom / prev;
-          return {
-            x: currentPan.x * zoomChange,
-            y: currentPan.y * zoomChange
-          };
-        });
-      });
+      // Only adjust pan if zoom changed, with minimal adjustment
+      if (newZoom !== prev) {
+        setTimeout(() => {
+          setPanPosition(currentPan => {
+            if (!imageViewerRef.current) return currentPan;
+            
+            // Apply bounds checking with new zoom level
+            const container = imageViewerRef.current;
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            const scaledImageWidth = customization.width * newZoom;
+            const scaledImageHeight = customization.height * newZoom;
+            
+            const maxPanX = Math.max(0, (scaledImageWidth - containerWidth) / 2);
+            const maxPanY = Math.max(0, (scaledImageHeight - containerHeight) / 2);
+            
+            return {
+              x: Math.max(-maxPanX, Math.min(maxPanX, currentPan.x)),
+              y: Math.max(-maxPanY, Math.min(maxPanY, currentPan.y))
+            };
+          });
+        }, 0);
+      }
       
-      console.log('Zoom In:', { from: prev, to: newZoom });
       return newZoom;
     });
-  }, []);
+  }, [customization.width, customization.height]);
 
   const handleZoomOut = useCallback(() => {
     setZoomLevel(prev => {
       const minZoom = getMinZoom();
-      const newZoom = Math.max(prev / 1.15, minZoom); // Smaller steps for smoother zoom
+      const newZoom = Math.max(prev * 0.83, minZoom); // Slightly larger increments for buttons
       
-      // Defer pan adjustment to next frame to reduce jumping
-      requestAnimationFrame(() => {
-        setPanPosition(currentPan => {
-          const zoomChange = newZoom / prev;
-          return {
-            x: currentPan.x * zoomChange,
-            y: currentPan.y * zoomChange
-          };
-        });
-      });
+      // Only adjust pan if zoom changed, with minimal adjustment
+      if (newZoom !== prev) {
+        setTimeout(() => {
+          setPanPosition(currentPan => {
+            if (!imageViewerRef.current) return currentPan;
+            
+            // Apply bounds checking with new zoom level
+            const container = imageViewerRef.current;
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            const scaledImageWidth = customization.width * newZoom;
+            const scaledImageHeight = customization.height * newZoom;
+            
+            const maxPanX = Math.max(0, (scaledImageWidth - containerWidth) / 2);
+            const maxPanY = Math.max(0, (scaledImageHeight - containerHeight) / 2);
+            
+            return {
+              x: Math.max(-maxPanX, Math.min(maxPanX, currentPan.x)),
+              y: Math.max(-maxPanY, Math.min(maxPanY, currentPan.y))
+            };
+          });
+        }, 0);
+      }
       
-      console.log('Zoom Out:', { from: prev, to: newZoom, minZoom });
       return newZoom;
     });
-  }, [getMinZoom]);
+  }, [getMinZoom, customization.width, customization.height]);
 
   const handleFitToScreen = useCallback(() => {
     const fitZoom = getMinZoom();
@@ -738,7 +762,7 @@ export function PlotCustomizationDialog({
     setIsDragging(false);
   }, []);
 
-  // Industry-standard wheel zoom with focal point (zoom to cursor)
+  // Stable zoom with reduced jumping - iteration 2
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     
@@ -747,55 +771,47 @@ export function PlotCustomizationDialog({
     const container = imageViewerRef.current;
     const rect = container.getBoundingClientRect();
     
-    // Get mouse position relative to container
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    // Get mouse position relative to container center
+    const mouseX = e.clientX - rect.left - rect.width / 2;
+    const mouseY = e.clientY - rect.top - rect.height / 2;
     
-    // Get container center
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    
-    const delta = e.deltaY > 0 ? 0.95 : 1.05; // Even smaller steps for wheel zoom
+    const delta = e.deltaY > 0 ? 0.9 : 1.1; // Slightly larger steps for smoother zoom
     
     setZoomLevel(prev => {
       const minZoom = getMinZoom();
       const newZoom = Math.min(Math.max(prev * delta, minZoom), 3);
       
-      // Calculate focal point adjustment
-      const zoomChange = newZoom / prev;
+      // Only update pan if zoom actually changed
+      if (newZoom !== prev) {
+        const zoomRatio = newZoom / prev;
+        
+        // Use setTimeout to separate zoom and pan updates (reduces jumping)
+        setTimeout(() => {
+          setPanPosition(currentPan => {
+            // Calculate how the focal point should move
+            const panAdjustX = mouseX * (zoomRatio - 1) * 0.5; // Reduced sensitivity
+            const panAdjustY = mouseY * (zoomRatio - 1) * 0.5;
+            
+            let newPanX = currentPan.x - panAdjustX;
+            let newPanY = currentPan.y - panAdjustY;
+            
+            // Apply bounds with current zoom level
+            const scaledImageWidth = customization.width * newZoom;
+            const scaledImageHeight = customization.height * newZoom;
+            const maxPanX = Math.max(0, (scaledImageWidth - rect.width) / 2);
+            const maxPanY = Math.max(0, (scaledImageHeight - rect.height) / 2);
+            
+            newPanX = Math.max(-maxPanX, Math.min(maxPanX, newPanX));
+            newPanY = Math.max(-maxPanY, Math.min(maxPanY, newPanY));
+            
+            return { x: newPanX, y: newPanY };
+          });
+        }, 0);
+      }
       
-      // Adjust pan to zoom towards mouse cursor
-      setPanPosition(currentPan => {
-        // Calculate offset from center to mouse
-        const offsetX = mouseX - centerX;
-        const offsetY = mouseY - centerY;
-        
-        // Calculate new pan to keep mouse point fixed
-        let newPanX = currentPan.x - (offsetX * (zoomChange - 1));
-        let newPanY = currentPan.y - (offsetY * (zoomChange - 1));
-        
-        // Apply bounds checking
-        const containerWidth = rect.width;
-        const containerHeight = rect.height;
-        const scaledImageWidth = customization.width * newZoom;
-        const scaledImageHeight = customization.height * newZoom;
-        
-        const maxPanX = Math.max(0, (scaledImageWidth - containerWidth) / 2);
-        const maxPanY = Math.max(0, (scaledImageHeight - containerHeight) / 2);
-        
-        newPanX = Math.max(-maxPanX, Math.min(maxPanX, newPanX));
-        newPanY = Math.max(-maxPanY, Math.min(maxPanY, newPanY));
-        
-        return {
-          x: newPanX,
-          y: newPanY
-        };
-      });
-      
-      console.log('Focal Zoom:', { from: prev, to: newZoom, mouseX, mouseY, delta });
       return newZoom;
     });
-  }, [getMinZoom]);
+  }, [getMinZoom, customization.width, customization.height]);
 
   // Touch gesture helpers
   const getDistance = (touch1: React.Touch, touch2: React.Touch) => {
@@ -825,41 +841,47 @@ export function PlotCustomizationDialog({
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 2 && initialPinchDistance !== null && imageViewerRef.current) {
-      // Pinch zoom with focal point
+      // Stable pinch zoom with reduced jumping
       const distance = getDistance(e.touches[0], e.touches[1]);
       const scale = distance / initialPinchDistance;
       const newZoom = Math.min(Math.max(initialZoomLevel * scale, getMinZoom()), 3);
       
-      // Calculate pinch center point
+      // Calculate pinch center relative to container center
       const container = imageViewerRef.current;
       const rect = container.getBoundingClientRect();
-      const pinchCenterX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
-      const pinchCenterY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
-      
-      // Get container center
-      const centerX = rect.width / 2;
-      const centerY = rect.height / 2;
+      const pinchCenterX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left - rect.width / 2;
+      const pinchCenterY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top - rect.height / 2;
       
       // Use requestAnimationFrame for smoother pinch zoom
       requestAnimationFrame(() => {
         setZoomLevel(prev => {
-          const zoomChange = newZoom / prev;
-          
-          // Adjust pan to zoom towards pinch center  
-          setPanPosition(currentPan => {
-            // Calculate offset from center to pinch point
-            const offsetX = pinchCenterX - centerX;
-            const offsetY = pinchCenterY - centerY;
+          // Only update pan if zoom actually changed
+          if (newZoom !== prev) {
+            const zoomRatio = newZoom / prev;
             
-            // Calculate new pan to keep pinch point fixed
-            const newPanX = currentPan.x - (offsetX * (zoomChange - 1));
-            const newPanY = currentPan.y - (offsetY * (zoomChange - 1));
-            
-            return {
-              x: newPanX,
-              y: newPanY
-            };
-          });
+            // Separate pan update to reduce jumping
+            setTimeout(() => {
+              setPanPosition(currentPan => {
+                // Calculate focal point adjustment with reduced sensitivity
+                const panAdjustX = pinchCenterX * (zoomRatio - 1) * 0.4; // Even more reduced for touch
+                const panAdjustY = pinchCenterY * (zoomRatio - 1) * 0.4;
+                
+                let newPanX = currentPan.x - panAdjustX;
+                let newPanY = currentPan.y - panAdjustY;
+                
+                // Apply bounds
+                const scaledImageWidth = customization.width * newZoom;
+                const scaledImageHeight = customization.height * newZoom;
+                const maxPanX = Math.max(0, (scaledImageWidth - rect.width) / 2);
+                const maxPanY = Math.max(0, (scaledImageHeight - rect.height) / 2);
+                
+                newPanX = Math.max(-maxPanX, Math.min(maxPanX, newPanX));
+                newPanY = Math.max(-maxPanY, Math.min(maxPanY, newPanY));
+                
+                return { x: newPanX, y: newPanY };
+              });
+            }, 0);
+          }
           
           return newZoom;
         });
