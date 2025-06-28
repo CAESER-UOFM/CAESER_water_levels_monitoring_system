@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import List, Dict, Optional, Tuple
 from googleapiclient.http import MediaIoBaseDownload, MediaFileUpload, MediaIoBaseUpload
 from .draft_manager import DraftManager
+from .version_manager import VersionManager
 from googleapiclient.errors import HttpError
 import io
 import uuid
@@ -32,6 +33,7 @@ class CloudDatabaseHandler:
         self.temp_files = []  # Track temp files for cleanup
         self.cache_dir = self._get_cache_directory()
         self.draft_manager = DraftManager(self.cache_dir)  # Initialize draft manager
+        self.version_manager = VersionManager(self.cache_dir)  # Initialize version manager
         
     def get_projects_folder_id(self):
         """Get the projects folder ID from settings"""
@@ -776,3 +778,23 @@ class CloudDatabaseHandler:
         except Exception as e:
             logger.error(f"Error checking draft version changes: {e}")
             return {'changed': False, 'info': None}
+    
+    # Version Manager Methods
+    def check_version_status(self, project_name: str, cloud_version_time: str) -> Dict:
+        """Check version status between local cache and cloud"""
+        return self.version_manager.compare_versions(project_name, cloud_version_time)
+    
+    def update_local_version_tracking(self, project_name: str, cloud_version_time: str, 
+                                    local_db_path: str, operation: str = "download"):
+        """Update version tracking after download/upload"""
+        self.version_manager.update_local_version(project_name, cloud_version_time, 
+                                                local_db_path, operation)
+    
+    def get_cached_database_path(self, project_name: str) -> Optional[str]:
+        """Get path to cached database if it exists and is valid"""
+        version_info = self.version_manager.get_local_version_info(project_name)
+        if version_info:
+            local_path = version_info.get('local_db_path')
+            if local_path and os.path.exists(local_path):
+                return local_path
+        return None

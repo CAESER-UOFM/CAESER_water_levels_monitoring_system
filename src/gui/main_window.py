@@ -1028,8 +1028,65 @@ class MainWindow(QMainWindow):
             
         # Note: No lock checking needed for downloading - locks are only for collaborative editing
         # We'll check/acquire locks when the user tries to save changes back to cloud
+        
+        # Smart version tracking - check if we can use local cache
+        if not prefer_draft:  # Only check cache if not using draft
+            cloud_version_time = project_info.get('modified_time', '')
+            version_comparison = self.cloud_db_handler.check_version_status(project_name, cloud_version_time)
             
-        # Show progress dialog
+            # If we have a valid local cache, show version choice dialog
+            if version_comparison.get('local_db_exists', False):
+                from .dialogs.version_choice_dialog import VersionChoiceDialog
+                
+                version_dialog = VersionChoiceDialog(
+                    project_name,
+                    version_comparison,
+                    self
+                )
+                
+                if version_dialog.exec_() == QDialog.Accepted:
+                    choice = version_dialog.get_choice()
+                    if choice == "use_cache":
+                        # Use local cache instead of downloading
+                        cached_path = self.cloud_db_handler.get_cached_database_path(project_name)
+                        if cached_path:
+                            logger.info(f"Using cached database: {cached_path}")
+                            
+                            # Show brief progress
+                            progress_dialog.show(f"Loading cached database: {project_name}", "Loading Cache")
+                            progress_dialog.update(50, "Opening cached database...")
+                            QApplication.processEvents()
+                            
+                            # Open the cached database
+                            self.db_manager.open_cloud_database(cached_path, project_name, project_info)
+                            self.db_manager.cloud_download_time = version_comparison.get('local_time', '')
+                            
+                            # Update UI
+                            self._update_cloud_ui(True, project_name)
+                            
+                            # Determine display name and complete opening
+                            version_status = version_comparison.get('message', '')
+                            if version_comparison.get('status') == 'current':
+                                display_name = f"{project_name} (Cloud - Latest)"
+                            else:
+                                display_name = f"{project_name} (Cloud - Cached)"
+                            
+                            progress_dialog.update(100, "Cache loaded successfully!")
+                            QApplication.processEvents()
+                            progress_dialog.close()
+                            
+                            # Complete opening
+                            self._complete_database_opening(display_name, start_time)
+                            
+                            # Add version status to cloud label
+                            self.cloud_mode_label.setText(f"Cloud: {project_name} - {version_status}")
+                            return
+                    # If choice was "download_fresh", continue with normal download
+                else:
+                    # User cancelled version choice
+                    return
+            
+        # Show progress dialog for download
         progress_dialog.show(f"Opening cloud project: {project_name}", "Loading Cloud Database")
         progress_dialog.update(10, f"Downloading {project_info['database_name']}...")
         QApplication.processEvents()
@@ -1063,6 +1120,14 @@ class MainWindow(QMainWindow):
         
         # Store download time for draft version tracking
         self.db_manager.cloud_download_time = project_info.get('modified_time', '')
+        
+        # Update version tracking for downloaded database
+        if not prefer_draft:  # Only track downloads, not draft loads
+            cloud_version_time = project_info.get('modified_time', '')
+            self.cloud_db_handler.update_local_version_tracking(
+                project_name, cloud_version_time, temp_path, "download"
+            )
+            logger.info(f"Updated version tracking for downloaded database: {project_name}")
         
         # If we loaded a draft, mark it as modified since it has unsaved changes
         if prefer_draft and has_draft:
@@ -1294,6 +1359,25 @@ class MainWindow(QMainWindow):
             # Clear change tracker
             if self.db_manager.change_tracker:
                 self.db_manager.change_tracker.clear_changes()
+            
+            # Clean up draft after successful upload (local DB is now current)
+            if self.cloud_db_handler.has_draft(self.db_manager.cloud_project_name):
+                self.cloud_db_handler.clear_draft(self.db_manager.cloud_project_name)
+                logger.info(f"Draft cleaned up after successful upload for: {self.db_manager.cloud_project_name}")
+            
+            # Update local version timestamp to current time (we just became the latest version)
+            from datetime import datetime
+            current_time = datetime.now().isoformat() + 'Z'
+            self.db_manager.cloud_download_time = current_time
+            
+            # Update version tracking - our local DB is now the latest cloud version
+            self.cloud_db_handler.update_local_version_tracking(
+                self.db_manager.cloud_project_name, 
+                current_time,
+                self.db_manager.temp_db_path,
+                "upload"
+            )
+            logger.info("Local database is now the current cloud version - no download needed")
             
             QMessageBox.information(self, "Success", "Database saved to cloud successfully!")
             return True

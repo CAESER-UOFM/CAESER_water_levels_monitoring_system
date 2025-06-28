@@ -3043,15 +3043,14 @@ export function PlotCustomizationDialog({
               {/* Full Image Viewer - Using react-zoom-pan-pinch */}
               <div ref={imageViewerContainerRef} className="flex-1 overflow-hidden bg-gray-900 relative">
                 <TransformWrapper
-                  initialScale={1}
-                  minScale={0.5}
-                  maxScale={3}
+                  initialScale={0.8}
+                  minScale={0.1}
+                  maxScale={4}
                   centerOnInit={true}
-                  limitToBounds={true}
-                  centerZoomedOut={true}
+                  limitToBounds={false}
+                  centerZoomedOut={false}
                   wheel={{ 
-                    step: 0.1,
-                    smoothStep: 0.005
+                    step: 0.1
                   }}
                   pinch={{
                     step: 5
@@ -3060,7 +3059,7 @@ export function PlotCustomizationDialog({
                     mode: 'reset'
                   }}
                   panning={{
-                    velocityDisabled: false
+                    velocityDisabled: true
                   }}
                 >
                   {({ zoomIn, zoomOut, resetTransform, centerView, instance }) => (
