@@ -630,7 +630,7 @@ export function PlotCustomizationDialog({
 
   // Calculate minimum zoom to fit image in container
   const getMinZoom = useCallback(() => {
-    if (!imageViewerRef.current) return 0.5;
+    if (!imageViewerRef.current) return 0.8;
     const container = imageViewerRef.current;
     const containerWidth = container.clientWidth;
     const containerHeight = container.clientHeight;
@@ -638,41 +638,31 @@ export function PlotCustomizationDialog({
     // Calculate zoom needed to fit image completely in container
     const widthRatio = containerWidth / customization.width;
     const heightRatio = containerHeight / customization.height;
-    const fitZoom = Math.min(widthRatio, heightRatio) * 0.9; // 90% of fit size for padding
+    const fitZoom = Math.min(widthRatio, heightRatio);
     
-    return Math.max(fitZoom, 0.3); // Minimum 30% zoom
+    return Math.max(fitZoom, 0.5); // Minimum 50% zoom
   }, [customization.width, customization.height]);
 
-  // Zoom controls with smoother pan adjustment
+  // Simple zoom controls - no pan adjustment
   const handleZoomIn = useCallback(() => {
     setZoomLevel(prev => {
-      const newZoom = Math.min(prev * 1.3, 3);
+      const newZoom = Math.min(prev * 1.2, 3); // Smaller steps
       console.log('Zoom In:', { from: prev, to: newZoom });
       return newZoom;
     });
-    // Gradually move towards center instead of sudden reset
-    setPanPosition(prev => ({
-      x: prev.x * 0.7, // Keep 70% of current pan to reduce jump
-      y: prev.y * 0.7
-    }));
   }, []);
 
   const handleZoomOut = useCallback(() => {
     setZoomLevel(prev => {
       const minZoom = getMinZoom();
-      const newZoom = Math.max(prev / 1.3, minZoom);
+      const newZoom = Math.max(prev / 1.2, minZoom);
       console.log('Zoom Out:', { from: prev, to: newZoom, minZoom });
       return newZoom;
     });
-    // Gradually move towards center instead of sudden reset
-    setPanPosition(prev => ({
-      x: prev.x * 0.7, // Keep 70% of current pan to reduce jump
-      y: prev.y * 0.7
-    }));
   }, [getMinZoom]);
 
   const handleFitToScreen = useCallback(() => {
-    const fitZoom = getMinZoom() / 0.9; // Reverse the 0.9 factor to get true fit
+    const fitZoom = getMinZoom();
     console.log('Fit to Screen:', { fitZoom });
     setZoomLevel(fitZoom);
     setPanPosition({ x: 0, y: 0 });
@@ -688,16 +678,28 @@ export function PlotCustomizationDialog({
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDragging) return;
     
-    const deltaX = (e.clientX - lastPointerPosition.x) * 0.5; // Reduce sensitivity by 50%
-    const deltaY = (e.clientY - lastPointerPosition.y) * 0.5;
+    const deltaX = e.clientX - lastPointerPosition.x; // 1:1 movement for natural feel
+    const deltaY = e.clientY - lastPointerPosition.y;
     
     setPanPosition(prev => {
-      // Dynamic bounds based on zoom level - higher zoom allows more panning
-      const basePan = Math.min(customization.width, customization.height) * 0.1;
-      const maxPan = Math.min(basePan * zoomLevel, basePan * 2); // Scale with zoom but cap at 2x base
+      if (!imageViewerRef.current) return prev;
+      
+      // Proper image viewer bounds - allow panning to see all parts of zoomed image
+      const container = imageViewerRef.current;
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
+      
+      // Calculate how much image extends beyond container at current zoom
+      const scaledImageWidth = customization.width * zoomLevel;
+      const scaledImageHeight = customization.height * zoomLevel;
+      
+      // Maximum pan is half the difference between scaled image and container
+      const maxPanX = Math.max(0, (scaledImageWidth - containerWidth) / 2);
+      const maxPanY = Math.max(0, (scaledImageHeight - containerHeight) / 2);
+      
       return {
-        x: Math.max(-maxPan, Math.min(maxPan, prev.x + deltaX)),
-        y: Math.max(-maxPan, Math.min(maxPan, prev.y + deltaY))
+        x: Math.max(-maxPanX, Math.min(maxPanX, prev.x + deltaX)),
+        y: Math.max(-maxPanY, Math.min(maxPanY, prev.y + deltaY))
       };
     });
     
@@ -709,23 +711,14 @@ export function PlotCustomizationDialog({
     setIsDragging(false);
   }, []);
 
-  // Wheel zoom with gentle pan adjustment
+  // Simple wheel zoom - no pan adjustment
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.95 : 1.05; // Smaller steps for smoother wheel zoom
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
     setZoomLevel(prev => {
       const minZoom = getMinZoom();
       const newZoom = Math.min(Math.max(prev * delta, minZoom), 3);
       console.log('Wheel Zoom:', { from: prev, to: newZoom, deltaY: e.deltaY, minZoom });
-      
-      // Only adjust pan if zoom changed significantly
-      if (Math.abs(newZoom - prev) > 0.05) {
-        setPanPosition(currentPan => ({
-          x: currentPan.x * 0.9, // Very gentle adjustment for wheel zoom
-          y: currentPan.y * 0.9
-        }));
-      }
-      
       return newZoom;
     });
   }, [getMinZoom]);
@@ -767,16 +760,28 @@ export function PlotCustomizationDialog({
     } else if (e.touches.length === 1 && isDragging) {
       // Single touch drag
       const touch = e.touches[0];
-      const deltaX = (touch.clientX - lastPointerPosition.x) * 0.5; // Reduce sensitivity by 50%
-      const deltaY = (touch.clientY - lastPointerPosition.y) * 0.5;
+      const deltaX = touch.clientX - lastPointerPosition.x; // 1:1 movement for natural feel
+      const deltaY = touch.clientY - lastPointerPosition.y;
       
       setPanPosition(prev => {
-        // Dynamic bounds based on zoom level - higher zoom allows more panning
-        const basePan = Math.min(customization.width, customization.height) * 0.1;
-        const maxPan = Math.min(basePan * zoomLevel, basePan * 2); // Scale with zoom but cap at 2x base
+        if (!imageViewerRef.current) return prev;
+        
+        // Proper image viewer bounds - allow panning to see all parts of zoomed image
+        const container = imageViewerRef.current;
+        const containerWidth = container.clientWidth;
+        const containerHeight = container.clientHeight;
+        
+        // Calculate how much image extends beyond container at current zoom
+        const scaledImageWidth = customization.width * zoomLevel;
+        const scaledImageHeight = customization.height * zoomLevel;
+        
+        // Maximum pan is half the difference between scaled image and container
+        const maxPanX = Math.max(0, (scaledImageWidth - containerWidth) / 2);
+        const maxPanY = Math.max(0, (scaledImageHeight - containerHeight) / 2);
+        
         return {
-          x: Math.max(-maxPan, Math.min(maxPan, prev.x + deltaX)),
-          y: Math.max(-maxPan, Math.min(maxPan, prev.y + deltaY))
+          x: Math.max(-maxPanX, Math.min(maxPanX, prev.x + deltaX)),
+          y: Math.max(-maxPanY, Math.min(maxPanY, prev.y + deltaY))
         };
       });
       
@@ -3269,7 +3274,7 @@ export function PlotCustomizationDialog({
                     height: `${customization.height}px`,
                     transform: `translate(-50%, -50%) translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomLevel})`,
                     transformOrigin: 'center center',
-                    transition: isDragging ? 'none' : 'transform 0.2s ease-out', // Slightly longer transition
+                    transition: isDragging ? 'none' : 'transform 0.1s ease-out', // Quick responsive transition
                     backgroundColor: 'white',
                     border: '2px solid red' // Temporary debug border to see if container is visible
                   }}
