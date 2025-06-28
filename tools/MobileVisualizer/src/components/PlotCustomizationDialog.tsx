@@ -3043,10 +3043,10 @@ export function PlotCustomizationDialog({
               {/* Full Image Viewer - Using react-zoom-pan-pinch */}
               <div ref={imageViewerContainerRef} className="flex-1 overflow-hidden bg-gray-900 relative">
                 <TransformWrapper
-                  initialScale={0.8}
+                  initialScale={1}
                   minScale={0.1}
                   maxScale={4}
-                  centerOnInit={true}
+                  centerOnInit={false}
                   limitToBounds={false}
                   centerZoomedOut={false}
                   wheel={{ 
@@ -3056,10 +3056,57 @@ export function PlotCustomizationDialog({
                     step: 5
                   }}
                   doubleClick={{
-                    mode: 'reset'
+                    disabled: true
                   }}
                   panning={{
                     velocityDisabled: true
+                  }}
+                  onInit={(ref) => {
+                    console.log('TransformWrapper onInit called - manual positioning');
+                    setTimeout(() => {
+                      if (ref && imageViewerContainerRef.current) {
+                        const container = imageViewerContainerRef.current;
+                        const containerWidth = container.clientWidth;
+                        const containerHeight = container.clientHeight;
+                        const imageWidth = customization.width;
+                        const imageHeight = customization.height;
+                        
+                        console.log('Container dimensions:', containerWidth, 'x', containerHeight);
+                        console.log('Image dimensions:', imageWidth, 'x', imageHeight);
+                        
+                        // Calculate scale to fit image completely in container
+                        const scaleX = containerWidth / imageWidth;
+                        const scaleY = containerHeight / imageHeight;
+                        const scale = Math.min(scaleX, scaleY) * 0.9;
+                        
+                        // Calculate position to center the scaled image
+                        const scaledImageWidth = imageWidth * scale;
+                        const scaledImageHeight = imageHeight * scale;
+                        const x = (containerWidth - scaledImageWidth) / 2;
+                        const y = (containerHeight - scaledImageHeight) / 2;
+                        
+                        console.log('Calculated values:');
+                        console.log('- Scale:', scale);
+                        console.log('- Scaled image size:', scaledImageWidth, 'x', scaledImageHeight);
+                        console.log('- Position:', x, y);
+                        
+                        // Use the internal state setting instead of animation
+                        if (ref.instance) {
+                          ref.instance.transformState.scale = scale;
+                          ref.instance.transformState.positionX = x;
+                          ref.instance.transformState.positionY = y;
+                          ref.instance.applyTransformation();
+                          console.log('Applied direct transformation');
+                        }
+                      }
+                    }, 300);
+                  }}
+                  onTransformed={(ref, state) => {
+                    console.log('Transform state:', {
+                      scale: state.scale,
+                      positionX: state.positionX,
+                      positionY: state.positionY
+                    });
                   }}
                 >
                   {({ zoomIn, zoomOut, resetTransform, centerView, instance }) => (
@@ -3084,8 +3131,38 @@ export function PlotCustomizationDialog({
                         </button>
                         <button
                           onClick={() => {
-                            resetTransform();
-                            centerView();
+                            console.log('Reset button clicked - using manual positioning');
+                            if (instance && imageViewerContainerRef.current) {
+                              const container = imageViewerContainerRef.current;
+                              const containerWidth = container.clientWidth;
+                              const containerHeight = container.clientHeight;
+                              const imageWidth = customization.width;
+                              const imageHeight = customization.height;
+                              
+                              // Calculate scale to fit image completely in container
+                              const scaleX = containerWidth / imageWidth;
+                              const scaleY = containerHeight / imageHeight;
+                              const scale = Math.min(scaleX, scaleY) * 0.9;
+                              
+                              // Calculate position to center the scaled image
+                              const scaledImageWidth = imageWidth * scale;
+                              const scaledImageHeight = imageHeight * scale;
+                              const x = (containerWidth - scaledImageWidth) / 2;
+                              const y = (containerHeight - scaledImageHeight) / 2;
+                              
+                              console.log('Reset - Calculated values:');
+                              console.log('- Scale:', scale);
+                              console.log('- Position:', x, y);
+                              
+                              // Apply the same direct transformation as onInit
+                              if (instance.transformState) {
+                                instance.transformState.scale = scale;
+                                instance.transformState.positionX = x;
+                                instance.transformState.positionY = y;
+                                instance.applyTransformation();
+                                console.log('Reset - Applied direct transformation');
+                              }
+                            }
                           }}
                           className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg"
                         >
@@ -3100,6 +3177,7 @@ export function PlotCustomizationDialog({
                         <div>Zoom: {Math.round((instance?.transformState?.scale || 1) * 100)}%</div>
                         <div>Pan: {Math.round(instance?.transformState?.positionX || 0)}, {Math.round(instance?.transformState?.positionY || 0)}</div>
                         <div>Size: {customization.width}×{customization.height}</div>
+                        <div>Container: {imageViewerContainerRef.current?.clientWidth || 0}×{imageViewerContainerRef.current?.clientHeight || 0}</div>
                       </div>
 
                       <TransformComponent

@@ -999,6 +999,7 @@ class MainWindow(QMainWindow):
                               f"Cloud project '{project_name}' not found.")
             return
         
+        
         # Check for existing draft
         has_draft = self.cloud_db_handler.has_draft(project_name)
         prefer_draft = False
@@ -1029,7 +1030,9 @@ class MainWindow(QMainWindow):
         # Note: No lock checking needed for downloading - locks are only for collaborative editing
         # We'll check/acquire locks when the user tries to save changes back to cloud
         
+        
         # Smart version tracking - check if we can use local cache
+        force_download = False  # Track if user chose to force download
         if not prefer_draft:  # Only check cache if not using draft
             cloud_version_time = project_info.get('modified_time', '')
             version_comparison = self.cloud_db_handler.check_version_status(project_name, cloud_version_time)
@@ -1081,10 +1084,14 @@ class MainWindow(QMainWindow):
                             # Add version status to cloud label
                             self.cloud_mode_label.setText(f"Cloud: {project_name} - {version_status}")
                             return
-                    # If choice was "download_fresh", continue with normal download
+                    elif choice == "download_fresh":
+                        # User explicitly chose to download fresh - bypass automatic cache
+                        force_download = True
+                        logger.info(f"User chose to download fresh, bypassing cache for {project_name}")
                 else:
                     # User cancelled version choice
                     return
+            # If no local cache available, proceed with direct download
             
         # Show progress dialog for download
         progress_dialog.show(f"Opening cloud project: {project_name}", "Loading Cloud Database")
@@ -1103,7 +1110,7 @@ class MainWindow(QMainWindow):
             progress_dialog.update(overall_progress, status_message)
             QApplication.processEvents()
         
-        temp_path = self.cloud_db_handler.download_database(project_name, project_info, download_progress_callback, prefer_draft)
+        temp_path = self.cloud_db_handler.download_database(project_name, project_info, download_progress_callback, prefer_draft, force_download)
         if not temp_path:
             progress_dialog.close()
             logger.error("Download failed - no temporary path returned")

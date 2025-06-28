@@ -199,7 +199,7 @@ class CloudDatabaseHandler:
             logger.error(f"Error getting database info: {e}")
             return None
             
-    def download_database(self, project_name: str, project_info: Dict, progress_callback=None, prefer_draft=False) -> Optional[str]:
+    def download_database(self, project_name: str, project_info: Dict, progress_callback=None, prefer_draft=False, force_download=False) -> Optional[str]:
         """
         Download a database to a temporary location, using cache if available.
         
@@ -208,6 +208,7 @@ class CloudDatabaseHandler:
             project_info: Project information dictionary
             progress_callback: Optional callback function for progress updates
             prefer_draft: If True, prefer loading draft over cloud download
+            force_download: If True, skip automatic cache usage (for version choice dialog)
             
         Returns:
             Path to the temporary database file
@@ -224,9 +225,9 @@ class CloudDatabaseHandler:
                     if progress_callback:
                         progress_callback(100, "Draft loaded successfully")
                     return draft_path
-            # Check if we have a valid cached version
+            # Check if we have a valid cached version (unless forced to download)
             cloud_modified_time = project_info.get('modified_time', '')
-            if self._is_cache_valid(project_name, cloud_modified_time):
+            if not force_download and self._is_cache_valid(project_name, cloud_modified_time):
                 logger.info(f"Using cached database for {project_name} (up to date)")
                 if progress_callback:
                     progress_callback(100, "Using cached database (up to date)")

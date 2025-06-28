@@ -60,25 +60,29 @@ class VersionManager:
         Args:
             project_name: Name of the cloud project
             cloud_version_time: Timestamp of the cloud version we're based on
-            local_db_path: Path to the local database file
+            local_db_path: Path to the local database file (temp UUID path)
             operation: Type of operation ('download', 'upload', 'draft_load')
         """
         try:
-            # Get file info
+            # Use stable cache path instead of temporary UUID path
+            # This matches what _is_cache_valid() in cloud_database_handler uses
+            stable_cache_path = os.path.join(self.cache_dir, f"{project_name}.db")
+            
+            # Get file info from the temp path (which actually exists)
             file_size = os.path.getsize(local_db_path) if os.path.exists(local_db_path) else 0
             
-            # Update metadata
+            # Update metadata with stable cache path
             self.metadata[project_name] = {
                 'local_version_time': cloud_version_time,
                 'last_sync_time': datetime.now(timezone.utc).isoformat(),
-                'local_db_path': local_db_path,
+                'local_db_path': stable_cache_path,  # Use stable path for consistency
                 'file_size_mb': round(file_size / (1024 * 1024), 2),
                 'operation': operation,
                 'is_current': True  # Assume current until proven otherwise
             }
             
             self._save_metadata()
-            logger.info(f"Updated local version tracking for {project_name}: {operation}")
+            logger.info(f"Updated local version tracking for {project_name}: {operation} (using stable cache path)")
             
         except Exception as e:
             logger.error(f"Error updating local version: {e}")
