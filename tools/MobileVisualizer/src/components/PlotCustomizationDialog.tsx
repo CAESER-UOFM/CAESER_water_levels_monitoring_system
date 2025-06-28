@@ -628,32 +628,49 @@ export function PlotCustomizationDialog({
     setShowFullImageViewer(true);
   }, []);
 
+  // Calculate minimum zoom to fit image in container
+  const getMinZoom = useCallback(() => {
+    if (!imageViewerRef.current) return 0.5;
+    const container = imageViewerRef.current;
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+    
+    // Calculate zoom needed to fit image completely in container
+    const widthRatio = containerWidth / customization.width;
+    const heightRatio = containerHeight / customization.height;
+    const fitZoom = Math.min(widthRatio, heightRatio) * 0.9; // 90% of fit size for padding
+    
+    return Math.max(fitZoom, 0.3); // Minimum 30% zoom
+  }, [customization.width, customization.height]);
+
   // Zoom controls
   const handleZoomIn = useCallback(() => {
     setZoomLevel(prev => {
-      const newZoom = Math.min(prev * 1.5, 5);
+      const newZoom = Math.min(prev * 1.3, 3); // Reduced from 1.5 to 1.3 for smoother steps
       console.log('Zoom In:', { from: prev, to: newZoom });
       return newZoom;
     });
-    // Reset pan when zooming to keep image centered
+    // Keep image centered when zooming
     setPanPosition({ x: 0, y: 0 });
   }, []);
 
   const handleZoomOut = useCallback(() => {
     setZoomLevel(prev => {
-      const newZoom = Math.max(prev / 1.5, 0.1);
-      console.log('Zoom Out:', { from: prev, to: newZoom });
+      const minZoom = getMinZoom();
+      const newZoom = Math.max(prev / 1.3, minZoom); // Use calculated min zoom
+      console.log('Zoom Out:', { from: prev, to: newZoom, minZoom });
       return newZoom;
     });
-    // Reset pan when zooming to keep image centered
+    // Keep image centered when zooming
     setPanPosition({ x: 0, y: 0 });
-  }, []);
+  }, [getMinZoom]);
 
   const handleFitToScreen = useCallback(() => {
-    console.log('Fit to Screen: resetting zoom and pan');
-    setZoomLevel(1);
+    const fitZoom = getMinZoom() / 0.9; // Reverse the 0.9 factor to get true fit
+    console.log('Fit to Screen:', { fitZoom });
+    setZoomLevel(fitZoom);
     setPanPosition({ x: 0, y: 0 });
-  }, []);
+  }, [getMinZoom]);
 
   // Pan handlers
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
@@ -669,8 +686,9 @@ export function PlotCustomizationDialog({
     const deltaY = (e.clientY - lastPointerPosition.y) * 0.5;
     
     setPanPosition(prev => {
-      // Much tighter bounds - only allow small movements
-      const maxPan = Math.min(customization.width, customization.height) * 0.15; // Reduced from 0.5 to 0.15
+      // Dynamic bounds based on zoom level - higher zoom allows more panning
+      const basePan = Math.min(customization.width, customization.height) * 0.1;
+      const maxPan = Math.min(basePan * zoomLevel, basePan * 2); // Scale with zoom but cap at 2x base
       return {
         x: Math.max(-maxPan, Math.min(maxPan, prev.x + deltaX)),
         y: Math.max(-maxPan, Math.min(maxPan, prev.y + deltaY))
@@ -679,7 +697,7 @@ export function PlotCustomizationDialog({
     
     setLastPointerPosition({ x: e.clientX, y: e.clientY });
     e.preventDefault();
-  }, [isDragging, lastPointerPosition, customization.width, customization.height]);
+  }, [isDragging, lastPointerPosition, customization.width, customization.height, zoomLevel]);
 
   const handlePointerUp = useCallback(() => {
     setIsDragging(false);
@@ -688,13 +706,14 @@ export function PlotCustomizationDialog({
   // Wheel zoom
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    const delta = e.deltaY > 0 ? 0.95 : 1.05; // Smaller steps for smoother wheel zoom
     setZoomLevel(prev => {
-      const newZoom = Math.min(Math.max(prev * delta, 0.1), 5);
-      console.log('Wheel Zoom:', { from: prev, to: newZoom, deltaY: e.deltaY });
+      const minZoom = getMinZoom();
+      const newZoom = Math.min(Math.max(prev * delta, minZoom), 3);
+      console.log('Wheel Zoom:', { from: prev, to: newZoom, deltaY: e.deltaY, minZoom });
       return newZoom;
     });
-  }, []);
+  }, [getMinZoom]);
 
   // Touch gesture helpers
   const getDistance = (touch1: React.Touch, touch2: React.Touch) => {
@@ -737,8 +756,9 @@ export function PlotCustomizationDialog({
       const deltaY = (touch.clientY - lastPointerPosition.y) * 0.5;
       
       setPanPosition(prev => {
-        // Much tighter bounds - only allow small movements
-        const maxPan = Math.min(customization.width, customization.height) * 0.15; // Reduced from 0.5 to 0.15
+        // Dynamic bounds based on zoom level - higher zoom allows more panning
+        const basePan = Math.min(customization.width, customization.height) * 0.1;
+        const maxPan = Math.min(basePan * zoomLevel, basePan * 2); // Scale with zoom but cap at 2x base
         return {
           x: Math.max(-maxPan, Math.min(maxPan, prev.x + deltaX)),
           y: Math.max(-maxPan, Math.min(maxPan, prev.y + deltaY))
@@ -748,7 +768,7 @@ export function PlotCustomizationDialog({
       setLastPointerPosition({ x: touch.clientX, y: touch.clientY });
       e.preventDefault();
     }
-  }, [isDragging, lastPointerPosition, initialPinchDistance, initialZoomLevel]);
+  }, [isDragging, lastPointerPosition, initialPinchDistance, initialZoomLevel, customization.width, customization.height, zoomLevel]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 0) {
@@ -3219,8 +3239,8 @@ export function PlotCustomizationDialog({
                   touchAction: 'none' // Prevent default touch behaviors
                 }}
               >
-                {/* Debug Info Overlay */}
-                <div className="absolute top-2 left-2 bg-black/70 text-white text-xs p-2 rounded z-10 font-mono">
+                {/* Debug Info Overlay - moved to bottom right */}
+                <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs p-2 rounded z-10 font-mono">
                   <div>Zoom: {Math.round(zoomLevel * 100)}%</div>
                   <div>Pan: {Math.round(panPosition.x)}, {Math.round(panPosition.y)}</div>
                   <div>Size: {customization.width}×{customization.height}</div>
