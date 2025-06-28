@@ -643,26 +643,32 @@ export function PlotCustomizationDialog({
     return Math.max(fitZoom, 0.3); // Minimum 30% zoom
   }, [customization.width, customization.height]);
 
-  // Zoom controls
+  // Zoom controls with smoother pan adjustment
   const handleZoomIn = useCallback(() => {
     setZoomLevel(prev => {
-      const newZoom = Math.min(prev * 1.3, 3); // Reduced from 1.5 to 1.3 for smoother steps
+      const newZoom = Math.min(prev * 1.3, 3);
       console.log('Zoom In:', { from: prev, to: newZoom });
       return newZoom;
     });
-    // Keep image centered when zooming
-    setPanPosition({ x: 0, y: 0 });
+    // Gradually move towards center instead of sudden reset
+    setPanPosition(prev => ({
+      x: prev.x * 0.7, // Keep 70% of current pan to reduce jump
+      y: prev.y * 0.7
+    }));
   }, []);
 
   const handleZoomOut = useCallback(() => {
     setZoomLevel(prev => {
       const minZoom = getMinZoom();
-      const newZoom = Math.max(prev / 1.3, minZoom); // Use calculated min zoom
+      const newZoom = Math.max(prev / 1.3, minZoom);
       console.log('Zoom Out:', { from: prev, to: newZoom, minZoom });
       return newZoom;
     });
-    // Keep image centered when zooming
-    setPanPosition({ x: 0, y: 0 });
+    // Gradually move towards center instead of sudden reset
+    setPanPosition(prev => ({
+      x: prev.x * 0.7, // Keep 70% of current pan to reduce jump
+      y: prev.y * 0.7
+    }));
   }, [getMinZoom]);
 
   const handleFitToScreen = useCallback(() => {
@@ -703,7 +709,7 @@ export function PlotCustomizationDialog({
     setIsDragging(false);
   }, []);
 
-  // Wheel zoom
+  // Wheel zoom with gentle pan adjustment
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.95 : 1.05; // Smaller steps for smoother wheel zoom
@@ -711,6 +717,15 @@ export function PlotCustomizationDialog({
       const minZoom = getMinZoom();
       const newZoom = Math.min(Math.max(prev * delta, minZoom), 3);
       console.log('Wheel Zoom:', { from: prev, to: newZoom, deltaY: e.deltaY, minZoom });
+      
+      // Only adjust pan if zoom changed significantly
+      if (Math.abs(newZoom - prev) > 0.05) {
+        setPanPosition(currentPan => ({
+          x: currentPan.x * 0.9, // Very gentle adjustment for wheel zoom
+          y: currentPan.y * 0.9
+        }));
+      }
+      
       return newZoom;
     });
   }, [getMinZoom]);
@@ -3254,7 +3269,7 @@ export function PlotCustomizationDialog({
                     height: `${customization.height}px`,
                     transform: `translate(-50%, -50%) translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomLevel})`,
                     transformOrigin: 'center center',
-                    transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+                    transition: isDragging ? 'none' : 'transform 0.2s ease-out', // Slightly longer transition
                     backgroundColor: 'white',
                     border: '2px solid red' // Temporary debug border to see if container is visible
                   }}
