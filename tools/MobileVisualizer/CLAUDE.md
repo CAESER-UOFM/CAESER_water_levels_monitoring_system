@@ -23,7 +23,24 @@
 
 ## Recent Major Changes:
 
-### Zoom/Pan Improvements - Iteration 2 (Latest)
+### Zoom/Pan Improvements - Iteration 3 (Latest)
+- **SUCCESSFULLY DEPLOYED**: https://water-level-visualizer-mobile.netlify.app  
+- **✅ INDUSTRY-STANDARD SOLUTION**: Implemented proven zoom-to-point mathematical formula
+- **✅ FIXED TRANSFORM ORDER**: Corrected CSS transform order to prevent coordinate system issues
+
+**Research-Based Implementation:**
+- **🔬 Mathematical Formula**: `xs = (mouseX - currentPan.x) / prevZoom; newPanX = mouseX - xs * newZoom`
+- **⚙️ Transform Order Fix**: Changed from `translate scale` to `scale translate` order
+- **📐 Origin Point**: Added `transform-origin: 0 0` for consistent coordinate calculations
+- **🎯 Direct Approach**: Removed artificial delays and sensitivity reductions in favor of mathematical precision
+
+**Technical Implementation:**
+- Uses proven Stack Overflow solution for zoom-to-point functionality
+- Calculates mouse position in current scaled coordinate system
+- Applies industry-standard transform order for CSS transformations
+- Works consistently for both wheel zoom and pinch zoom
+
+### Zoom/Pan Improvements - Iteration 2
 - **SUCCESSFULLY DEPLOYED**: https://water-level-visualizer-mobile.netlify.app
 - **✅ REDUCED JUMP ISSUES**: Improved focal point zoom with stable calculations
 - **✅ SMOOTHER EXPERIENCE**: Separated zoom and pan updates to prevent conflicts

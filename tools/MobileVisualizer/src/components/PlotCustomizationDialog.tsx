@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { LivePlotPreview } from './LivePlotPreview';
 // Using regular SVG icons instead of lucide-react
 
@@ -596,337 +597,19 @@ export function PlotCustomizationDialog({
   const [showFullImageViewer, setShowFullImageViewer] = useState(false);
   const [showPropertiesDialog, setShowPropertiesDialog] = useState(false);
   
-  // Image viewer zoom/pan state
-  const [zoomLevel, setZoomLevel] = useState(1);
-  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [lastPointerPosition, setLastPointerPosition] = useState({ x: 0, y: 0 });
-  const [initialPinchDistance, setInitialPinchDistance] = useState<number | null>(null);
-  const [initialZoomLevel, setInitialZoomLevel] = useState(1);
+  // No more custom zoom/pan state - using react-zoom-pan-pinch library
   
   // Appearance sub-tabs state
   const [activeAppearanceTab, setActiveAppearanceTab] = useState<'title' | 'axes' | 'legend'>('title');
   
   const dialogRef = useRef<HTMLDivElement>(null);
-  const imageViewerRef = useRef<HTMLDivElement>(null);
 
-  // Debug effect to log zoom/pan changes
-  useEffect(() => {
-    console.log('Zoom/Pan state changed:', { 
-      zoomLevel, 
-      panPosition, 
-      transform: `translate(-50%, -50%) scale(${zoomLevel}) translate(${panPosition.x}px, ${panPosition.y}px)` 
-    });
-  }, [zoomLevel, panPosition]);
-
-  // Reset image viewer state when opening
+  // Open image viewer (no more custom zoom/pan reset needed)
   const openImageViewer = useCallback(() => {
-    console.log('Opening image viewer - resetting zoom and pan');
-    setZoomLevel(1);
-    setPanPosition({ x: 0, y: 0 });
-    setIsDragging(false); // Ensure not dragging
     setShowFullImageViewer(true);
   }, []);
 
-  // Calculate minimum zoom to fit image in container (fixed to use max dimension)
-  const getMinZoom = useCallback(() => {
-    if (!imageViewerRef.current) return 0.8;
-    const container = imageViewerRef.current;
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight;
-    
-    // Calculate zoom needed to fit image completely in container
-    const widthRatio = containerWidth / customization.width;
-    const heightRatio = containerHeight / customization.height;
-    // Use MIN to ensure entire image fits (this was correct, user might be confused)
-    // But let's make sure we have a reasonable minimum
-    const fitZoom = Math.min(widthRatio, heightRatio);
-    
-    // Ensure we can't zoom smaller than what shows the whole image
-    return Math.max(fitZoom * 0.95, 0.3); // 95% of fit with absolute minimum of 30%
-  }, [customization.width, customization.height]);
-
-  // Stable zoom button handlers - iteration 2
-  const handleZoomIn = useCallback(() => {
-    setZoomLevel(prev => {
-      const newZoom = Math.min(prev * 1.2, 3); // Slightly larger increments for buttons
-      
-      // Only adjust pan if zoom changed, with minimal adjustment
-      if (newZoom !== prev) {
-        setTimeout(() => {
-          setPanPosition(currentPan => {
-            if (!imageViewerRef.current) return currentPan;
-            
-            // Apply bounds checking with new zoom level
-            const container = imageViewerRef.current;
-            const containerWidth = container.clientWidth;
-            const containerHeight = container.clientHeight;
-            const scaledImageWidth = customization.width * newZoom;
-            const scaledImageHeight = customization.height * newZoom;
-            
-            const maxPanX = Math.max(0, (scaledImageWidth - containerWidth) / 2);
-            const maxPanY = Math.max(0, (scaledImageHeight - containerHeight) / 2);
-            
-            return {
-              x: Math.max(-maxPanX, Math.min(maxPanX, currentPan.x)),
-              y: Math.max(-maxPanY, Math.min(maxPanY, currentPan.y))
-            };
-          });
-        }, 0);
-      }
-      
-      return newZoom;
-    });
-  }, [customization.width, customization.height]);
-
-  const handleZoomOut = useCallback(() => {
-    setZoomLevel(prev => {
-      const minZoom = getMinZoom();
-      const newZoom = Math.max(prev * 0.83, minZoom); // Slightly larger increments for buttons
-      
-      // Only adjust pan if zoom changed, with minimal adjustment
-      if (newZoom !== prev) {
-        setTimeout(() => {
-          setPanPosition(currentPan => {
-            if (!imageViewerRef.current) return currentPan;
-            
-            // Apply bounds checking with new zoom level
-            const container = imageViewerRef.current;
-            const containerWidth = container.clientWidth;
-            const containerHeight = container.clientHeight;
-            const scaledImageWidth = customization.width * newZoom;
-            const scaledImageHeight = customization.height * newZoom;
-            
-            const maxPanX = Math.max(0, (scaledImageWidth - containerWidth) / 2);
-            const maxPanY = Math.max(0, (scaledImageHeight - containerHeight) / 2);
-            
-            return {
-              x: Math.max(-maxPanX, Math.min(maxPanX, currentPan.x)),
-              y: Math.max(-maxPanY, Math.min(maxPanY, currentPan.y))
-            };
-          });
-        }, 0);
-      }
-      
-      return newZoom;
-    });
-  }, [getMinZoom, customization.width, customization.height]);
-
-  const handleFitToScreen = useCallback(() => {
-    const fitZoom = getMinZoom();
-    console.log('Fit to Screen:', { fitZoom });
-    setZoomLevel(fitZoom);
-    setPanPosition({ x: 0, y: 0 });
-  }, [getMinZoom]);
-
-  // Pan handlers
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    setIsDragging(true);
-    setLastPointerPosition({ x: e.clientX, y: e.clientY });
-    e.preventDefault();
-  }, []);
-
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!isDragging) return;
-    
-    const deltaX = e.clientX - lastPointerPosition.x; // 1:1 movement for natural feel
-    const deltaY = e.clientY - lastPointerPosition.y;
-    
-    setPanPosition(prev => {
-      if (!imageViewerRef.current) return prev;
-      
-      // Proper image viewer bounds - allow panning to see all parts of zoomed image
-      const container = imageViewerRef.current;
-      const containerWidth = container.clientWidth;
-      const containerHeight = container.clientHeight;
-      
-      // Calculate how much image extends beyond container at current zoom
-      const scaledImageWidth = customization.width * zoomLevel;
-      const scaledImageHeight = customization.height * zoomLevel;
-      
-      // Maximum pan is half the difference between scaled image and container
-      const maxPanX = Math.max(0, (scaledImageWidth - containerWidth) / 2);
-      const maxPanY = Math.max(0, (scaledImageHeight - containerHeight) / 2);
-      
-      return {
-        x: Math.max(-maxPanX, Math.min(maxPanX, prev.x + deltaX)),
-        y: Math.max(-maxPanY, Math.min(maxPanY, prev.y + deltaY))
-      };
-    });
-    
-    setLastPointerPosition({ x: e.clientX, y: e.clientY });
-    e.preventDefault();
-  }, [isDragging, lastPointerPosition, customization.width, customization.height, zoomLevel]);
-
-  const handlePointerUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
-
-  // Industry-standard zoom-to-point implementation - iteration 3
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    
-    if (!imageViewerRef.current) return;
-    
-    const container = imageViewerRef.current;
-    const rect = container.getBoundingClientRect();
-    
-    // Get mouse position relative to container
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    
-    setZoomLevel(prev => {
-      const minZoom = getMinZoom();
-      const newZoom = Math.min(Math.max(prev * delta, minZoom), 3);
-      
-      // Industry-standard zoom-to-point formula (prevents jumping)
-      if (newZoom !== prev) {
-        setPanPosition(currentPan => {
-          // Calculate mouse position in current scaled coordinate system
-          const xs = (mouseX - currentPan.x) / prev;
-          const ys = (mouseY - currentPan.y) / prev;
-          
-          // Calculate new pan position to keep mouse point fixed
-          const newPanX = mouseX - xs * newZoom;
-          const newPanY = mouseY - ys * newZoom;
-          
-          // Apply bounds checking
-          const scaledImageWidth = customization.width * newZoom;
-          const scaledImageHeight = customization.height * newZoom;
-          const maxPanX = Math.max(0, (scaledImageWidth - rect.width) / 2);
-          const maxPanY = Math.max(0, (scaledImageHeight - rect.height) / 2);
-          
-          return {
-            x: Math.max(-maxPanX, Math.min(maxPanX, newPanX)),
-            y: Math.max(-maxPanY, Math.min(maxPanY, newPanY))
-          };
-        });
-      }
-      
-      return newZoom;
-    });
-  }, [getMinZoom, customization.width, customization.height]);
-
-  // Touch gesture helpers
-  const getDistance = (touch1: React.Touch, touch2: React.Touch) => {
-    const dx = touch1.clientX - touch2.clientX;
-    const dy = touch1.clientY - touch2.clientY;
-    return Math.sqrt(dx * dx + dy * dy);
-  };
-
-  // Touch handlers
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      // Pinch gesture
-      const distance = getDistance(e.touches[0], e.touches[1]);
-      setInitialPinchDistance(distance);
-      setInitialZoomLevel(zoomLevel);
-      e.preventDefault();
-    } else if (e.touches.length === 1) {
-      // Single touch - start dragging
-      setIsDragging(true);
-      setLastPointerPosition({ 
-        x: e.touches[0].clientX, 
-        y: e.touches[0].clientY 
-      });
-      e.preventDefault();
-    }
-  }, [zoomLevel]);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2 && initialPinchDistance !== null && imageViewerRef.current) {
-      // Industry-standard pinch zoom implementation
-      const distance = getDistance(e.touches[0], e.touches[1]);
-      const scale = distance / initialPinchDistance;
-      const newZoom = Math.min(Math.max(initialZoomLevel * scale, getMinZoom()), 3);
-      
-      // Calculate pinch center relative to container
-      const container = imageViewerRef.current;
-      const rect = container.getBoundingClientRect();
-      const pinchCenterX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
-      const pinchCenterY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
-      
-      // Use requestAnimationFrame for smoother pinch zoom
-      requestAnimationFrame(() => {
-        setZoomLevel(prev => {
-          // Industry-standard zoom-to-point formula for touch
-          if (newZoom !== prev) {
-            setPanPosition(currentPan => {
-              // Calculate pinch center position in current scaled coordinate system
-              const xs = (pinchCenterX - currentPan.x) / prev;
-              const ys = (pinchCenterY - currentPan.y) / prev;
-              
-              // Calculate new pan position to keep pinch center fixed
-              const newPanX = pinchCenterX - xs * newZoom;
-              const newPanY = pinchCenterY - ys * newZoom;
-              
-              // Apply bounds
-              const scaledImageWidth = customization.width * newZoom;
-              const scaledImageHeight = customization.height * newZoom;
-              const maxPanX = Math.max(0, (scaledImageWidth - rect.width) / 2);
-              const maxPanY = Math.max(0, (scaledImageHeight - rect.height) / 2);
-              
-              return {
-                x: Math.max(-maxPanX, Math.min(maxPanX, newPanX)),
-                y: Math.max(-maxPanY, Math.min(maxPanY, newPanY))
-              };
-            });
-          }
-          
-          return newZoom;
-        });
-      });
-      e.preventDefault();
-    } else if (e.touches.length === 1 && isDragging) {
-      // Single touch drag
-      const touch = e.touches[0];
-      const deltaX = touch.clientX - lastPointerPosition.x; // 1:1 movement for natural feel
-      const deltaY = touch.clientY - lastPointerPosition.y;
-      
-      setPanPosition(prev => {
-        if (!imageViewerRef.current) return prev;
-        
-        // Proper image viewer bounds - allow panning to see all parts of zoomed image
-        const container = imageViewerRef.current;
-        const containerWidth = container.clientWidth;
-        const containerHeight = container.clientHeight;
-        
-        // Calculate how much image extends beyond container at current zoom
-        const scaledImageWidth = customization.width * zoomLevel;
-        const scaledImageHeight = customization.height * zoomLevel;
-        
-        // Maximum pan is half the difference between scaled image and container
-        const maxPanX = Math.max(0, (scaledImageWidth - containerWidth) / 2);
-        const maxPanY = Math.max(0, (scaledImageHeight - containerHeight) / 2);
-        
-        return {
-          x: Math.max(-maxPanX, Math.min(maxPanX, prev.x + deltaX)),
-          y: Math.max(-maxPanY, Math.min(maxPanY, prev.y + deltaY))
-        };
-      });
-      
-      setLastPointerPosition({ x: touch.clientX, y: touch.clientY });
-      e.preventDefault();
-    }
-  }, [isDragging, lastPointerPosition, initialPinchDistance, initialZoomLevel, customization.width, customization.height, zoomLevel, getMinZoom]);
-
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 0) {
-      setIsDragging(false);
-      setInitialPinchDistance(null);
-    } else if (e.touches.length === 1) {
-      // Switch from pinch to drag
-      setInitialPinchDistance(null);
-      setIsDragging(true);
-      setLastPointerPosition({ 
-        x: e.touches[0].clientX, 
-        y: e.touches[0].clientY 
-      });
-    }
-    e.preventDefault();
-  }, []);
+  // Removed all custom zoom handlers - using react-zoom-pan-pinch library instead
 
   // Initialize with current data
   useEffect(() => {
@@ -3310,39 +2993,7 @@ export function PlotCustomizationDialog({
                   <p className="text-sm text-gray-300">{customization.width}×{customization.height}px @ {customization.dpi} DPI</p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  {/* Zoom Controls */}
-                  <div className="flex items-center space-x-1 bg-gray-800/70 rounded-lg p-1">
-                    <button
-                      onClick={handleZoomOut}
-                      className="p-1.5 rounded bg-gray-700/50 hover:bg-gray-600/50 text-white"
-                      title="Zoom out"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
-                      </svg>
-                    </button>
-                    <span className="text-xs text-white px-2 min-w-[3rem] text-center">
-                      {Math.round(zoomLevel * 100)}%
-                    </span>
-                    <button
-                      onClick={handleZoomIn}
-                      className="p-1.5 rounded bg-gray-700/50 hover:bg-gray-600/50 text-white"
-                      title="Zoom in"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={handleFitToScreen}
-                      className="p-1.5 rounded bg-gray-700/50 hover:bg-gray-600/50 text-white"
-                      title="Fit to screen"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                      </svg>
-                    </button>
-                  </div>
+                  {/* Zoom controls are now integrated into the react-zoom-pan-pinch component */}
                   
                   <button
                     onClick={() => setShowPropertiesDialog(true)}
@@ -3364,53 +3015,88 @@ export function PlotCustomizationDialog({
                 </div>
               </div>
               
-              {/* Full Image Viewer - Zoomable and Pannable */}
-              <div 
-                ref={imageViewerRef}
-                className="flex-1 overflow-hidden bg-gray-900 relative"
-                onWheel={handleWheel}
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
-                onPointerLeave={handlePointerUp}
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
-                style={{ 
-                  cursor: isDragging ? 'grabbing' : 'grab',
-                  touchAction: 'none' // Prevent default touch behaviors
-                }}
-              >
-                {/* Debug Info Overlay - moved to bottom right */}
-                <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs p-2 rounded z-10 font-mono">
-                  <div>Zoom: {Math.round(zoomLevel * 100)}%</div>
-                  <div>Pan: {Math.round(panPosition.x)}, {Math.round(panPosition.y)}</div>
-                  <div>Size: {customization.width}×{customization.height}</div>
-                  <div>Dragging: {isDragging ? 'Yes' : 'No'}</div>
-                </div>
-
-                <div 
-                  className="absolute top-1/2 left-1/2 shadow-2xl"
-                  style={{
-                    width: `${customization.width}px`, 
-                    height: `${customization.height}px`,
-                    transform: `translate(-50%, -50%) scale(${zoomLevel}) translate(${panPosition.x}px, ${panPosition.y}px)`,
-                    transformOrigin: '0 0',
-                    transition: isDragging ? 'none' : 'transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94)', // Smooth easing curve
-                    backgroundColor: 'white',
-                    border: '2px solid red' // Temporary debug border to see if container is visible
+              {/* Full Image Viewer - Using react-zoom-pan-pinch */}
+              <div className="flex-1 overflow-hidden bg-gray-900 relative">
+                <TransformWrapper
+                  initialScale={1}
+                  minScale={0.3}
+                  maxScale={3}
+                  centerOnInit={true}
+                  wheel={{ 
+                    step: 0.1,
+                    smoothStep: 0.005
                   }}
-                  onTransitionEnd={() => console.log('Transform transition ended')}
+                  pinch={{
+                    step: 5
+                  }}
+                  doubleClick={{
+                    mode: 'reset'
+                  }}
+                  panning={{
+                    velocityDisabled: true
+                  }}
                 >
-                  <LivePlotPreview
-                    customization={customization}
-                    plotData={plotData}
-                    isDarkMode={false}
-                    wellNumber={wellNumber}
-                    well={well}
-                    showFullSize={true}
-                  />
-                </div>
+                  {({ zoomIn, zoomOut, resetTransform, instance }) => (
+                    <>
+                      {/* Zoom Controls */}
+                      <div className="absolute top-4 right-4 flex space-x-2 z-10">
+                        <button
+                          onClick={() => zoomIn()}
+                          className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => zoomOut()}
+                          className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 12H6" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => resetTransform()}
+                          className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      {/* Debug Info */}
+                      <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs p-2 rounded z-10 font-mono">
+                        <div>Zoom: {Math.round((instance?.transformState?.scale || 1) * 100)}%</div>
+                        <div>Pan: {Math.round(instance?.transformState?.positionX || 0)}, {Math.round(instance?.transformState?.positionY || 0)}</div>
+                        <div>Size: {customization.width}×{customization.height}</div>
+                      </div>
+
+                      <TransformComponent
+                        wrapperClass="w-full h-full flex items-center justify-center"
+                        contentClass="shadow-2xl"
+                      >
+                        <div 
+                          style={{
+                            width: `${customization.width}px`, 
+                            height: `${customization.height}px`,
+                            backgroundColor: 'white'
+                          }}
+                        >
+                          <LivePlotPreview
+                            customization={customization}
+                            plotData={plotData}
+                            isDarkMode={false}
+                            wellNumber={wellNumber}
+                            well={well}
+                            showFullSize={true}
+                          />
+                        </div>
+                      </TransformComponent>
+                    </>
+                  )}
+                </TransformWrapper>
               </div>
               
               {/* Modal Footer */}
