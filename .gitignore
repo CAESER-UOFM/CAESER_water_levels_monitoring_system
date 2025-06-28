@@ -63,6 +63,10 @@ config/water-levels-monitoring-*.json
 *.sqlite
 *.sqlite3
 
+# Temporary database cache and working files
+temp/
+databases/temp/
+
 # Backup files
 *.bak
 *.backup
