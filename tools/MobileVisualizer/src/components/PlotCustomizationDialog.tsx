@@ -633,6 +633,8 @@ export function PlotCustomizationDialog({
       console.log('Zoom In:', { from: prev, to: newZoom });
       return newZoom;
     });
+    // Reset pan when zooming to keep image centered
+    setPanPosition({ x: 0, y: 0 });
   }, []);
 
   const handleZoomOut = useCallback(() => {
@@ -641,6 +643,8 @@ export function PlotCustomizationDialog({
       console.log('Zoom Out:', { from: prev, to: newZoom });
       return newZoom;
     });
+    // Reset pan when zooming to keep image centered
+    setPanPosition({ x: 0, y: 0 });
   }, []);
 
   const handleFitToScreen = useCallback(() => {
@@ -662,14 +666,18 @@ export function PlotCustomizationDialog({
     const deltaX = e.clientX - lastPointerPosition.x;
     const deltaY = e.clientY - lastPointerPosition.y;
     
-    setPanPosition(prev => ({
-      x: prev.x + deltaX,
-      y: prev.y + deltaY
-    }));
+    setPanPosition(prev => {
+      // Limit pan range to keep image somewhat visible
+      const maxPan = Math.max(customization.width, customization.height) * 0.5;
+      return {
+        x: Math.max(-maxPan, Math.min(maxPan, prev.x + deltaX)),
+        y: Math.max(-maxPan, Math.min(maxPan, prev.y + deltaY))
+      };
+    });
     
     setLastPointerPosition({ x: e.clientX, y: e.clientY });
     e.preventDefault();
-  }, [isDragging, lastPointerPosition]);
+  }, [isDragging, lastPointerPosition, customization.width, customization.height]);
 
   const handlePointerUp = useCallback(() => {
     setIsDragging(false);
@@ -726,10 +734,14 @@ export function PlotCustomizationDialog({
       const deltaX = touch.clientX - lastPointerPosition.x;
       const deltaY = touch.clientY - lastPointerPosition.y;
       
-      setPanPosition(prev => ({
-        x: prev.x + deltaX,
-        y: prev.y + deltaY
-      }));
+      setPanPosition(prev => {
+        // Limit pan range to keep image somewhat visible
+        const maxPan = Math.max(customization.width, customization.height) * 0.5;
+        return {
+          x: Math.max(-maxPan, Math.min(maxPan, prev.x + deltaX)),
+          y: Math.max(-maxPan, Math.min(maxPan, prev.y + deltaY))
+        };
+      });
       
       setLastPointerPosition({ x: touch.clientX, y: touch.clientY });
       e.preventDefault();
