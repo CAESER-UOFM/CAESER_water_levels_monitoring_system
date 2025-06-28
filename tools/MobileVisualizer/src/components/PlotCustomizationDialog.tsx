@@ -596,10 +596,139 @@ export function PlotCustomizationDialog({
   const [showFullImageViewer, setShowFullImageViewer] = useState(false);
   const [showPropertiesDialog, setShowPropertiesDialog] = useState(false);
   
+  // Image viewer zoom/pan state
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [lastPointerPosition, setLastPointerPosition] = useState({ x: 0, y: 0 });
+  const [initialPinchDistance, setInitialPinchDistance] = useState<number | null>(null);
+  const [initialZoomLevel, setInitialZoomLevel] = useState(1);
+  
   // Appearance sub-tabs state
   const [activeAppearanceTab, setActiveAppearanceTab] = useState<'title' | 'axes' | 'legend'>('title');
   
   const dialogRef = useRef<HTMLDivElement>(null);
+  const imageViewerRef = useRef<HTMLDivElement>(null);
+
+  // Reset image viewer state when opening
+  const openImageViewer = useCallback(() => {
+    setZoomLevel(1);
+    setPanPosition({ x: 0, y: 0 });
+    setShowFullImageViewer(true);
+  }, []);
+
+  // Zoom controls
+  const handleZoomIn = useCallback(() => {
+    setZoomLevel(prev => Math.min(prev * 1.5, 5));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoomLevel(prev => Math.max(prev / 1.5, 0.1));
+  }, []);
+
+  const handleFitToScreen = useCallback(() => {
+    setZoomLevel(1);
+    setPanPosition({ x: 0, y: 0 });
+  }, []);
+
+  // Pan handlers
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    setIsDragging(true);
+    setLastPointerPosition({ x: e.clientX, y: e.clientY });
+    e.preventDefault();
+  }, []);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragging) return;
+    
+    const deltaX = e.clientX - lastPointerPosition.x;
+    const deltaY = e.clientY - lastPointerPosition.y;
+    
+    setPanPosition(prev => ({
+      x: prev.x + deltaX,
+      y: prev.y + deltaY
+    }));
+    
+    setLastPointerPosition({ x: e.clientX, y: e.clientY });
+    e.preventDefault();
+  }, [isDragging, lastPointerPosition]);
+
+  const handlePointerUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Wheel zoom
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    setZoomLevel(prev => Math.min(Math.max(prev * delta, 0.1), 5));
+  }, []);
+
+  // Touch gesture helpers
+  const getDistance = (touch1: Touch, touch2: Touch) => {
+    const dx = touch1.clientX - touch2.clientX;
+    const dy = touch1.clientY - touch2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  // Touch handlers
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      // Pinch gesture
+      const distance = getDistance(e.touches[0], e.touches[1]);
+      setInitialPinchDistance(distance);
+      setInitialZoomLevel(zoomLevel);
+      e.preventDefault();
+    } else if (e.touches.length === 1) {
+      // Single touch - start dragging
+      setIsDragging(true);
+      setLastPointerPosition({ 
+        x: e.touches[0].clientX, 
+        y: e.touches[0].clientY 
+      });
+      e.preventDefault();
+    }
+  }, [zoomLevel]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && initialPinchDistance !== null) {
+      // Pinch zoom
+      const distance = getDistance(e.touches[0], e.touches[1]);
+      const scale = distance / initialPinchDistance;
+      const newZoom = Math.min(Math.max(initialZoomLevel * scale, 0.1), 5);
+      setZoomLevel(newZoom);
+      e.preventDefault();
+    } else if (e.touches.length === 1 && isDragging) {
+      // Single touch drag
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - lastPointerPosition.x;
+      const deltaY = touch.clientY - lastPointerPosition.y;
+      
+      setPanPosition(prev => ({
+        x: prev.x + deltaX,
+        y: prev.y + deltaY
+      }));
+      
+      setLastPointerPosition({ x: touch.clientX, y: touch.clientY });
+      e.preventDefault();
+    }
+  }, [isDragging, lastPointerPosition, initialPinchDistance, initialZoomLevel]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 0) {
+      setIsDragging(false);
+      setInitialPinchDistance(null);
+    } else if (e.touches.length === 1) {
+      // Switch from pinch to drag
+      setInitialPinchDistance(null);
+      setIsDragging(true);
+      setLastPointerPosition({ 
+        x: e.touches[0].clientX, 
+        y: e.touches[0].clientY 
+      });
+    }
+    e.preventDefault();
+  }, []);
 
   // Initialize with current data
   useEffect(() => {
@@ -876,7 +1005,7 @@ export function PlotCustomizationDialog({
                   className={`h-full overflow-auto border rounded cursor-pointer transition-all hover:shadow-lg relative ${
                     isDarkMode ? 'border-gray-600 hover:border-blue-500' : 'border-gray-300 hover:border-blue-400'
                   }`}
-                  onClick={() => setShowFullImageViewer(true)}
+                  onClick={openImageViewer}
                 >
                   <LivePlotPreview
                     customization={customization}
@@ -2983,6 +3112,40 @@ export function PlotCustomizationDialog({
                   <p className="text-sm text-gray-300">{customization.width}×{customization.height}px @ {customization.dpi} DPI</p>
                 </div>
                 <div className="flex items-center space-x-2">
+                  {/* Zoom Controls */}
+                  <div className="flex items-center space-x-1 bg-gray-800/70 rounded-lg p-1">
+                    <button
+                      onClick={handleZoomOut}
+                      className="p-1.5 rounded bg-gray-700/50 hover:bg-gray-600/50 text-white"
+                      title="Zoom out"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                      </svg>
+                    </button>
+                    <span className="text-xs text-white px-2 min-w-[3rem] text-center">
+                      {Math.round(zoomLevel * 100)}%
+                    </span>
+                    <button
+                      onClick={handleZoomIn}
+                      className="p-1.5 rounded bg-gray-700/50 hover:bg-gray-600/50 text-white"
+                      title="Zoom in"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={handleFitToScreen}
+                      className="p-1.5 rounded bg-gray-700/50 hover:bg-gray-600/50 text-white"
+                      title="Fit to screen"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                      </svg>
+                    </button>
+                  </div>
+                  
                   <button
                     onClick={() => setShowPropertiesDialog(true)}
                     className="p-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 text-white"
@@ -3003,29 +3166,56 @@ export function PlotCustomizationDialog({
                 </div>
               </div>
               
-              {/* Full Image Viewer - Scrollable and Zoomable */}
-              <div className="flex-1 overflow-auto">
-                <div className="bg-white" style={{ 
-                  width: `${customization.width}px`, 
-                  height: `${customization.height}px`,
-                  minWidth: `${customization.width}px`,
-                  minHeight: `${customization.height}px`
-                }}>
-                  <LivePlotPreview
-                    customization={customization}
-                    plotData={plotData}
-                    isDarkMode={false}
-                    wellNumber={wellNumber}
-                    well={well}
-                    showFullSize={true}
-                  />
+              {/* Full Image Viewer - Zoomable and Pannable */}
+              <div 
+                ref={imageViewerRef}
+                className="flex-1 overflow-hidden bg-gray-900"
+                onWheel={handleWheel}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerLeave={handlePointerUp}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                style={{ 
+                  cursor: isDragging ? 'grabbing' : 'grab',
+                  touchAction: 'none' // Prevent default touch behaviors
+                }}
+              >
+                <div 
+                  className="flex items-center justify-center h-full"
+                  style={{
+                    transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomLevel})`,
+                    transformOrigin: 'center center',
+                    transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+                  }}
+                >
+                  <div 
+                    className="bg-white shadow-2xl"
+                    style={{ 
+                      width: `${customization.width}px`, 
+                      height: `${customization.height}px`,
+                      minWidth: `${customization.width}px`,
+                      minHeight: `${customization.height}px`
+                    }}
+                  >
+                    <LivePlotPreview
+                      customization={customization}
+                      plotData={plotData}
+                      isDarkMode={false}
+                      wellNumber={wellNumber}
+                      well={well}
+                      showFullSize={true}
+                    />
+                  </div>
                 </div>
               </div>
               
               {/* Modal Footer */}
               <div className="flex items-center justify-between p-4 text-white">
                 <div className="text-sm text-gray-300">
-                  📱 Pinch to zoom • Swipe to pan
+                  🖱️ Drag to pan • 🎯 Scroll to zoom • 📱 Pinch & drag on touch
                 </div>
                 <button
                   onClick={() => {
