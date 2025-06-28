@@ -324,8 +324,12 @@ export function SimplePlotCustomizationDialog({
 
   // Open image viewer
   const openImageViewer = useCallback(() => {
+    console.log('openImageViewer called', { selectedTemplate, customization });
     if (selectedTemplate && customization) {
+      console.log('Opening full image viewer');
       setShowFullImageViewer(true);
+    } else {
+      console.log('Conditions not met for opening viewer');
     }
   }, [selectedTemplate, customization]);
 
@@ -420,7 +424,7 @@ export function SimplePlotCustomizationDialog({
                         showFullSize={false}
                       />
                     </div>
-                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-lg">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-lg pointer-events-none">
                       <div className="text-white text-center">
                         <div className="w-12 h-12 mx-auto mb-2 rounded-full bg-white bg-opacity-20 flex items-center justify-center">
                           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
