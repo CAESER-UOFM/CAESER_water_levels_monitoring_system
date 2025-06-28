@@ -3169,7 +3169,7 @@ export function PlotCustomizationDialog({
               {/* Full Image Viewer - Zoomable and Pannable */}
               <div 
                 ref={imageViewerRef}
-                className="flex-1 overflow-hidden bg-gray-900"
+                className="flex-1 overflow-hidden bg-gray-900 relative"
                 onWheel={handleWheel}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
@@ -3184,31 +3184,23 @@ export function PlotCustomizationDialog({
                 }}
               >
                 <div 
-                  className="flex items-center justify-center h-full"
+                  className="absolute top-1/2 left-1/2 bg-white shadow-2xl"
                   style={{
-                    transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomLevel})`,
+                    width: `${customization.width}px`, 
+                    height: `${customization.height}px`,
+                    transform: `translate(-50%, -50%) translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomLevel})`,
                     transformOrigin: 'center center',
                     transition: isDragging ? 'none' : 'transform 0.1s ease-out'
                   }}
                 >
-                  <div 
-                    className="bg-white shadow-2xl"
-                    style={{ 
-                      width: `${customization.width}px`, 
-                      height: `${customization.height}px`,
-                      minWidth: `${customization.width}px`,
-                      minHeight: `${customization.height}px`
-                    }}
-                  >
-                    <LivePlotPreview
-                      customization={customization}
-                      plotData={plotData}
-                      isDarkMode={false}
-                      wellNumber={wellNumber}
-                      well={well}
-                      showFullSize={true}
-                    />
-                  </div>
+                  <LivePlotPreview
+                    customization={customization}
+                    plotData={plotData}
+                    isDarkMode={false}
+                    wellNumber={wellNumber}
+                    well={well}
+                    showFullSize={true}
+                  />
                 </div>
               </div>
               
