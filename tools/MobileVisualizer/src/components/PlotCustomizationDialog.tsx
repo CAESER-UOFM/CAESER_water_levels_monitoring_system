@@ -603,11 +603,27 @@ export function PlotCustomizationDialog({
   const [activeAppearanceTab, setActiveAppearanceTab] = useState<'title' | 'axes' | 'legend'>('title');
   
   const dialogRef = useRef<HTMLDivElement>(null);
+  const imageViewerContainerRef = useRef<HTMLDivElement>(null);
 
   // Open image viewer (no more custom zoom/pan reset needed)
   const openImageViewer = useCallback(() => {
     setShowFullImageViewer(true);
   }, []);
+
+  // Calculate fit scale for image
+  const calculateFitScale = useCallback(() => {
+    if (!imageViewerContainerRef.current) return 1;
+    
+    const container = imageViewerContainerRef.current;
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+    const imageWidth = customization.width;
+    const imageHeight = customization.height;
+    
+    const scaleX = containerWidth / imageWidth;
+    const scaleY = containerHeight / imageHeight;
+    return Math.min(scaleX, scaleY) * 0.9; // 90% of fit for padding
+  }, [customization.width, customization.height]);
 
   // Removed all custom zoom handlers - using react-zoom-pan-pinch library instead
 
@@ -3016,12 +3032,14 @@ export function PlotCustomizationDialog({
               </div>
               
               {/* Full Image Viewer - Using react-zoom-pan-pinch */}
-              <div className="flex-1 overflow-hidden bg-gray-900 relative">
+              <div ref={imageViewerContainerRef} className="flex-1 overflow-hidden bg-gray-900 relative">
                 <TransformWrapper
-                  initialScale={1}
-                  minScale={0.3}
+                  initialScale={0.8}
+                  minScale={0.1}
                   maxScale={3}
                   centerOnInit={true}
+                  limitToBounds={true}
+                  centerZoomedOut={true}
                   wheel={{ 
                     step: 0.1,
                     smoothStep: 0.005
