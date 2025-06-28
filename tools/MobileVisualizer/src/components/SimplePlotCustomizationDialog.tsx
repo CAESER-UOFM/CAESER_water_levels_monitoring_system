@@ -454,15 +454,24 @@ export function SimplePlotCustomizationDialog({
                 {selectedTemplate ? (
                   <div className="relative">
                     <div className="bg-white rounded-lg overflow-hidden flex items-center justify-center" style={{ minHeight: '300px' }}>
-                      <LivePlotPreview
-                        customization={customization}
-                        plotData={processedData}
-                        isDarkMode={false}
-                        wellNumber={wellNumber}
-                        well={well}
-                        showFullSize={false}
-                        skipDataProcessing={true}
-                      />
+                      <div 
+                        className="origin-center"
+                        style={{ 
+                          transform: `scale(${Math.min(400 / customization.width, 250 / customization.height)})`,
+                          width: `${customization.width}px`,
+                          height: `${customization.height}px`
+                        }}
+                      >
+                        <LivePlotPreview
+                          customization={customization}
+                          plotData={processedData}
+                          isDarkMode={false}
+                          wellNumber={wellNumber}
+                          well={well}
+                          showFullSize={true}
+                          skipDataProcessing={true}
+                        />
+                      </div>
                     </div>
                     <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-lg pointer-events-none">
                       <div className="text-white text-center">
