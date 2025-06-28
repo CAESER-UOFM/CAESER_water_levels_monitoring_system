@@ -619,14 +619,19 @@ export function PlotCustomizationDialog({
 
   // Zoom controls
   const handleZoomIn = useCallback(() => {
-    setZoomLevel(prev => Math.min(prev * 1.5, 5));
-  }, []);
+    const newZoom = Math.min(zoomLevel * 1.5, 5);
+    console.log('Zoom In:', { from: zoomLevel, to: newZoom });
+    setZoomLevel(newZoom);
+  }, [zoomLevel]);
 
   const handleZoomOut = useCallback(() => {
-    setZoomLevel(prev => Math.max(prev / 1.5, 0.1));
-  }, []);
+    const newZoom = Math.max(zoomLevel / 1.5, 0.1);
+    console.log('Zoom Out:', { from: zoomLevel, to: newZoom });
+    setZoomLevel(newZoom);
+  }, [zoomLevel]);
 
   const handleFitToScreen = useCallback(() => {
+    console.log('Fit to Screen: resetting zoom and pan');
     setZoomLevel(1);
     setPanPosition({ x: 0, y: 0 });
   }, []);
@@ -661,8 +666,10 @@ export function PlotCustomizationDialog({
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    setZoomLevel(prev => Math.min(Math.max(prev * delta, 0.1), 5));
-  }, []);
+    const newZoom = Math.min(Math.max(zoomLevel * delta, 0.1), 5);
+    console.log('Wheel Zoom:', { from: zoomLevel, to: newZoom, deltaY: e.deltaY });
+    setZoomLevel(newZoom);
+  }, [zoomLevel]);
 
   // Touch gesture helpers
   const getDistance = (touch1: React.Touch, touch2: React.Touch) => {
@@ -3183,14 +3190,24 @@ export function PlotCustomizationDialog({
                   touchAction: 'none' // Prevent default touch behaviors
                 }}
               >
+                {/* Debug Info Overlay */}
+                <div className="absolute top-2 left-2 bg-black/70 text-white text-xs p-2 rounded z-10 font-mono">
+                  <div>Zoom: {Math.round(zoomLevel * 100)}%</div>
+                  <div>Pan: {Math.round(panPosition.x)}, {Math.round(panPosition.y)}</div>
+                  <div>Size: {customization.width}×{customization.height}</div>
+                  <div>Dragging: {isDragging ? 'Yes' : 'No'}</div>
+                </div>
+
                 <div 
-                  className="absolute top-1/2 left-1/2 bg-white shadow-2xl"
+                  className="absolute top-1/2 left-1/2 shadow-2xl"
                   style={{
                     width: `${customization.width}px`, 
                     height: `${customization.height}px`,
                     transform: `translate(-50%, -50%) translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomLevel})`,
                     transformOrigin: 'center center',
-                    transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+                    transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+                    backgroundColor: 'white',
+                    border: '2px solid red' // Temporary debug border to see if container is visible
                   }}
                 >
                   <LivePlotPreview
