@@ -3062,7 +3062,6 @@ export function PlotCustomizationDialog({
                     velocityDisabled: true
                   }}
                   onInit={(ref) => {
-                    console.log('TransformWrapper onInit called - manual positioning');
                     setTimeout(() => {
                       if (ref && imageViewerContainerRef.current) {
                         const container = imageViewerContainerRef.current;
@@ -3070,9 +3069,6 @@ export function PlotCustomizationDialog({
                         const containerHeight = container.clientHeight;
                         const imageWidth = customization.width;
                         const imageHeight = customization.height;
-                        
-                        console.log('Container dimensions:', containerWidth, 'x', containerHeight);
-                        console.log('Image dimensions:', imageWidth, 'x', imageHeight);
                         
                         // Calculate scale to fit image completely in container
                         const scaleX = containerWidth / imageWidth;
@@ -3085,28 +3081,15 @@ export function PlotCustomizationDialog({
                         const x = (containerWidth - scaledImageWidth) / 2;
                         const y = (containerHeight - scaledImageHeight) / 2;
                         
-                        console.log('Calculated values:');
-                        console.log('- Scale:', scale);
-                        console.log('- Scaled image size:', scaledImageWidth, 'x', scaledImageHeight);
-                        console.log('- Position:', x, y);
-                        
                         // Use the internal state setting instead of animation
                         if (ref.instance) {
                           ref.instance.transformState.scale = scale;
                           ref.instance.transformState.positionX = x;
                           ref.instance.transformState.positionY = y;
                           ref.instance.applyTransformation();
-                          console.log('Applied direct transformation');
                         }
                       }
                     }, 300);
-                  }}
-                  onTransformed={(ref, state) => {
-                    console.log('Transform state:', {
-                      scale: state.scale,
-                      positionX: state.positionX,
-                      positionY: state.positionY
-                    });
                   }}
                 >
                   {({ zoomIn, zoomOut, resetTransform, centerView, instance }) => (
@@ -3131,7 +3114,6 @@ export function PlotCustomizationDialog({
                         </button>
                         <button
                           onClick={() => {
-                            console.log('Reset button clicked - using manual positioning');
                             if (instance && imageViewerContainerRef.current) {
                               const container = imageViewerContainerRef.current;
                               const containerWidth = container.clientWidth;
@@ -3150,17 +3132,12 @@ export function PlotCustomizationDialog({
                               const x = (containerWidth - scaledImageWidth) / 2;
                               const y = (containerHeight - scaledImageHeight) / 2;
                               
-                              console.log('Reset - Calculated values:');
-                              console.log('- Scale:', scale);
-                              console.log('- Position:', x, y);
-                              
                               // Apply the same direct transformation as onInit
                               if (instance.transformState) {
                                 instance.transformState.scale = scale;
                                 instance.transformState.positionX = x;
                                 instance.transformState.positionY = y;
                                 instance.applyTransformation();
-                                console.log('Reset - Applied direct transformation');
                               }
                             }
                           }}
@@ -3172,13 +3149,6 @@ export function PlotCustomizationDialog({
                         </button>
                       </div>
 
-                      {/* Debug Info */}
-                      <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs p-2 rounded z-10 font-mono">
-                        <div>Zoom: {Math.round((instance?.transformState?.scale || 1) * 100)}%</div>
-                        <div>Pan: {Math.round(instance?.transformState?.positionX || 0)}, {Math.round(instance?.transformState?.positionY || 0)}</div>
-                        <div>Size: {customization.width}×{customization.height}</div>
-                        <div>Container: {imageViewerContainerRef.current?.clientWidth || 0}×{imageViewerContainerRef.current?.clientHeight || 0}</div>
-                      </div>
 
                       <TransformComponent
                         wrapperClass="w-full h-full"
