@@ -225,7 +225,7 @@ const defaultCustomization: PlotCustomization = {
   // Dimensions and Layout
   width: 1200,
   height: 800,
-  aspectRatio: '16:9',
+  aspectRatio: '3:2',
   dpi: 300,
   
   // Data Filtering
@@ -237,7 +237,7 @@ const defaultCustomization: PlotCustomization = {
   // Plot Appearance
   title: {
     text: 'Water Level Data',
-    fontSize: 24,
+    fontSize: 18,
     color: '#000000',
     show: true,
     position: 'top',
@@ -370,6 +370,57 @@ const aspectRatios = {
 };
 
 const presetTemplates = {
+  'default': {
+    name: 'Default (Balanced)',
+    description: 'Well-balanced proportions for general use',
+    config: {
+      width: 1200,
+      height: 800,
+      aspectRatio: '3:2' as const,
+      dpi: 300,
+      backgroundColor: '#ffffff',
+      plotAreaColor: '#ffffff',
+      borderColor: '#000000',
+      borderWidth: 1,
+      title: {
+        fontSize: 18,
+        color: '#000000',
+        show: true,
+      },
+      xAxis: {
+        fontSize: 14,
+        color: '#000000',
+        showGrid: true,
+        gridColor: '#e0e0e0',
+        tickFontSize: 12,
+      },
+      yAxis: {
+        fontSize: 14,
+        color: '#000000',
+        showGrid: true,
+        gridColor: '#e0e0e0',
+        tickFontSize: 12,
+      },
+      legend: {
+        show: true,
+        position: 'top-right' as const,
+        fontSize: 12,
+        backgroundColor: '#ffffff',
+        textColor: '#000000',
+      },
+      transducerData: {
+        color: '#2563eb',
+        lineWidth: 2,
+        pointSize: 4,
+        showPoints: false,
+      },
+      manualData: {
+        color: '#059669',
+        pointSize: 6,
+        pointStyle: 'circle' as const,
+      },
+    }
+  },
   'publication': {
     name: 'Publication Ready',
     description: 'Clean, professional layout suitable for academic papers',
@@ -543,6 +594,7 @@ export function PlotCustomizationDialog({
   const [isMobile, setIsMobile] = useState(false);
   const [activeMobileSection, setActiveMobileSection] = useState<keyof typeof expandedSections>('dimensions');
   const [showFullImageViewer, setShowFullImageViewer] = useState(false);
+  const [showPropertiesDialog, setShowPropertiesDialog] = useState(false);
   
   // Appearance sub-tabs state
   const [activeAppearanceTab, setActiveAppearanceTab] = useState<'title' | 'axes' | 'legend'>('title');
@@ -2930,14 +2982,25 @@ export function PlotCustomizationDialog({
                   <h3 className="text-lg font-semibold">Plot Preview</h3>
                   <p className="text-sm text-gray-300">{customization.width}×{customization.height}px @ {customization.dpi} DPI</p>
                 </div>
-                <button
-                  onClick={() => setShowFullImageViewer(false)}
-                  className="p-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 text-white"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setShowPropertiesDialog(true)}
+                    className="p-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 text-white"
+                    title="View plot properties"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setShowFullImageViewer(false)}
+                    className="p-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 text-white"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
               
               {/* Full Image Viewer - Scrollable and Zoomable */}
@@ -2972,6 +3035,110 @@ export function PlotCustomizationDialog({
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
                 >
                   🚀 Export This Plot
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Properties Dialog Modal */}
+        {showPropertiesDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[80] p-4">
+            <div className={`w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-xl shadow-2xl ${
+              isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
+            }`}>
+              <div className={`flex items-center justify-between p-4 border-b ${
+                isDarkMode ? 'border-gray-700' : 'border-gray-200'
+              }`}>
+                <h3 className={`text-lg font-semibold ${
+                  isDarkMode ? 'text-white' : 'text-gray-900'
+                }`}>
+                  📊 Plot Properties
+                </h3>
+                <button
+                  onClick={() => setShowPropertiesDialog(false)}
+                  className={`p-2 rounded-lg transition-colors ${
+                    isDarkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-4 overflow-y-auto max-h-[calc(90vh-120px)]">
+                <div className="space-y-4">
+                  <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-700/30' : 'bg-gray-50'}`}>
+                    <h4 className={`font-medium mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>📐 Dimensions</h4>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Width:</span>
+                        <span className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{customization.width}px</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Height:</span>
+                        <span className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{customization.height}px</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>DPI:</span>
+                        <span className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{customization.dpi}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Ratio:</span>
+                        <span className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{customization.aspectRatio}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-700/30' : 'bg-gray-50'}`}>
+                    <h4 className={`font-medium mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>🔤 Typography</h4>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Title:</span>
+                        <span className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{customization.title.fontSize}px</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Axes:</span>
+                        <span className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{customization.xAxis.fontSize}px</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Legend:</span>
+                        <span className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{customization.legend.fontSize}px</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-700/30' : 'bg-gray-50'}`}>
+                    <h4 className={`font-medium mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>📊 Data Series</h4>
+                    <div className="space-y-1 text-sm">
+                      {customization.showTransducerData && (
+                        <div className="flex items-center justify-between">
+                          <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Transducer:</span>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-4 h-1 rounded" style={{ backgroundColor: customization.transducerData.color }} />
+                            <span className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{customization.transducerData.lineWidth}px</span>
+                          </div>
+                        </div>
+                      )}
+                      {customization.showManualData && (
+                        <div className="flex items-center justify-between">
+                          <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Manual:</span>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: customization.manualData.color }} />
+                            <span className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{customization.manualData.pointSize}px</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className={`flex justify-end p-4 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                <button
+                  onClick={() => setShowPropertiesDialog(false)}
+                  className={`px-4 py-2 rounded-lg ${
+                    isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Close
                 </button>
               </div>
             </div>
