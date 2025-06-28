@@ -103,6 +103,8 @@ export function SimplePlotCustomizationDialog({
   const [showFullImageViewer, setShowFullImageViewer] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [processedData, setProcessedData] = useState<any[]>([]);
+  const [exportQualityImageUrl, setExportQualityImageUrl] = useState<string | null>(null);
+  const [isRenderingImage, setIsRenderingImage] = useState(false);
   
   const dialogRef = useRef<HTMLDivElement>(null);
   const imageViewerContainerRef = useRef<HTMLDivElement>(null);
@@ -289,6 +291,106 @@ export function SimplePlotCustomizationDialog({
     setProcessedData(convertedData);
   }, [plotData, customization?.showTransducerData, customization?.showManualData, customization?.showTemperatureData, customization?.dateRange]);
 
+  // Render single export-quality image for both preview and full-screen
+  const renderExportQualityImage = useCallback(async () => {
+    if (!customization || !processedData.length) {
+      setExportQualityImageUrl(null);
+      return;
+    }
+
+    setIsRenderingImage(true);
+    console.log('📸 RENDERING SINGLE EXPORT-QUALITY IMAGE:', {
+      dimensions: `${customization.width}x${customization.height}`,
+      fonts: {
+        title: customization.title.fontSize,
+        xAxis: customization.xAxis.fontSize,
+        yAxis: customization.yAxis.fontSize
+      },
+      dataPoints: processedData.length,
+      renderMode: 'SINGLE_SOURCE_EXPORT_QUALITY'
+    });
+
+    try {
+      // Create a temporary canvas offscreen
+      const canvas = document.createElement('canvas');
+      canvas.width = customization.width;
+      canvas.height = customization.height;
+      
+      // Create temporary container for LivePlotPreview
+      const tempContainer = document.createElement('div');
+      tempContainer.style.position = 'absolute';
+      tempContainer.style.left = '-9999px';
+      tempContainer.style.top = '-9999px';
+      tempContainer.style.width = `${customization.width}px`;
+      tempContainer.style.height = `${customization.height}px`;
+      document.body.appendChild(tempContainer);
+
+      // Wait for next frame to ensure proper rendering
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      
+      // Render and capture the canvas
+      const dataUrl = await new Promise<string>((resolve) => {
+        const tempDiv = document.createElement('div');
+        tempDiv.style.width = `${customization.width}px`;
+        tempDiv.style.height = `${customization.height}px`;
+        tempContainer.appendChild(tempDiv);
+        
+        // Import React and render LivePlotPreview
+        import('react').then(React => {
+          import('react-dom/client').then(({ createRoot }) => {
+            const root = createRoot(tempDiv);
+            
+            const CaptureComponent = () => {
+              const canvasRef = React.useRef<HTMLCanvasElement>(null);
+              
+              React.useEffect(() => {
+                const timer = setTimeout(() => {
+                  if (canvasRef.current) {
+                    const dataUrl = canvasRef.current.toDataURL('image/png');
+                    resolve(dataUrl);
+                    
+                    // Cleanup
+                    root.unmount();
+                    document.body.removeChild(tempContainer);
+                  }
+                }, 500);
+                
+                return () => clearTimeout(timer);
+              }, []);
+
+              return React.createElement(LivePlotPreview, {
+                customization,
+                plotData: processedData,
+                isDarkMode: false,
+                wellNumber,
+                well,
+                showFullSize: true,
+                skipDataProcessing: true
+              });
+            };
+
+            root.render(React.createElement(CaptureComponent));
+          });
+        });
+      });
+
+      setExportQualityImageUrl(dataUrl);
+      console.log('✅ SINGLE IMAGE RENDERED SUCCESSFULLY');
+    } catch (error) {
+      console.error('❌ FAILED TO RENDER SINGLE IMAGE:', error);
+      setExportQualityImageUrl(null);
+    } finally {
+      setIsRenderingImage(false);
+    }
+  }, [customization, processedData, wellNumber, well]);
+
+  // Trigger single image render when data/customization changes
+  useEffect(() => {
+    if (selectedTemplate && customization && processedData.length > 0) {
+      renderExportQualityImage();
+    }
+  }, [selectedTemplate, customization, processedData, renderExportQualityImage]);
+
   // Mobile detection
   useEffect(() => {
     const checkDeviceType = () => {
@@ -464,39 +566,58 @@ export function SimplePlotCustomizationDialog({
                 {selectedTemplate ? (
                   <div className="relative">
                     {(() => {
-                      const previewCustomization = {
-                        ...customization,
-                        width: Math.min(400, customization.width),
-                        height: Math.min(300, customization.height * (Math.min(400, customization.width) / customization.width))
-                      };
-                      
-                      console.log('🎨 PREVIEW RENDERING:', {
-                        originalCustomization: `${customization.width}x${customization.height}`,
-                        originalFonts: {
-                          title: customization.title.fontSize,
-                          xAxis: customization.xAxis.fontSize,
-                          yAxis: customization.yAxis.fontSize
-                        },
-                        previewCustomization: `${previewCustomization.width}x${previewCustomization.height}`,
-                        previewFonts: {
-                          title: previewCustomization.title.fontSize,
-                          xAxis: previewCustomization.xAxis.fontSize,
-                          yAxis: previewCustomization.yAxis.fontSize
-                        },
-                        dataPoints: processedData.length,
-                        renderMode: 'SCALED_PREVIEW'
+                      if (isRenderingImage) {
+                        console.log('⏳ PREVIEW: WAITING FOR SINGLE IMAGE RENDER...');
+                        return (
+                          <div className="bg-white rounded-lg overflow-hidden flex items-center justify-center p-4" style={{ minHeight: '300px' }}>
+                            <div className="text-center">
+                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                              <p className="text-sm text-gray-600">Rendering preview...</p>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      if (!exportQualityImageUrl) {
+                        console.log('❌ PREVIEW: NO EXPORT QUALITY IMAGE AVAILABLE');
+                        return (
+                          <div className="bg-white rounded-lg overflow-hidden flex items-center justify-center p-4" style={{ minHeight: '300px' }}>
+                            <div className="text-center text-gray-500">
+                              <p className="text-sm">Preview not available</p>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // Calculate scale factor for preview
+                      const maxPreviewWidth = 400;
+                      const maxPreviewHeight = 300;
+                      const scaleFactor = Math.min(
+                        maxPreviewWidth / customization.width,
+                        maxPreviewHeight / customization.height
+                      );
+                      const previewWidth = customization.width * scaleFactor;
+                      const previewHeight = customization.height * scaleFactor;
+
+                      console.log('🖼️ PREVIEW: SHOWING SCALED EXPORT-QUALITY IMAGE:', {
+                        originalSize: `${customization.width}x${customization.height}`,
+                        previewSize: `${previewWidth}x${previewHeight}`,
+                        scaleFactor,
+                        renderMode: 'SINGLE_SOURCE_SCALED_DISPLAY'
                       });
-                      
+
                       return (
-                        <div className="bg-white rounded-lg overflow-hidden flex items-center justify-center p-4" style={{ minHeight: '300px' }}>
-                          <LivePlotPreview
-                            customization={previewCustomization}
-                            plotData={processedData}
-                            isDarkMode={false}
-                            wellNumber={wellNumber}
-                            well={well}
-                            showFullSize={true}
-                            skipDataProcessing={true}
+                        <div className="bg-white rounded-lg overflow-hidden flex items-center justify-center p-4">
+                          <img 
+                            src={exportQualityImageUrl}
+                            alt="Plot Preview"
+                            style={{
+                              width: `${previewWidth}px`,
+                              height: `${previewHeight}px`,
+                              maxWidth: '100%',
+                              maxHeight: '100%'
+                            }}
+                            className="border border-gray-200 rounded"
                           />
                         </div>
                       );
@@ -884,30 +1005,33 @@ export function SimplePlotCustomizationDialog({
                           backgroundColor: 'white'
                         }}
                       >
-                        {(() => {
-                          console.log('🖥️ FULL-SCREEN RENDERING:', {
-                            fullScreenCustomization: `${customization.width}x${customization.height}`,
-                            fullScreenFonts: {
-                              title: customization.title.fontSize,
-                              xAxis: customization.xAxis.fontSize,
-                              yAxis: customization.yAxis.fontSize
-                            },
-                            dataPoints: processedData.length,
-                            renderMode: 'FULL_EXPORT_QUALITY'
-                          });
-                          
-                          return (
-                            <LivePlotPreview
-                              customization={customization}
-                              plotData={processedData}
-                              isDarkMode={false}
-                              wellNumber={wellNumber}
-                              well={well}
-                              showFullSize={true}
-                              skipDataProcessing={true}
-                            />
-                          );
-                        })()}
+                        {exportQualityImageUrl ? (
+                          (() => {
+                            console.log('🖥️ FULL-SCREEN: SHOWING EXPORT-QUALITY IMAGE:', {
+                              imageSize: `${customization.width}x${customization.height}`,
+                              renderMode: 'SINGLE_SOURCE_FULL_SIZE'
+                            });
+                            
+                            return (
+                              <img 
+                                src={exportQualityImageUrl}
+                                alt="Full-Screen Plot"
+                                style={{
+                                  width: `${customization.width}px`,
+                                  height: `${customization.height}px`,
+                                  display: 'block'
+                                }}
+                              />
+                            );
+                          })()
+                        ) : (
+                          <div className="flex items-center justify-center w-full h-full">
+                            <div className="text-center">
+                              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                              <p className="text-white">Rendering plot...</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </TransformComponent>
                   </>
