@@ -444,7 +444,7 @@ export function SimplePlotCustomizationDialog({
                 Plot Preview
               </label>
               <div 
-                className={`relative border-2 border-dashed rounded-xl p-4 cursor-pointer transition-all duration-300 ${
+                className={`relative border-2 border-dashed rounded-xl cursor-pointer transition-all duration-300 ${
                   selectedTemplate
                     ? (isDarkMode ? 'border-blue-500 hover:border-blue-400 bg-blue-900/10' : 'border-blue-400 hover:border-blue-500 bg-blue-50')
                     : (isDarkMode ? 'border-gray-600 hover:border-gray-500 bg-gray-800/30' : 'border-gray-300 hover:border-gray-400 bg-gray-50')
@@ -452,11 +452,10 @@ export function SimplePlotCustomizationDialog({
                 onClick={openImageViewer}
               >
                 {selectedTemplate ? (
-                  <div className="relative">
-                    <div className="bg-white rounded-lg overflow-hidden flex items-center justify-center" style={{ 
+                  <div className="relative flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg overflow-hidden" style={{ 
                       width: `${customization.width * 0.25}px`,
-                      height: `${customization.height * 0.25}px`,
-                      minHeight: 'auto'
+                      height: `${customization.height * 0.25}px`
                     }}>
                       <div style={{ 
                         transform: 'scale(0.25)', 
