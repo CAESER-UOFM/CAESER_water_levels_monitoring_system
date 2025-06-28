@@ -7,7 +7,8 @@ import { WellInfoPanel } from '@/components/WellInfoPanel';
 import { WellStatisticsPanel } from '@/components/WellStatisticsPanel';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { ExportDialog, type ExportOptions } from '@/components/ExportDialog';
-import { PlotCustomizationDialog, type PlotCustomization } from '@/components/PlotCustomizationDialog';
+import { SimplePlotCustomizationDialog } from '@/components/SimplePlotCustomizationDialog';
+import { type PlotCustomization } from '@/components/PlotCustomizationDialog';
 import { exportWaterLevelDataWithProgress } from '@/utils/dataExport';
 import { exportCustomPlot } from '@/utils/customPlotExport';
 import type { Well } from '@/lib/api/api';
@@ -505,7 +506,7 @@ export default function PlotViewerPage() {
       />
 
       {/* Plot Customization Dialog */}
-      <PlotCustomizationDialog
+      <SimplePlotCustomizationDialog
         isOpen={showPlotCustomization}
         onClose={() => setShowPlotCustomization(false)}
         onExport={handleCustomPlotExport}
@@ -513,7 +514,7 @@ export default function PlotViewerPage() {
         wellNumber={wellNumber}
         well={well}
         currentTimeRange={currentTimeRange}
-        plotData={chartInfo.currentData}
+        plotData={chartInfo.currentData || []}
         isDarkMode={isDarkMode}
       />
 

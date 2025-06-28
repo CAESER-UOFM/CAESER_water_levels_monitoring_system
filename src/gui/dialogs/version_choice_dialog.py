@@ -110,11 +110,27 @@ class VersionChoiceDialog(QDialog):
         separator.setFrameShadow(QFrame.Sunken)
         main_layout.addWidget(separator)
         
-        # Main message
-        message = QLabel(
-            f"Project: <b>{self.project_name}</b><br/>"
-            f"Status: {self.version_comparison.get('message', 'Unknown')}"
-        )
+        # Main message with clearer status
+        status = self.version_comparison.get('status', 'unknown')
+        message_text = f"Project: <b>{self.project_name}</b><br/>"
+        
+        if status == 'current':
+            message_text += "Status: <span style='color: #4caf50; font-weight: bold;'>✅ You have the latest version</span>"
+        elif status == 'outdated':
+            time_diff = self.version_comparison.get('time_diff', 0)
+            if time_diff < 60:
+                time_desc = f"{time_diff} minutes"
+            elif time_diff < 1440:
+                time_desc = f"{time_diff // 60} hours"
+            else:
+                time_desc = f"{time_diff // 1440} days"
+            message_text += f"Status: <span style='color: #ff9800; font-weight: bold;'>⚠️ Your cache is {time_desc} behind</span>"
+        elif status == 'newer':
+            message_text += "Status: <span style='color: #2196f3; font-weight: bold;'>🔄 Your local version is newer (unusual)</span>"
+        else:
+            message_text += f"Status: {self.version_comparison.get('message', 'Unknown')}"
+        
+        message = QLabel(message_text)
         message.setWordWrap(True)
         message.setStyleSheet("""
             QLabel {
@@ -257,16 +273,16 @@ class VersionChoiceDialog(QDialog):
             if status == 'current':
                 self.cache_radio = QRadioButton("💾 Use Local Cache (Recommended)")
                 self.cache_radio.setStyleSheet("color: #4caf50; font-weight: bold;")
-                cache_desc = "✅ Use cached version - it's current and fast"
+                cache_desc = "⚡ Instant loading - Your cached version is up-to-date"
                 self.cache_radio.setChecked(True)  # Default for current versions
             elif status == 'outdated':
                 self.cache_radio = QRadioButton("💾 Use Local Cache")
                 self.cache_radio.setStyleSheet("color: #ff9800; font-weight: bold;")
-                cache_desc = "⚠️ Use older cached version (you may miss recent changes)"
+                cache_desc = "⚠️ Fast but older - You may miss recent changes from other users"
             else:
                 self.cache_radio = QRadioButton("💾 Use Local Cache")
                 self.cache_radio.setStyleSheet("color: #2196f3; font-weight: bold;")
-                cache_desc = "Use existing cached version"
+                cache_desc = "⚡ Fast loading with existing cached version"
             
             self.button_group.addButton(self.cache_radio, 1)
             layout.addWidget(self.cache_radio)
@@ -281,16 +297,16 @@ class VersionChoiceDialog(QDialog):
         if needs_download and status == 'outdated':
             self.download_radio = QRadioButton("☁️ Download Fresh from Cloud (Recommended)")
             self.download_radio.setStyleSheet("color: #4caf50; font-weight: bold;")
-            download_desc = "✅ Download latest version with recent changes"
+            download_desc = "🔄 Download latest changes (slower but guaranteed current)"
             if not has_local:
                 self.download_radio.setChecked(True)  # Default when no local cache
         else:
             self.download_radio = QRadioButton("☁️ Download Fresh from Cloud")
             self.download_radio.setStyleSheet("color: #2196f3; font-weight: bold;")
             if status == 'current':
-                download_desc = "Re-download same version (slower but ensures consistency)"
+                download_desc = "🔄 Re-download identical version (unnecessary but ensures perfect sync)"
             else:
-                download_desc = "Download latest version from cloud"
+                download_desc = "🔄 Download latest version from cloud (slower)"
             if not has_local:
                 self.download_radio.setChecked(True)  # Default when no local cache
         

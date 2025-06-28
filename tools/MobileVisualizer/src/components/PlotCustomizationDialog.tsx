@@ -602,6 +602,10 @@ export function PlotCustomizationDialog({
   // Appearance sub-tabs state
   const [activeAppearanceTab, setActiveAppearanceTab] = useState<'title' | 'axes' | 'legend'>('title');
   
+  // State for the overlay settings dialog
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState('');
+  
   const dialogRef = useRef<HTMLDivElement>(null);
   const imageViewerContainerRef = useRef<HTMLDivElement>(null);
 

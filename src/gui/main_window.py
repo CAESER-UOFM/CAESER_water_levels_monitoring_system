@@ -1372,18 +1372,29 @@ class MainWindow(QMainWindow):
                 self.cloud_db_handler.clear_draft(self.db_manager.cloud_project_name)
                 logger.info(f"Draft cleaned up after successful upload for: {self.db_manager.cloud_project_name}")
             
-            # Update local version timestamp to current time (we just became the latest version)
-            from datetime import datetime
-            current_time = datetime.now().isoformat() + 'Z'
-            self.db_manager.cloud_download_time = current_time
+            # Get ACTUAL Google Drive timestamp after upload (not generated timestamp)
+            # Force refresh of project list to get latest timestamps
+            cloud_projects = self.cloud_db_handler.list_projects(force_refresh=True)
+            actual_cloud_time = None
+            for project in cloud_projects:
+                if project['name'] == self.db_manager.cloud_project_name:
+                    actual_cloud_time = project.get('modified_time', '')
+                    break
             
-            # Update version tracking - our local DB is now the latest cloud version
-            self.cloud_db_handler.update_local_version_tracking(
-                self.db_manager.cloud_project_name, 
-                current_time,
-                self.db_manager.temp_db_path,
-                "upload"
-            )
+            if actual_cloud_time:
+                self.db_manager.cloud_download_time = actual_cloud_time
+                
+                # Update version tracking with ACTUAL Google Drive timestamp
+                self.cloud_db_handler.update_local_version_tracking(
+                    self.db_manager.cloud_project_name, 
+                    actual_cloud_time,  # Use actual Google Drive timestamp
+                    self.db_manager.temp_db_path,
+                    "upload"
+                )
+                logger.info(f"Version tracking updated with actual Google Drive timestamp: {actual_cloud_time}")
+            else:
+                logger.warning("Could not get actual Google Drive timestamp after upload")
+            
             logger.info("Local database is now the current cloud version - no download needed")
             
             QMessageBox.information(self, "Success", "Database saved to cloud successfully!")
