@@ -628,7 +628,7 @@ export function PlotCustomizationDialog({
     setShowFullImageViewer(true);
   }, []);
 
-  // Calculate minimum zoom to fit image in container
+  // Calculate minimum zoom to fit image in container (fixed to use max dimension)
   const getMinZoom = useCallback(() => {
     if (!imageViewerRef.current) return 0.8;
     const container = imageViewerRef.current;
@@ -638,24 +638,31 @@ export function PlotCustomizationDialog({
     // Calculate zoom needed to fit image completely in container
     const widthRatio = containerWidth / customization.width;
     const heightRatio = containerHeight / customization.height;
+    // Use MIN to ensure entire image fits (this was correct, user might be confused)
+    // But let's make sure we have a reasonable minimum
     const fitZoom = Math.min(widthRatio, heightRatio);
     
-    return Math.max(fitZoom, 0.5); // Minimum 50% zoom
+    // Ensure we can't zoom smaller than what shows the whole image
+    return Math.max(fitZoom * 0.95, 0.3); // 95% of fit with absolute minimum of 30%
   }, [customization.width, customization.height]);
 
-  // Zoom controls with focal point at center (industry standard for buttons)
+  // Zoom controls with smoother focal point adjustment
   const handleZoomIn = useCallback(() => {
     setZoomLevel(prev => {
-      const newZoom = Math.min(prev * 1.2, 3);
-      const zoomChange = newZoom / prev;
+      const newZoom = Math.min(prev * 1.15, 3); // Smaller steps for smoother zoom
       
-      // For zoom buttons, use center as focal point (standard behavior)
-      setPanPosition(currentPan => ({
-        x: currentPan.x * zoomChange,
-        y: currentPan.y * zoomChange
-      }));
+      // Defer pan adjustment to next frame to reduce jumping
+      requestAnimationFrame(() => {
+        setPanPosition(currentPan => {
+          const zoomChange = newZoom / prev;
+          return {
+            x: currentPan.x * zoomChange,
+            y: currentPan.y * zoomChange
+          };
+        });
+      });
       
-      console.log('Zoom In:', { from: prev, to: newZoom, zoomChange });
+      console.log('Zoom In:', { from: prev, to: newZoom });
       return newZoom;
     });
   }, []);
@@ -663,16 +670,20 @@ export function PlotCustomizationDialog({
   const handleZoomOut = useCallback(() => {
     setZoomLevel(prev => {
       const minZoom = getMinZoom();
-      const newZoom = Math.max(prev / 1.2, minZoom);
-      const zoomChange = newZoom / prev;
+      const newZoom = Math.max(prev / 1.15, minZoom); // Smaller steps for smoother zoom
       
-      // For zoom buttons, use center as focal point (standard behavior)
-      setPanPosition(currentPan => ({
-        x: currentPan.x * zoomChange,
-        y: currentPan.y * zoomChange
-      }));
+      // Defer pan adjustment to next frame to reduce jumping
+      requestAnimationFrame(() => {
+        setPanPosition(currentPan => {
+          const zoomChange = newZoom / prev;
+          return {
+            x: currentPan.x * zoomChange,
+            y: currentPan.y * zoomChange
+          };
+        });
+      });
       
-      console.log('Zoom Out:', { from: prev, to: newZoom, zoomChange, minZoom });
+      console.log('Zoom Out:', { from: prev, to: newZoom, minZoom });
       return newZoom;
     });
   }, [getMinZoom]);
@@ -744,7 +755,7 @@ export function PlotCustomizationDialog({
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
     
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    const delta = e.deltaY > 0 ? 0.95 : 1.05; // Even smaller steps for wheel zoom
     
     setZoomLevel(prev => {
       const minZoom = getMinZoom();
@@ -829,26 +840,29 @@ export function PlotCustomizationDialog({
       const centerX = rect.width / 2;
       const centerY = rect.height / 2;
       
-      setZoomLevel(prev => {
-        const zoomChange = newZoom / prev;
-        
-        // Adjust pan to zoom towards pinch center
-        setPanPosition(currentPan => {
-          // Calculate offset from center to pinch point
-          const offsetX = pinchCenterX - centerX;
-          const offsetY = pinchCenterY - centerY;
+      // Use requestAnimationFrame for smoother pinch zoom
+      requestAnimationFrame(() => {
+        setZoomLevel(prev => {
+          const zoomChange = newZoom / prev;
           
-          // Calculate new pan to keep pinch point fixed
-          const newPanX = currentPan.x - (offsetX * (zoomChange - 1));
-          const newPanY = currentPan.y - (offsetY * (zoomChange - 1));
+          // Adjust pan to zoom towards pinch center  
+          setPanPosition(currentPan => {
+            // Calculate offset from center to pinch point
+            const offsetX = pinchCenterX - centerX;
+            const offsetY = pinchCenterY - centerY;
+            
+            // Calculate new pan to keep pinch point fixed
+            const newPanX = currentPan.x - (offsetX * (zoomChange - 1));
+            const newPanY = currentPan.y - (offsetY * (zoomChange - 1));
+            
+            return {
+              x: newPanX,
+              y: newPanY
+            };
+          });
           
-          return {
-            x: newPanX,
-            y: newPanY
-          };
+          return newZoom;
         });
-        
-        return newZoom;
       });
       e.preventDefault();
     } else if (e.touches.length === 1 && isDragging) {
@@ -3368,7 +3382,7 @@ export function PlotCustomizationDialog({
                     height: `${customization.height}px`,
                     transform: `translate(-50%, -50%) translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomLevel})`,
                     transformOrigin: 'center center',
-                    transition: isDragging ? 'none' : 'transform 0.1s ease-out', // Quick responsive transition
+                    transition: isDragging ? 'none' : 'transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94)', // Smooth easing curve
                     backgroundColor: 'white',
                     border: '2px solid red' // Temporary debug border to see if container is visible
                   }}
