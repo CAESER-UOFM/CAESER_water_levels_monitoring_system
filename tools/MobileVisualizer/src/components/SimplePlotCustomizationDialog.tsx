@@ -324,12 +324,8 @@ export function SimplePlotCustomizationDialog({
 
   // Open image viewer
   const openImageViewer = useCallback(() => {
-    console.log('openImageViewer called', { selectedTemplate, customization });
     if (selectedTemplate && customization) {
-      console.log('Opening full image viewer');
       setShowFullImageViewer(true);
-    } else {
-      console.log('Conditions not met for opening viewer');
     }
   }, [selectedTemplate, customization]);
 
@@ -414,15 +410,22 @@ export function SimplePlotCustomizationDialog({
               >
                 {selectedTemplate ? (
                   <div className="relative">
-                    <div className="bg-white rounded-lg overflow-hidden">
-                      <LivePlotPreview
-                        customization={customization}
-                        plotData={plotData}
-                        isDarkMode={false}
-                        wellNumber={wellNumber}
-                        well={well}
-                        showFullSize={false}
-                      />
+                    <div className="bg-white rounded-lg overflow-hidden flex items-center justify-center" style={{ minHeight: '300px' }}>
+                      <div style={{ 
+                        transform: 'scale(0.25)', 
+                        transformOrigin: 'center center',
+                        width: `${customization.width}px`, 
+                        height: `${customization.height}px`
+                      }}>
+                        <LivePlotPreview
+                          customization={customization}
+                          plotData={plotData}
+                          isDarkMode={false}
+                          wellNumber={wellNumber}
+                          well={well}
+                          showFullSize={true}
+                        />
+                      </div>
                     </div>
                     <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-lg pointer-events-none">
                       <div className="text-white text-center">
@@ -672,7 +675,6 @@ export function SimplePlotCustomizationDialog({
 
       {/* Full-Screen Image Viewer Modal */}
       {showFullImageViewer && (
-        console.log('Rendering full-screen viewer'),
         <div className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-[9999] p-4">
           <div className="w-full h-full flex flex-col">
             {/* Modal Header */}
