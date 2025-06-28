@@ -643,11 +643,19 @@ export function PlotCustomizationDialog({
     return Math.max(fitZoom, 0.5); // Minimum 50% zoom
   }, [customization.width, customization.height]);
 
-  // Simple zoom controls - no pan adjustment
+  // Zoom controls with focal point at center (industry standard for buttons)
   const handleZoomIn = useCallback(() => {
     setZoomLevel(prev => {
-      const newZoom = Math.min(prev * 1.2, 3); // Smaller steps
-      console.log('Zoom In:', { from: prev, to: newZoom });
+      const newZoom = Math.min(prev * 1.2, 3);
+      const zoomChange = newZoom / prev;
+      
+      // For zoom buttons, use center as focal point (standard behavior)
+      setPanPosition(currentPan => ({
+        x: currentPan.x * zoomChange,
+        y: currentPan.y * zoomChange
+      }));
+      
+      console.log('Zoom In:', { from: prev, to: newZoom, zoomChange });
       return newZoom;
     });
   }, []);
@@ -656,7 +664,15 @@ export function PlotCustomizationDialog({
     setZoomLevel(prev => {
       const minZoom = getMinZoom();
       const newZoom = Math.max(prev / 1.2, minZoom);
-      console.log('Zoom Out:', { from: prev, to: newZoom, minZoom });
+      const zoomChange = newZoom / prev;
+      
+      // For zoom buttons, use center as focal point (standard behavior)
+      setPanPosition(currentPan => ({
+        x: currentPan.x * zoomChange,
+        y: currentPan.y * zoomChange
+      }));
+      
+      console.log('Zoom Out:', { from: prev, to: newZoom, zoomChange, minZoom });
       return newZoom;
     });
   }, [getMinZoom]);
@@ -711,14 +727,61 @@ export function PlotCustomizationDialog({
     setIsDragging(false);
   }, []);
 
-  // Simple wheel zoom - no pan adjustment
+  // Industry-standard wheel zoom with focal point (zoom to cursor)
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
+    
+    if (!imageViewerRef.current) return;
+    
+    const container = imageViewerRef.current;
+    const rect = container.getBoundingClientRect();
+    
+    // Get mouse position relative to container
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    // Get container center
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    
     setZoomLevel(prev => {
       const minZoom = getMinZoom();
       const newZoom = Math.min(Math.max(prev * delta, minZoom), 3);
-      console.log('Wheel Zoom:', { from: prev, to: newZoom, deltaY: e.deltaY, minZoom });
+      
+      // Calculate focal point adjustment
+      const zoomChange = newZoom / prev;
+      
+      // Adjust pan to zoom towards mouse cursor
+      setPanPosition(currentPan => {
+        // Calculate offset from center to mouse
+        const offsetX = mouseX - centerX;
+        const offsetY = mouseY - centerY;
+        
+        // Calculate new pan to keep mouse point fixed
+        let newPanX = currentPan.x - (offsetX * (zoomChange - 1));
+        let newPanY = currentPan.y - (offsetY * (zoomChange - 1));
+        
+        // Apply bounds checking
+        const containerWidth = rect.width;
+        const containerHeight = rect.height;
+        const scaledImageWidth = customization.width * newZoom;
+        const scaledImageHeight = customization.height * newZoom;
+        
+        const maxPanX = Math.max(0, (scaledImageWidth - containerWidth) / 2);
+        const maxPanY = Math.max(0, (scaledImageHeight - containerHeight) / 2);
+        
+        newPanX = Math.max(-maxPanX, Math.min(maxPanX, newPanX));
+        newPanY = Math.max(-maxPanY, Math.min(maxPanY, newPanY));
+        
+        return {
+          x: newPanX,
+          y: newPanY
+        };
+      });
+      
+      console.log('Focal Zoom:', { from: prev, to: newZoom, mouseX, mouseY, delta });
       return newZoom;
     });
   }, [getMinZoom]);
@@ -750,12 +813,43 @@ export function PlotCustomizationDialog({
   }, [zoomLevel]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2 && initialPinchDistance !== null) {
-      // Pinch zoom
+    if (e.touches.length === 2 && initialPinchDistance !== null && imageViewerRef.current) {
+      // Pinch zoom with focal point
       const distance = getDistance(e.touches[0], e.touches[1]);
       const scale = distance / initialPinchDistance;
-      const newZoom = Math.min(Math.max(initialZoomLevel * scale, 0.1), 5);
-      setZoomLevel(newZoom);
+      const newZoom = Math.min(Math.max(initialZoomLevel * scale, getMinZoom()), 3);
+      
+      // Calculate pinch center point
+      const container = imageViewerRef.current;
+      const rect = container.getBoundingClientRect();
+      const pinchCenterX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
+      const pinchCenterY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
+      
+      // Get container center
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+      
+      setZoomLevel(prev => {
+        const zoomChange = newZoom / prev;
+        
+        // Adjust pan to zoom towards pinch center
+        setPanPosition(currentPan => {
+          // Calculate offset from center to pinch point
+          const offsetX = pinchCenterX - centerX;
+          const offsetY = pinchCenterY - centerY;
+          
+          // Calculate new pan to keep pinch point fixed
+          const newPanX = currentPan.x - (offsetX * (zoomChange - 1));
+          const newPanY = currentPan.y - (offsetY * (zoomChange - 1));
+          
+          return {
+            x: newPanX,
+            y: newPanY
+          };
+        });
+        
+        return newZoom;
+      });
       e.preventDefault();
     } else if (e.touches.length === 1 && isDragging) {
       // Single touch drag
@@ -788,7 +882,7 @@ export function PlotCustomizationDialog({
       setLastPointerPosition({ x: touch.clientX, y: touch.clientY });
       e.preventDefault();
     }
-  }, [isDragging, lastPointerPosition, initialPinchDistance, initialZoomLevel, customization.width, customization.height, zoomLevel]);
+  }, [isDragging, lastPointerPosition, initialPinchDistance, initialZoomLevel, customization.width, customization.height, zoomLevel, getMinZoom]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 0) {
