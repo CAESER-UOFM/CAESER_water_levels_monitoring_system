@@ -23,6 +23,26 @@
 
 ## Recent Major Changes:
 
+### Zoom/Pan Improvements - Iteration 2 (Latest)
+- **SUCCESSFULLY DEPLOYED**: https://water-level-visualizer-mobile.netlify.app
+- **✅ REDUCED JUMP ISSUES**: Improved focal point zoom with stable calculations
+- **✅ SMOOTHER EXPERIENCE**: Separated zoom and pan updates to prevent conflicts
+
+**Stable Zoom Implementation:**
+- **⚡ Async Updates**: Use `setTimeout(0)` to separate zoom and pan state updates
+- **🎯 Better Focal Point**: Calculate mouse/touch positions relative to container center  
+- **🔧 Reduced Sensitivity**: Lower sensitivity (0.5x wheel, 0.4x touch) for smoother transitions
+- **📏 Optimized Steps**: Slightly larger zoom increments for smoother progression
+- **🛡️ Smart Bounds**: Only update pan when zoom actually changes, with proper bounds checking
+
+**Technical Changes:**
+- Mouse wheel zoom uses relative positioning from container center
+- Touch pinch zoom with reduced sensitivity and requestAnimationFrame
+- Button zoom with minimal pan adjustments and bounds validation
+- All methods now prevent unnecessary pan updates when zoom doesn't change
+
+## Previous Major Changes:
+
 ### Mobile Layout Redesign - MAJOR IMPROVEMENT! (Latest)
 - **SUCCESSFULLY DEPLOYED**: https://water-level-visualizer-mobile.netlify.app  
 - **✅ ALWAYS-VISIBLE PLOT**: Plot now always shown with high quality (same as desktop)

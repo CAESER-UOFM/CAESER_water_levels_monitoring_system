@@ -615,7 +615,7 @@ export function PlotCustomizationDialog({
     console.log('Zoom/Pan state changed:', { 
       zoomLevel, 
       panPosition, 
-      transform: `translate(-50%, -50%) translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomLevel})` 
+      transform: `translate(-50%, -50%) scale(${zoomLevel}) translate(${panPosition.x}px, ${panPosition.y}px)` 
     });
   }, [zoomLevel, panPosition]);
 
@@ -762,7 +762,7 @@ export function PlotCustomizationDialog({
     setIsDragging(false);
   }, []);
 
-  // Stable zoom with reduced jumping - iteration 2
+  // Industry-standard zoom-to-point implementation - iteration 3
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     
@@ -771,42 +771,38 @@ export function PlotCustomizationDialog({
     const container = imageViewerRef.current;
     const rect = container.getBoundingClientRect();
     
-    // Get mouse position relative to container center
-    const mouseX = e.clientX - rect.left - rect.width / 2;
-    const mouseY = e.clientY - rect.top - rect.height / 2;
+    // Get mouse position relative to container
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
     
-    const delta = e.deltaY > 0 ? 0.9 : 1.1; // Slightly larger steps for smoother zoom
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
     
     setZoomLevel(prev => {
       const minZoom = getMinZoom();
       const newZoom = Math.min(Math.max(prev * delta, minZoom), 3);
       
-      // Only update pan if zoom actually changed
+      // Industry-standard zoom-to-point formula (prevents jumping)
       if (newZoom !== prev) {
-        const zoomRatio = newZoom / prev;
-        
-        // Use setTimeout to separate zoom and pan updates (reduces jumping)
-        setTimeout(() => {
-          setPanPosition(currentPan => {
-            // Calculate how the focal point should move
-            const panAdjustX = mouseX * (zoomRatio - 1) * 0.5; // Reduced sensitivity
-            const panAdjustY = mouseY * (zoomRatio - 1) * 0.5;
-            
-            let newPanX = currentPan.x - panAdjustX;
-            let newPanY = currentPan.y - panAdjustY;
-            
-            // Apply bounds with current zoom level
-            const scaledImageWidth = customization.width * newZoom;
-            const scaledImageHeight = customization.height * newZoom;
-            const maxPanX = Math.max(0, (scaledImageWidth - rect.width) / 2);
-            const maxPanY = Math.max(0, (scaledImageHeight - rect.height) / 2);
-            
-            newPanX = Math.max(-maxPanX, Math.min(maxPanX, newPanX));
-            newPanY = Math.max(-maxPanY, Math.min(maxPanY, newPanY));
-            
-            return { x: newPanX, y: newPanY };
-          });
-        }, 0);
+        setPanPosition(currentPan => {
+          // Calculate mouse position in current scaled coordinate system
+          const xs = (mouseX - currentPan.x) / prev;
+          const ys = (mouseY - currentPan.y) / prev;
+          
+          // Calculate new pan position to keep mouse point fixed
+          const newPanX = mouseX - xs * newZoom;
+          const newPanY = mouseY - ys * newZoom;
+          
+          // Apply bounds checking
+          const scaledImageWidth = customization.width * newZoom;
+          const scaledImageHeight = customization.height * newZoom;
+          const maxPanX = Math.max(0, (scaledImageWidth - rect.width) / 2);
+          const maxPanY = Math.max(0, (scaledImageHeight - rect.height) / 2);
+          
+          return {
+            x: Math.max(-maxPanX, Math.min(maxPanX, newPanX)),
+            y: Math.max(-maxPanY, Math.min(maxPanY, newPanY))
+          };
+        });
       }
       
       return newZoom;
@@ -841,46 +837,42 @@ export function PlotCustomizationDialog({
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 2 && initialPinchDistance !== null && imageViewerRef.current) {
-      // Stable pinch zoom with reduced jumping
+      // Industry-standard pinch zoom implementation
       const distance = getDistance(e.touches[0], e.touches[1]);
       const scale = distance / initialPinchDistance;
       const newZoom = Math.min(Math.max(initialZoomLevel * scale, getMinZoom()), 3);
       
-      // Calculate pinch center relative to container center
+      // Calculate pinch center relative to container
       const container = imageViewerRef.current;
       const rect = container.getBoundingClientRect();
-      const pinchCenterX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left - rect.width / 2;
-      const pinchCenterY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top - rect.height / 2;
+      const pinchCenterX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
+      const pinchCenterY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
       
       // Use requestAnimationFrame for smoother pinch zoom
       requestAnimationFrame(() => {
         setZoomLevel(prev => {
-          // Only update pan if zoom actually changed
+          // Industry-standard zoom-to-point formula for touch
           if (newZoom !== prev) {
-            const zoomRatio = newZoom / prev;
-            
-            // Separate pan update to reduce jumping
-            setTimeout(() => {
-              setPanPosition(currentPan => {
-                // Calculate focal point adjustment with reduced sensitivity
-                const panAdjustX = pinchCenterX * (zoomRatio - 1) * 0.4; // Even more reduced for touch
-                const panAdjustY = pinchCenterY * (zoomRatio - 1) * 0.4;
-                
-                let newPanX = currentPan.x - panAdjustX;
-                let newPanY = currentPan.y - panAdjustY;
-                
-                // Apply bounds
-                const scaledImageWidth = customization.width * newZoom;
-                const scaledImageHeight = customization.height * newZoom;
-                const maxPanX = Math.max(0, (scaledImageWidth - rect.width) / 2);
-                const maxPanY = Math.max(0, (scaledImageHeight - rect.height) / 2);
-                
-                newPanX = Math.max(-maxPanX, Math.min(maxPanX, newPanX));
-                newPanY = Math.max(-maxPanY, Math.min(maxPanY, newPanY));
-                
-                return { x: newPanX, y: newPanY };
-              });
-            }, 0);
+            setPanPosition(currentPan => {
+              // Calculate pinch center position in current scaled coordinate system
+              const xs = (pinchCenterX - currentPan.x) / prev;
+              const ys = (pinchCenterY - currentPan.y) / prev;
+              
+              // Calculate new pan position to keep pinch center fixed
+              const newPanX = pinchCenterX - xs * newZoom;
+              const newPanY = pinchCenterY - ys * newZoom;
+              
+              // Apply bounds
+              const scaledImageWidth = customization.width * newZoom;
+              const scaledImageHeight = customization.height * newZoom;
+              const maxPanX = Math.max(0, (scaledImageWidth - rect.width) / 2);
+              const maxPanY = Math.max(0, (scaledImageHeight - rect.height) / 2);
+              
+              return {
+                x: Math.max(-maxPanX, Math.min(maxPanX, newPanX)),
+                y: Math.max(-maxPanY, Math.min(maxPanY, newPanY))
+              };
+            });
           }
           
           return newZoom;
@@ -3402,8 +3394,8 @@ export function PlotCustomizationDialog({
                   style={{
                     width: `${customization.width}px`, 
                     height: `${customization.height}px`,
-                    transform: `translate(-50%, -50%) translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomLevel})`,
-                    transformOrigin: 'center center',
+                    transform: `translate(-50%, -50%) scale(${zoomLevel}) translate(${panPosition.x}px, ${panPosition.y}px)`,
+                    transformOrigin: '0 0',
                     transition: isDragging ? 'none' : 'transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94)', // Smooth easing curve
                     backgroundColor: 'white',
                     border: '2px solid red' // Temporary debug border to see if container is visible
