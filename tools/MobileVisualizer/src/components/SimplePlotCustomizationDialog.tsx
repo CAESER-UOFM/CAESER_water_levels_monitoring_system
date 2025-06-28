@@ -102,6 +102,7 @@ export function SimplePlotCustomizationDialog({
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [showFullImageViewer, setShowFullImageViewer] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [processedData, setProcessedData] = useState<any[]>([]);
   
   const dialogRef = useRef<HTMLDivElement>(null);
   const imageViewerContainerRef = useRef<HTMLDivElement>(null);
@@ -245,6 +246,48 @@ export function SimplePlotCustomizationDialog({
       });
     }
   }, [isOpen, wellNumber, well, currentTimeRange, customization]);
+
+  // Process plot data to ensure both previews use identical data
+  useEffect(() => {
+    if (!plotData || plotData.length === 0 || !customization) {
+      setProcessedData([]);
+      return;
+    }
+
+    // Ensure data is in the correct format
+    let convertedData = plotData.map((item: any) => ({
+      timestamp: item.timestamp || item.timestamp_utc,
+      water_level: item.water_level,
+      temperature: item.temperature,
+      reading_type: item.reading_type || 'transducer'
+    }));
+
+    // Apply data filtering based on customization
+    if (!customization.showTransducerData) {
+      convertedData = convertedData.filter(d => d.reading_type !== 'transducer');
+    }
+    
+    if (!customization.showManualData) {
+      convertedData = convertedData.filter(d => d.reading_type !== 'manual');
+    }
+
+    // Apply date range filtering if specified
+    if (customization.dateRange) {
+      const startTime = new Date(customization.dateRange.start).getTime();
+      const endTime = new Date(customization.dateRange.end).getTime();
+      convertedData = convertedData.filter(d => {
+        const dataTime = new Date(d.timestamp).getTime();
+        return dataTime >= startTime && dataTime <= endTime;
+      });
+    }
+
+    // Filter out data without temperature if temperature is enabled but water level is disabled
+    if (customization.showTemperatureData && !customization.showTransducerData && !customization.showManualData) {
+      convertedData = convertedData.filter(d => d.temperature !== undefined && d.temperature !== null);
+    }
+
+    setProcessedData(convertedData);
+  }, [plotData, customization?.showTransducerData, customization?.showManualData, customization?.showTemperatureData, customization?.dateRange]);
 
   // Mobile detection
   useEffect(() => {
@@ -419,11 +462,12 @@ export function SimplePlotCustomizationDialog({
                       }}>
                         <LivePlotPreview
                           customization={customization}
-                          plotData={plotData}
+                          plotData={processedData}
                           isDarkMode={false}
                           wellNumber={wellNumber}
                           well={well}
                           showFullSize={true}
+                          skipDataProcessing={true}
                         />
                       </div>
                     </div>
@@ -812,11 +856,12 @@ export function SimplePlotCustomizationDialog({
                       >
                         <LivePlotPreview
                           customization={customization}
-                          plotData={plotData}
+                          plotData={processedData}
                           isDarkMode={false}
                           wellNumber={wellNumber}
                           well={well}
                           showFullSize={true}
+                          skipDataProcessing={true}
                         />
                       </div>
                     </TransformComponent>

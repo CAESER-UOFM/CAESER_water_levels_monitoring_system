@@ -84,6 +84,7 @@ interface LivePlotPreviewProps {
   wellNumber?: string; // For well info legend
   well?: any; // Well data for CAE number and other info
   showFullSize?: boolean; // Show actual dimensions for mobile zoom
+  skipDataProcessing?: boolean; // Skip internal data processing if data is already processed
 }
 
 export function LivePlotPreview({ 
@@ -92,7 +93,8 @@ export function LivePlotPreview({
   isDarkMode = true,
   wellNumber,
   well,
-  showFullSize = false
+  showFullSize = false,
+  skipDataProcessing = false
 }: LivePlotPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -102,6 +104,12 @@ export function LivePlotPreview({
   useEffect(() => {
     if (!plotData || plotData.length === 0) {
       setData([]);
+      return;
+    }
+
+    // If data is already processed, use it directly
+    if (skipDataProcessing) {
+      setData(plotData as WaterLevelData[]);
       return;
     }
 
@@ -139,7 +147,7 @@ export function LivePlotPreview({
     }
 
     setData(convertedData);
-  }, [plotData, customization.showTransducerData, customization.showManualData, customization.showTemperatureData, customization.dateRange]);
+  }, [plotData, customization.showTransducerData, customization.showManualData, customization.showTemperatureData, customization.dateRange, skipDataProcessing]);
 
   // Render plot whenever customization or data changes
   useEffect(() => {
