@@ -361,9 +361,19 @@ export function SimplePlotCustomizationDialog({
   // Handle export
   const handleExport = useCallback(() => {
     if (customization) {
+      console.log('📦 EXPORT TRIGGERED:', {
+        exportCustomization: `${customization.width}x${customization.height}`,
+        exportFonts: {
+          title: customization.title.fontSize,
+          xAxis: customization.xAxis.fontSize,
+          yAxis: customization.yAxis.fontSize
+        },
+        dataPoints: processedData.length,
+        renderMode: 'EXPORT_FINAL'
+      });
       onExport(customization);
     }
-  }, [onExport, customization]);
+  }, [onExport, customization, processedData]);
 
   // Open image viewer
   const openImageViewer = useCallback(() => {
@@ -453,21 +463,44 @@ export function SimplePlotCustomizationDialog({
               >
                 {selectedTemplate ? (
                   <div className="relative">
-                    <div className="bg-white rounded-lg overflow-hidden flex items-center justify-center p-4" style={{ minHeight: '300px' }}>
-                      <LivePlotPreview
-                        customization={{
-                          ...customization,
-                          width: Math.min(400, customization.width),
-                          height: Math.min(300, customization.height * (Math.min(400, customization.width) / customization.width))
-                        }}
-                        plotData={processedData}
-                        isDarkMode={false}
-                        wellNumber={wellNumber}
-                        well={well}
-                        showFullSize={true}
-                        skipDataProcessing={true}
-                      />
-                    </div>
+                    {(() => {
+                      const previewCustomization = {
+                        ...customization,
+                        width: Math.min(400, customization.width),
+                        height: Math.min(300, customization.height * (Math.min(400, customization.width) / customization.width))
+                      };
+                      
+                      console.log('🎨 PREVIEW RENDERING:', {
+                        originalCustomization: `${customization.width}x${customization.height}`,
+                        originalFonts: {
+                          title: customization.title.fontSize,
+                          xAxis: customization.xAxis.fontSize,
+                          yAxis: customization.yAxis.fontSize
+                        },
+                        previewCustomization: `${previewCustomization.width}x${previewCustomization.height}`,
+                        previewFonts: {
+                          title: previewCustomization.title.fontSize,
+                          xAxis: previewCustomization.xAxis.fontSize,
+                          yAxis: previewCustomization.yAxis.fontSize
+                        },
+                        dataPoints: processedData.length,
+                        renderMode: 'SCALED_PREVIEW'
+                      });
+                      
+                      return (
+                        <div className="bg-white rounded-lg overflow-hidden flex items-center justify-center p-4" style={{ minHeight: '300px' }}>
+                          <LivePlotPreview
+                            customization={previewCustomization}
+                            plotData={processedData}
+                            isDarkMode={false}
+                            wellNumber={wellNumber}
+                            well={well}
+                            showFullSize={true}
+                            skipDataProcessing={true}
+                          />
+                        </div>
+                      );
+                    })()}
                     <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-lg pointer-events-none">
                       <div className="text-white text-center">
                         <div className="w-12 h-12 mx-auto mb-2 rounded-full bg-white bg-opacity-20 flex items-center justify-center">
@@ -851,15 +884,30 @@ export function SimplePlotCustomizationDialog({
                           backgroundColor: 'white'
                         }}
                       >
-                        <LivePlotPreview
-                          customization={customization}
-                          plotData={processedData}
-                          isDarkMode={false}
-                          wellNumber={wellNumber}
-                          well={well}
-                          showFullSize={true}
-                          skipDataProcessing={true}
-                        />
+                        {(() => {
+                          console.log('🖥️ FULL-SCREEN RENDERING:', {
+                            fullScreenCustomization: `${customization.width}x${customization.height}`,
+                            fullScreenFonts: {
+                              title: customization.title.fontSize,
+                              xAxis: customization.xAxis.fontSize,
+                              yAxis: customization.yAxis.fontSize
+                            },
+                            dataPoints: processedData.length,
+                            renderMode: 'FULL_EXPORT_QUALITY'
+                          });
+                          
+                          return (
+                            <LivePlotPreview
+                              customization={customization}
+                              plotData={processedData}
+                              isDarkMode={false}
+                              wellNumber={wellNumber}
+                              well={well}
+                              showFullSize={true}
+                              skipDataProcessing={true}
+                            />
+                          );
+                        })()}
                       </div>
                     </TransformComponent>
                   </>
