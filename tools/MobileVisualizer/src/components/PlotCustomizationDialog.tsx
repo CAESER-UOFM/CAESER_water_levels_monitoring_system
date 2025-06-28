@@ -3043,11 +3043,11 @@ export function PlotCustomizationDialog({
               {/* Full Image Viewer - Using react-zoom-pan-pinch */}
               <div ref={imageViewerContainerRef} className="flex-1 overflow-hidden bg-gray-900 relative">
                 <TransformWrapper
-                  initialScale={calculateFitScale()}
-                  minScale={calculateMinZoom()}
+                  initialScale={1}
+                  minScale={0.5}
                   maxScale={3}
                   centerOnInit={true}
-                  limitToBounds={false}
+                  limitToBounds={true}
                   centerZoomedOut={true}
                   wheel={{ 
                     step: 0.1,
@@ -3060,10 +3060,10 @@ export function PlotCustomizationDialog({
                     mode: 'reset'
                   }}
                   panning={{
-                    velocityDisabled: true
+                    velocityDisabled: false
                   }}
                 >
-                  {({ zoomIn, zoomOut, resetTransform, instance }) => (
+                  {({ zoomIn, zoomOut, resetTransform, centerView, instance }) => (
                     <>
                       {/* Zoom Controls */}
                       <div className="absolute top-4 right-4 flex space-x-2 z-10">
@@ -3084,7 +3084,10 @@ export function PlotCustomizationDialog({
                           </svg>
                         </button>
                         <button
-                          onClick={() => resetTransform()}
+                          onClick={() => {
+                            resetTransform();
+                            centerView();
+                          }}
                           className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg"
                         >
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3101,7 +3104,7 @@ export function PlotCustomizationDialog({
                       </div>
 
                       <TransformComponent
-                        wrapperClass="w-full h-full flex items-center justify-center"
+                        wrapperClass="w-full h-full"
                         contentClass="shadow-2xl"
                       >
                         <div 

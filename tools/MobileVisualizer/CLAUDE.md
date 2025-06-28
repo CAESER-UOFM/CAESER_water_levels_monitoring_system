@@ -23,17 +23,18 @@
 
 ## Recent Major Changes:
 
-### Zoom/Pan Solution - Library Implementation (Latest)
+### Zoom/Pan Solution - Fixed Bounds & Centering (Latest)
 - **SUCCESSFULLY DEPLOYED**: https://water-level-visualizer-mobile.netlify.app
-- **✅ LIBRARY-BASED SOLUTION**: Replaced custom implementation with `react-zoom-pan-pinch`
-- **✅ PROVEN RELIABILITY**: No more jumping, black screens, or coordinate issues
+- **✅ FIXED POSITIONING ISSUES**: Applied industry-standard configuration for `react-zoom-pan-pinch`
+- **✅ PROPER BOUNDS**: Enabled `limitToBounds={true}` and `centerZoomedOut={true}` for correct positioning
+- **✅ RESEARCH-BASED**: Used official documentation and Stack Overflow solutions for best practices
 
-**Professional Implementation:**
-- **📚 Battle-Tested Library**: Uses `react-zoom-pan-pinch` with 500k+ weekly downloads
-- **🎯 Perfect Zoom-to-Point**: Handles all focal point calculations automatically
-- **📱 Mobile Optimized**: Built-in touch gestures and pinch-to-zoom
-- **🎮 Intuitive Controls**: Clean +/- buttons and double-click reset
-- **🔧 Configurable**: Smooth wheel zooming, bounds checking, and velocity control
+**Key Configuration Changes:**
+- **🎯 Proper Centering**: `centerOnInit={true}` and `centerZoomedOut={true}` for automatic centering
+- **🔒 Bounds Control**: `limitToBounds={true}` prevents content from going out of bounds  
+- **📐 Scale Limits**: `minScale={0.5}` and `maxScale={3}` for reasonable zoom range
+- **🎮 Enhanced Reset**: Combined `resetTransform()` + `centerView()` for proper reset behavior
+- **📚 Research-Based**: Applied best practices from GitHub issues and Stack Overflow solutions
 
 **Features Implemented:**
 - Smooth mouse wheel zoom with focal point accuracy
