@@ -331,9 +331,12 @@ class MainWindow(QMainWindow):
                     # Set Google Drive handler for database manager
                     self.db_manager.set_google_drive_handler(self.drive_db_handler)
                     
+                    # Log that we're about to refresh databases
+                    logger.info("Google Drive authentication complete, refreshing database dropdown...")
+                    
                     # Refresh database dropdown to show cloud projects
-                    # Just call it directly - no timer needed
-                    self._load_databases()
+                    # Use QTimer to ensure UI is ready and avoid timing issues
+                    QTimer.singleShot(100, self._load_databases)
                     
                     return True
                 else:
@@ -706,19 +709,25 @@ class MainWindow(QMainWindow):
             if self.cloud_db_handler:
                 try:
                     logger.info("Loading cloud projects from Google Drive...")
-                    cloud_projects = self.cloud_db_handler.list_projects()
-                    if cloud_projects:
-                        logger.info(f"Found {len(cloud_projects)} cloud projects")
-                        if has_databases:
-                            self.db_combo.insertSeparator(self.db_combo.count())
-                        self.db_combo.addItem("-- Cloud Projects --")
-                        for project in cloud_projects:
-                            locked_indicator = " (LOCKED)" if project.get('locked_by') else ""
-                            self.db_combo.addItem(f"CLOUD: {project['name']}{locked_indicator}")
-                            logger.info(f"Added cloud project to dropdown: {project['name']} (Database: {project['database_name']})")
-                        has_databases = True
+                    
+                    # Check if the drive service is authenticated
+                    if hasattr(self.cloud_db_handler.drive_service, 'authenticated') and self.cloud_db_handler.drive_service.authenticated:
+                        logger.info("Drive service is authenticated, fetching projects...")
+                        cloud_projects = self.cloud_db_handler.list_projects()
+                        if cloud_projects:
+                            logger.info(f"Found {len(cloud_projects)} cloud projects")
+                            if has_databases:
+                                self.db_combo.insertSeparator(self.db_combo.count())
+                            self.db_combo.addItem("-- Cloud Projects --")
+                            for project in cloud_projects:
+                                locked_indicator = " (LOCKED)" if project.get('locked_by') else ""
+                                self.db_combo.addItem(f"CLOUD: {project['name']}{locked_indicator}")
+                                logger.info(f"Added cloud project to dropdown: {project['name']} (Database: {project['database_name']})")
+                            has_databases = True
+                        else:
+                            logger.info("No cloud projects found")
                     else:
-                        logger.info("No cloud projects found")
+                        logger.warning("Drive service not authenticated - skipping cloud projects")
                 except Exception as e:
                     logger.error(f"Error loading cloud projects: {e}")
                     import traceback
@@ -3177,12 +3186,12 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
                         
                         # Reload databases after successful component initialization
                         logger.info("Reloading databases after credential setup")
-                        self._load_databases()
+                        QTimer.singleShot(100, self._load_databases)
                     else:
                         logger.warning("Google Drive service not authenticated after credential setup")
                         # Still reload databases to show local ones
                         logger.info("Reloading local databases only")
-                        self._load_databases()
+                        QTimer.singleShot(100, self._load_databases)
                     
                     # Update water level runs tab if it exists
                     if 'water_level_runs' in self._tabs:
