@@ -57,6 +57,8 @@ config/token.pickle
 config/credentials.json
 config/client_secret_*.json
 config/water-levels-monitoring-*.json
+config/settings.json
+config/users.db
 
 # Database files (keep local)
 *.db
