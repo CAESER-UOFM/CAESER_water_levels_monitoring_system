@@ -24,6 +24,17 @@ class WellImportDialog(QDialog):
         self.df = None
         self.required_columns = ['WN', 'LAT', 'LON', 'TOC', 'AQ']
         self.optional_columns = ['data_source']  # Add this line to track optional columns
+        
+        # Column mapping for exported CSV files from the table export tool
+        self.column_mapping = {
+            'well_number': 'WN',
+            'latitude': 'LAT', 
+            'longitude': 'LON',
+            'top_of_casing': 'TOC',
+            'aquifer': 'AQ',
+            'cae_number': 'CAE'  # Optional mapping
+        }
+        
         self.setup_ui()
         self.load_csv()
     
@@ -69,13 +80,35 @@ class WellImportDialog(QDialog):
         try:
             self.df = pd.read_csv(self.csv_path)
             
+            # Apply column mapping if the CSV uses exported table format
+            columns_to_rename = {}
+            for old_col, new_col in self.column_mapping.items():
+                if old_col in self.df.columns:
+                    columns_to_rename[old_col] = new_col
+            
+            if columns_to_rename:
+                logger.info(f"Mapping columns from exported format: {columns_to_rename}")
+                self.df = self.df.rename(columns=columns_to_rename)
+            
             # Validate required columns
             missing_cols = [col for col in self.required_columns 
                           if col not in self.df.columns]
             if missing_cols:
-                raise ValueError(
-                    f"Missing required columns: {', '.join(missing_cols)}"
-                )
+                # Check if we can map any missing columns
+                available_mappings = []
+                for missing_col in missing_cols:
+                    for old_col, new_col in self.column_mapping.items():
+                        if new_col == missing_col and old_col in self.df.columns:
+                            available_mappings.append(f"{old_col} → {new_col}")
+                
+                error_msg = f"Missing required columns: {', '.join(missing_cols)}"
+                if available_mappings:
+                    error_msg += f"\n\nNote: Found potential mappings: {', '.join(available_mappings)}"
+                    error_msg += "\nPlease use column headers: WN, LAT, LON, TOC, AQ"
+                else:
+                    error_msg += "\n\nExpected column headers: WN (well number), LAT (latitude), LON (longitude), TOC (top of casing), AQ (aquifer)"
+                
+                raise ValueError(error_msg)
             
             # Setup table
             self.table.setRowCount(len(self.df))
