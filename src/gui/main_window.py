@@ -42,6 +42,7 @@ from .handlers.user_auth_service import UserAuthService
 from .dialogs.login_dialog import LoginDialog
 from .dialogs.user_management_dialog import UserManagementDialog
 from .dialogs.save_to_cloud_dialog import SaveToCloudDialog
+from .dialogs.database_comparison_dialog import DatabaseComparisonDialog
 from .handlers.progress_dialog_handler import progress_dialog
 from .handlers.style_handler import StyleHandler  # Import the style handler
 from .dialogs.application_help_system import ApplicationHelpSystem
@@ -529,12 +530,30 @@ class MainWindow(QMainWindow):
         self.save_cloud_btn.clicked.connect(self._save_to_cloud)
         self.save_cloud_btn.setToolTip("Save changes to the cloud database")
         self.save_cloud_btn.setVisible(False)
+        
+        # Add Compare Changes button (initially hidden)
+        self.compare_changes_btn = QPushButton("Compare Changes")
+        self.compare_changes_btn.setStyleSheet("""
+            background-color: #2196F3;
+            color: white;
+            border: 1px solid #1976D2;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: bold;
+            font-size: 13px;
+            min-height: 20px;
+        """)
+        self.compare_changes_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.compare_changes_btn.clicked.connect(self._compare_changes)
+        self.compare_changes_btn.setToolTip("Compare local changes against cloud database")
+        self.compare_changes_btn.setVisible(False)
 
         # Add buttons to layout
         db_layout.addWidget(self.db_combo)
         db_layout.addWidget(reload_db_btn)
         db_layout.addWidget(new_db_btn)
         db_layout.addWidget(self.save_cloud_btn)
+        db_layout.addWidget(self.compare_changes_btn)
 
         main_layout.addLayout(db_layout)
         
@@ -694,6 +713,9 @@ class MainWindow(QMainWindow):
                 local_db_files = [db for db in local_db_directory.glob("*.db") if "_(drive)" not in db.name]
             else:
                 logger.warning(f"Database directory does not exist: {local_db_directory}")
+                logger.warning(f"Current working directory: {Path.cwd()}")
+                logger.warning(f"Database directory setting: {self.settings_handler.get_setting('local_db_directory', 'NOT_FOUND')}")
+                logger.warning(f"Absolute path would be: {local_db_directory.resolve()}")
                 local_db_files = []
             has_databases = False
             
@@ -1163,6 +1185,7 @@ class MainWindow(QMainWindow):
             display_name = f"{project_name} (Draft)"
             # Update UI to show draft state with modifications
             self.save_cloud_btn.setEnabled(True)
+            self.compare_changes_btn.setEnabled(True)
             self.cloud_mode_label.setText(f"Cloud: {project_name} (Draft - Has Changes)")
         else:
             display_name = f"{project_name} (Cloud)"
@@ -1250,9 +1273,12 @@ class MainWindow(QMainWindow):
         if is_cloud:
             self.save_cloud_btn.setVisible(True)
             self.save_cloud_btn.setEnabled(False)  # Initially disabled
+            self.compare_changes_btn.setVisible(True)
+            self.compare_changes_btn.setEnabled(False)  # Initially disabled
             self.cloud_mode_label.setText(f"Cloud: {project_name}")
         else:
             self.save_cloud_btn.setVisible(False)
+            self.compare_changes_btn.setVisible(False)
             self.cloud_mode_label.setText("")
                     
     def _update_runs_tab_style(self, is_enabled: bool):
@@ -1310,6 +1336,53 @@ class MainWindow(QMainWindow):
         # Only add the style if it's not already there
         if "QTabBar::tab:disabled" not in current_style:
             self.tab_widget.setStyleSheet(current_style + runs_tab_style)
+    
+    def _compare_changes(self):
+        """Open the database comparison dialog"""
+        try:
+            if not self.db_manager.is_cloud_database:
+                QMessageBox.information(self, "Information", "This feature is only available for cloud databases.")
+                return
+            
+            if not hasattr(self, 'change_tracker') or not self.change_tracker:
+                QMessageBox.warning(self, "Warning", "Change tracking is not available.")
+                return
+            
+            # Check if there are any changes to compare
+            if not self.change_tracker.changes:
+                QMessageBox.information(self, "No Changes", "No local changes detected to compare.")
+                return
+            
+            # Check if we have cloud database handler
+            if not hasattr(self, 'cloud_db_handler') or not self.cloud_db_handler:
+                QMessageBox.warning(self, "Warning", "Cloud database handler is not available.")
+                return
+            
+            # Check if user is authenticated
+            if not hasattr(self, 'user_auth_service') or not self.user_auth_service.current_user:
+                QMessageBox.warning(self, "Warning", "Please log in first.")
+                return
+            
+            # Open the comparison dialog
+            dialog = DatabaseComparisonDialog(
+                self.db_manager,
+                self.change_tracker,
+                self.cloud_db_handler,
+                self.user_auth_service,
+                self
+            )
+            
+            # Show dialog
+            result = dialog.exec_()
+            
+            # If user accepted changes in the dialog, we could trigger save here
+            if result == QDialog.Accepted:
+                # User might have accepted changes - the dialog can handle this
+                pass
+                
+        except Exception as e:
+            logger.error(f"Error opening comparison dialog: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to open comparison dialog: {str(e)}")
             
     def _save_to_cloud(self) -> bool:
         """Save changes to cloud database"""
@@ -1319,6 +1392,104 @@ class MainWindow(QMainWindow):
         if not self.db_manager.is_cloud_modified:
             QMessageBox.information(self, "No Changes", "No changes to save.")
             return True
+        
+        # UPLOAD CONFLICT DETECTION: Check if cloud version has been updated since our local download
+        try:
+            # Get current cloud projects to check latest version
+            cloud_projects = self.cloud_db_handler.list_projects()
+            current_cloud_version = None
+            
+            for project in cloud_projects:
+                if project['name'] == self.db_manager.cloud_project_name:
+                    current_cloud_version = project.get('modified_time', '')
+                    break
+            
+            if current_cloud_version and self.db_manager.cloud_download_time:
+                # Compare our local base version with current cloud version
+                from datetime import datetime
+                try:
+                    local_base_time = datetime.fromisoformat(self.db_manager.cloud_download_time.replace('Z', '+00:00'))
+                    cloud_current_time = datetime.fromisoformat(current_cloud_version.replace('Z', '+00:00'))
+                    
+                    # If cloud is newer than our base, we have a conflict
+                    if cloud_current_time > local_base_time:
+                        time_diff = (cloud_current_time - local_base_time).total_seconds()
+                        logger.warning(f"Upload conflict detected: Cloud version is {time_diff:.0f} seconds newer than local base")
+                        
+                        # Show conflict resolution dialog
+                        conflict_msg = (
+                            f"Upload Conflict Detected!\n\n"
+                            f"The cloud database has been updated since you downloaded it:\n"
+                            f"• Your local version is based on: {self.db_manager.cloud_download_time}\n"
+                            f"• Current cloud version: {current_cloud_version}\n\n"
+                            f"Uploading now would overwrite newer cloud changes.\n\n"
+                            f"What would you like to do?"
+                        )
+                        
+                        reply = QMessageBox()
+                        reply.setIcon(QMessageBox.Warning)
+                        reply.setWindowTitle("Upload Conflict")
+                        reply.setText(conflict_msg)
+                        
+                        # Add custom buttons
+                        overwrite_btn = reply.addButton("Overwrite Cloud Version", QMessageBox.ActionRole)
+                        download_btn = reply.addButton("Download Latest & Merge", QMessageBox.ActionRole)
+                        proposal_btn = reply.addButton("Save as Proposal", QMessageBox.ActionRole)
+                        cancel_btn = reply.addButton("Cancel Upload", QMessageBox.RejectRole)
+                        
+                        reply.setDefaultButton(proposal_btn)  # Collaborative option as default
+                        reply.exec_()
+                        
+                        if reply.clickedButton() == overwrite_btn:
+                            logger.info("User chose to overwrite cloud version - proceeding with upload")
+                            # Continue with upload
+                        elif reply.clickedButton() == download_btn:
+                            logger.info("User chose to download latest and merge - saving draft first")
+                            # Save as draft first, then switch to cloud version
+                            if self._save_as_draft_before_download():
+                                # Reload the project to get latest cloud version
+                                QMessageBox.information(self, "Draft Saved", 
+                                    "Your changes have been saved as a draft. The latest cloud version will now be loaded.")
+                                self._open_cloud_project(self.db_manager.cloud_project_name)
+                            return False
+                        elif reply.clickedButton() == proposal_btn:
+                            logger.info("User chose to save as proposal - opening comparison dialog")
+                            # Open database comparison dialog for proposal creation
+                            try:
+                                from .dialogs.database_comparison_dialog import DatabaseComparisonDialog
+                                comparison_dialog = DatabaseComparisonDialog(
+                                    self.db_manager,
+                                    self.db_manager.change_tracker,
+                                    self.cloud_db_handler,
+                                    self.user_auth_service,
+                                    self
+                                )
+                                comparison_dialog.exec_()
+                                return False  # Don't proceed with normal upload
+                            except ImportError as e:
+                                logger.error(f"Database comparison dialog not available: {e}")
+                                QMessageBox.critical(self, "Feature Unavailable", 
+                                    "The proposal system is not available. Please try another option.")
+                                return False
+                            except Exception as e:
+                                logger.error(f"Error opening comparison dialog: {e}")
+                                QMessageBox.critical(self, "Error", 
+                                    f"Failed to open proposal dialog: {str(e)}")
+                                return False
+                        else:  # cancel_btn or dialog closed
+                            logger.info("User cancelled upload due to conflict")
+                            return False
+                            
+                except Exception as e:
+                    logger.error(f"Error parsing timestamps for conflict detection: {e}")
+                    # Continue with upload if we can't determine conflict
+                    
+            else:
+                logger.debug("No timestamp comparison available - proceeding with upload")
+                
+        except Exception as e:
+            logger.error(f"Error checking for upload conflicts: {e}")
+            # Continue with upload if conflict detection fails
             
         # Get current user
         current_user = self.user_auth_service.current_user or "Unknown User"
@@ -1370,6 +1541,7 @@ class MainWindow(QMainWindow):
             # Update UI
             self.db_manager.is_cloud_modified = False
             self.save_cloud_btn.setEnabled(False)
+            self.compare_changes_btn.setEnabled(False)
             self.cloud_mode_label.setText(f"Cloud: {self.db_manager.cloud_project_name}")
             
             # Clear change tracker
@@ -1469,6 +1641,39 @@ class MainWindow(QMainWindow):
             logger.error(f"Error saving draft on close: {e}")
             QMessageBox.warning(self, "Draft Save Error", f"Error saving draft: {e}. Continue closing anyway?")
             return True  # Allow closing even if draft save fails
+    
+    def _save_as_draft_before_download(self) -> bool:
+        """Save current changes as a local draft before downloading latest cloud version"""
+        try:
+            if not self.db_manager.is_cloud_database:
+                return True
+                
+            # Get change description from change tracker
+            changes_desc = ""
+            if self.db_manager.change_tracker and self.db_manager.change_tracker.changes:
+                changes_desc = self.db_manager.change_tracker.get_manual_changes_description()
+            
+            # Save the draft
+            success = self.cloud_db_handler.save_as_draft(
+                self.db_manager.cloud_project_name,
+                self.db_manager.temp_db_path,
+                self.db_manager.cloud_download_time,
+                changes_desc
+            )
+            
+            if success:
+                logger.info(f"Draft saved before download for project: {self.db_manager.cloud_project_name}")
+                return True
+            else:
+                QMessageBox.critical(self, "Draft Save Failed", 
+                    "Failed to save your changes as a draft. Cannot proceed with downloading latest version.")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error saving draft before download: {e}")
+            QMessageBox.critical(self, "Draft Save Error", 
+                f"Error saving draft: {e}. Cannot proceed with downloading latest version.")
+            return False
 
     def _sync_database(self):
         """Sync the current database with Google Drive"""
@@ -2742,10 +2947,9 @@ class MainWindow(QMainWindow):
                 self.folder_info_label.setText(f"Folder: {selected_folder}")
                 self.folder_info_label.setToolTip(f"Database folder: {selected_folder}")
                 
-                # Change to the selected directory
+                # Note: Don't change working directory - use absolute paths instead
                 try:
-                    os.chdir(selected_folder)
-                    self.logger.debug(f"Changed working directory to: {selected_folder}")
+                    self.logger.debug(f"Using database folder: {selected_folder}")
                     
                     # Populate the database dropdown without loading any database
                     self._load_databases()
@@ -2821,8 +3025,7 @@ class MainWindow(QMainWindow):
                 logger.debug(f"Initial folder is set to {initial_folder}, loading databases")
                 
                 try:
-                    # Change to the initial folder and load databases
-                    os.chdir(initial_folder)
+                    # Note: Don't change working directory - use absolute paths instead  
                     self.folder_info_label.setText(f"Folder: {initial_folder}")
                     self.folder_info_label.setToolTip(f"Database folder: {initial_folder}")
                     
@@ -3233,6 +3436,7 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
             if self.db_manager.is_cloud_database:
                 self.db_manager.is_cloud_modified = True
                 self.save_cloud_btn.setEnabled(True)
+                self.compare_changes_btn.setEnabled(True)
                 self.cloud_mode_label.setText(f"Cloud: {self.db_manager.cloud_project_name} (MODIFIED)")
             elif self.db_manager.is_google_drive_db:
                 self.db_manager._modified_since_sync = True

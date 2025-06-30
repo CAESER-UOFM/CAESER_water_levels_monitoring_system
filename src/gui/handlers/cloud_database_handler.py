@@ -49,7 +49,23 @@ class CloudDatabaseHandler:
         # Use databases/temp folder instead of system temp
         local_db_directory = self.settings_handler.get_setting("local_db_directory", str(Path.cwd()))
         cache_dir = os.path.join(local_db_directory, "temp")
-        os.makedirs(cache_dir, exist_ok=True)
+        
+        # Ensure the directory exists and is writable
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+            # Test write permissions
+            test_file = os.path.join(cache_dir, f"test_write_{int(time.time())}.tmp")
+            with open(test_file, 'w') as f:
+                f.write("test")
+            os.remove(test_file)
+            logger.debug(f"Cache directory confirmed: {cache_dir}")
+        except Exception as e:
+            logger.error(f"Error creating or accessing cache directory {cache_dir}: {e}")
+            # Fallback to system temp if databases/temp fails
+            import tempfile
+            cache_dir = tempfile.mkdtemp(prefix="wlm_cache_")
+            logger.warning(f"Using fallback cache directory: {cache_dir}")
+            
         return cache_dir
     
     def _get_cached_db_path(self, project_name: str) -> str:
@@ -452,6 +468,32 @@ class CloudDatabaseHandler:
             logger.error(f"Error creating backup folder: {e}")
             return None
             
+    def _get_or_create_proposals_folder(self, service, project_id: str) -> Optional[str]:
+        """Get or create the proposed_changes folder for a project"""
+        try:
+            # Check if proposed_changes folder exists
+            query = f"'{project_id}' in parents and name='proposed_changes' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+            response = service.files().list(q=query, fields="files(id)").execute()
+            files = response.get('files', [])
+            
+            if files:
+                return files[0]['id']
+                
+            # Create proposed_changes folder
+            folder_metadata = {
+                'name': 'proposed_changes',
+                'mimeType': 'application/vnd.google-apps.folder',
+                'parents': [project_id]
+            }
+            
+            folder = service.files().create(body=folder_metadata, fields='id').execute()
+            logger.info(f"Created proposed_changes folder with ID: {folder.get('id')}")
+            return folder.get('id')
+            
+        except Exception as e:
+            logger.error(f"Error creating proposed_changes folder: {e}")
+            return None
+            
     def _upload_database(self, service, project_info: Dict, temp_db_path: str, progress_callback=None) -> bool:
         """Upload the database file"""
         try:
@@ -799,3 +841,222 @@ class CloudDatabaseHandler:
             if local_path and os.path.exists(local_path):
                 return local_path
         return None
+    
+    # Proposal Management Methods
+    def upload_proposal(self, project_name: str, proposal_db_path: str, user_name: str, 
+                       description: str, progress_callback=None) -> bool:
+        """
+        Upload a reduced database proposal to Google Drive
+        
+        Args:
+            project_name: Name of the project
+            proposal_db_path: Path to the reduced proposal database
+            user_name: Name of the user making the proposal
+            description: Description of the proposed changes
+            progress_callback: Optional callback for progress updates
+            
+        Returns:
+            bool: True if upload successful, False otherwise
+        """
+        try:
+            if progress_callback:
+                progress_callback(10, "Initializing proposal upload...")
+            
+            service = self.drive_service.get_service()
+            if not service:
+                logger.error("No Google Drive service available")
+                return False
+            
+            # Find project
+            projects = self.list_projects()
+            project_info = next((p for p in projects if p['name'] == project_name), None)
+            if not project_info:
+                logger.error(f"Project '{project_name}' not found")
+                return False
+            
+            if progress_callback:
+                progress_callback(30, "Creating proposals folder...")
+            
+            # Get or create proposals folder
+            proposals_folder_id = self._get_or_create_proposals_folder(service, project_info['project_id'])
+            if not proposals_folder_id:
+                logger.error("Failed to create proposals folder")
+                return False
+            
+            if progress_callback:
+                progress_callback(50, "Uploading proposal database...")
+            
+            # Generate proposal filename
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            safe_username = user_name.replace(' ', '_').replace('@', '_')
+            proposal_name = f"{project_name}_{timestamp}_{safe_username}.db"
+            
+            # Upload proposal database
+            media = MediaFileUpload(
+                proposal_db_path,
+                mimetype='application/x-sqlite3',
+                resumable=True
+            )
+            
+            file_metadata = {
+                'name': proposal_name,
+                'parents': [proposals_folder_id],
+                'description': description
+            }
+            
+            uploaded_file = service.files().create(
+                body=file_metadata,
+                media_body=media,
+                fields='id'
+            ).execute()
+            
+            if progress_callback:
+                progress_callback(80, "Creating proposal metadata...")
+            
+            # Create metadata file
+            metadata = {
+                'proposal_id': uploaded_file.get('id'),
+                'project_name': project_name,
+                'author': user_name,
+                'timestamp': datetime.now().isoformat(),
+                'description': description,
+                'filename': proposal_name
+            }
+            
+            # Upload metadata
+            metadata_json = json.dumps(metadata, indent=2)
+            metadata_media = MediaIoBaseUpload(
+                io.BytesIO(metadata_json.encode()),
+                mimetype='application/json'
+            )
+            
+            metadata_file = {
+                'name': f"{proposal_name.replace('.db', '_metadata.json')}",
+                'parents': [proposals_folder_id]
+            }
+            
+            service.files().create(
+                body=metadata_file,
+                media_body=metadata_media
+            ).execute()
+            
+            if progress_callback:
+                progress_callback(100, "Proposal upload completed!")
+            
+            logger.info(f"Successfully uploaded proposal: {proposal_name}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error uploading proposal: {e}")
+            return False
+    
+    def list_proposals(self, project_name: str) -> List[Dict]:
+        """
+        List all available proposals for a project
+        
+        Args:
+            project_name: Name of the project
+            
+        Returns:
+            List of proposal dictionaries with metadata
+        """
+        proposals = []
+        
+        try:
+            service = self.drive_service.get_service()
+            if not service:
+                logger.error("No Google Drive service available")
+                return proposals
+            
+            # Find project
+            projects = self.list_projects()
+            project_info = next((p for p in projects if p['name'] == project_name), None)
+            if not project_info:
+                logger.error(f"Project '{project_name}' not found")
+                return proposals
+            
+            # Check if proposals folder exists
+            proposals_folder_id = self._get_or_create_proposals_folder(service, project_info['project_id'])
+            if not proposals_folder_id:
+                return proposals
+            
+            # Query for proposal database files
+            query = f"'{proposals_folder_id}' in parents and name contains '.db' and trashed=false"
+            response = service.files().list(
+                q=query,
+                fields="files(id, name, modifiedTime, description)",
+                orderBy="modifiedTime desc"
+            ).execute()
+            
+            for file in response.get('files', []):
+                # Try to find corresponding metadata file
+                metadata_name = file['name'].replace('.db', '_metadata.json')
+                metadata_query = f"'{proposals_folder_id}' in parents and name='{metadata_name}' and trashed=false"
+                metadata_response = service.files().list(q=metadata_query, fields="files(id)").execute()
+                
+                proposal_data = {
+                    'id': file['id'],
+                    'filename': file['name'],
+                    'modified_time': file.get('modifiedTime', ''),
+                    'description': file.get('description', ''),
+                    'metadata_id': None
+                }
+                
+                # Get metadata if available
+                metadata_files = metadata_response.get('files', [])
+                if metadata_files:
+                    proposal_data['metadata_id'] = metadata_files[0]['id']
+                    # Download and parse metadata
+                    try:
+                        metadata_content = service.files().get_media(fileId=metadata_files[0]['id']).execute()
+                        metadata = json.loads(metadata_content.decode())
+                        proposal_data.update({
+                            'author': metadata.get('author', 'Unknown'),
+                            'timestamp': metadata.get('timestamp', ''),
+                            'description': metadata.get('description', proposal_data['description'])
+                        })
+                    except Exception as e:
+                        logger.warning(f"Could not parse metadata for {file['name']}: {e}")
+                
+                proposals.append(proposal_data)
+            
+        except Exception as e:
+            logger.error(f"Error listing proposals: {e}")
+        
+        return proposals
+    
+    def download_proposal(self, proposal_id: str, project_name: str) -> Optional[str]:
+        """
+        Download a proposal database to temporary location
+        
+        Args:
+            proposal_id: Google Drive file ID of the proposal
+            project_name: Name of the project
+            
+        Returns:
+            Optional[str]: Path to downloaded proposal database, or None if failed
+        """
+        try:
+            service = self.drive_service.get_service()
+            if not service:
+                logger.error("No Google Drive service available")
+                return None
+            
+            # Create temporary file path
+            temp_filename = f"proposal_{proposal_id}_{int(time.time())}.db"
+            temp_path = os.path.join(self.cache_dir, temp_filename)
+            
+            # Download the proposal file
+            request = service.files().get_media(fileId=proposal_id)
+            with open(temp_path, 'wb') as f:
+                downloader = MediaIoBaseDownload(f, request)
+                done = False
+                while not done:
+                    status, done = downloader.next_chunk()
+            
+            logger.info(f"Downloaded proposal to: {temp_path}")
+            return temp_path
+            
+        except Exception as e:
+            logger.error(f"Error downloading proposal: {e}")
+            return None
