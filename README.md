@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![CAESER Mascot](assets/icon.png)
+![CAESER Mascot](src/gui/icons/app_icon.webp)
 
 **Professional water level data processing and analysis**
 
