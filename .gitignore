@@ -115,6 +115,12 @@ icon_debug_*.bat
 example_*.py
 *example*.py
 
+# AI agent instruction files (development only)
+CLAUDE.md
+.claude.md
+**/CLAUDE.md
+**/.claude.md
+
 # IDE configuration (personal settings)
 .spyproject/
 .spyder-py3/
