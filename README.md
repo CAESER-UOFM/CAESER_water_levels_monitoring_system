@@ -1,4 +1,4 @@
-# 🌊 CAESER Water Levels Monitoring System
+# CAESER Water Levels Monitoring System
 
 <div align="center">
 

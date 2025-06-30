@@ -77,3 +77,6 @@ databases/temp/
 
 # GitHub token (keep local)
 .github_token
+
+# Claude configuration (keep local)
+CLAUDE.md
