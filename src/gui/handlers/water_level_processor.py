@@ -16,6 +16,7 @@ class WaterLevelProcessor:
         self.water_level_model = water_level_model
         self.solinst_reader = SolinstReader()
         self.STANDARD_ATMOS_PRESSURE = 14.7
+        self.FT_TO_PSI_WATER = 0.43307  # Exact water pressure conversion
         self.xle_manager = None  # Will be set by application if cloud sync enabled
         
     def validate_transducer(self, well_number: str, serial_number: str) -> Tuple[bool, str, dict]:
