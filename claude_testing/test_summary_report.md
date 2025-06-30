@@ -1,6 +1,6 @@
 # Recharge System Test Summary Report
 
-**Generated:** 2025-06-30 00:36:59
+**Generated:** 2025-06-30 03:21:30
 
 ## Overview
 
@@ -14,7 +14,7 @@
 ### ❌ test_recharge_integration.py
 
 - **Status:** FAIL
-- **Return Code:** 1
+- **Return Code:** -6
 
 ### ❌ test_calculation_accuracy.py
 

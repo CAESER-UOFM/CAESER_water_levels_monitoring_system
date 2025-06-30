@@ -74,3 +74,10 @@ databases/temp/
 *.backup
 # Local Netlify folder
 .netlify
+
+# GitHub token (keep local)
+.github_token
+
+# Service account credentials (keep local)
+config/service_account_test.json
+**/service_account_test.json

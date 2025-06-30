@@ -1,0 +1,25 @@
+{
+  "timestamp": "2025-06-30T04:43:12.440772",
+  "test_type": "google_drive_integration",
+  "passed_tests": 0,
+  "total_tests": 5,
+  "success_rate": 0.0,
+  "test_results": {
+    "authentication": {
+      "status": "FAIL",
+      "error": "attempted relative import beyond top-level package"
+    },
+    "folder_access": {
+      "status": "FAIL",
+      "error": "'NoneType' object has no attribute 'get_service'"
+    },
+    "database_download": {
+      "status": "FAIL",
+      "error": "attempted relative import beyond top-level package"
+    },
+    "version_management": {
+      "status": "FAIL",
+      "error": "attempted relative import beyond top-level package"
+    }
+  }
+}

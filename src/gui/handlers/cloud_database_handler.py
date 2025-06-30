@@ -10,6 +10,7 @@ from typing import List, Dict, Optional, Tuple
 from googleapiclient.http import MediaIoBaseDownload, MediaFileUpload, MediaIoBaseUpload
 from .draft_manager import DraftManager
 from .version_manager import VersionManager
+from .xle_file_manager import XLEFileManager
 from googleapiclient.errors import HttpError
 import io
 import uuid
@@ -34,6 +35,7 @@ class CloudDatabaseHandler:
         self.cache_dir = self._get_cache_directory()
         self.draft_manager = DraftManager(self.cache_dir)  # Initialize draft manager
         self.version_manager = VersionManager(self.cache_dir)  # Initialize version manager
+        self.xle_manager = None  # Initialize when database manager available
         
     def get_projects_folder_id(self):
         """Get the projects folder ID from settings"""
@@ -383,6 +385,11 @@ class CloudDatabaseHandler:
             if not self._upload_database(service, project_info, temp_db_path, progress_callback):
                 logger.error("Failed to upload database")
                 return False
+                
+            # 2.5. Upload associated XLE files
+            if progress_callback:
+                progress_callback(70, "Uploading associated XLE files...")
+            self._upload_project_xle_files(project_name, progress_callback)
                 
             # 3. Update change log
             if progress_callback:
@@ -1060,3 +1067,41 @@ class CloudDatabaseHandler:
         except Exception as e:
             logger.error(f"Error downloading proposal: {e}")
             return None
+    
+    def set_database_manager(self, database_manager):
+        """Set the database manager for XLE file operations."""
+        if database_manager and not self.xle_manager:
+            self.xle_manager = XLEFileManager(
+                database_manager, self.drive_service, self.settings_handler
+            )
+            logger.info("XLE file manager initialized")
+    
+    def _upload_project_xle_files(self, project_name: str, progress_callback=None):
+        """Upload pending XLE files for a project."""
+        try:
+            if not self.xle_manager:
+                logger.warning("XLE file manager not initialized - skipping XLE upload")
+                return
+            
+            # Create progress wrapper for XLE uploads
+            def xle_progress_callback(progress, message):
+                if progress_callback:
+                    # Map XLE progress to 70-89% range (20% allocation for XLE upload)
+                    adjusted_progress = 70 + int(progress * 0.19)
+                    progress_callback(adjusted_progress, f"XLE: {message}")
+            
+            # Upload XLE files for this project
+            results = self.xle_manager.upload_project_xle_files(
+                project_name, xle_progress_callback
+            )
+            
+            if results['total'] > 0:
+                logger.info(f"XLE upload results for {project_name}: {results['success']} success, {results['failed']} failed")
+            else:
+                logger.info(f"No pending XLE files to upload for project: {project_name}")
+                
+        except Exception as e:
+            logger.error(f"Error uploading XLE files for project {project_name}: {e}")
+            # Don't fail the entire database upload if XLE upload fails
+            if progress_callback:
+                progress_callback(89, "XLE upload encountered issues, continuing...")

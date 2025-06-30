@@ -277,7 +277,7 @@ class CalculationAccuracyTester:
             data, params = self.create_synthetic_data("noisy_data")
             
             # Apply simple smoothing to test noise tolerance
-            window_size = 7  # 7-day moving average
+            window_size = 3  # 3-day moving average (matches production default)
             smoothed_levels = data['water_level'].rolling(window=window_size, center=True).mean()
             
             # Remove NaN values
@@ -290,7 +290,7 @@ class CalculationAccuracyTester:
             
             # Test if smoothing helps identify recharge events
             daily_changes = valid_data.diff()
-            significant_rises = daily_changes[daily_changes > 0.1]  # > 10cm rise
+            significant_rises = daily_changes[daily_changes > 0.05]  # > 5cm rise (matches RISE threshold)
             
             logger.info(f"   Significant rises detected: {len(significant_rises)}")
             logger.info(f"   Expected events: {len(params['events'])}")

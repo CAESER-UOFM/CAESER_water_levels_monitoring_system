@@ -16,6 +16,7 @@ class WaterLevelProcessor:
         self.water_level_model = water_level_model
         self.solinst_reader = SolinstReader()
         self.STANDARD_ATMOS_PRESSURE = 14.7
+        self.xle_manager = None  # Will be set by application if cloud sync enabled
         
     def validate_transducer(self, well_number: str, serial_number: str) -> Tuple[bool, str, dict]:
         """Validate transducer assignment with detailed status and relocation handling"""
@@ -416,6 +417,9 @@ class WaterLevelProcessor:
             
             # Process data
             processed_data = self.process_data(df, well_info, manual_readings, existing_data)
+            
+            # Track XLE file for future upload (if XLE manager available)
+            self._track_xle_file(file_path, metadata, well_number, time_range)
             
             return True, "File processed successfully", {
                 'data': processed_data,
@@ -856,3 +860,63 @@ class WaterLevelProcessor:
         except Exception as e:
             logger.error(f"Error applying insertion level: {e}", exc_info=True)
             raise
+    
+    def set_xle_manager(self, xle_manager):
+        """Set the XLE file manager for tracking uploaded files."""
+        self.xle_manager = xle_manager
+        logger.info("XLE file manager set for water level processor")
+    
+    def _track_xle_file(self, file_path: Path, metadata, well_number: str, time_range: tuple):
+        """Track XLE file for future upload to Google Drive."""
+        try:
+            if not self.xle_manager:
+                return  # XLE tracking not available
+            
+            # Get current project name from settings or database
+            project_name = self._get_current_project_name()
+            if not project_name:
+                project_name = "CAESER_GENERAL"  # Default project
+            
+            # Track the file
+            self.xle_manager.track_xle_file(
+                file_path=str(file_path),
+                file_type='transducer',
+                serial_number=metadata.serial_number,
+                well_number=well_number,
+                start_date=time_range[0].isoformat() if time_range[0] else None,
+                end_date=time_range[1].isoformat() if time_range[1] else None,
+                project_name=project_name
+            )
+            
+            # Update water level readings with source file
+            self.xle_manager.update_water_level_xle_source(
+                file_path=str(file_path),
+                serial_number=metadata.serial_number,
+                start_time=time_range[0].isoformat() if time_range[0] else None,
+                end_time=time_range[1].isoformat() if time_range[1] else None
+            )
+            
+            logger.info(f"Tracked XLE file for future upload: {file_path.name}")
+            
+        except Exception as e:
+            logger.error(f"Error tracking XLE file {file_path}: {e}")
+            # Don't fail the entire import if XLE tracking fails
+    
+    def _get_current_project_name(self) -> Optional[str]:
+        """Get the current project name from database or settings."""
+        try:
+            # This could be enhanced to read from a settings table or user selection
+            # For now, try to infer from database name or use default
+            db_connection = self.water_level_model.db_manager.get_connection()
+            
+            # Try to get project name from database path
+            db_path = getattr(self.water_level_model.db_manager, 'current_db_path', None)
+            if db_path:
+                db_name = Path(db_path).stem
+                return db_name
+            
+            return None
+            
+        except Exception as e:
+            logger.debug(f"Could not determine project name: {e}")
+            return None

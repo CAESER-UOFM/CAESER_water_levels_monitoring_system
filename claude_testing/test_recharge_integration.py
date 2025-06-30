@@ -86,6 +86,7 @@ class RechargeIntegrationTester:
         """Find a suitable test database."""
         # Look for databases in common locations
         possible_paths = [
+            PROJECT_ROOT / "claude_testing" / "test_database.db",  # Our new test database
             PROJECT_ROOT / "databases" / "temp" / "CAESER_GENERAL.db",
             PROJECT_ROOT / "databases" / "CAESER_GENERAL.db",
             PROJECT_ROOT / "databases" / "test.db"

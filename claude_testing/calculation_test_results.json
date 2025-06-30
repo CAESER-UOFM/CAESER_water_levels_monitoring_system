@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-06-30T00:36:59.929543",
+  "timestamp": "2025-06-30T03:21:30.839918",
   "test_type": "calculation_accuracy",
   "test_results": {
     "rise_simple": {
@@ -18,7 +18,7 @@
     },
     "noise_tolerance": {
       "status": "FAIL",
-      "rises_detected": 0,
+      "rises_detected": 8,
       "events_expected": 2,
       "noise_level": 0.05
     }

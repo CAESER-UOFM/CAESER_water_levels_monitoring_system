@@ -26,6 +26,8 @@ class DatabaseInitializer:
             self._create_transducer_imported_files_table(cursor)  # Renamed method
             self._create_barologger_imported_files_table(cursor)  # New method
             self._create_well_statistics_table(cursor)
+            self._create_xle_files_table(cursor)  # XLE file tracking
+            self._create_recharge_calculations_tables(cursor)  # Recharge calculation storage
             
             pictures_dir = self.db_path.parent / 'well_pictures'
             pictures_dir.mkdir(exist_ok=True)
@@ -185,6 +187,7 @@ class DatabaseInitializer:
                 level_flag TEXT,
                 processing_date_utc TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 imported_time_range TEXT,
+                source_xle_file TEXT,
                 FOREIGN KEY (well_number) REFERENCES wells (well_number),
                 FOREIGN KEY (serial_number) REFERENCES transducers (serial_number),
                 UNIQUE (well_number, timestamp_utc)
@@ -313,6 +316,123 @@ class DatabaseInitializer:
                 last_update TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (well_number) REFERENCES wells (well_number)
             )
+        ''')
+    
+    def _create_xle_files_table(self, cursor: sqlite3.Cursor):
+        """Create table for tracking XLE files and their upload status"""
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS xle_files (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_path TEXT NOT NULL,
+                file_name TEXT NOT NULL,
+                file_type TEXT CHECK(file_type IN ('transducer', 'barologger')) NOT NULL,
+                serial_number TEXT,
+                well_number TEXT,
+                start_date TIMESTAMP,
+                end_date TIMESTAMP,
+                file_size INTEGER,
+                file_hash TEXT,
+                local_import_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                upload_status TEXT CHECK(upload_status IN ('pending', 'uploading', 'uploaded', 'failed')) DEFAULT 'pending',
+                cloud_file_id TEXT,
+                cloud_folder_id TEXT,
+                project_name TEXT,
+                upload_timestamp TIMESTAMP,
+                upload_error TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (serial_number) REFERENCES transducers (serial_number),
+                FOREIGN KEY (well_number) REFERENCES wells (well_number)
+            )
+        ''')
+        
+        # Indexes for efficient queries
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_xle_files_upload_status 
+            ON xle_files (upload_status)
+        ''')
+        
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_xle_files_project 
+            ON xle_files (project_name, upload_status)
+        ''')
+        
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_xle_files_well 
+            ON xle_files (well_number, upload_status)
+        ''')
+    
+    def _create_recharge_calculations_tables(self, cursor: sqlite3.Cursor):
+        """Create tables for storing recharge calculation results"""
+        
+        # RISE method calculations
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS rise_calculations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                well_number TEXT NOT NULL,
+                calculation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                parameters TEXT NOT NULL,
+                events_data TEXT NOT NULL,
+                yearly_summary TEXT NOT NULL,
+                total_recharge REAL NOT NULL,
+                total_events INTEGER NOT NULL,
+                annual_rate REAL NOT NULL,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (well_number) REFERENCES wells (well_number)
+            )
+        ''')
+        
+        # MRC method calculations
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS mrc_calculations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                well_number TEXT NOT NULL,
+                calculation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                parameters TEXT NOT NULL,
+                recession_data TEXT NOT NULL,
+                yearly_summary TEXT NOT NULL,
+                total_recharge REAL NOT NULL,
+                total_periods INTEGER NOT NULL,
+                annual_rate REAL NOT NULL,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (well_number) REFERENCES wells (well_number)
+            )
+        ''')
+        
+        # ERC method calculations (for future implementation)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS erc_calculations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                well_number TEXT NOT NULL,
+                calculation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                parameters TEXT NOT NULL,
+                curve_data TEXT NOT NULL,
+                yearly_summary TEXT NOT NULL,
+                total_recharge REAL NOT NULL,
+                curve_quality REAL,
+                annual_rate REAL NOT NULL,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (well_number) REFERENCES wells (well_number)
+            )
+        ''')
+        
+        # Indexes for recharge calculations
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_rise_calculations_well 
+            ON rise_calculations (well_number, calculation_date DESC)
+        ''')
+        
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_mrc_calculations_well 
+            ON mrc_calculations (well_number, calculation_date DESC)
+        ''')
+        
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_erc_calculations_well 
+            ON erc_calculations (well_number, calculation_date DESC)
         ''')
         
         # Create index for faster lookups
