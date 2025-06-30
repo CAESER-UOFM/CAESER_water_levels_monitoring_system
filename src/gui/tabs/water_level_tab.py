@@ -162,6 +162,10 @@ class WaterLevelTab(QWidget):
             db_path = self.db_manager.current_db
             logger.debug(f"Using database path: {db_path}")
 
+            # Clear the plot when switching databases to avoid confusion
+            self.plot_handler.clear_plot()
+            self.canvas.draw()
+
             # Update handlers with new database path
             handler_start_time = time.time() # Timing handlers
             self.well_handler.update_db_path(db_path)
