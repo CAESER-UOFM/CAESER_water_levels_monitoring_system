@@ -1100,6 +1100,14 @@ class MainWindow(QMainWindow):
                             
                             # Show brief progress
                             progress_dialog.show(f"Loading cached database: {project_name}", "Loading Cache")
+                            
+                            # Make sure progress dialog stays on top
+                            if progress_dialog.progress_dialog:
+                                progress_dialog.progress_dialog.setWindowFlags(
+                                    progress_dialog.progress_dialog.windowFlags() | Qt.WindowStaysOnTopHint
+                                )
+                                progress_dialog.progress_dialog.show()
+                            
                             progress_dialog.update(50, "Opening cached database...")
                             QApplication.processEvents()
                             
@@ -1138,6 +1146,14 @@ class MainWindow(QMainWindow):
             
         # Show progress dialog for download
         progress_dialog.show(f"Opening cloud project: {project_name}", "Loading Cloud Database")
+        
+        # Make sure progress dialog stays on top
+        if progress_dialog.progress_dialog:
+            progress_dialog.progress_dialog.setWindowFlags(
+                progress_dialog.progress_dialog.windowFlags() | Qt.WindowStaysOnTopHint
+            )
+            progress_dialog.progress_dialog.show()
+        
         progress_dialog.update(10, f"Downloading {project_info['database_name']}...")
         QApplication.processEvents()
         
