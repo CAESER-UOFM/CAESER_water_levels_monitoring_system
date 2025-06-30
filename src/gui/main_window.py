@@ -42,7 +42,7 @@ from .handlers.user_auth_service import UserAuthService
 from .dialogs.login_dialog import LoginDialog
 from .dialogs.user_management_dialog import UserManagementDialog
 from .dialogs.save_to_cloud_dialog import SaveToCloudDialog
-from .dialogs.database_comparison_dialog import DatabaseComparisonDialog
+# from .dialogs.database_comparison_dialog import DatabaseComparisonDialog  # Temporarily disabled - file was removed
 from .handlers.progress_dialog_handler import progress_dialog
 from .handlers.style_handler import StyleHandler  # Import the style handler
 from .dialogs.application_help_system import ApplicationHelpSystem
@@ -1363,22 +1363,25 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "Warning", "Please log in first.")
                 return
             
-            # Open the comparison dialog
-            dialog = DatabaseComparisonDialog(
-                self.db_manager,
-                self.change_tracker,
-                self.cloud_db_handler,
-                self.user_auth_service,
-                self
-            )
+            # Open the comparison dialog - TEMPORARILY DISABLED
+            # dialog = DatabaseComparisonDialog(
+            #     self.db_manager,
+            #     self.change_tracker,
+            #     self.cloud_db_handler,
+            #     self.user_auth_service,
+            #     self
+            # )
+            # 
+            # # Show dialog
+            # result = dialog.exec_()
+            # 
+            # # If user accepted changes in the dialog, we could trigger save here
+            # if result == QDialog.Accepted:
             
-            # Show dialog
-            result = dialog.exec_()
-            
-            # If user accepted changes in the dialog, we could trigger save here
-            if result == QDialog.Accepted:
-                # User might have accepted changes - the dialog can handle this
-                pass
+            # Temporary workaround - show message
+            QMessageBox.information(self, "Feature Temporarily Disabled", 
+                                  "Database comparison feature is temporarily disabled.")
+            return
                 
         except Exception as e:
             logger.error(f"Error opening comparison dialog: {e}")
