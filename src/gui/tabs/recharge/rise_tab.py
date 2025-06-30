@@ -43,6 +43,7 @@ class RiseTab(BaseRechargeTab):
         """
         super().__init__(parent)
         self.db_manager = db_manager
+        self.data_manager = db_manager  # Fix: set data_manager for consistent behavior with other tabs
         logger.info(f"[DEBUG] RISE tab initialized with db_manager type: {type(db_manager).__name__}")
         self.selected_wells = []
         self.well_data = {}

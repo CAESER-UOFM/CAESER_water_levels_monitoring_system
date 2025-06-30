@@ -925,7 +925,7 @@ class RechargeTab(QWidget):
             
             # EMR method validation
             emr_settings = self.unified_settings.get_method_settings('EMR')
-            seasonal_periods = erc_settings.get('seasonal_periods', 4)
+            seasonal_periods = emr_settings.get('seasonal_periods', 4)
             
             if date_range_days < 365:
                 validation_results['method_suitability']['EMR']['suitable'] = False
