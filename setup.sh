@@ -213,7 +213,9 @@ cp "$CODE_DIR/Requirements.txt" "$INSTALL_DIR/"
 [[ -d "$CODE_DIR/config" ]] && cp -r "$CODE_DIR/config" "$INSTALL_DIR/"
 [[ -d "$CODE_DIR/tools" ]] && cp -r "$CODE_DIR/tools" "$INSTALL_DIR/"
 [[ -d "$CODE_DIR/assets" ]] && cp -r "$CODE_DIR/assets" "$INSTALL_DIR/"
+[[ -d "$CODE_DIR/docs" ]] && cp -r "$CODE_DIR/docs" "$INSTALL_DIR/"
 [[ -d "$CODE_DIR/Legacy_tables" ]] && cp -r "$CODE_DIR/Legacy_tables" "$INSTALL_DIR/"
+[[ -d "$CODE_DIR/well_pictures" ]] && cp -r "$CODE_DIR/well_pictures" "$INSTALL_DIR/"
 
 # Create version file
 echo "    📄 Creating version file..."

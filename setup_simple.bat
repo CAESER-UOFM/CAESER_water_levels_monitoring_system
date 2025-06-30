@@ -160,7 +160,9 @@ xcopy "%CODE_DIR%\Requirements.txt" "%INSTALL_DIR%\" /Y
 if exist "%CODE_DIR%\config" xcopy "%CODE_DIR%\config" "%INSTALL_DIR%\config\" /E /I /Y
 if exist "%CODE_DIR%\tools" xcopy "%CODE_DIR%\tools" "%INSTALL_DIR%\tools\" /E /I /Y
 if exist "%CODE_DIR%\assets" xcopy "%CODE_DIR%\assets" "%INSTALL_DIR%\assets\" /E /I /Y
+if exist "%CODE_DIR%\docs" xcopy "%CODE_DIR%\docs" "%INSTALL_DIR%\docs\" /E /I /Y
 if exist "%CODE_DIR%\Legacy_tables" xcopy "%CODE_DIR%\Legacy_tables" "%INSTALL_DIR%\Legacy_tables\" /E /I /Y
+if exist "%CODE_DIR%\well_pictures" xcopy "%CODE_DIR%\well_pictures" "%INSTALL_DIR%\well_pictures\" /E /I /Y
 
 REM Create version.json file
 echo Creating version file...

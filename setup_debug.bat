@@ -98,7 +98,12 @@ python -m pip install PyQt5==5.15.10 PyQt5_sip==12.13.0 >nul
 echo    [DEBUG] Step 9: Copying application files...
 xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y >nul
 xcopy "%CODE_DIR%\main.py" "%INSTALL_DIR%\" /Y >nul
-xcopy "%CODE_DIR%\assets" "%INSTALL_DIR%\assets\" /E /I /Y >nul 2>nul
+if exist "%CODE_DIR%\config" xcopy "%CODE_DIR%\config" "%INSTALL_DIR%\config\" /E /I /Y >nul
+if exist "%CODE_DIR%\tools" xcopy "%CODE_DIR%\tools" "%INSTALL_DIR%\tools\" /E /I /Y >nul
+if exist "%CODE_DIR%\assets" xcopy "%CODE_DIR%\assets" "%INSTALL_DIR%\assets\" /E /I /Y >nul
+if exist "%CODE_DIR%\docs" xcopy "%CODE_DIR%\docs" "%INSTALL_DIR%\docs\" /E /I /Y >nul
+if exist "%CODE_DIR%\Legacy_tables" xcopy "%CODE_DIR%\Legacy_tables" "%INSTALL_DIR%\Legacy_tables\" /E /I /Y >nul
+if exist "%CODE_DIR%\well_pictures" xcopy "%CODE_DIR%\well_pictures" "%INSTALL_DIR%\well_pictures\" /E /I /Y >nul
 
 echo    [DEBUG] Checking for icon files...
 if exist "%MAIN_ICON%" (
