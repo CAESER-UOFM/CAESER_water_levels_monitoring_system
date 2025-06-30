@@ -48,6 +48,7 @@ echo   - Virtual environment with all dependencies
 echo   - CAESER Water Levels Monitoring System
 echo   - Application launchers (main app, debug, visualizer)
 echo   - Database folders for local and cloud data
+echo   - Documentation, legacy tables, and default resources
 echo.
 echo   Installation directory: %INSTALL_DIR%
 echo.
@@ -136,6 +137,9 @@ xcopy "%CODE_DIR%\Requirements.txt" "%INSTALL_DIR%\" /Y >nul
 if exist "%CODE_DIR%\config" xcopy "%CODE_DIR%\config" "%INSTALL_DIR%\config\" /E /I /Y >nul
 if exist "%CODE_DIR%\tools" xcopy "%CODE_DIR%\tools" "%INSTALL_DIR%\tools\" /E /I /Y >nul
 if exist "%CODE_DIR%\assets" xcopy "%CODE_DIR%\assets" "%INSTALL_DIR%\assets\" /E /I /Y >nul
+if exist "%CODE_DIR%\docs" xcopy "%CODE_DIR%\docs" "%INSTALL_DIR%\docs\" /E /I /Y >nul
+if exist "%CODE_DIR%\Legacy_tables" xcopy "%CODE_DIR%\Legacy_tables" "%INSTALL_DIR%\Legacy_tables\" /E /I /Y >nul
+if exist "%CODE_DIR%\well_pictures" xcopy "%CODE_DIR%\well_pictures" "%INSTALL_DIR%\well_pictures\" /E /I /Y >nul
 
 REM Create .pyw copy of visualizer main file for GUI launching
 if exist "%INSTALL_DIR%\tools\Visualizer\main.py" copy "%INSTALL_DIR%\tools\Visualizer\main.py" "%INSTALL_DIR%\tools\Visualizer\main.pyw" >nul

@@ -121,6 +121,20 @@ CLAUDE.md
 **/CLAUDE.md
 **/.claude.md
 
+# Multi-level Claude instruction system (local development only)
+.claude_global.md
+.claude_shared_tasks.json
+.claude_team_notes.md
+.claude_branch.md
+.claude_branch_*.md
+.claude_dev_notes.md
+.claude_progress.json
+.claude_project.md
+.claude_dependencies.md
+.claude_*_TEMPLATE.md
+.claude_setup_dev.py
+**/.claude_*
+
 # IDE configuration (personal settings)
 .spyproject/
 .spyder-py3/
