@@ -32,16 +32,23 @@ class LoginDialog(QDialog):
     def _set_window_icon(self):
         """Set window icon for the login dialog"""
         try:
+            # Get the path relative to the current file, then find the icon
+            current_file = Path(__file__)
+            # From src/gui/dialogs/login_dialog.py, go up to src/gui/icons/
+            icons_dir = current_file.parent.parent / 'icons'
+            
             # Try to find the icon in the same way as main window
-            icon_path = Path('src/gui/icons/app_icon.webp')
+            icon_path = icons_dir / 'app_icon.webp'
             if not icon_path.exists():
-                icon_path = Path('src/gui/icons/app_icon.ico')
+                icon_path = icons_dir / 'app_icon.ico'
             
             if icon_path.exists():
                 self.setWindowIcon(QIcon(str(icon_path)))
                 logger.debug(f"Login dialog icon set from: {icon_path}")
             else:
-                logger.warning("Could not find app icon for login dialog")
+                logger.warning(f"Could not find app icon for login dialog at: {icon_path}")
+                # Also log the icons directory for debugging
+                logger.warning(f"Icons directory detected as: {icons_dir}")
         except Exception as e:
             logger.error(f"Error setting login dialog icon: {e}")
     
