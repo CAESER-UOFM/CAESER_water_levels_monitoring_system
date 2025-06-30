@@ -109,6 +109,9 @@ class MainWindow(QMainWindow):
         # Flag to track initialization phase
         self._initialization_phase = True
         
+        # Flag to track Google Drive authentication completion
+        self._google_drive_just_authenticated = False
+        
         # Track the current screen to detect changes
         self.current_screen = None
         
@@ -333,6 +336,9 @@ class MainWindow(QMainWindow):
                     
                     # Log that we're about to refresh databases
                     logger.info("Google Drive authentication complete, refreshing database dropdown...")
+                    
+                    # Set flag to indicate Google Drive just authenticated
+                    self._google_drive_just_authenticated = True
                     
                     # Refresh database dropdown to show cloud projects immediately
                     self._load_databases()
@@ -2828,7 +2834,13 @@ class MainWindow(QMainWindow):
                     # Reload databases from the new directory (after directory change)
                     # This is needed because authentication might have already loaded databases from the wrong path
                     logger.debug(f"Reloading databases from the correct path: {initial_folder}")
-                    self._load_databases()
+                    
+                    # Skip reload if Google Drive just authenticated to avoid clearing cloud projects
+                    if not self._google_drive_just_authenticated:
+                        self._load_databases()
+                    else:
+                        logger.info("Skipping database reload - Google Drive authentication just completed")
+                        self._google_drive_just_authenticated = False
                     
                     # Show a message to the user
                     self.status_bar.showMessage("Please select a database from the dropdown to load it", 5000)
