@@ -3,7 +3,7 @@
   "test_environment": {
     "python_version": "3.9.6 (default, Mar 12 2025, 20:22:46) \n[Clang 17.0.0 (clang-1700.0.13.3)]",
     "platform": "darwin",
-    "working_directory": "/Users/bmac/Documents/GitHub/water_levels_monitoring_(for_external_edits)/tools/Visualizer/gui/tabs/recharge"
+    "working_directory": "/tools/Visualizer/gui/tabs/recharge"
   },
   "phases_tested": [
     "Phase 2: Unified Settings",

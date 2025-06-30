@@ -334,9 +334,8 @@ class MainWindow(QMainWindow):
                     # Log that we're about to refresh databases
                     logger.info("Google Drive authentication complete, refreshing database dropdown...")
                     
-                    # Refresh database dropdown to show cloud projects
-                    # Use QTimer to ensure UI is ready and avoid timing issues
-                    QTimer.singleShot(100, self._load_databases)
+                    # Refresh database dropdown to show cloud projects immediately
+                    self._load_databases()
                     
                     return True
                 else:

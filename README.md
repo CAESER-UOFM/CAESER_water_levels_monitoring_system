@@ -1,83 +1,122 @@
-# CAESER Water Levels Monitoring System
+# 🌊 CAESER Water Levels Monitoring System
 
-A comprehensive desktop application for water level data management and analysis. The system automatically imports Solinst XLE files, performs barometric pressure compensation, tracks transducer locations, and synchronizes data across multiple monitoring sites through Google Drive integration.
+Desktop app for processing water level data that doesn't suck. Built by groundwater nerds, for groundwater nerds.
 
-Built for groundwater professionals, researchers, and environmental consultants, this application streamlines the entire workflow from field data collection to analysis and reporting. Features include automated data processing, quality control algorithms, interactive visualizations, manual reading integration, and cloud-based collaboration tools for multi-user projects.
+## What it does (the important stuff)
 
-## 🚀 Quick Installation
+**Turns your XLE files into actual insights** - Import Solinst data, apply barometric correction, calculate recharge rates, and get your plots looking publication-ready. Plus it syncs with Google Drive so your whole team can collaborate without the usual file-sharing chaos.
 
-1. **Download the application:**
-   - **[📥 Download Latest Release](../../releases/latest)** (Recommended)
-   - Or click the green **"Code"** button above → **"Download ZIP"**
-   - Extract to a folder on your computer
+**Key features:**
+- **Solinst support** - XLE and LEV files work out of the box
+- **Barometric compensation** - Because atmospheric pressure is annoying but necessary
+- **Recharge calculations** - RISE, MRC, and ERC methods (with the math actually working)
+- **Team collaboration** - Google Drive sync that handles conflicts intelligently
+- **Interactive maps** - See where your wells are and what they're doing
+- **Export everything** - CSV, plots, whatever format you need
 
-2. **Run the installer:**
-   - **Windows:** Double-click `setup.bat` (shows professional installation dialog)
-   - **macOS/Linux:** Open terminal, navigate to folder, run `chmod +x setup.sh && ./setup.sh`
+**Also handles:**
+- Manual readings integration
+- Batch processing (drag & drop multiple files)
+- Quality control flagging
+- Telemetry data from MONET
+- Web visualizer for field access
 
-   > **🏛️ University/Corporate Users:** If Windows shows a SmartScreen warning:
-   > 1. Click **"More info"** → **"Run anyway"**
-   > 2. Or right-click `setup.bat` → **Properties** → Check **"Unblock"** → Click **OK**
-   > 
-   > The installer doesn't require administrator rights and installs only to your user profile.
+## Installation (actually easy)
 
-3. **Launch the application:**
-   - Use the launchers created in your installation directory
-   - **Windows:** `water_levels_app.bat` (or `water_levels_app_debug.bat` for troubleshooting)
-   - **macOS/Linux:** `water_levels_app.command` (or `water_levels_app_debug.command` for troubleshooting)
+**Step 1:** Download the latest release  
+**Step 2:** Run `setup.bat` (Windows) or `setup.sh` (Mac/Linux)  
+**Step 3:** Launch using the shortcut it creates
 
-## 🎯 Getting Started
+That's it. No admin rights needed, installs to your user folder, doesn't mess with your system.
 
-1. **Launch the application** using the launchers from your installation directory
-2. **Access the built-in help system** via the **❓ Help** button in the main window
-3. **Import your first XLE files** using the Water Level tab
-4. **Follow the guided workflows** for data processing and analysis
+*University/corporate users:* If Windows shows a SmartScreen warning, just click "More info" → "Run anyway". This is normal for new software.
 
-## ☁️ Google Drive Sync (CAESER Members)
+## Getting started
 
-**For CAESER team members with authorized access:**
-- Full Google Drive synchronization capabilities
-- Shared databases across research sites
-- Automatic cloud backup and collaboration features
-- **Download credentials:** [CAESER Google Drive Access](https://drive.google.com/file/d/1Qn4jAPXTrT7GBzU6JdG6W-KogT4yZBlR/view?usp=drive_link)
-- Setup via: **Update** → **Setup Google Credentials** in the application
+**First time using it?**
+1. Launch the app and create a user account
+2. Import some barologger data (atmospheric pressure - you'll thank us later)
+3. Import your water level XLE files
+4. Watch the magic happen as it automatically applies corrections
+5. Calculate some recharge estimates and export your results
 
-**For independent researchers:**
-- Full application functionality with local databases
-- Create your own Google Cloud project for custom cloud sync
-- All core features available without cloud integration
+**The app has 5 main tabs:**
+- **Database** - Map view of your wells and data management
+- **Barologger** - Import atmospheric pressure data  
+- **Water Level** - Main data processing and visualization
+- **Recharge** - Calculate recharge rates using different methods
+- **Runs** - Track field monitoring campaigns
 
-## 🔧 System Requirements
+## For different users
 
-- **Windows:** 10 or later | **macOS:** 10.14+ | **Linux:** Ubuntu 18.04+
-- **RAM:** 4GB+ recommended
-- **Storage:** 2GB+ free space
-- **Internet:** Required for updates and cloud features (optional)
+**CAESER team members:** Contact the maintainer for Google Drive credentials to enable full cloud sync and collaboration features.
 
-## 🏛️ University/Corporate Installation
+**Independent researchers:** Everything works locally out of the box. You can set up your own Google Drive integration if you want cloud collaboration.
 
-**Perfect for institutional environments with security restrictions:**
+**Need other sensor support?** The app is modular - currently supports Solinst natively, but Campbell Scientific and In-Situ support is coming. Hit us up if you need something specific.
 
-- ✅ **No administrator rights required** - installs to user profile only
-- ✅ **No system modifications** - doesn't touch Program Files or registry  
-- ✅ **Portable installation** - contained within user directory
-- ✅ **SmartScreen warning is normal** - click "More info" → "Run anyway"
-- ✅ **Safe for IT policies** - no elevated permissions needed
-- ✅ **Easy removal** - just delete the installation folder
+## 🖥️ **System Requirements**
+- **OS**: Windows 10+ | macOS 10.14+ | Linux Ubuntu 18.04+
+- **RAM**: 4GB+ (8GB+ recommended for large datasets)  
+- **Storage**: 2GB+ free space
+- **Internet**: Optional (required only for updates and cloud features)
 
-## 📊 Future Access Levels
+## 🛠️ **Professional Features**
 
-**Coming Soon - Multiple Access Tiers:**
-- **🏛️ Public Web Visualizer:** County-wide water levels, statistics, and recharge estimates
-- **🔬 CAESER Researcher Access:** Advanced visualizer tools and collaborative features  
-- **💻 Full Desktop Application:** Complete data management and analysis suite (this repository)
+### **🔬 Scientific Analysis Tools**
+- **Multiple Recharge Methods**: RISE, MRC, ERC with parameter customization
+- **Statistical Analysis**: Well statistics, trend analysis, data quality metrics
+- **Publication Graphics**: High-resolution plots with customizable styling
+- **Data Export**: CSV, JSON, and database formats for further analysis
 
-## 📞 Support
+### **🌐 Web-Based Visualization**
+- **Mobile Visualizer**: Responsive web interface for field access
+- **Turso Integration**: Cloud database with real-time synchronization  
+- **API Access**: RESTful endpoints for custom integrations
+- **Offline Capability**: PWA support for field work without internet
 
-- **Built-in Help:** Use the ❓ Help button in the application
-- **Issues:** [Report problems here](../../issues)
-- **CAESER Members:** Contact repository maintainer for Google Drive access
+### **🔧 Modular Sensor Support**
+- **Current**: Full Solinst integration (XLE, LEV formats)
+- **Expanding**: Campbell Scientific, In-Situ, OTT HydroMet compatibility
+- **Legacy**: CSV import, manual readings, telemetry data integration
+- **Custom**: Open architecture for proprietary sensor integration
+
+### **🤖 AI & Database Integration**  
+- **SQLite Foundation**: Optimized for LLM and AI analysis integration
+- **Smart Queries**: Natural language database interaction (coming soon)
+- **Pattern Recognition**: Automated anomaly detection and quality control
+- **Predictive Analytics**: Machine learning integration for trend forecasting
+
+## 🚀 **Future Development Roadmap**
+
+### **Phase 1 (Current)**: Core Platform
+✅ Multi-sensor integration and cloud collaboration  
+✅ Advanced visualization and recharge calculations  
+✅ Web-based tools and mobile interface
+
+### **Phase 2 (Near-term)**: AI Integration  
+🔄 Natural language database queries  
+🔄 Automated report generation  
+🔄 Predictive modeling integration  
+🔄 Advanced pattern recognition
+
+### **Phase 3 (Long-term)**: Ecosystem Expansion
+🔄 Public web visualizer for county-wide data  
+🔄 Real-time telemetry network integration  
+🔄 Multi-agency collaboration platform  
+🔄 Advanced research tools and publications support
+
+## 📞 **Support & Community**
+
+- **📖 Documentation**: Built-in help system with comprehensive guides
+- **🐛 Issues**: [Report bugs and request features](../../issues)  
+- **👥 CAESER Network**: Contact maintainer for research collaboration access
+- **💬 Community**: Join discussions and share integration experiences
 
 ---
 
-**Ready to start monitoring?** **[📥 Download the latest release](../../releases/latest)** and run the installer!
+## 🎯 **Ready to Transform Your Water Level Monitoring?**
+
+**[📥 Download Latest Release](../../releases/latest)** → **Run Installer** → **Start Analyzing**
+
+*Professional groundwater monitoring made simple, powerful, and collaborative.*

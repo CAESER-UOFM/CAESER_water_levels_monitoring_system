@@ -74,3 +74,6 @@ databases/temp/
 *.backup
 # Local Netlify folder
 .netlify
+
+# GitHub token (keep local)
+.github_token
