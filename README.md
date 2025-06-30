@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![CAESER Mascot](src/gui/icons/app_icon.webp)
+<img src="src/gui/icons/app_icon.webp" alt="CAESER Mascot" width="200">
 
 **Professional water level data processing and analysis**
 
