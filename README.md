@@ -1,6 +1,6 @@
-# CAESER Water Levels Monitoring System
-
 <div align="center">
+
+# CAESER Water Levels Monitoring System
 
 <img src="src/gui/icons/app_icon.webp" alt="CAESER Mascot" width="200">
 
@@ -76,11 +76,10 @@
 
 Desktop application for processing water level data from Solinst loggers with automated barometric compensation, recharge calculations, and team collaboration.
 
-## 🚀 Quick Install
-*🏠 [Home](#navigation-menu) > 🚀 Installation*
+<details>
+<summary><h2>🚀 Quick Install</h2></summary>
 
-<details open>
-<summary><b>📥 Download & Install (2 minutes)</b></summary>
+*🏠 [Home](#navigation-menu) > 🚀 Installation*
 
 ### Step 1: Download
 <div align="center">
@@ -144,7 +143,9 @@ chmod +x setup.sh && ./setup.sh
 
 ---
 
-## 📊 Features
+<details>
+<summary><h2>📊 Features</h2></summary>
+
 *🏠 [Home](#navigation-menu) > 📊 Features* | <div align="right"><a href="#navigation-menu">⬆️ Back to Top</a></div>
 
 <table>
@@ -190,7 +191,10 @@ chmod +x setup.sh && ./setup.sh
 </tr>
 </table>
 
-## 🎯 Getting Started
+</details>
+
+<details>
+<summary><h2>🎯 Getting Started</h2></summary>
 
 <div align="right"><a href="#navigation-menu">⬆️ Back to Top</a></div>
 
@@ -238,7 +242,10 @@ chmod +x setup.sh && ./setup.sh
 
 ---
 
-## 🌐 Integration
+</details>
+
+<details>
+<summary><h2>🌐 Integration</h2></summary>
 
 <div align="right"><a href="#navigation-menu">⬆️ Back to Top</a></div>
 
@@ -264,7 +271,10 @@ chmod +x setup.sh && ./setup.sh
 
 ---
 
-## 💬 Support
+</details>
+
+<details>
+<summary><h2>💬 Support</h2></summary>
 
 <div align="right"><a href="#navigation-menu">⬆️ Back to Top</a></div>
 
@@ -303,6 +313,8 @@ chmod +x setup.sh && ./setup.sh
 </details>
 
 ---
+
+</details>
 
 <div align="center">
 
