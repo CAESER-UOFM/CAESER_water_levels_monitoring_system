@@ -684,6 +684,11 @@ class MainWindow(QMainWindow):
     
     def _load_databases(self):
         """Load available databases into the combo box."""
+        # Prevent duplicate concurrent loading
+        if self._loading_databases:
+            logger.debug("Database loading already in progress, skipping duplicate call")
+            return
+            
         # Set the loading flag
         self._loading_databases = True
         
