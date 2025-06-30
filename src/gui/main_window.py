@@ -30,6 +30,7 @@ from .tabs.barologger_tab import BarologgerTab
 from .tabs.water_level_tab import WaterLevelTab
 from .tabs.recharge.recharge_tab import RechargeTab
 from .tabs.water_level_runs_tab import WaterLevelRunsTab
+from .tabs.geophysical_data_tab import GeophysicalDataTab
 from ..database.manager import DatabaseManager
 from .handlers.settings_handler import SettingsHandler
 # Legacy Google Drive dialog - replaced by UnifiedCredentialsDialog
@@ -600,10 +601,11 @@ class MainWindow(QMainWindow):
         self._add_barologger_tab()
         self._add_water_level_tab()
         self._add_recharge_tab()
+        self._add_geophysical_data_tab()
         self._add_water_level_runs_tab()
         
         # Initially disable runs tab and style it appropriately (no database loaded)
-        self.tab_widget.setTabEnabled(4, False)
+        self.tab_widget.setTabEnabled(5, False)  # Runs tab is now index 5
         self._update_runs_tab_style(False)
         
         # Add tab widget to main layout
@@ -1260,14 +1262,14 @@ class MainWindow(QMainWindow):
                     self._tabs["water_level_runs"].refresh_data()
                 except Exception as e:
                     logger.debug(f"Runs tab refresh: {e}")
-            self.tab_widget.setTabEnabled(4, True)  # Enable runs tab
+            self.tab_widget.setTabEnabled(5, True)  # Enable runs tab
             self._update_runs_tab_style(True)  # Style as enabled/cloud
         else:
-            self.tab_widget.setTabEnabled(4, False)  # Disable runs tab for local
+            self.tab_widget.setTabEnabled(5, False)  # Disable runs tab for local
             self._update_runs_tab_style(False)  # Style as disabled/local
         
         # Enable the other tabs
-        for i in range(4):  # Database, Barologger, Water Level, Recharge tabs
+        for i in range(5):  # Database, Barologger, Water Level, Recharge, Geophysical Data tabs
             self.tab_widget.setTabEnabled(i, True)
         
         # Close progress dialog
@@ -3011,6 +3013,12 @@ class MainWindow(QMainWindow):
         self._tabs["recharge"] = tab
         self.tab_widget.addTab(tab, "Recharge")
         
+    def _add_geophysical_data_tab(self):
+        """Add the geophysical data tab"""
+        tab = GeophysicalDataTab(self.db_manager)
+        self._tabs["geophysical_data"] = tab
+        self.tab_widget.addTab(tab, "Geophysical Data")
+        
     def _add_water_level_runs_tab(self):
         """Add the water level runs tab"""
         # Always add the Runs tab, removing the guest check
@@ -3382,15 +3390,18 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
             if result == QDialog.Accepted:
                 # Settings were updated, reload Google Drive components
                 try:
-                    # Reinitialize Google Drive service
+                    # Reinitialize Google Drive service completely
                     if hasattr(self, 'drive_service'):
-                        logger.info("Force re-authenticating Google Drive service")
+                        logger.info("Reinitializing Google Drive service with new credentials")
+                        # Create a fresh Google Drive service instance with updated settings
+                        from src.gui.handlers.google_drive_service import GoogleDriveService
+                        self.drive_service = GoogleDriveService(self.settings_handler)
                         auth_result = self.drive_service.authenticate(force=True)
                         logger.info(f"Google Drive authentication result: {auth_result}")
                         logger.info(f"Google Drive service authenticated: {self.drive_service.authenticated}")
                     
                     # Reinitialize cloud database handler with new settings
-                    if self.drive_service.authenticated:
+                    if self.drive_service and self.drive_service.authenticated:
                         logger.info("Reinitializing Google Drive components after credential setup")
                         
                         # Initialize Cloud database handler
@@ -3565,26 +3576,21 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
             QMessageBox.critical(self, "Database Creation Error", f"Failed to create database: {str(e)}")
 
     def _create_new_database(self):
-        """Create a new database (local only)."""
+        """Create a new database with optional CSV pre-population."""
         try:
-            # Create local database only
-            file_path, _ = QFileDialog.getSaveFileName(
-                self,
-                "Create New Database",
-                str(Path()),
-                "Database files (*.db)"
-            )
+            # Import the database setup dialog
+            from .dialogs.database_setup_dialog import DatabaseSetupDialog
             
-            if file_path:
-                # Show progress dialog
-                progress_dialog.show("Creating new database...", "Database Creation", min_duration=0)
-                progress_dialog.update(10, "Initializing database structure...")
-                QApplication.processEvents()  # Process events to update UI
-                
-                # Create the database
-                QTimer.singleShot(100, lambda: self._perform_database_creation(file_path))
+            # Show the database setup dialog
+            setup_dialog = DatabaseSetupDialog(self)
+            if setup_dialog.exec_() == QDialog.Accepted:
+                # If a database was created, load it
+                if hasattr(setup_dialog, '_created_db_path') and setup_dialog._created_db_path:
+                    self.db_manager.open_database(setup_dialog._created_db_path)
+                    # Database was created successfully, refresh the UI
+                    self._update_db_info_label()
+                    self.status_bar.showMessage("New database created and loaded successfully", 3000)
             
         except Exception as e:
             logger.error(f"Error creating database: {e}")
-            progress_dialog.close()  # Make sure to close the dialog on error
             QMessageBox.critical(self, "Error", f"Failed to create database: {str(e)}")
