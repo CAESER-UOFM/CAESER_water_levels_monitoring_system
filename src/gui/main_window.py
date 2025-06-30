@@ -3565,26 +3565,21 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
             QMessageBox.critical(self, "Database Creation Error", f"Failed to create database: {str(e)}")
 
     def _create_new_database(self):
-        """Create a new database (local only)."""
+        """Create a new database with optional CSV pre-population."""
         try:
-            # Create local database only
-            file_path, _ = QFileDialog.getSaveFileName(
-                self,
-                "Create New Database",
-                str(Path()),
-                "Database files (*.db)"
-            )
+            # Import the database setup dialog
+            from .dialogs.database_setup_dialog import DatabaseSetupDialog
             
-            if file_path:
-                # Show progress dialog
-                progress_dialog.show("Creating new database...", "Database Creation", min_duration=0)
-                progress_dialog.update(10, "Initializing database structure...")
-                QApplication.processEvents()  # Process events to update UI
-                
-                # Create the database
-                QTimer.singleShot(100, lambda: self._perform_database_creation(file_path))
+            # Show the database setup dialog
+            setup_dialog = DatabaseSetupDialog(self)
+            if setup_dialog.exec_() == QDialog.Accepted:
+                # If a database was created, load it
+                if hasattr(setup_dialog, '_created_db_path') and setup_dialog._created_db_path:
+                    self.db_manager.open_database(setup_dialog._created_db_path)
+                    # Database was created successfully, refresh the UI
+                    self._update_db_info_label()
+                    self.status_bar.showMessage("New database created and loaded successfully", 3000)
             
         except Exception as e:
             logger.error(f"Error creating database: {e}")
-            progress_dialog.close()  # Make sure to close the dialog on error
             QMessageBox.critical(self, "Error", f"Failed to create database: {str(e)}")
