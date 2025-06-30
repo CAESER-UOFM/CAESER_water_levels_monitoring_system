@@ -216,16 +216,14 @@ class WaterLevelModel(BaseModel):
             
             # Add missing columns to match transducer readings format
             if not df.empty:
-                # Add pressure column (derived from dtw if available)
-                if 'dtw' in df.columns:
-                    # Use a dummy pressure value based on dtw
-                    df['pressure'] = df['dtw'] * 0.43  # Approximate PSI per foot
-                else:
-                    df['pressure'] = None
+                # Don't create dummy pressure values from DTW - telemetry provides direct water levels
+                # Leave pressure as None since telemetry doesn't measure pressure
+                df['pressure'] = None
+                df['water_pressure'] = None
                     
                 # Add standard flags
-                df['baro_flag'] = 'standard'
-                df['level_flag'] = 'telemetry'
+                df['baro_flag'] = 'telemetry_direct'  # Distinguish from pressure-based readings
+                df['level_flag'] = 'telemetry_direct'  # Direct water level measurement
             
             # Close connection if we created it
             if close_conn:

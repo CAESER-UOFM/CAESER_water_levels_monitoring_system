@@ -1,0 +1,32 @@
+{
+  "timestamp": "2025-06-30T03:21:13.556485",
+  "test_type": "database_workflow",
+  "passed_tests": 3,
+  "total_tests": 3,
+  "success_rate": 100.0,
+  "test_results": {
+    "rise_workflow": {
+      "status": "PASS",
+      "calculation_id": 1,
+      "events_detected": 78,
+      "total_recharge": 1.6552637452194574,
+      "storage_verified": true,
+      "retrieval_verified": true
+    },
+    "mrc_workflow": {
+      "status": "PASS",
+      "calculation_id": 1,
+      "periods_detected": 18,
+      "total_recharge": 2.021701505641687,
+      "storage_verified": true,
+      "retrieval_verified": true
+    },
+    "history_workflow": {
+      "status": "PASS",
+      "rise_calculations": 1,
+      "mrc_calculations": 1,
+      "details_reloadable": true,
+      "comparison_available": true
+    }
+  }
+}

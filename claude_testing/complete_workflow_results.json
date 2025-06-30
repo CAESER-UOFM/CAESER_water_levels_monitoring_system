@@ -1,0 +1,35 @@
+{
+  "timestamp": "2025-06-30T05:07:05.873346",
+  "test_type": "complete_workflow",
+  "project_name": "TEST_COMPLETE_20250630_050705",
+  "passed_tests": 2,
+  "total_tests": 5,
+  "success_rate": 40.0,
+  "test_results": {
+    "database_creation": {
+      "status": "PASS",
+      "tables_count": 19,
+      "missing_tables": [],
+      "xle_column_exists": true,
+      "database_path": "/var/folders/rx/h1jl5xv16cvgb_y2qzhn8wmh0000gn/T/complete_test_d5pai01j/TEST_COMPLETE_20250630_050705.db"
+    },
+    "sample_data": {
+      "status": "PASS",
+      "wells": 2,
+      "readings": 100,
+      "pending_xle_files": 1
+    },
+    "recharge_calculations": {
+      "status": "FAIL",
+      "error": "No test data"
+    },
+    "xle_tracking": {
+      "status": "FAIL",
+      "error": "attempted relative import beyond top-level package"
+    },
+    "complete_sync": {
+      "status": "FAIL",
+      "error": "attempted relative import beyond top-level package"
+    }
+  }
+}

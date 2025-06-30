@@ -30,9 +30,12 @@ class SolinstMetadata:
 
 class SolinstReader:
     
-    # Conversion factors
-    M_TO_FT = 3.28084     # Meters to Feet
-    KPA_TO_PSI = 0.145038 # Kilopascals to PSI
+    # Conversion factors - using exact values for precision
+    M_TO_FT = 3.280839895     # Meters to Feet (exact conversion)
+    KPA_TO_PSI = 0.145037738  # Kilopascals to PSI (exact conversion)
+    
+    # Water pressure conversion - exact value
+    FT_TO_PSI_WATER = 0.43307  # Feet of water column to PSI (exact)
     
     # Known instrument type and model combinations for barologgers
     BAROLOGGER_TYPES = {

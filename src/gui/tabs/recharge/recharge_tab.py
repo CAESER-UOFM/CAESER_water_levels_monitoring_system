@@ -61,6 +61,12 @@ class RechargeTab(QWidget):
         self.processed_data = None
         self.preprocessing_timestamp = None
         
+        # Add caching for well data to prevent redundant database queries
+        self.wells_cache = {}
+        self.aquifers_cache = []
+        self.current_db_path = None
+        self.loading_wells = False  # Prevent concurrent loading
+        
         
         # Load saved settings and preferences
         self._load_saved_settings()
@@ -159,8 +165,15 @@ class RechargeTab(QWidget):
         return group_box
     
     def load_aquifer_filters(self):
-        """Load aquifer options for filtering."""
+        """Load aquifer options for filtering with caching."""
         if not self.db_manager or not self.db_manager.current_db:
+            return
+        
+        # Check if we need to reload data (database changed)
+        if (self.current_db_path == self.db_manager.current_db and 
+            self.aquifers_cache):
+            logger.debug("[FILTER_DEBUG] Using cached aquifer data")
+            self._populate_aquifer_combo()
             return
             
         try:
@@ -169,35 +182,63 @@ class RechargeTab(QWidget):
                 cursor.execute("SELECT DISTINCT aquifer FROM wells WHERE aquifer IS NOT NULL ORDER BY aquifer")
                 aquifers = cursor.fetchall()
                 
-                self.aquifer_combo.clear()
-                self.aquifer_combo.addItem("All Aquifers", None)
+                # Update cache
+                self.aquifers_cache = [aquifer[0] for aquifer in aquifers]
+                self.current_db_path = self.db_manager.current_db
+                logger.debug(f"[FILTER_DEBUG] Loaded {len(self.aquifers_cache)} aquifers from database")
                 
-                shal_index = -1  # Track SHAL aquifer index for default selection
-                for i, aquifer in enumerate(aquifers):
-                    self.aquifer_combo.addItem(aquifer[0], aquifer[0])
-                    # Check if this is the SHAL aquifer (case-insensitive)
-                    if aquifer[0].upper() == "SHAL":
-                        shal_index = i + 1  # +1 because "All Aquifers" is at index 0
-                
-                # Set SHAL as default selection if it exists
-                if shal_index != -1:
-                    self.aquifer_combo.setCurrentIndex(shal_index)
-                    # Trigger the filter change to load SHAL wells immediately
-                    self.load_wells("SHAL")
+                self._populate_aquifer_combo()
                     
         except Exception as e:
             logger.error(f"Error loading aquifer filters: {e}")
     
+    def _populate_aquifer_combo(self):
+        """Populate aquifer combo box from cache."""
+        self.aquifer_combo.clear()
+        self.aquifer_combo.addItem("All Aquifers", None)
+        
+        shal_index = -1  # Track SHAL aquifer index for default selection
+        for i, aquifer in enumerate(self.aquifers_cache):
+            self.aquifer_combo.addItem(aquifer, aquifer)
+            # Check if this is the SHAL aquifer (case-insensitive)
+            if aquifer.upper() == "SHAL":
+                shal_index = i + 1  # +1 because "All Aquifers" is at index 0
+        
+        # Set SHAL as default selection if it exists, but only load wells once
+        if shal_index != -1:
+            self.aquifer_combo.setCurrentIndex(shal_index)
+            # Only load wells if cache is empty or database changed
+            if "SHAL" not in self.wells_cache:
+                self.load_wells("SHAL")
+    
     def load_wells(self, aquifer_filter=None):
-        """Load wells for selection, optionally filtered by aquifer."""
+        """Load wells for selection with caching and concurrency protection."""
         if not self.db_manager or not self.db_manager.current_db:
             return
+        
+        # Prevent concurrent loading
+        if self.loading_wells:
+            logger.debug("[FILTER_DEBUG] Wells loading already in progress, skipping duplicate call")
+            return
+        
+        # Use cache key for this filter
+        cache_key = aquifer_filter or "ALL"
+        
+        # Check cache first if database hasn't changed
+        if (self.current_db_path == self.db_manager.current_db and 
+            cache_key in self.wells_cache):
+            logger.debug(f"[FILTER_DEBUG] Using cached wells for filter '{aquifer_filter}'")
+            self._populate_wells_combo(self.wells_cache[cache_key])
+            return
             
+        # Set loading flag to prevent concurrent calls
+        self.loading_wells = True
+        
         try:
             with sqlite3.connect(self.db_manager.current_db) as conn:
                 cursor = conn.cursor()
                 
-                logger.info(f"[FILTER_DEBUG] Loading wells with aquifer_filter='{aquifer_filter}'")
+                logger.debug(f"[FILTER_DEBUG] Loading wells from database with aquifer_filter='{aquifer_filter}'")
                 if aquifer_filter:
                     cursor.execute("""
                         SELECT well_number, aquifer, latitude, longitude 
@@ -213,22 +254,33 @@ class RechargeTab(QWidget):
                     """)
                     
                 wells = cursor.fetchall()
-                logger.info(f"[FILTER_DEBUG] Found {len(wells)} wells after filtering")
+                logger.debug(f"[FILTER_DEBUG] Found {len(wells)} wells from database")
                 
-                self.well_combo.clear()
-                self.well_combo.addItem("-- Select Well --", None)
+                # Update cache
+                self.wells_cache[cache_key] = wells
+                self.current_db_path = self.db_manager.current_db
                 
-                for well in wells:
-                    well_number, aquifer, lat, lng = well
-                    display_text = f"{well_number}"
-                    if aquifer:
-                        display_text += f" ({aquifer})"
-                    self.well_combo.addItem(display_text, well_number)
-                    
-                logger.info(f"[FILTER_DEBUG] Added {len(wells)} wells to dropdown")
+                self._populate_wells_combo(wells)
                     
         except Exception as e:
             logger.error(f"Error loading wells: {e}")
+        finally:
+            # Always clear loading flag
+            self.loading_wells = False
+    
+    def _populate_wells_combo(self, wells):
+        """Populate wells combo box from provided well data."""
+        self.well_combo.clear()
+        self.well_combo.addItem("-- Select Well --", None)
+        
+        for well in wells:
+            well_number, aquifer, lat, lng = well
+            display_text = f"{well_number}"
+            if aquifer:
+                display_text += f" ({aquifer})"
+            self.well_combo.addItem(display_text, well_number)
+            
+        logger.debug(f"[FILTER_DEBUG] Populated dropdown with {len(wells)} wells")
     
     def on_aquifer_filter_changed(self, aquifer_text):
         """Handle aquifer filter change."""
@@ -347,10 +399,17 @@ class RechargeTab(QWidget):
         """Handle database selection changes from main app."""
         logger.debug(f"Recharge tab syncing to database: {db_name}")
         
-        # Reload well data when database changes
+        # Clear caches when database changes
+        if self.current_db_path != self.db_manager.current_db:
+            logger.debug("[FILTER_DEBUG] Database changed, clearing wells and aquifer cache")
+            self.wells_cache.clear()
+            self.aquifers_cache.clear()
+            self.current_db_path = None
+        
+        # Reload well data when database changes (will use cache if available)
         if hasattr(self, 'aquifer_combo') and hasattr(self, 'well_combo'):
             self.load_aquifer_filters()
-            self.load_wells()
+            # Don't call load_wells() directly - it will be called by load_aquifer_filters() if needed
         
         # Clear current selection
         self.current_well_id = None
@@ -925,7 +984,7 @@ class RechargeTab(QWidget):
             
             # EMR method validation
             emr_settings = self.unified_settings.get_method_settings('EMR')
-            seasonal_periods = erc_settings.get('seasonal_periods', 4)
+            seasonal_periods = emr_settings.get('seasonal_periods', 4)
             
             if date_range_days < 365:
                 validation_results['method_suitability']['EMR']['suitable'] = False

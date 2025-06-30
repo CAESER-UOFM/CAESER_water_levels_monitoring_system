@@ -458,6 +458,11 @@ class WellDialog(QDialog):
                     transducer_count = cursor.rowcount
                     logger.info(f"Deleted {transducer_count} records from water_level_readings")
                     
+                    # Track the deletion for proposal system
+                    if hasattr(self.well_model, 'db_manager') and self.well_model.db_manager and hasattr(self.well_model.db_manager, 'change_tracker') and self.well_model.db_manager.change_tracker:
+                        logger.info(f"Tracking bulk deletion of {transducer_count} water level records for well {well_number}")
+                        self.well_model.db_manager.change_tracker.track_bulk_water_level_delete(well_number, transducer_count)
+                    
                     # Also reset the well's flag status
                     try:
                         cursor.execute("""

@@ -162,6 +162,24 @@ class ChangeTracker:
             }
         )
     
+    def track_bulk_water_level_delete(self, well_number: str, record_count: int) -> str:
+        """Track bulk deletion of water level readings for a well"""
+        return self.track_change(
+            change_type=ChangeType.MANUAL,
+            action=ChangeAction.DELETE,
+            table_name="water_level_readings",
+            record_id=well_number,
+            field_name=None,
+            old_value=f"{record_count} records",
+            new_value=None,
+            description=f"Deleted {record_count} water level readings for well {well_number}",
+            context={
+                "well_number": well_number,
+                "ui_action": "bulk_delete",
+                "record_count": record_count
+            }
+        )
+    
     def get_changes_summary(self) -> Dict[str, Any]:
         """Get a summary of all tracked changes"""
         if not self.changes:
@@ -231,3 +249,100 @@ class ChangeTracker:
                 descriptions.append(change.description)
         
         return "; ".join(descriptions[:5])  # Limit to first 5 changes
+    
+    def extract_proposal_data(self) -> Dict[str, Any]:
+        """
+        Extract proposal data for creating reduced database proposals.
+        
+        Returns:
+            Dictionary containing organized change data for proposal creation
+        """
+        if not self.changes:
+            return {"changes": {}, "statistics": {"total_records_affected": 0}}
+        
+        # Organize changes by table and action
+        changes_by_table = {}
+        affected_records = set()
+        
+        for change in self.changes:
+            table = change.table_name
+            if table not in changes_by_table:
+                changes_by_table[table] = {
+                    "added": [],
+                    "modified": [],
+                    "deleted": []
+                }
+            
+            # Track affected records for statistics
+            affected_records.add(f"{table}:{change.record_id}")
+            
+            change_data = {
+                "id": change.id,
+                "timestamp": change.timestamp,
+                "user": change.user,
+                "record_id": change.record_id,
+                "field_name": change.field_name,
+                "old_value": change.old_value,
+                "new_value": change.new_value,
+                "description": change.description,
+                "context": change.context
+            }
+            
+            if change.action == ChangeAction.INSERT:
+                changes_by_table[table]["added"].append(change_data)
+            elif change.action == ChangeAction.UPDATE:
+                changes_by_table[table]["modified"].append(change_data)
+            elif change.action == ChangeAction.DELETE:
+                changes_by_table[table]["deleted"].append(change_data)
+        
+        # Generate statistics
+        statistics = {
+            "total_records_affected": len(affected_records),
+            "total_changes": len(self.changes),
+            "tables_modified": list(changes_by_table.keys()),
+            "session_id": self.session_id,
+            "change_types": {
+                "automatic": len([c for c in self.changes if c.change_type == ChangeType.AUTOMATIC]),
+                "manual": len([c for c in self.changes if c.change_type == ChangeType.MANUAL])
+            },
+            "actions": {
+                "inserts": len([c for c in self.changes if c.action == ChangeAction.INSERT]),
+                "updates": len([c for c in self.changes if c.action == ChangeAction.UPDATE]),
+                "deletes": len([c for c in self.changes if c.action == ChangeAction.DELETE])
+            }
+        }
+        
+        return {
+            "changes": changes_by_table,
+            "statistics": statistics
+        }
+    
+    def get_affected_record_ids(self, table_name: str) -> Dict[str, List]:
+        """
+        Get lists of affected record IDs for a specific table.
+        Used for creating reduced databases that only contain changed records.
+        
+        Args:
+            table_name: Name of the table to analyze
+            
+        Returns:
+            Dictionary with lists of record IDs by action type
+        """
+        affected_ids = {
+            "added": [],
+            "modified": [],
+            "deleted": []
+        }
+        
+        for change in self.changes:
+            if change.table_name == table_name:
+                record_id = change.record_id
+                
+                if change.action == ChangeAction.INSERT and record_id not in affected_ids["added"]:
+                    affected_ids["added"].append(record_id)
+                elif change.action == ChangeAction.UPDATE and record_id not in affected_ids["modified"]:
+                    affected_ids["modified"].append(record_id)
+                elif change.action == ChangeAction.DELETE and record_id not in affected_ids["deleted"]:
+                    affected_ids["deleted"].append(record_id)
+        
+        return affected_ids

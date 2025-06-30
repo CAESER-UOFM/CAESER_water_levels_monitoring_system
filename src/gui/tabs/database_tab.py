@@ -282,7 +282,7 @@ class DatabaseTab(QWidget):
                 # No well data available
                 if not well_stats:
                     logger.debug("No well data available for map")
-                    self._show_empty_map()
+                    self._show_empty_map_fallback()
                     return
             except Exception as e:
                 logger.warning(f"PERF: Could not fetch well stats from statistics table: {e}")
@@ -538,6 +538,44 @@ class DatabaseTab(QWidget):
             except (PermissionError, OSError) as e:
                 logger.debug(f"Delayed cleanup failed: {e}")
                 # Not critical if it fails
+
+    def _show_empty_map_fallback(self):
+        """Show a map with no wells message - fallback when no well data is available."""
+        try:
+            from folium import Map, Marker, Icon
+            
+            # Create basic map centered on Memphis area
+            m = Map(location=[35.1495, -90.0490], zoom_start=10)
+            
+            # Add marker indicating no wells available
+            Marker(
+                location=[35.1495, -90.0490],
+                popup="No wells with coordinates found in database",
+                icon=Icon(color='red')
+            ).add_to(m)
+            
+            # Save to temp file
+            temp_dir = tempfile.gettempdir()
+            timestamp = int(time.time())
+            temp_map_path = os.path.join(temp_dir, f"empty_map_{timestamp}.html")
+            m.save(temp_map_path)
+            
+            # Clean up previous map
+            self._cleanup_previous_map()
+            self.current_map_file = temp_map_path
+            
+            # Load the empty map
+            self.map_view.setUrl(QUrl.fromLocalFile(temp_map_path))
+            logger.debug("Displayed empty map fallback")
+            
+        except Exception as e:
+            logger.error(f"Error showing empty map fallback: {e}")
+            # Show simple HTML error message
+            self.map_view.setHtml(
+                "<h3 style='color: red; text-align: center;'>"
+                "No wells found in database"
+                "</h3>"
+            )
 
     def _setup_map_polling(self):
         """Set up polling for well selection."""

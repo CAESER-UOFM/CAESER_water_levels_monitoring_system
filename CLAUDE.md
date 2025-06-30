@@ -1,4 +1,4 @@
-# Claude Instructions for CAESER Water Levels Monitoring System - Main Branch
+# Claude Instructions for CAESER Water Levels Monitoring System
 
 ## GitHub Configuration
 - **GitHub Username**: CAESER-UOFM
