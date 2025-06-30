@@ -1,122 +1,372 @@
 # 🌊 CAESER Water Levels Monitoring System
 
-Desktop app for processing water level data that doesn't suck. Built by groundwater nerds, for groundwater nerds.
+<div align="center">
 
-## What it does (the important stuff)
+![CAESER Mascot](assets/icon.png)
 
-**Turns your XLE files into actual insights** - Import Solinst data, apply barometric correction, calculate recharge rates, and get your plots looking publication-ready. Plus it syncs with Google Drive so your whole team can collaborate without the usual file-sharing chaos.
+**Professional water level data processing and analysis**
 
-**Key features:**
-- **Solinst support** - XLE and LEV files work out of the box
-- **Barometric compensation** - Because atmospheric pressure is annoying but necessary
-- **Recharge calculations** - RISE, MRC, and ERC methods (with the math actually working)
-- **Team collaboration** - Google Drive sync that handles conflicts intelligently
-- **Interactive maps** - See where your wells are and what they're doing
-- **Export everything** - CSV, plots, whatever format you need
+[![Download Latest](https://img.shields.io/badge/Download-Latest%20Release-success?style=for-the-badge&logo=download)](../../releases/latest)
+[![Documentation](https://img.shields.io/badge/Docs-Quick%20Start-blue?style=for-the-badge&logo=book)](docs/QUICK_START.md)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20|%20macOS%20|%20Linux-lightgrey?style=for-the-badge)](docs/QUICK_START.md#system-requirements)
 
-**Also handles:**
-- Manual readings integration
-- Batch processing (drag & drop multiple files)
-- Quality control flagging
-- Telemetry data from MONET
-- Web visualizer for field access
+<!-- Navigation Menu -->
+<a id="navigation-menu"></a>
+<table width="100%">
+<tr>
+<td align="center"><a href="#-quick-install"><b>🚀 Quick Install</b></a></td>
+<td align="center"><a href="#-features"><b>📊 Features</b></a></td>
+<td align="center"><a href="#-getting-started"><b>🎯 Getting Started</b></a></td>
+<td align="center"><a href="#-integration"><b>🌐 Integration</b></a></td>
+<td align="center"><a href="#-support"><b>💬 Support</b></a></td>
+</tr>
+<tr>
+<td align="center"><small>2-minute setup</small></td>
+<td align="center"><small>What it does</small></td>
+<td align="center"><small>First steps</small></td>
+<td align="center"><small>Connect systems</small></td>
+<td align="center"><small>Get help</small></td>
+</tr>
+</table>
 
-## Installation (actually easy)
+<!-- Quick Action Buttons -->
+<div align="center">
 
-**Step 1:** Download the latest release  
-**Step 2:** Run `setup.bat` (Windows) or `setup.sh` (Mac/Linux)  
-**Step 3:** Launch using the shortcut it creates
+**🎯 Most Common Actions:**
 
-That's it. No admin rights needed, installs to your user folder, doesn't mess with your system.
-
-*University/corporate users:* If Windows shows a SmartScreen warning, just click "More info" → "Run anyway". This is normal for new software.
-
-## Getting started
-
-**First time using it?**
-1. Launch the app and create a user account
-2. Import some barologger data (atmospheric pressure - you'll thank us later)
-3. Import your water level XLE files
-4. Watch the magic happen as it automatically applies corrections
-5. Calculate some recharge estimates and export your results
-
-**The app has 5 main tabs:**
-- **Database** - Map view of your wells and data management
-- **Barologger** - Import atmospheric pressure data  
-- **Water Level** - Main data processing and visualization
-- **Recharge** - Calculate recharge rates using different methods
-- **Runs** - Track field monitoring campaigns
-
-## For different users
-
-**CAESER team members:** Contact the maintainer for Google Drive credentials to enable full cloud sync and collaboration features.
-
-**Independent researchers:** Everything works locally out of the box. You can set up your own Google Drive integration if you want cloud collaboration.
-
-**Need other sensor support?** The app is modular - currently supports Solinst natively, but Campbell Scientific and In-Situ support is coming. Hit us up if you need something specific.
-
-## 🖥️ **System Requirements**
-- **OS**: Windows 10+ | macOS 10.14+ | Linux Ubuntu 18.04+
-- **RAM**: 4GB+ (8GB+ recommended for large datasets)  
-- **Storage**: 2GB+ free space
-- **Internet**: Optional (required only for updates and cloud features)
-
-## 🛠️ **Professional Features**
-
-### **🔬 Scientific Analysis Tools**
-- **Multiple Recharge Methods**: RISE, MRC, ERC with parameter customization
-- **Statistical Analysis**: Well statistics, trend analysis, data quality metrics
-- **Publication Graphics**: High-resolution plots with customizable styling
-- **Data Export**: CSV, JSON, and database formats for further analysis
-
-### **🌐 Web-Based Visualization**
-- **Mobile Visualizer**: Responsive web interface for field access
-- **Turso Integration**: Cloud database with real-time synchronization  
-- **API Access**: RESTful endpoints for custom integrations
-- **Offline Capability**: PWA support for field work without internet
-
-### **🔧 Modular Sensor Support**
-- **Current**: Full Solinst integration (XLE, LEV formats)
-- **Expanding**: Campbell Scientific, In-Situ, OTT HydroMet compatibility
-- **Legacy**: CSV import, manual readings, telemetry data integration
-- **Custom**: Open architecture for proprietary sensor integration
-
-### **🤖 AI & Database Integration**  
-- **SQLite Foundation**: Optimized for LLM and AI analysis integration
-- **Smart Queries**: Natural language database interaction (coming soon)
-- **Pattern Recognition**: Automated anomaly detection and quality control
-- **Predictive Analytics**: Machine learning integration for trend forecasting
-
-## 🚀 **Future Development Roadmap**
-
-### **Phase 1 (Current)**: Core Platform
-✅ Multi-sensor integration and cloud collaboration  
-✅ Advanced visualization and recharge calculations  
-✅ Web-based tools and mobile interface
-
-### **Phase 2 (Near-term)**: AI Integration  
-🔄 Natural language database queries  
-🔄 Automated report generation  
-🔄 Predictive modeling integration  
-🔄 Advanced pattern recognition
-
-### **Phase 3 (Long-term)**: Ecosystem Expansion
-🔄 Public web visualizer for county-wide data  
-🔄 Real-time telemetry network integration  
-🔄 Multi-agency collaboration platform  
-🔄 Advanced research tools and publications support
-
-## 📞 **Support & Community**
-
-- **📖 Documentation**: Built-in help system with comprehensive guides
-- **🐛 Issues**: [Report bugs and request features](../../issues)  
-- **👥 CAESER Network**: Contact maintainer for research collaboration access
-- **💬 Community**: Join discussions and share integration experiences
+[![📥 Download](https://img.shields.io/badge/📥-Download_Now-success?style=flat-square)](../../releases/latest) 
+[![🖥️ Windows Help](https://img.shields.io/badge/🖥️-Windows_Setup-blue?style=flat-square)](docs/QUICK_WINDOWS_SETUP.md)
+[![📚 Quick Start](https://img.shields.io/badge/📚-Quick_Start-orange?style=flat-square)](docs/QUICK_START.md)
+[![❓ Help](https://img.shields.io/badge/❓-Get_Help-red?style=flat-square)](#-support)
 
 ---
 
-## 🎯 **Ready to Transform Your Water Level Monitoring?**
+<details>
+<summary><b>📋 Table of Contents - Quick Jump Menu</b></summary>
 
-**[📥 Download Latest Release](../../releases/latest)** → **Run Installer** → **Start Analyzing**
+### 🚀 Installation & Setup
+- [📥 Quick Install](#-quick-install)
+  - [Download Options](#step-1-download)
+  - [🖥️ Windows Unblock Instructions](#-windows-users---critical-first-step)
+  - [Installation Steps](#step-2-install)
+  - [Launch Application](#step-3-launch)
 
-*Professional groundwater monitoring made simple, powerful, and collaborative.*
+### 📖 Using the Application  
+- [📊 Features Overview](#-features)
+- [🎯 Getting Started](#-getting-started)
+  - [🆕 First Time Users](#-first-time-users---5-minute-tutorial)
+  - [🎓 Different User Types](#-for-different-user-types)
+
+### 🔌 Advanced Topics
+- [🌐 Integration](#-integration)
+- [💬 Support & Help](#-support)
+
+### 📄 Additional Resources
+- [🖥️ Windows Setup Card](docs/QUICK_WINDOWS_SETUP.md)
+- [📖 Detailed Windows Guide](docs/WINDOWS_UNBLOCK_GUIDE.md)
+- [📚 Complete Quick Start](docs/QUICK_START.md)
+
+</details>
+
+</div>
+
+</div>
+
+---
+
+Desktop application for processing water level data from Solinst loggers with automated barometric compensation, recharge calculations, and team collaboration.
+
+## 🚀 Quick Install
+*🏠 [Home](#navigation-menu) > 🚀 Installation*
+
+<details open>
+<summary><b>📥 Download & Install (2 minutes)</b></summary>
+
+### Step 1: Download
+<div align="center">
+
+**🎯 Easiest Way: Direct Download**
+
+[![Download ZIP](https://img.shields.io/badge/📁_Download_ZIP-Latest_Release-success?style=for-the-badge&logo=download)](../../releases/latest)
+
+*Click the badge above → Look for "Assets" → Download the ZIP file*
+
+> **🖥️ Windows Users:** You'll need to "unblock" the setup.bat file before running it. 
+> [See detailed instructions below](#step-2-install) or check our [visual guide](docs/WINDOWS_UNBLOCK_GUIDE.md).
+
+</div>
+
+**Alternative: Clone Repository**
+```bash
+git clone https://github.com/CAESER-UOFM/water-levels-monitoring.git
+```
+
+### Step 2: Install
+
+#### **🖥️ Windows Users - Critical First Step!**
+
+> **⚠️ WINDOWS SECURITY REQUIREMENT**
+> 
+> **Before running setup.bat, you MUST unblock it first:**
+> 
+> 1. **Right-click** `setup.bat` → **Properties**
+> 2. Check **"Unblock"** ✅ → Click **"OK"**  
+> 3. **Then** double-click `setup.bat`
+>
+> **🎯 Need help?** → [**Visual Step-by-Step Guide**](docs/WINDOWS_UNBLOCK_GUIDE.md)
+>
+> ```
+> Right-click setup.bat → Properties → ✅ Unblock → OK → Double-click
+> ```
+
+**Why this happens:** Windows blocks ALL downloaded files for security. This is normal and required for any software downloaded from the internet.
+
+```bash
+# After unblocking:
+Double-click: setup.bat
+
+# macOS/Linux Users  
+chmod +x setup.sh && ./setup.sh
+```
+
+### Step 3: Launch
+```bash
+# Look for these files in your installation directory:
+# Windows: water_levels_app.bat
+# macOS/Linux: water_levels_app.command
+```
+
+**✅ No admin rights needed • ✅ Portable installation • ✅ Works on restricted networks**
+
+> **🖥️ Windows Users:** Need quick visual help? → [**Quick Setup Card**](docs/QUICK_WINDOWS_SETUP.md)
+
+</details>
+
+---
+
+## 📊 Features
+*🏠 [Home](#navigation-menu) > 📊 Features* | <div align="right"><a href="#navigation-menu">⬆️ Back to Top</a></div>
+
+<table>
+<tr>
+<td width="50%">
+
+### 🔧 **Data Processing**
+- **Solinst Integration** - Native XLE/LEV support
+- **Barometric Compensation** - Automatic atmospheric correction
+- **Quality Control** - Smart data validation and flagging
+- **Batch Processing** - Drag & drop multiple files
+
+</td>
+<td width="50%">
+
+### 📈 **Analysis & Visualization**
+- **Recharge Calculations** - RISE, MRC, and ERC methods
+- **Interactive Maps** - Well locations with live data
+- **Custom Exports** - Publication-ready plots and data
+- **Web Visualizer** - Mobile-friendly field access
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### ☁️ **Collaboration**
+- **Google Drive Sync** - Seamless team collaboration
+- **Conflict Resolution** - Smart handling of concurrent edits
+- **Multi-user Access** - Role-based permissions
+- **Real-time Updates** - Live data synchronization
+
+</td>
+<td width="50%">
+
+### 🔌 **Integration**
+- **MONET Telemetry** - Real-time monitoring data
+- **Manual Readings** - Field measurement integration
+- **External APIs** - Connect with other monitoring systems
+- **Custom Sensors** - Modular architecture for expansion
+
+</td>
+</tr>
+</table>
+
+## 🎯 Getting Started
+
+<div align="right"><a href="#navigation-menu">⬆️ Back to Top</a></div>
+
+<details>
+<summary><b>🆕 First Time Users - 5 Minute Tutorial</b></summary>
+
+### Quick Workflow
+1. **🚀 Launch** the app and create a user account
+2. **📊 Import barologger data** (atmospheric pressure - trust us on this)
+3. **💧 Import your water level XLE files**
+4. **✨ Watch automatic barometric compensation** happen
+5. **📈 Calculate recharge estimates** and export results
+
+### Application Structure
+| Tab | What It Does | When To Use |
+|-----|--------------|-------------|
+| **🗄️ Database** | Map view and data management | Overview of your monitoring network |
+| **🌡️ Barologger** | Atmospheric pressure import | Before processing water levels |
+| **💧 Water Level** | Main data processing | Your primary workspace |
+| **📊 Recharge** | Calculate recharge rates | Analysis and reporting |
+| **🏃 Runs** | Field campaign tracking | Managing field work |
+
+</details>
+
+<details>
+<summary><b>🎓 For Different User Types</b></summary>
+
+### **CAESER Team Members**
+- **Full cloud sync** with shared research databases
+- **Multi-site collaboration** across monitoring locations
+- **MONET integration** for telemetry data
+- *Contact maintainer for Google Drive credentials*
+
+### **Independent Researchers**
+- **Complete local functionality** - no cloud required
+- **Custom Google Drive setup** for your own team collaboration
+- **Modular sensor support** - easy to adapt for different equipment
+
+### **Universities & Institutions**
+- **No admin rights required** - perfect for restricted networks
+- **Portable installation** - runs from user directories
+- **Batch processing** - handle large datasets efficiently
+
+</details>
+
+---
+
+## 🌐 Integration
+
+<div align="right"><a href="#navigation-menu">⬆️ Back to Top</a></div>
+
+<div align="center">
+
+### Supported Data Sources
+
+| **Sensors** | **Telemetry** | **Manual Data** | **Cloud Storage** |
+|-------------|---------------|-----------------|-------------------|
+| Solinst XLE/LEV | MONET | CSV Import | Google Drive |
+| Campbell Scientific* | MonitorMyWatershed | Field readings | Custom APIs |
+| In-Situ* | Custom APIs | Quality validation | Real-time sync |
+
+*Coming soon*
+
+</div>
+
+**Integration Examples:**
+- **Research Networks:** Connect with CAESER's larger well database
+- **Regulatory Reporting:** Export to agency-required formats  
+- **GIS Systems:** Compatible with ArcGIS and QGIS workflows
+- **Web Visualization:** Mobile-friendly data access for field teams
+
+---
+
+## 💬 Support
+
+<div align="right"><a href="#navigation-menu">⬆️ Back to Top</a></div>
+
+<div align="center">
+
+### **Get Help When You Need It**
+
+| **Type** | **Resource** | **Best For** |
+|----------|--------------|--------------|
+| 📖 **Built-in Help** | Help button in app | Step-by-step guidance |
+| 🐛 **Issues** | [GitHub Issues](../../issues) | Bug reports & feature requests |
+| 💬 **Discussions** | [GitHub Discussions](../../discussions) | Questions & tips |
+| 👥 **CAESER Network** | Contact maintainer | Research collaboration |
+
+</div>
+
+<details>
+<summary><b>📋 System Requirements</b></summary>
+
+### **Operating System**
+- **Windows:** 10 or later
+- **macOS:** 10.14 (Mojave) or later  
+- **Linux:** Ubuntu 18.04+ or equivalent
+
+### **Hardware**
+- **RAM:** 4GB minimum, 8GB+ recommended for large datasets
+- **Storage:** 2GB free space for installation
+- **Internet:** Optional (only needed for updates and cloud features)
+
+### **Institutional Requirements**
+✅ **No administrator rights required**  
+✅ **Runs on restricted networks**  
+✅ **Portable installation**  
+✅ **No system registry modifications**
+
+</details>
+
+---
+
+<div align="center">
+
+## 🚀 **Ready to Start?**
+
+**Transform your water level monitoring workflow today**
+
+[![Download Now](https://img.shields.io/badge/📥_Download_Now-Get_Started-success?style=for-the-badge&logo=download)](../../releases/latest)
+[![View Documentation](https://img.shields.io/badge/📚_View_Docs-Learn_More-blue?style=for-the-badge&logo=book)](docs/QUICK_START.md)
+
+### **What happens next?**
+1. **Download** takes 30 seconds
+2. **Installation** takes 2 minutes  
+3. **First analysis** in under 5 minutes
+
+*Professional groundwater monitoring. No complexity.*
+
+---
+
+**Built by the [CAESER Research Group](https://caeser.memphis.edu) at the University of Memphis**
+
+---
+
+<!-- Quick Navigation Footer -->
+<details>
+<summary><b>🔗 Quick Links & Navigation</b></summary>
+
+<table width="100%">
+<tr>
+<th colspan="4">📱 Quick Actions</th>
+</tr>
+<tr>
+<td align="center">
+<a href="../../releases/latest"><b>📥 Download</b></a><br>
+<small>Get latest version</small>
+</td>
+<td align="center">
+<a href="docs/QUICK_WINDOWS_SETUP.md"><b>🖥️ Windows Setup</b></a><br>
+<small>Visual guide</small>
+</td>
+<td align="center">
+<a href="docs/QUICK_START.md"><b>📚 Quick Start</b></a><br>
+<small>First steps</small>
+</td>
+<td align="center">
+<a href="../../issues"><b>❓ Get Help</b></a><br>
+<small>Report issues</small>
+</td>
+</tr>
+</table>
+
+<table width="100%">
+<tr>
+<th colspan="5">🧭 Page Navigation</th>
+</tr>
+<tr>
+<td align="center"><a href="#-quick-install">🚀 Install</a></td>
+<td align="center"><a href="#-features">📊 Features</a></td>
+<td align="center"><a href="#-getting-started">🎯 Getting Started</a></td>
+<td align="center"><a href="#-integration">🌐 Integration</a></td>
+<td align="center"><a href="#-support">💬 Support</a></td>
+</tr>
+</table>
+
+</details>
+
+</div>
