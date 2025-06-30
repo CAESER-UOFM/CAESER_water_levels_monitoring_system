@@ -24,7 +24,26 @@ class LoginDialog(QDialog):
         self.setMinimumWidth(340)  # Reduced by 15% from 400
         self.auth_service = auth_service
         
+        # Set window icon
+        self._set_window_icon()
+        
         self.setup_ui()
+    
+    def _set_window_icon(self):
+        """Set window icon for the login dialog"""
+        try:
+            # Try to find the icon in the same way as main window
+            icon_path = Path('src/gui/icons/app_icon.webp')
+            if not icon_path.exists():
+                icon_path = Path('src/gui/icons/app_icon.ico')
+            
+            if icon_path.exists():
+                self.setWindowIcon(QIcon(str(icon_path)))
+                logger.debug(f"Login dialog icon set from: {icon_path}")
+            else:
+                logger.warning("Could not find app icon for login dialog")
+        except Exception as e:
+            logger.error(f"Error setting login dialog icon: {e}")
     
     def set_force_login(self, force):
         """Set whether login is required (no guest mode option)"""
