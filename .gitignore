@@ -135,6 +135,21 @@ docs/google_drive_analysis.md
 docs/dual_database_*.md
 **/WELL_SELECTION_FIX_SUMMARY.md
 
+# Development process documentation (branches only)
+docs/AUTHORIZED_USER_SETUP.md
+docs/CLOUD_DATABASE_CACHING.md
+docs/DOCUMENTATION_STRUCTURE.md
+docs/GITHUB_NAVIGATION_TIPS.md
+docs/INSTALLATION_AND_UPDATE_SYSTEM.md
+docs/RELEASE_SETUP_GUIDE.md
+docs/MAIN_BRANCH_GUIDELINES.md
+
+# Template and configuration files (branches only)
+docs/app_organization.txt
+docs/*_TEMPLATE.json
+docs/gitignore_template
+docs/*_template.json
+
 # Runtime data and temporary outputs
 *.log
 *.tmp
