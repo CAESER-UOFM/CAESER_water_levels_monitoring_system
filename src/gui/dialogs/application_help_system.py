@@ -440,11 +440,22 @@ class ApplicationHelpSystem(QDialog):
         barologger_help_html = """
         <h2>🌡️ Barologger Tab - Atmospheric Pressure Management</h2>
         
+        <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin: 15px 0;">
+            <h3 style="margin-top: 0; color: #2e7d32;">🔍 How Barometric Compensation Works</h3>
+            <p><strong>The Problem:</strong> Atmospheric pressure changes make it look like water levels are changing when they're not. 
+            A storm system can cause false readings of several feet!</p>
+            
+            <div style="background: white; padding: 10px; border-radius: 4px; margin: 10px 0; font-family: monospace;">
+                True Water Level = Raw Pressure Reading - Atmospheric Pressure
+            </div>
+            
+            <p><strong>The Solution:</strong> Use a barologger (atmospheric pressure sensor) to measure what the atmosphere is doing, 
+            then subtract that from your transducer readings to get the real water level changes.</p>
+        </div>
+        
         <h3>Purpose & Overview</h3>
-        <p>The Barologger tab manages atmospheric pressure data essential for accurate water level measurements. 
-        Barometric pressure compensation is critical because changes in atmospheric pressure affect water levels 
-        in monitoring wells. This tab handles barologger registration, data import, and master barometric 
-        pressure dataset creation.</p>
+        <p>This tab manages the atmospheric pressure data that makes your water level measurements actually accurate. 
+        Without barometric compensation, your data will have fake ups and downs caused by weather, not groundwater changes.</p>
         
         <h3>🎯 Key Concepts</h3>
         <ul>

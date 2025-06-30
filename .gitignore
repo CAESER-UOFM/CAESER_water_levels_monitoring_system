@@ -81,3 +81,63 @@ databases/temp/
 # Service account credentials (keep local)
 config/service_account_test.json
 **/service_account_test.json
+
+# =============================================================================
+# MAIN BRANCH PROTECTION: PREVENT TESTING AND DEVELOPMENT FILES
+# =============================================================================
+# These files should ONLY exist in development branches, NEVER in main
+
+# Testing directories and files
+claude_testing/
+**/claude_testing/
+test_*/
+**/test_*
+*test*.py
+*test*.json
+*test*.md
+
+# Development and debugging files
+debug_*.py
+*debug*.py
+*debug*.bat
+PATH_MANAGEMENT_WARNING.md
+
+# Development batch files and installers
+setup_debug.bat
+setup_simple.bat  
+simple_setup.bat
+test_installer.bat
+create_ico_test.bat
+icon_test_*.bat
+icon_debug_*.bat
+
+# Example and demo files
+example_*.py
+*example*.py
+
+# IDE configuration (personal settings)
+.spyproject/
+.spyder-py3/
+
+# Large test data files
+imported_xle_files/
+last_run/
+**/imported_xle_files/
+**/last_run/
+
+# Development documentation (keep in branches only)
+docs/**/PHASE*.md
+docs/**/PHASE*.json
+docs/**/TEST*.md
+docs/**/TEST*.json
+docs/FINAL_TODO_LIST.md
+docs/google_drive_analysis.md
+docs/dual_database_*.md
+**/WELL_SELECTION_FIX_SUMMARY.md
+
+# Runtime data and temporary outputs
+*.log
+*.tmp
+None
+None-shm  
+None-wal
