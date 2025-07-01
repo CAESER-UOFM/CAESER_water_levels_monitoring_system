@@ -723,13 +723,17 @@ class WaterLevelImportDialog(QDialog):
                     start_date = pd.to_datetime(df['timestamp_utc'].min())
                     end_date = pd.to_datetime(df['timestamp_utc'].max())
                     
+                    # Convert pandas Timestamps to string format for SQLite compatibility
+                    start_date_str = start_date.strftime('%Y-%m-%d %H:%M:%S')
+                    end_date_str = end_date.strftime('%Y-%m-%d %H:%M:%S')
+                    
                     with sqlite3.connect(self.water_level_model.db_path) as conn:
                         cursor = conn.cursor()
                         cursor.execute('''
                             INSERT INTO transducer_imported_files
                             (well_number, serial_number, starting_date, end_date)
                             VALUES (?, ?, ?, ?)
-                        ''', (well_number, serial_number, start_date, end_date))
+                        ''', (well_number, serial_number, start_date_str, end_date_str))
                         conn.commit()
                         logger.info(f"Logged imported file for well {well_number}, serial {serial_number}")
                 except Exception as e:
