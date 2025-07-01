@@ -363,15 +363,19 @@ class WaterLevelPlotHandler:
             return pd.DataFrame()
 
     def format_date_axis(self):
-        """Format the date axis."""
-        # Set the format of the x-axis to show dates nicely
-        self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+        """Format the date axis with improved spacing and readability."""
+        # Use more compact date formatting and smaller font
+        self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%y'))
         
-        # Set the major locator to auto adjust based on the date range
-        self.ax.xaxis.set_major_locator(mdates.AutoDateLocator())
+        # Set more conservative date locators to avoid crowding
+        self.ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
+        self.ax.xaxis.set_minor_locator(mdates.MonthLocator())
         
-        # Rotate the x-axis labels for better readability
-        plt.setp(self.ax.get_xticklabels(), rotation=45, ha='right')
+        # Use smaller rotation angle and font size for cleaner look
+        plt.setp(self.ax.get_xticklabels(), rotation=30, ha='right', fontsize=9)
+        
+        # Reduce bottom margin to reclaim plot space
+        self.figure.subplots_adjust(bottom=0.12)
 
     def _get_well_info(self, well_number: str, db_path: str) -> Dict:
         """Get well information from database"""

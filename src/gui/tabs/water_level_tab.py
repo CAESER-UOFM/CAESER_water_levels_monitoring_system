@@ -382,7 +382,7 @@ class WaterLevelTab(QWidget):
         plot_layout.addWidget(self.canvas)
         
         plot_section.addWidget(plot_container)
-        right_side.addLayout(plot_section, stretch=5)  # Increased stretch from 4 to 5 for taller plot
+        right_side.addLayout(plot_section, stretch=8)  # Dramatically increased from 5 to 8 for much taller plot
 
         # Bottom grid layout with reduced spacing
         bottom_grid = QGridLayout()
@@ -2047,21 +2047,23 @@ class WaterLevelTab(QWidget):
     def create_compact_transducer_panel(self):
         """Create a compact transducer data panel with buttons in a single row"""
         group = QGroupBox("Transducer Data")
+        group.setMaximumHeight(70)  # Restrict height for compactness
         group.setStyleSheet("""
             QGroupBox {
-                font-size: 10pt;
+                font-size: 9pt;
                 font-weight: bold;
-                border-radius: 8px;
+                border-radius: 6px;
                 background-color: #f8f9fa;
                 border: 1px solid #dee2e6;
-                padding-top: 15px;
+                padding-top: 12px;
+                max-height: 70px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 subcontrol-position: top left;
-                padding: 0 8px;
+                padding: 0 6px;
                 color: #495057;
-                font-size: 10pt;
+                font-size: 9pt;
             }
         """)
         
@@ -2143,21 +2145,23 @@ class WaterLevelTab(QWidget):
     def create_compact_telemetry_panel(self):
         """Create a compact telemetry data panel with buttons in a single row"""
         group = QGroupBox("Telemetry Data")
+        group.setMaximumHeight(70)  # Restrict height for compactness
         group.setStyleSheet("""
             QGroupBox {
-                font-size: 10pt;
+                font-size: 9pt;
                 font-weight: bold;
-                border-radius: 8px;
+                border-radius: 6px;
                 background-color: #f8f9fa;
                 border: 1px solid #dee2e6;
-                padding-top: 15px;
+                padding-top: 12px;
+                max-height: 70px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 subcontrol-position: top left;
-                padding: 0 8px;
+                padding: 0 6px;
                 color: #495057;
-                font-size: 10pt;
+                font-size: 9pt;
             }
         """)
         
@@ -2212,21 +2216,23 @@ class WaterLevelTab(QWidget):
     def create_compact_manual_panel(self):
         """Create a compact manual readings panel with buttons in a single row"""
         group = QGroupBox("Manual Readings")
+        group.setMaximumHeight(70)  # Restrict height for compactness
         group.setStyleSheet("""
             QGroupBox {
-                font-size: 10pt;
+                font-size: 9pt;
                 font-weight: bold;
-                border-radius: 8px;
+                border-radius: 6px;
                 background-color: #f8f9fa;
                 border: 1px solid #dee2e6;
-                padding-top: 15px;
+                padding-top: 12px;
+                max-height: 70px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 subcontrol-position: top left;
-                padding: 0 8px;
+                padding: 0 6px;
                 color: #495057;
-                font-size: 10pt;
+                font-size: 9pt;
             }
         """)
         
