@@ -2728,7 +2728,8 @@ class MrcTab(BaseRechargeTab):
                 csvfile.write(f"# MRC Calculation Results for {self.well_combo.currentText()}\n")
                 csvfile.write(f"# Exported on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                 csvfile.write(f"# Curve Type: {self.current_curve['curve_type'] if self.current_curve else 'N/A'}\n")
-                csvfile.write(f"# Curve R²: {self.current_curve['r_squared']:.4f if self.current_curve else 0}\n")
+                r_squared = self.current_curve['r_squared'] if self.current_curve else 0
+                csvfile.write(f"# Curve R²: {r_squared:.4f}\n")
                 csvfile.write(f"# Parameters:\n")
                 # Get parameters from global settings
                 if hasattr(self, 'parent') and self.parent and hasattr(self.parent, 'unified_settings') and self.parent.unified_settings:

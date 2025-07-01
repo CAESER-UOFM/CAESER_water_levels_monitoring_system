@@ -199,7 +199,7 @@ $PYTHON_CMD -m venv "$VENV_DIR"
 echo "    📦 [5/8] Installing dependencies..."
 source "$VENV_DIR/bin/activate"
 pip install --upgrade pip
-pip install numpy pandas matplotlib
+pip install numpy pandas matplotlib openpyxl
 pip install requests packaging
 pip install google-api-python-client google-auth-oauthlib --upgrade
 pip install PyQt5==5.15.10 PyQt5_sip==12.13.0 PyQtWebEngine==5.15.6
