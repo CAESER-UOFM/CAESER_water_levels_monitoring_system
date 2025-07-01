@@ -186,23 +186,20 @@ class BaseRechargeTab(QWidget):
                     ax.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
                     ax.xaxis.set_minor_locator(mdates.MonthLocator())
                 elif date_range.days > 90:  # More than 3 months
-                    ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
-                    ax.xaxis.set_major_locator(mdates.MonthLocator())
-                    ax.xaxis.set_minor_locator(mdates.WeekdayLocator())
+                    ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%y'))
+                    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
+                    ax.xaxis.set_minor_locator(mdates.MonthLocator())
                 else:  # Less than 3 months
                     ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
                     ax.xaxis.set_major_locator(mdates.WeekdayLocator(interval=2))
                     ax.xaxis.set_minor_locator(mdates.DayLocator())
             else:
-                # Default formatting
-                ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
-                ax.xaxis.set_major_locator(mdates.AutoDateLocator())
+                # Default compact formatting
+                ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%y'))
+                ax.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
             
-            # Rotate date labels for better readability with improved spacing
-            plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha='right', fontsize=10)
-            
-            # Ensure proper spacing between date labels
-            self.figure.autofmt_xdate(rotation=45, ha='right')
+            # Improved date label formatting for better space usage
+            plt.setp(ax.xaxis.get_majorticklabels(), rotation=30, ha='right', fontsize=9)
             
             # Set y-axis to show water levels with proper range
             if self.raw_data is not None and not self.raw_data.empty:
@@ -216,8 +213,8 @@ class BaseRechargeTab(QWidget):
                 spine.set_edgecolor('#cccccc')
                 spine.set_linewidth(1)
             
-            # Ensure tight layout with padding for title
-            self.figure.tight_layout(pad=3.0)
+            # Optimized layout to maximize plot space
+            self.figure.subplots_adjust(bottom=0.12, top=0.94, left=0.08, right=0.96)
             
             # Draw the canvas
             self.canvas.draw()
