@@ -1844,264 +1844,6 @@ class ApplicationHelpSystem(QDialog):
         calculator = SpecificYieldCalculator(self)
         calculator.exec_()
 
-
-class SpecificYieldCalculator(QDialog):
-    """Enhanced specific yield calculator with estimation tools."""
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Specific Yield Calculator")
-        self.setModal(True)
-        self.resize(500, 600)
-        
-        layout = QVBoxLayout(self)
-        
-        # Header
-        header = QLabel("🧮 Specific Yield Estimation Tool")
-        header.setStyleSheet("font-size: 16px; font-weight: bold; padding: 10px;")
-        header.setAlignment(Qt.AlignCenter)
-        layout.addWidget(header)
-        
-        # Tabs for different estimation methods
-        tabs = QTabWidget()
-        
-        # Typical values tab
-        typical_tab = QWidget()
-        typical_layout = QVBoxLayout(typical_tab)
-        
-        typical_content = QTextEdit()
-        typical_content.setHtml("""
-        <h3>Typical Specific Yield Values by Material</h3>
-        
-        <table border="1" style="border-collapse: collapse; width: 100%; margin: 10px 0;">
-        <tr style="background-color: #f8f9fa;">
-            <th style="padding: 8px;">Material Type</th>
-            <th style="padding: 8px;">Specific Yield Range</th>
-            <th style="padding: 8px;">Typical Value</th>
-        </tr>
-        <tr>
-            <td style="padding: 8px;"><b>Gravel</b></td>
-            <td style="padding: 8px;">0.15 - 0.30</td>
-            <td style="padding: 8px;">0.22</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px;"><b>Coarse sand</b></td>
-            <td style="padding: 8px;">0.20 - 0.35</td>
-            <td style="padding: 8px;">0.27</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px;"><b>Medium sand</b></td>
-            <td style="padding: 8px;">0.15 - 0.25</td>
-            <td style="padding: 8px;">0.20</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px;"><b>Fine sand</b></td>
-            <td style="padding: 8px;">0.10 - 0.20</td>
-            <td style="padding: 8px;">0.15</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px;"><b>Very fine sand</b></td>
-            <td style="padding: 8px;">0.05 - 0.15</td>
-            <td style="padding: 8px;">0.10</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px;"><b>Silt</b></td>
-            <td style="padding: 8px;">0.03 - 0.15</td>
-            <td style="padding: 8px;">0.08</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px;"><b>Sandy clay</b></td>
-            <td style="padding: 8px;">0.03 - 0.10</td>
-            <td style="padding: 8px;">0.06</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px;"><b>Clay</b></td>
-            <td style="padding: 8px;">0.01 - 0.10</td>
-            <td style="padding: 8px;">0.03</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px;"><b>Limestone (weathered)</b></td>
-            <td style="padding: 8px;">0.10 - 0.30</td>
-            <td style="padding: 8px;">0.15</td>
-        </tr>
-        <tr>
-            <td style="padding: 8px;"><b>Sandstone</b></td>
-            <td style="padding: 8px;">0.05 - 0.25</td>
-            <td style="padding: 8px;">0.15</td>
-        </tr>
-        </table>
-        
-        <h4>Important Notes:</h4>
-        <ul>
-        <li><b>Specific yield ≠ Porosity:</b> Specific yield is always less than total porosity 
-        because some water is retained by capillary forces</li>
-        <li><b>Depth matters:</b> Specific yield may decrease with depth due to compaction</li>
-        <li><b>Mixed materials:</b> Use weighted average based on layer thickness</li>
-        <li><b>Field testing preferred:</b> These are general ranges - actual values vary significantly</li>
-        </ul>
-        
-        <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 10px; margin: 10px 0;">
-        <b>⚠️ Uncertainty:</b> Specific yield is often the largest source of uncertainty in recharge 
-        calculations. Consider using a range of values to bracket your estimates.
-        </div>
-        """)
-        typical_content.setReadOnly(True)
-        typical_layout.addWidget(typical_content)
-        tabs.addTab(typical_tab, "Typical Values")
-        
-        # Estimation methods tab
-        estimation_tab = QWidget()
-        estimation_layout = QVBoxLayout(estimation_tab)
-        
-        estimation_content = QTextEdit()
-        estimation_content.setHtml("""
-        <h3>Methods for Determining Specific Yield</h3>
-        
-        <h4>1. Field Methods (Most Reliable)</h4>
-        <ul>
-        <li><b>Pumping Test Analysis:</b>
-            <ul>
-            <li>Analyze water level recovery after pumping</li>
-            <li>Best for large-scale average Sy</li>
-            <li>Requires observation wells</li>
-            </ul>
-        </li>
-        <li><b>Slug Test Analysis:</b>
-            <ul>
-            <li>Rapid water level change in single well</li>
-            <li>Good for local Sy estimate</li>
-            <li>Less expensive than pumping test</li>
-            </ul>
-        </li>
-        </ul>
-        
-        <h4>2. Laboratory Methods</h4>
-        <ul>
-        <li><b>Gravity Drainage:</b>
-            <ul>
-            <li>Saturate core sample, measure drainage</li>
-            <li>Most direct measurement</li>
-            <li>May not represent field conditions</li>
-            </ul>
-        </li>
-        <li><b>Centrifuge Method:</b>
-            <ul>
-            <li>Faster than gravity drainage</li>
-            <li>Good for fine-grained materials</li>
-            </ul>
-        </li>
-        </ul>
-        
-        <h4>3. Empirical Relationships</h4>
-        <ul>
-        <li><b>From Grain Size:</b>
-            <br>Sy ≈ 0.117 × d₁₀^0.125 (for sands)
-            <br>where d₁₀ = grain size (mm) at 10% passing
-        </li>
-        <li><b>From Porosity (n):</b>
-            <br>Coarse materials: Sy ≈ 0.8 × n
-            <br>Fine materials: Sy ≈ 0.3 × n
-        </li>
-        </ul>
-        
-        <h4>4. Literature Values</h4>
-        <p>Use published values for similar:</p>
-        <ul>
-        <li>Geologic material</li>
-        <li>Depth range</li>
-        <li>Geographic setting</li>
-        <li>Degree of weathering/compaction</li>
-        </ul>
-        
-        <h4>Recommended Approach</h4>
-        <ol>
-        <li>Start with literature values for initial estimates</li>
-        <li>Conduct field tests if possible</li>
-        <li>Use multiple methods to bracket uncertainty</li>
-        <li>Document your rationale and sources</li>
-        </ol>
-        """)
-        estimation_content.setReadOnly(True)
-        estimation_layout.addWidget(estimation_content)
-        tabs.addTab(estimation_tab, "Estimation Methods")
-        
-        # Simple calculator tab
-        calc_tab = QWidget()
-        calc_layout = QVBoxLayout(calc_tab)
-        
-        # Material selection
-        from PyQt5.QtWidgets import QGroupBox, QDoubleSpinBox
-        material_group = QGroupBox("Select Aquifer Material")
-        material_layout = QVBoxLayout(material_group)
-        
-        self.material_combo = QComboBox()
-        materials = [
-            ("Gravel", 0.15, 0.30, 0.22),
-            ("Coarse sand", 0.20, 0.35, 0.27),
-            ("Medium sand", 0.15, 0.25, 0.20),
-            ("Fine sand", 0.10, 0.20, 0.15),
-            ("Very fine sand", 0.05, 0.15, 0.10),
-            ("Silt", 0.03, 0.15, 0.08),
-            ("Sandy clay", 0.03, 0.10, 0.06),
-            ("Clay", 0.01, 0.10, 0.03),
-            ("Weathered limestone", 0.10, 0.30, 0.15),
-            ("Sandstone", 0.05, 0.25, 0.15),
-            ("Custom", 0, 0, 0)
-        ]
-        for mat, _, _, _ in materials:
-            self.material_combo.addItem(mat)
-        self.material_combo.currentTextChanged.connect(self.update_sy_estimate)
-        material_layout.addWidget(self.material_combo)
-        
-        # Sy range display
-        self.sy_range_label = QLabel()
-        self.sy_range_label.setStyleSheet("font-size: 14px; padding: 10px;")
-        material_layout.addWidget(self.sy_range_label)
-        
-        # Custom input
-        custom_layout = QHBoxLayout()
-        custom_layout.addWidget(QLabel("Custom Sy:"))
-        self.custom_sy = QDoubleSpinBox()
-        self.custom_sy.setRange(0.001, 0.5)
-        self.custom_sy.setDecimals(3)
-        self.custom_sy.setSingleStep(0.01)
-        self.custom_sy.setValue(0.15)
-        self.custom_sy.setEnabled(False)
-        custom_layout.addWidget(self.custom_sy)
-        custom_layout.addStretch()
-        material_layout.addLayout(custom_layout)
-        
-        calc_layout.addWidget(material_group)
-        
-        # Recommendation
-        self.recommendation_label = QLabel()
-        self.recommendation_label.setWordWrap(True)
-        self.recommendation_label.setStyleSheet("""
-            QLabel {
-                background-color: #d1ecf1;
-                border: 1px solid #bee5eb;
-                border-radius: 4px;
-                padding: 10px;
-                margin: 10px 0;
-            }
-        """)
-        calc_layout.addWidget(self.recommendation_label)
-        
-        calc_layout.addStretch()
-        
-        # Initialize
-        self.materials_data = materials
-        self.update_sy_estimate()
-        
-        tabs.addTab(calc_tab, "Quick Calculator")
-        
-        layout.addWidget(tabs)
-        
-        # Close button
-        close_btn = QPushButton("Close")
-        close_btn.clicked.connect(self.close)
-        layout.addWidget(close_btn)
-        
     def update_sy_estimate(self):
         """Update Sy estimate based on material selection."""
         idx = self.material_combo.currentIndex()
@@ -2127,7 +1869,12 @@ class SpecificYieldCalculator(QDialog):
                     f"uncertainty in your recharge estimates. Field testing is always "
                     f"preferred for site-specific values."
                 )
-        
+        else:
+            # Handle case when no valid material is selected
+            self.custom_sy.setEnabled(False)
+            self.sy_range_label.setText("Please select a material")
+            self.recommendation_label.setText("Select a material to see specific yield recommendations.")
+    
     def create_auto_sync_help(self):
         """Create Auto Sync help."""
         tab = QWidget()
@@ -2669,3 +2416,261 @@ water_levels_monitoring/
         
         if tab_name.lower() in tab_mapping:
             self.help_tabs.setCurrentIndex(tab_mapping[tab_name.lower()])
+
+class SpecificYieldCalculator(QDialog):
+    """Enhanced specific yield calculator with estimation tools."""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Specific Yield Calculator")
+        self.setModal(True)
+        self.resize(500, 600)
+        
+        layout = QVBoxLayout(self)
+        
+        # Header
+        header = QLabel("🧮 Specific Yield Estimation Tool")
+        header.setStyleSheet("font-size: 16px; font-weight: bold; padding: 10px;")
+        header.setAlignment(Qt.AlignCenter)
+        layout.addWidget(header)
+        
+        # Tabs for different estimation methods
+        tabs = QTabWidget()
+        
+        # Typical values tab
+        typical_tab = QWidget()
+        typical_layout = QVBoxLayout(typical_tab)
+        
+        typical_content = QTextEdit()
+        typical_content.setHtml("""
+        <h3>Typical Specific Yield Values by Material</h3>
+        
+        <table border="1" style="border-collapse: collapse; width: 100%; margin: 10px 0;">
+        <tr style="background-color: #f8f9fa;">
+            <th style="padding: 8px;">Material Type</th>
+            <th style="padding: 8px;">Specific Yield Range</th>
+            <th style="padding: 8px;">Typical Value</th>
+        </tr>
+        <tr>
+            <td style="padding: 8px;"><b>Gravel</b></td>
+            <td style="padding: 8px;">0.15 - 0.30</td>
+            <td style="padding: 8px;">0.22</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px;"><b>Coarse sand</b></td>
+            <td style="padding: 8px;">0.20 - 0.35</td>
+            <td style="padding: 8px;">0.27</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px;"><b>Medium sand</b></td>
+            <td style="padding: 8px;">0.15 - 0.25</td>
+            <td style="padding: 8px;">0.20</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px;"><b>Fine sand</b></td>
+            <td style="padding: 8px;">0.10 - 0.20</td>
+            <td style="padding: 8px;">0.15</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px;"><b>Very fine sand</b></td>
+            <td style="padding: 8px;">0.05 - 0.15</td>
+            <td style="padding: 8px;">0.10</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px;"><b>Silt</b></td>
+            <td style="padding: 8px;">0.03 - 0.15</td>
+            <td style="padding: 8px;">0.08</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px;"><b>Sandy clay</b></td>
+            <td style="padding: 8px;">0.03 - 0.10</td>
+            <td style="padding: 8px;">0.06</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px;"><b>Clay</b></td>
+            <td style="padding: 8px;">0.01 - 0.10</td>
+            <td style="padding: 8px;">0.03</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px;"><b>Limestone (weathered)</b></td>
+            <td style="padding: 8px;">0.10 - 0.30</td>
+            <td style="padding: 8px;">0.15</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px;"><b>Sandstone</b></td>
+            <td style="padding: 8px;">0.05 - 0.25</td>
+            <td style="padding: 8px;">0.15</td>
+        </tr>
+        </table>
+        
+        <h4>Important Notes:</h4>
+        <ul>
+        <li><b>Specific yield ≠ Porosity:</b> Specific yield is always less than total porosity 
+        because some water is retained by capillary forces</li>
+        <li><b>Depth matters:</b> Specific yield may decrease with depth due to compaction</li>
+        <li><b>Mixed materials:</b> Use weighted average based on layer thickness</li>
+        <li><b>Field testing preferred:</b> These are general ranges - actual values vary significantly</li>
+        </ul>
+        
+        <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 10px; margin: 10px 0;">
+        <b>⚠️ Uncertainty:</b> Specific yield is often the largest source of uncertainty in recharge 
+        calculations. Consider using a range of values to bracket your estimates.
+        </div>
+        """)
+        typical_content.setReadOnly(True)
+        typical_layout.addWidget(typical_content)
+        tabs.addTab(typical_tab, "Typical Values")
+        
+        # Estimation methods tab
+        estimation_tab = QWidget()
+        estimation_layout = QVBoxLayout(estimation_tab)
+        
+        estimation_content = QTextEdit()
+        estimation_content.setHtml("""
+        <h3>Methods for Determining Specific Yield</h3>
+        
+        <h4>1. Field Methods (Most Reliable)</h4>
+        <ul>
+        <li><b>Pumping Test Analysis:</b>
+            <ul>
+            <li>Analyze water level recovery after pumping</li>
+            <li>Best for large-scale average Sy</li>
+            <li>Requires observation wells</li>
+            </ul>
+        </li>
+        <li><b>Slug Test Analysis:</b>
+            <ul>
+            <li>Rapid water level change in single well</li>
+            <li>Good for local Sy estimate</li>
+            <li>Less expensive than pumping test</li>
+            </ul>
+        </li>
+        </ul>
+        
+        <h4>2. Laboratory Methods</h4>
+        <ul>
+        <li><b>Gravity Drainage:</b>
+            <ul>
+            <li>Saturate core sample, measure drainage</li>
+            <li>Most direct measurement</li>
+            <li>May not represent field conditions</li>
+            </ul>
+        </li>
+        <li><b>Centrifuge Method:</b>
+            <ul>
+            <li>Faster than gravity drainage</li>
+            <li>Good for fine-grained materials</li>
+            </ul>
+        </li>
+        </ul>
+        
+        <h4>3. Empirical Relationships</h4>
+        <ul>
+        <li><b>From Grain Size:</b>
+            <br>Sy ≈ 0.117 × d₁₀^0.125 (for sands)
+            <br>where d₁₀ = grain size (mm) at 10% passing
+        </li>
+        <li><b>From Porosity (n):</b>
+            <br>Coarse materials: Sy ≈ 0.8 × n
+            <br>Fine materials: Sy ≈ 0.3 × n
+        </li>
+        </ul>
+        
+        <h4>4. Literature Values</h4>
+        <p>Use published values for similar:</p>
+        <ul>
+        <li>Geologic material</li>
+        <li>Depth range</li>
+        <li>Geographic setting</li>
+        <li>Degree of weathering/compaction</li>
+        </ul>
+        
+        <h4>Recommended Approach</h4>
+        <ol>
+        <li>Start with literature values for initial estimates</li>
+        <li>Conduct field tests if possible</li>
+        <li>Use multiple methods to bracket uncertainty</li>
+        <li>Document your rationale and sources</li>
+        </ol>
+        """)
+        estimation_content.setReadOnly(True)
+        estimation_layout.addWidget(estimation_content)
+        tabs.addTab(estimation_tab, "Estimation Methods")
+        
+        # Simple calculator tab
+        calc_tab = QWidget()
+        calc_layout = QVBoxLayout(calc_tab)
+        
+        # Material selection
+        from PyQt5.QtWidgets import QGroupBox, QDoubleSpinBox
+        material_group = QGroupBox("Select Aquifer Material")
+        material_layout = QVBoxLayout(material_group)
+        
+        self.material_combo = QComboBox()
+        materials = [
+            ("Gravel", 0.15, 0.30, 0.22),
+            ("Coarse sand", 0.20, 0.35, 0.27),
+            ("Medium sand", 0.15, 0.25, 0.20),
+            ("Fine sand", 0.10, 0.20, 0.15),
+            ("Very fine sand", 0.05, 0.15, 0.10),
+            ("Silt", 0.03, 0.15, 0.08),
+            ("Sandy clay", 0.03, 0.10, 0.06),
+            ("Clay", 0.01, 0.10, 0.03),
+            ("Weathered limestone", 0.10, 0.30, 0.15),
+            ("Sandstone", 0.05, 0.25, 0.15),
+            ("Custom", 0, 0, 0)
+        ]
+        for mat, _, _, _ in materials:
+            self.material_combo.addItem(mat)
+        self.material_combo.currentTextChanged.connect(self.update_sy_estimate)
+        material_layout.addWidget(self.material_combo)
+        
+        # Sy range display
+        self.sy_range_label = QLabel()
+        self.sy_range_label.setStyleSheet("font-size: 14px; padding: 10px;")
+        material_layout.addWidget(self.sy_range_label)
+        
+        # Custom input
+        custom_layout = QHBoxLayout()
+        custom_layout.addWidget(QLabel("Custom Sy:"))
+        self.custom_sy = QDoubleSpinBox()
+        self.custom_sy.setRange(0.001, 0.5)
+        self.custom_sy.setDecimals(3)
+        self.custom_sy.setSingleStep(0.01)
+        self.custom_sy.setValue(0.15)
+        self.custom_sy.setEnabled(False)
+        custom_layout.addWidget(self.custom_sy)
+        custom_layout.addStretch()
+        material_layout.addLayout(custom_layout)
+        
+        calc_layout.addWidget(material_group)
+        
+        # Recommendation
+        self.recommendation_label = QLabel()
+        self.recommendation_label.setWordWrap(True)
+        self.recommendation_label.setStyleSheet("""
+            QLabel {
+                background-color: #d1ecf1;
+                border: 1px solid #bee5eb;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 10px 0;
+            }
+        """)
+        calc_layout.addWidget(self.recommendation_label)
+        
+        calc_layout.addStretch()
+        
+        # Initialize
+        self.materials_data = materials
+        self.update_sy_estimate()
+        
+        tabs.addTab(calc_tab, "Quick Calculator")
+        
+        layout.addWidget(tabs)
+        
+        # Close button
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(self.close)
+        layout.addWidget(close_btn)
+        
