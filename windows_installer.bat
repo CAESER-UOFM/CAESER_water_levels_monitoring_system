@@ -46,7 +46,7 @@ echo   What will be installed:
 echo   - Python 3.11.6 (embedded version)
 echo   - Virtual environment with all dependencies
 echo   - CAESER Water Levels Monitoring System
-echo   - Application launchers (main app, debug, visualizer)
+echo   - Application launchers (main app, debug)
 echo   - Database folders for local and cloud data
 echo   - Documentation, legacy tables, and default resources
 echo.
@@ -141,8 +141,7 @@ if exist "%CODE_DIR%\docs" xcopy "%CODE_DIR%\docs" "%INSTALL_DIR%\docs\" /E /I /
 if exist "%CODE_DIR%\Legacy_tables" xcopy "%CODE_DIR%\Legacy_tables" "%INSTALL_DIR%\Legacy_tables\" /E /I /Y >nul
 if exist "%CODE_DIR%\well_pictures" xcopy "%CODE_DIR%\well_pictures" "%INSTALL_DIR%\well_pictures\" /E /I /Y >nul
 
-REM Create .pyw copy of visualizer main file for GUI launching
-if exist "%INSTALL_DIR%\tools\Visualizer\main.py" copy "%INSTALL_DIR%\tools\Visualizer\main.py" "%INSTALL_DIR%\tools\Visualizer\main.pyw" >nul
+REM Note: Visualizer installation removed - now using online version
 
 REM Create launchers in dedicated folder
 echo    [*] Creating application launchers...
@@ -166,32 +165,14 @@ REM Debug launcher (with console for troubleshooting)
     echo pause
 ) > "%INSTALL_DIR%\launchers\water_levels_monitoring_system_debug.bat"
 
-REM Visualizer launcher (GUI with no console window)
-(
-    echo @echo off
-    echo cd /d "%INSTALL_DIR%\tools\Visualizer"
-    echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
-    echo start "" "%INSTALL_DIR%\venv\Scripts\pythonw.exe" "%INSTALL_DIR%\tools\Visualizer\main.py"
-) > "%INSTALL_DIR%\launchers\water_levels_visualizer.bat"
-
-REM Visualizer debug launcher (with console for troubleshooting)
-(
-    echo @echo off
-    echo echo CAESER Water Level Visualizer - Debug Mode
-    echo echo ==========================================
-    echo cd /d "%INSTALL_DIR%\tools\Visualizer"
-    echo call "%INSTALL_DIR%\venv\Scripts\activate.bat"
-    echo python "%INSTALL_DIR%\tools\Visualizer\main.py"
-    echo pause
-) > "%INSTALL_DIR%\launchers\water_levels_visualizer_debug.bat"
+REM Note: Visualizer launchers removed - now using online version accessible from Tools menu
 
 echo    [*] Creating shortcuts with icons...
 
 REM Main app shortcut pointing to GUI launcher (no console)
 powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Levels Monitoring.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\launchers\water_levels_monitoring_system.bat'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Levels Monitoring System'; if (Test-Path '%INSTALL_DIR%\assets\water_level_meter.ico') { $Shortcut.IconLocation = '%INSTALL_DIR%\assets\water_level_meter.ico' } else { $Shortcut.IconLocation = 'C:\Windows\System32\imageres.dll,109' }; $Shortcut.Save() } catch { Write-Host 'Main app shortcut creation failed' }" 2>nul
 
-REM Visualizer shortcut pointing to GUI launcher (no console)
-powershell -ExecutionPolicy Bypass -Command "try { $WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%INSTALL_DIR%\CAESER Water Level Visualizer.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\launchers\water_levels_visualizer.bat'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'CAESER Water Level Visualizer'; if (Test-Path '%INSTALL_DIR%\assets\Water_level_tab_icon.ico') { $Shortcut.IconLocation = '%INSTALL_DIR%\assets\Water_level_tab_icon.ico' } else { $Shortcut.IconLocation = 'C:\Windows\System32\imageres.dll,178' }; $Shortcut.Save() } catch { Write-Host 'Visualizer shortcut creation failed' }" 2>nul
+REM Note: Visualizer shortcut removed - now accessible from Tools menu (opens online version)
 
 echo.
 echo    ===============================================================================
@@ -205,19 +186,18 @@ echo    [+] Installation directory: %INSTALL_DIR%
 echo.
 echo    [+] Shortcuts created in main folder:
 echo        [*] CAESER Water Levels Monitoring.lnk (main app with icon)
-echo        [*] CAESER Water Level Visualizer.lnk (visualizer with icon)
 echo.
 echo    [+] Launchers created in 'launchers' folder:
 echo        [*] water_levels_monitoring_system.bat (main app, background process)
 echo        [*] water_levels_monitoring_system_debug.bat (main app with console)
-echo        [*] water_levels_visualizer.bat (visualizer, background process)
-echo        [*] water_levels_visualizer_debug.bat (visualizer with console)
+echo.
+echo    [+] Visualizer: Now available online from Tools menu
 echo.
 echo    [+] You can now launch the applications!
 echo.
 echo    [+] Recommended way to start:
 echo        - Main app: Double-click "CAESER Water Levels Monitoring.lnk"
-echo        - Visualizer: Double-click "CAESER Water Level Visualizer.lnk"
+echo        - Visualizer: Use Tools menu in main app (opens online version)
 echo.
 echo    [*] For troubleshooting, use the debug launchers in the 'launchers' folder
 echo.

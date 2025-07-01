@@ -2726,50 +2726,39 @@ class MainWindow(QMainWindow):
         self.db_info_label.setToolTip(f"Database path: {db_path}")
 
     def open_data_visualizer_dialog(self):
-        """Open the standalone water level data visualizer application"""
+        """Open the online water level data visualizer in browser"""
         try:
-            if not self.db_manager.current_db:
-                QMessageBox.warning(self, "No Database", "Please open a database first.")
-                return
-                
-            # Get the path to the new visualizer app
-            tools_dir = Path(__file__).parent.parent.parent / "tools"
-            visualizer_path = tools_dir / "Visualizer" / "main.py"
+            import webbrowser
             
-            if not visualizer_path.exists():
-                QMessageBox.critical(
-                    self,
-                    "Error",
-                    f"Could not find Visualizer at {visualizer_path}"
-                )
-                return
-                
-            # Get the path to the database - ensure it's a string
-            db_path = str(self.db_manager.current_db)
+            # URL for the new online visualizer
+            visualizer_url = "https://water-level-visualizer-mobile.netlify.app/"
             
-            # Create a temporary settings file to pass the database path
-            settings_path = tools_dir / "Visualizer" / "settings.json"
+            # Show confirmation dialog with information
+            reply = QMessageBox.question(
+                self,
+                "Open Online Visualizer",
+                f"This will open the CAESER Water Level Visualizer in your default web browser.\n\n"
+                f"URL: {visualizer_url}\n\n"
+                f"The online visualizer provides:\n"
+                f"• Interactive water level plotting\n"
+                f"• Database upload and analysis\n"
+                f"• Export capabilities\n"
+                f"• Mobile-friendly interface\n\n"
+                f"Continue?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes
+            )
             
-            # Prepare settings with current database path
-            settings = {
-                'database_path': db_path,
-                'selected_well': None
-            }
-            
-            # Save settings
-            with open(settings_path, 'w') as f:
-                json.dump(settings, f)
-                
-            logger.debug(f"Launching standalone visualizer with database: {db_path}")
-            
-            # Launch the script as a subprocess
-            subprocess.Popen([sys.executable, str(visualizer_path)])
+            if reply == QMessageBox.Yes:
+                # Open the URL in the default browser
+                webbrowser.open(visualizer_url)
+                logger.info(f"Opened online visualizer: {visualizer_url}")
             
         except Exception as e:
             QMessageBox.critical(
                 self,
                 "Error",
-                f"Failed to launch Water Level Visualizer: {str(e)}"
+                f"Failed to open online visualizer: {str(e)}"
             )
     
     def open_xle_metadata_editor(self):

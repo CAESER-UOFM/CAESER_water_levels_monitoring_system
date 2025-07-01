@@ -260,16 +260,7 @@ read -n 1 -s -r -p "Press any key to close..."
 EOF
 chmod +x "$DEBUG_LAUNCHER"
 
-# Visualizer launcher
-VISUALIZER_LAUNCHER="$INSTALL_DIR/water_level_visualizer_app.sh"
-cat > "$VISUALIZER_LAUNCHER" << EOF
-#!/bin/bash
-cd "$INSTALL_DIR/tools/Visualizer"
-source "$VENV_DIR/bin/activate"
-python "$INSTALL_DIR/tools/Visualizer/main.py"
-read -n 1 -s -r -p "Press any key to close..."
-EOF
-chmod +x "$VISUALIZER_LAUNCHER"
+# Note: Visualizer launcher removed - now using online version at https://water-level-visualizer-mobile.netlify.app/
 
 # Create desktop shortcuts if requested
 if [[ "$CREATE_DESKTOP" == "True" ]]; then
@@ -287,14 +278,7 @@ python "$INSTALL_DIR/main.py"
 EOF
     chmod +x "$DESKTOP_PATH/CAESER Water Levels Monitoring.command"
     
-    # Create visualizer shortcut
-    cat > "$DESKTOP_PATH/CAESER Water Level Visualizer.command" << EOF
-#!/bin/bash
-cd "$INSTALL_DIR/tools/Visualizer"
-source "$VENV_DIR/bin/activate"
-python "$INSTALL_DIR/tools/Visualizer/main.py"
-EOF
-    chmod +x "$DESKTOP_PATH/CAESER Water Level Visualizer.command"
+    # Note: Visualizer shortcut removed - now accessible from Tools menu (opens online version)
     
     # Verify shortcuts were created
     if [[ -f "$DESKTOP_PATH/CAESER Water Levels Monitoring.command" ]]; then
@@ -303,11 +287,7 @@ EOF
         echo "    [!] Warning: Main app shortcut not found on desktop"
     fi
     
-    if [[ -f "$DESKTOP_PATH/CAESER Water Level Visualizer.command" ]]; then
-        echo "    [+] Visualizer shortcut created successfully"
-    else
-        echo "    [!] Warning: Visualizer shortcut not found on desktop"
-    fi
+    # Visualizer shortcut verification removed - now using online version
 fi
 
 echo
@@ -323,13 +303,12 @@ echo
 echo "    [+] Launchers created:"
 echo "        [*] Main app: $LAUNCHER"
 echo "        [*] Debug mode: $DEBUG_LAUNCHER"
-echo "        [*] Visualizer: $VISUALIZER_LAUNCHER"
+echo "        [*] Visualizer: Available in Tools menu (opens online version)"
 
 if [[ "$CREATE_DESKTOP" == "True" ]]; then
     echo
     echo "    [+] Desktop shortcuts created:"
     echo "        [*] CAESER Water Levels Monitoring"
-    echo "        [*] CAESER Water Level Visualizer"
 fi
 
 echo
@@ -342,7 +321,7 @@ echo
 echo "    [+] What was installed:"
 echo "        - Python virtual environment with all dependencies"
 echo "        - CAESER Water Levels Monitoring System"
-echo "        - Application launchers (main app, debug, visualizer)"
+echo "        - Application launchers (main app, debug)"
 if [[ "$CREATE_DESKTOP" == "True" ]]; then
     echo "        - Desktop shortcuts for easy access"
 fi
