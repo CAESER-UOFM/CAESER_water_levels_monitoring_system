@@ -1711,9 +1711,23 @@ class RiseTab(BaseRechargeTab):
                 csvfile.write(f"# RISE Calculation Results for {self.well_combo.currentText()}\n")
                 csvfile.write(f"# Exported on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                 csvfile.write(f"# Parameters:\n")
-                csvfile.write(f"#   Specific Yield: {self.sy_spinner.value()}\n")
-                csvfile.write(f"#   Rise Threshold: {self.threshold_spinner.value()} ft\n")
-                csvfile.write(f"#   Water Year Start: Month {self.water_year_month.value()}, Day {self.water_year_day.value()}\n")
+                
+                # Get parameters from unified settings
+                if hasattr(self, 'parent') and self.parent and hasattr(self.parent, 'unified_settings') and self.parent.unified_settings:
+                    settings = self.parent.unified_settings.get_method_settings('RISE')
+                    sy = settings.get('specific_yield', 0.2)
+                    rise_threshold = settings.get('rise_threshold', 0.01)
+                    water_year_month = settings.get('water_year_month', 10)
+                    water_year_day = settings.get('water_year_day', 1)
+                else:
+                    sy = 0.2
+                    rise_threshold = 0.01
+                    water_year_month = 10
+                    water_year_day = 1
+                
+                csvfile.write(f"#   Specific Yield: {sy}\n")
+                csvfile.write(f"#   Rise Threshold: {rise_threshold} ft\n")
+                csvfile.write(f"#   Water Year Start: Month {water_year_month}, Day {water_year_day}\n")
                 csvfile.write(f"# Total Recharge: {self.total_recharge_label.text()}\n")
                 csvfile.write(f"# Annual Rate: {self.annual_rate_label.text()}\n")
                 csvfile.write("#\n")
@@ -1772,6 +1786,19 @@ class RiseTab(BaseRechargeTab):
             # Get events to export (filtered or all)
             events_to_export = self.rise_events_filtered if hasattr(self, 'rise_events_filtered') else self.rise_events
             
+            # Get parameters from unified settings
+            if hasattr(self, 'parent') and self.parent and hasattr(self.parent, 'unified_settings') and self.parent.unified_settings:
+                settings = self.parent.unified_settings.get_method_settings('RISE')
+                sy = settings.get('specific_yield', 0.2)
+                rise_threshold = settings.get('rise_threshold', 0.01)
+                water_year_month = settings.get('water_year_month', 10)
+                water_year_day = settings.get('water_year_day', 1)
+            else:
+                sy = 0.2
+                rise_threshold = 0.01
+                water_year_month = 10
+                water_year_day = 1
+            
             # Create DataFrames for export
             # 1. Rise events data
             events_data = []
@@ -1821,9 +1848,9 @@ class RiseTab(BaseRechargeTab):
                 ],
                 'Value': [
                     self.well_combo.currentText(),
-                    self.sy_spinner.value(),
-                    self.threshold_spinner.value(),
-                    f"Month {self.water_year_month.value()}, Day {self.water_year_day.value()}",
+                    sy,
+                    rise_threshold,
+                    f"Month {water_year_month}, Day {water_year_day}",
                     self.downsample_combo.currentText(),
                     'Moving Average' if self.ma_radio.isChecked() else 'None',
                     float(self.total_recharge_label.text().split()[0]),
