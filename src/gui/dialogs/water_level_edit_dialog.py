@@ -1192,6 +1192,14 @@ class WaterLevelEditDialog(QDialog):
                 
                 # Use total_updated for the success message
                 logger.info(f"Database updated successfully. {total_updated} records affected.")
+                
+                # Mark cloud database as modified if applicable
+                if (hasattr(self, 'parent') and self.parent() and 
+                    hasattr(self.parent(), 'db_manager') and self.parent().db_manager and 
+                    self.parent().db_manager.is_cloud_database):
+                    self.parent().db_manager.mark_cloud_modified()
+                    logger.info("Marked cloud database as modified after water level edits")
+                
                 QMessageBox.information(self, "Changes Applied", 
                                       f"Successfully updated {total_updated} records in the database.")
                 
