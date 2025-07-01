@@ -31,9 +31,16 @@ class SaveOptionsDialog(QDialog):
     def setup_ui(self):
         """Setup the dialog UI"""
         self.setWindowTitle("Unsaved Changes")
-        self.setMinimumWidth(500)
-        self.setMinimumHeight(400)
-        self.resize(550, 450)
+        self.setMinimumWidth(600)
+        self.setMinimumHeight(500)
+        self.resize(650, 550)
+        
+        # Center the dialog on the parent window
+        if self.parent():
+            parent_geometry = self.parent().geometry()
+            x = parent_geometry.x() + (parent_geometry.width() - self.width()) // 2
+            y = parent_geometry.y() + (parent_geometry.height() - self.height()) // 2
+            self.move(x, y)
         
         # Set white background
         self.setStyleSheet("""
@@ -42,13 +49,22 @@ class SaveOptionsDialog(QDialog):
                 color: #333333;
             }
             QRadioButton {
-                font-size: 13px;
+                font-size: 14px;
                 font-weight: bold;
-                padding: 8px;
+                padding: 12px 8px;
+                margin: 8px 0;
+                border-radius: 6px;
+                background-color: #f8f9fa;
+                border: 2px solid transparent;
+            }
+            QRadioButton:checked {
+                background-color: #e7f3ff;
+                border: 2px solid #007bff;
             }
             QRadioButton::indicator {
-                width: 18px;
-                height: 18px;
+                width: 20px;
+                height: 20px;
+                margin-right: 8px;
             }
         """)
         
@@ -133,10 +149,10 @@ class SaveOptionsDialog(QDialog):
         main_layout.addWidget(self.cloud_radio)
         
         cloud_desc = QLabel("Upload changes to the cloud database immediately")
-        cloud_desc.setStyleSheet("margin-left: 25px; color: #666; font-size: 11px;")
+        cloud_desc.setStyleSheet("margin-left: 30px; margin-bottom: 10px; color: #666; font-size: 12px; line-height: 1.4;")
         main_layout.addWidget(cloud_desc)
         
-        main_layout.addSpacing(10)
+        main_layout.addSpacing(15)
         
         # Option 2: Save as Draft
         self.draft_radio = QRadioButton("📝 Save as Draft")
@@ -145,10 +161,10 @@ class SaveOptionsDialog(QDialog):
         main_layout.addWidget(self.draft_radio)
         
         draft_desc = QLabel("Save changes locally to continue working later (offline)")
-        draft_desc.setStyleSheet("margin-left: 25px; color: #666; font-size: 11px;")
+        draft_desc.setStyleSheet("margin-left: 30px; margin-bottom: 10px; color: #666; font-size: 12px; line-height: 1.4;")
         main_layout.addWidget(draft_desc)
         
-        main_layout.addSpacing(10)
+        main_layout.addSpacing(15)
         
         # Option 3: Discard Changes
         self.discard_radio = QRadioButton("🗑️ Discard Changes")
@@ -157,14 +173,15 @@ class SaveOptionsDialog(QDialog):
         main_layout.addWidget(self.discard_radio)
         
         discard_desc = QLabel("Close without saving (all changes will be lost)")
-        discard_desc.setStyleSheet("margin-left: 25px; color: #666; font-size: 11px;")
+        discard_desc.setStyleSheet("margin-left: 30px; margin-bottom: 10px; color: #666; font-size: 12px; line-height: 1.4;")
         main_layout.addWidget(discard_desc)
         
         main_layout.addStretch()
         
         # Buttons
         button_layout = QHBoxLayout()
-        button_layout.setContentsMargins(0, 15, 0, 0)
+        button_layout.setContentsMargins(0, 25, 0, 0)
+        button_layout.setSpacing(15)
         button_layout.addStretch()
         
         cancel_button = QPushButton("Cancel")
@@ -173,11 +190,12 @@ class SaveOptionsDialog(QDialog):
                 background-color: #ffffff;
                 color: #6c757d;
                 border: 2px solid #dee2e6;
-                padding: 8px 16px;
-                border-radius: 6px;
-                font-size: 13px;
-                min-width: 80px;
-                min-height: 32px;
+                padding: 12px 24px;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 500;
+                min-width: 100px;
+                min-height: 40px;
             }
             QPushButton:hover {
                 background-color: #f8f9fa;
@@ -193,12 +211,12 @@ class SaveOptionsDialog(QDialog):
                 background-color: #007bff;
                 color: white;
                 border: none;
-                padding: 8px 16px;
-                border-radius: 6px;
+                padding: 12px 24px;
+                border-radius: 8px;
                 font-weight: bold;
-                font-size: 13px;
-                min-width: 80px;
-                min-height: 32px;
+                font-size: 14px;
+                min-width: 100px;
+                min-height: 40px;
             }
             QPushButton:hover {
                 background-color: #0056b3;
