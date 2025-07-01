@@ -8,6 +8,7 @@ import numpy as np
 import os
 import sys
 from datetime import datetime, timedelta
+from pathlib import Path
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, 
     QDoubleSpinBox, QPushButton, QGroupBox, QTableWidget, 
@@ -73,6 +74,9 @@ class RiseTab(BaseRechargeTab):
         
         # Setup UI
         self.setup_ui()
+        
+        # Update save button visibility based on initial database mode
+        self.update_save_button_visibility()
     
     def _comprehensive_process_data(self, raw_data):
         """Comprehensive data processing method that applies all global settings."""
@@ -503,6 +507,30 @@ class RiseTab(BaseRechargeTab):
             }
         """)
         db_layout.addWidget(self.save_to_db_btn)
+        
+        # Save Locally button for cloud mode
+        self.save_locally_btn = QPushButton("Save Locally")
+        self.save_locally_btn.clicked.connect(self.save_locally)
+        self.save_locally_btn.setToolTip("Create a local copy of the current cloud database with saved calculation")
+        self.save_locally_btn.setStyleSheet("""
+            QPushButton {
+                padding: 5px 10px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                background-color: #f8f9fa;
+            }
+            QPushButton:hover {
+                background-color: #e9ecef;
+                border-color: #adb5bd;
+            }
+            QPushButton:disabled {
+                background-color: #e9ecef;
+                color: #6c757d;
+                border-color: #dee2e6;
+            }
+        """)
+        self.save_locally_btn.setVisible(False)  # Hidden by default
+        db_layout.addWidget(self.save_locally_btn)
         
         # Load button
         self.load_from_db_btn = QPushButton("Load from Database")
@@ -2031,6 +2059,30 @@ class RiseTab(BaseRechargeTab):
             )
             
             if success:
+                # Track the change for cloud databases
+                if hasattr(self, 'parent') and self.parent and hasattr(self.parent, 'db_manager'):
+                    db_manager = self.parent.db_manager
+                    if db_manager.is_cloud_database and db_manager.change_tracker:
+                        # Track the RISE calculation save
+                        from ...handlers.change_tracker import ChangeType, ChangeAction
+                        db_manager.change_tracker.track_change(
+                            change_type=ChangeType.MANUAL,
+                            action=ChangeAction.INSERT,
+                            table_name='rise_calculations',
+                            record_id=success,  # success contains the calculation ID
+                            description=f"Saved RISE calculation for well {well_name}",
+                            context={
+                                'well_id': well_id,
+                                'well_name': well_name,
+                                'total_recharge': total_recharge,
+                                'annual_rate': annual_rate,
+                                'num_events': len(events_to_save)
+                            }
+                        )
+                        # Mark database as modified
+                        db_manager.mark_cloud_modified()
+                        logger.info(f"Tracked RISE calculation change for cloud database")
+                
                 QMessageBox.information(
                     self, 
                     "Save Successful", 
@@ -2040,6 +2092,9 @@ class RiseTab(BaseRechargeTab):
                     f"Number of rises: {len(events_to_save)}"
                 )
                 logger.info(f"Saved RISE calculation for well {well_id} to database")
+                
+                # Update save button visibility after successful save
+                self.update_save_button_visibility()
             else:
                 QMessageBox.warning(
                     self, 
@@ -2964,6 +3019,106 @@ class RiseTab(BaseRechargeTab):
         self.update_plot()
         
         logger.info("[PREPROCESS_DEBUG] RISE tab updated with shared data")
+    
+    def update_save_button_visibility(self):
+        """Update save button visibility based on database mode."""
+        try:
+            # Check if we have access to the database manager
+            if hasattr(self, 'parent') and self.parent and hasattr(self.parent, 'db_manager'):
+                db_manager = self.parent.db_manager
+                is_cloud_db = db_manager.is_cloud_database
+                
+                if is_cloud_db:
+                    # Cloud mode: show "Save to Cloud" and "Save Locally" buttons
+                    self.save_to_db_btn.setText("Save to Cloud")
+                    self.save_to_db_btn.setToolTip("Save the current RISE calculation to the cloud database")
+                    self.save_locally_btn.setVisible(True)
+                else:
+                    # Local mode: show standard "Save to Database" button, hide "Save Locally"
+                    self.save_to_db_btn.setText("Save to Database")
+                    self.save_to_db_btn.setToolTip("Save the current RISE calculation to the database")
+                    self.save_locally_btn.setVisible(False)
+            else:
+                # Fallback: hide cloud-specific button
+                self.save_locally_btn.setVisible(False)
+                
+        except Exception as e:
+            logger.warning(f"Error updating save button visibility: {e}")
+            # Fallback: hide cloud-specific button
+            if hasattr(self, 'save_locally_btn'):
+                self.save_locally_btn.setVisible(False)
+    
+    def save_locally(self):
+        """Create a local copy of the cloud database with the current calculation saved."""
+        try:
+            # Check if we're in cloud mode
+            if not (hasattr(self, 'parent') and self.parent and hasattr(self.parent, 'db_manager')):
+                QMessageBox.warning(self, "Error", "Database manager not available.")
+                return
+            
+            db_manager = self.parent.db_manager
+            if not db_manager.is_cloud_database:
+                QMessageBox.warning(self, "Not Cloud Database", "This feature is only available for cloud databases.")
+                return
+            
+            # Check if we have data to save
+            if not hasattr(self, 'rise_events') or not self.rise_events:
+                QMessageBox.warning(self, "No Data", "No results to save. Calculate recharge first.")
+                return
+            
+            # Ask user for local database location
+            from PyQt5.QtWidgets import QFileDialog
+            file_path, _ = QFileDialog.getSaveFileName(
+                self,
+                "Save Local Copy",
+                f"{db_manager.cloud_project_name}_local_copy.db",
+                "SQLite Database (*.db)"
+            )
+            
+            if not file_path:
+                return
+            
+            # Create a copy of the current cloud database
+            import shutil
+            shutil.copy2(db_manager.temp_db_path, file_path)
+            logger.info(f"Created local copy of cloud database at: {file_path}")
+            
+            # Open the new local database temporarily to save the calculation
+            original_current_db = db_manager.current_db
+            original_is_cloud = db_manager.is_cloud_database
+            original_cloud_modified = db_manager.is_cloud_modified
+            
+            try:
+                # Temporarily switch to local mode for saving
+                db_manager.open_database(Path(file_path))
+                db_manager.is_cloud_database = False
+                
+                # Save the calculation to the local database
+                self.save_to_database()
+                
+                QMessageBox.information(
+                    self,
+                    "Local Copy Saved",
+                    f"Local copy created successfully at:\n{file_path}\n\n"
+                    f"The calculation has been saved to the local database."
+                )
+                
+            finally:
+                # Restore original cloud database state
+                db_manager.current_db = original_current_db
+                db_manager.is_cloud_database = original_is_cloud
+                db_manager.is_cloud_modified = original_cloud_modified
+                
+                # Restore the UI state
+                self.update_save_button_visibility()
+                
+        except Exception as e:
+            logger.error(f"Error creating local copy: {e}", exc_info=True)
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to create local copy:\n{str(e)}"
+            )
 
 
 class LoadCalculationDialog(QDialog):
