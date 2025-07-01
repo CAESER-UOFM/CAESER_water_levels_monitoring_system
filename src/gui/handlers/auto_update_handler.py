@@ -74,7 +74,12 @@ class AutoUpdateHandler:
             if not consolidated_folder_id:
                 progress_dialog.close()
                 QMessageBox.warning(self.parent, "Configuration Missing", 
-                                  "Consolidated field data folder not configured. Please run field data consolidation first.")
+                                  "Consolidated field data folder not configured. Please run field data consolidation first.\n\n"
+                                  "To set this up:\n"
+                                  "1. Go to the 'Runs' tab\n"
+                                  "2. Click 'Consolidate Field Data' button\n"
+                                  "3. This will organize your field data and enable Auto Sync\n\n"
+                                  "Auto Sync requires the consolidated folder structure to work properly.")
                 return
             
             # Initialize runs monitor for consolidated folder
@@ -187,7 +192,12 @@ class AutoUpdateHandler:
             if not consolidated_folder_id:
                 progress_dialog.close()
                 QMessageBox.warning(self.parent, "Configuration Missing", 
-                                  "Consolidated field data folder not configured. Please run field data consolidation first.")
+                                  "Consolidated field data folder not configured. Please run field data consolidation first.\n\n"
+                                  "To set this up:\n"
+                                  "1. Go to the 'Runs' tab\n"
+                                  "2. Click 'Consolidate Field Data' button\n"
+                                  "3. This will organize your field data and enable Auto Sync\n\n"
+                                  "Auto Sync requires the consolidated folder structure to work properly.")
                 return
             
             # Initialize runs monitor for consolidated folder

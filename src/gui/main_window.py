@@ -2429,6 +2429,16 @@ class MainWindow(QMainWindow):
 
     def auto_sync_barologgers(self):
         """Run guided or automatic sync for barologger XLE files with Google Drive integration"""
+        # Check if current database is a cloud database
+        if not self.db_manager.current_db or not self.db_manager.is_cloud_database:
+            QMessageBox.warning(
+                self, 
+                "Local Database Selected", 
+                "Auto Sync is only available for cloud databases.\n\n"
+                "Please open a cloud database or create a new cloud database to use Auto Sync functionality."
+            )
+            return
+        
         # Initialize handler if needed
         if self.auto_update_handler is None:
             self.auto_update_handler = AutoUpdateHandler(
@@ -2444,6 +2454,16 @@ class MainWindow(QMainWindow):
     
     def auto_sync_water_levels(self):
         """Run guided or automatic sync for water level XLE files with Google Drive integration"""
+        # Check if current database is a cloud database
+        if not self.db_manager.current_db or not self.db_manager.is_cloud_database:
+            QMessageBox.warning(
+                self, 
+                "Local Database Selected", 
+                "Auto Sync is only available for cloud databases.\n\n"
+                "Please open a cloud database or create a new cloud database to use Auto Sync functionality."
+            )
+            return
+        
         # Initialize handler if needed
         if self.auto_update_handler is None:
             self.auto_update_handler = AutoUpdateHandler(
