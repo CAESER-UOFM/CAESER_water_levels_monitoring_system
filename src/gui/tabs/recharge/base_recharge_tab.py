@@ -166,7 +166,16 @@ class BaseRechargeTab(QWidget):
             
             # Improved date formatting based on data range
             if self.raw_data is not None and not self.raw_data.empty:
-                date_range = self.raw_data['timestamp'].max() - self.raw_data['timestamp'].min()
+                # Handle different timestamp column names consistently
+                if 'timestamp_utc' in self.raw_data.columns:
+                    date_column = self.raw_data['timestamp_utc']
+                elif 'timestamp' in self.raw_data.columns:
+                    date_column = self.raw_data['timestamp']
+                else:
+                    # Use the index if it's a datetime index
+                    date_column = self.raw_data.index
+                
+                date_range = pd.to_datetime(date_column).max() - pd.to_datetime(date_column).min()
                 
                 if date_range.days > 730:  # More than 2 years
                     ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
