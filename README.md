@@ -6,7 +6,7 @@
 
 **Professional water level data processing and analysis**
 
-[![Download Latest](https://img.shields.io/badge/Download-Latest%20Release-success?style=for-the-badge&logo=download)](../../releases/latest)
+[![Download Latest](https://img.shields.io/badge/Download-Latest%20Version-success?style=for-the-badge&logo=download)](../../archive/refs/heads/main.zip)
 [![Documentation](https://img.shields.io/badge/Docs-Quick%20Start-blue?style=for-the-badge&logo=book)](docs/QUICK_START.md)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20|%20macOS%20|%20Linux-lightgrey?style=for-the-badge)](docs/QUICK_START.md#system-requirements)
 
@@ -34,7 +34,7 @@
 
 **🎯 Most Common Actions:**
 
-[![📥 Download](https://img.shields.io/badge/📥-Download_Now-success?style=flat-square)](../../releases/latest) 
+[![📥 Download](https://img.shields.io/badge/📥-Download_Now-success?style=flat-square)](../../archive/refs/heads/main.zip) 
 [![🖥️ Windows Help](https://img.shields.io/badge/🖥️-Windows_Setup-blue?style=flat-square)](docs/QUICK_WINDOWS_SETUP.md)
 [![📚 Quick Start](https://img.shields.io/badge/📚-Quick_Start-orange?style=flat-square)](docs/QUICK_START.md)
 [![❓ Help](https://img.shields.io/badge/❓-Get_Help-red?style=flat-square)](#-support)
@@ -86,11 +86,11 @@ Desktop application for processing water level data from Solinst loggers with au
 
 **🎯 Easiest Way: Direct Download**
 
-[![Download ZIP](https://img.shields.io/badge/📁_Download_ZIP-Latest_Release-success?style=for-the-badge&logo=download)](../../releases/latest)
+[![Download ZIP](https://img.shields.io/badge/📁_Download_ZIP-Latest_Version-success?style=for-the-badge&logo=download)](../../archive/refs/heads/main.zip)
 
-*Click the badge above → Look for "Assets" → Download the ZIP file*
+*Click the badge above → ZIP file downloads automatically*
 
-> **🖥️ Windows Users:** You'll need to "unblock" the setup.bat file before running it. 
+> **🖥️ Windows Users:** You'll need to "unblock" the windows_installer.bat file before running it. 
 > [See detailed instructions below](#step-2-install) or check our [visual guide](docs/WINDOWS_UNBLOCK_GUIDE.md).
 
 </div>
