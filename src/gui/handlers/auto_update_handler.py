@@ -72,15 +72,22 @@ class AutoUpdateHandler:
             
             consolidated_folder_id = self.settings_handler.get_setting("consolidated_field_data_folder", "")
             if not consolidated_folder_id:
-                progress_dialog.close()
-                QMessageBox.warning(self.parent, "Configuration Missing", 
-                                  "Consolidated field data folder not configured. Please run field data consolidation first.\n\n"
-                                  "To set this up:\n"
-                                  "1. Go to the 'Runs' tab\n"
-                                  "2. Click 'Consolidate Field Data' button\n"
-                                  "3. This will organize your field data and enable Auto Sync\n\n"
-                                  "Auto Sync requires the consolidated folder structure to work properly.")
-                return
+                # Try to auto-detect the FIELD_DATA_CONSOLIDATED folder
+                consolidated_folder_id = self._auto_detect_consolidated_folder()
+                if consolidated_folder_id:
+                    # Save the detected folder ID for future use
+                    self.settings_handler.set_setting("consolidated_field_data_folder", consolidated_folder_id)
+                    logger.info(f"Auto-detected and saved consolidated folder ID: {consolidated_folder_id}")
+                else:
+                    progress_dialog.close()
+                    QMessageBox.warning(self.parent, "Configuration Missing", 
+                                      "Consolidated field data folder not found. Please run field data consolidation first.\n\n"
+                                      "To set this up:\n"
+                                      "1. Go to the 'Runs' tab\n"
+                                      "2. Click 'Consolidate Field Data' button\n"
+                                      "3. This will organize your field data and enable Auto Sync\n\n"
+                                      "Auto Sync requires the consolidated folder structure to work properly.")
+                    return
             
             # Initialize runs monitor for consolidated folder
             from ..handlers.runs_folder_monitor import RunsFolderMonitor
@@ -190,15 +197,22 @@ class AutoUpdateHandler:
             
             consolidated_folder_id = self.settings_handler.get_setting("consolidated_field_data_folder", "")
             if not consolidated_folder_id:
-                progress_dialog.close()
-                QMessageBox.warning(self.parent, "Configuration Missing", 
-                                  "Consolidated field data folder not configured. Please run field data consolidation first.\n\n"
-                                  "To set this up:\n"
-                                  "1. Go to the 'Runs' tab\n"
-                                  "2. Click 'Consolidate Field Data' button\n"
-                                  "3. This will organize your field data and enable Auto Sync\n\n"
-                                  "Auto Sync requires the consolidated folder structure to work properly.")
-                return
+                # Try to auto-detect the FIELD_DATA_CONSOLIDATED folder
+                consolidated_folder_id = self._auto_detect_consolidated_folder()
+                if consolidated_folder_id:
+                    # Save the detected folder ID for future use
+                    self.settings_handler.set_setting("consolidated_field_data_folder", consolidated_folder_id)
+                    logger.info(f"Auto-detected and saved consolidated folder ID: {consolidated_folder_id}")
+                else:
+                    progress_dialog.close()
+                    QMessageBox.warning(self.parent, "Configuration Missing", 
+                                      "Consolidated field data folder not found. Please run field data consolidation first.\n\n"
+                                      "To set this up:\n"
+                                      "1. Go to the 'Runs' tab\n"
+                                      "2. Click 'Consolidate Field Data' button\n"
+                                      "3. This will organize your field data and enable Auto Sync\n\n"
+                                      "Auto Sync requires the consolidated folder structure to work properly.")
+                    return
             
             # Initialize runs monitor for consolidated folder
             from ..handlers.runs_folder_monitor import RunsFolderMonitor
@@ -572,4 +586,40 @@ class AutoUpdateHandler:
             
         except Exception as e:
             logger.error(f"Error downloading file {filename}: {e}")
+            return None
+    
+    def _auto_detect_consolidated_folder(self):
+        """Auto-detect the FIELD_DATA_CONSOLIDATED folder in Google Drive"""
+        try:
+            service = self.drive_service.get_service()
+            if not service:
+                logger.warning("Google Drive service not available for auto-detection")
+                return None
+            
+            # Get the main water levels monitoring folder ID
+            main_folder_id = self.settings_handler.get_setting("google_drive_folder_id")
+            if not main_folder_id:
+                logger.warning("Main Google Drive folder ID not configured")
+                return None
+            
+            # Search for FIELD_DATA_CONSOLIDATED folder in the main folder
+            query = f"'{main_folder_id}' in parents and name = 'FIELD_DATA_CONSOLIDATED' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
+            
+            results = service.files().list(
+                q=query,
+                fields="files(id, name)",
+                spaces='drive'
+            ).execute()
+            
+            folders = results.get('files', [])
+            if folders:
+                consolidated_folder_id = folders[0]['id']
+                logger.info(f"Auto-detected FIELD_DATA_CONSOLIDATED folder: {consolidated_folder_id}")
+                return consolidated_folder_id
+            else:
+                logger.warning("FIELD_DATA_CONSOLIDATED folder not found in Google Drive")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error auto-detecting consolidated folder: {e}")
             return None
