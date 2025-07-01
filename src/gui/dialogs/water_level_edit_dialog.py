@@ -1356,7 +1356,13 @@ class WaterLevelEditDialog(QDialog):
             interval_minutes = params.get("interval_minutes", 15)
             if not pairs:
                 QApplication.restoreOverrideCursor()
-                QMessageBox.warning(self, "Warning", "Please select at least one pair of points.")
+                # Create warning message box with proper parent and modal settings
+                msg_box = QMessageBox(self)
+                msg_box.setIcon(QMessageBox.Warning)
+                msg_box.setWindowTitle("Warning")
+                msg_box.setText("Please select at least one pair of points.")
+                msg_box.setWindowFlags(msg_box.windowFlags() | Qt.WindowStaysOnTopHint)
+                msg_box.exec_()
                 return
             
             # Track changes for this instance
@@ -1427,18 +1433,26 @@ class WaterLevelEditDialog(QDialog):
             self.ax.legend(loc='upper right')
             self.canvas.draw()
             QApplication.restoreOverrideCursor()
-            QMessageBox.information(
-                self, 
-                "Interpolation Added", 
-                f"Added linear interpolation for {len(pairs)} pairs.\nClick 'Apply Changes' on the main dialog to save to database."
-            )
+            # Create message box with proper parent and modal settings
+            msg_box = QMessageBox(self)
+            msg_box.setIcon(QMessageBox.Information)
+            msg_box.setWindowTitle("Interpolation Added")
+            msg_box.setText(f"Added linear interpolation for {len(pairs)} pairs.\nClick 'Apply Changes' on the main dialog to save to database.")
+            msg_box.setWindowFlags(msg_box.windowFlags() | Qt.WindowStaysOnTopHint)
+            msg_box.exec_()
             # Reset helper dialog state for next use
             if hasattr(self.spike_helper, 'clear_all'):
                 self.spike_helper.clear_all()
         except Exception as e:
             logger.error(f"Error applying spike fix: {e}", exc_info=True)
             QApplication.restoreOverrideCursor()
-            QMessageBox.critical(self, "Error", f"Failed to apply spike fix: {str(e)}")
+            # Create error message box with proper parent and modal settings
+            msg_box = QMessageBox(self)
+            msg_box.setIcon(QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText(f"Failed to apply spike fix: {str(e)}")
+            msg_box.setWindowFlags(msg_box.windowFlags() | Qt.WindowStaysOnTopHint)
+            msg_box.exec_()
 
     def reset_spike_fix(self):
         """Reset all spike corrected data back to original values and clear pairs"""
@@ -1448,7 +1462,13 @@ class WaterLevelEditDialog(QDialog):
             indices_to_reset = self.transducer_data[spike_mask].index
             if len(indices_to_reset) == 0:
                 QApplication.restoreOverrideCursor()
-                QMessageBox.information(self, "No Changes", "No spike-corrected data to reset.")
+                # Create info message box with proper parent and modal settings
+                msg_box = QMessageBox(self)
+                msg_box.setIcon(QMessageBox.Information)
+                msg_box.setWindowTitle("No Changes")
+                msg_box.setText("No spike-corrected data to reset.")
+                msg_box.setWindowFlags(msg_box.windowFlags() | Qt.WindowStaysOnTopHint)
+                msg_box.exec_()
                 return
             for idx in indices_to_reset:
                 original_level = self.transducer_data.loc[idx, 'water_level']
@@ -1471,16 +1491,24 @@ class WaterLevelEditDialog(QDialog):
                 self.spike_helper.clear_all()
             self.canvas.draw()
             QApplication.restoreOverrideCursor()
-            QMessageBox.information(
-                self, 
-                "Reset Complete", 
-                f"Successfully reset {len(indices_to_reset)} spike-corrected data points."
-            )
+            # Create success message box with proper parent and modal settings
+            msg_box = QMessageBox(self)
+            msg_box.setIcon(QMessageBox.Information)
+            msg_box.setWindowTitle("Reset Complete")
+            msg_box.setText(f"Successfully reset {len(indices_to_reset)} spike-corrected data points.")
+            msg_box.setWindowFlags(msg_box.windowFlags() | Qt.WindowStaysOnTopHint)
+            msg_box.exec_()
             logger.debug(f"Reset spike correction for {len(indices_to_reset)} points")
         except Exception as e:
             logger.error(f"Error resetting spike fix: {e}", exc_info=True)
             QApplication.restoreOverrideCursor()
-            QMessageBox.critical(self, "Error", f"Failed to reset spike corrections: {str(e)}")
+            # Create error message box with proper parent and modal settings
+            msg_box = QMessageBox(self)
+            msg_box.setIcon(QMessageBox.Critical)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText(f"Failed to reset spike corrections: {str(e)}")
+            msg_box.setWindowFlags(msg_box.windowFlags() | Qt.WindowStaysOnTopHint)
+            msg_box.exec_()
 
     def clear_spike_selection(self):
         """Clear the current spike selection markers and reset edits for this instance"""
@@ -2300,6 +2328,27 @@ class WaterLevelEditDialog(QDialog):
                 event.accept()
                 return
         super().keyPressEvent(event)
+
+    def show_message_box(self, icon, title, text, buttons=QMessageBox.Ok):
+        """
+        Create a message box that stays on top of the edit dialog and helper dialogs.
+        
+        Args:
+            icon: QMessageBox icon (Information, Warning, Critical, Question)
+            title: Window title
+            text: Message text
+            buttons: Buttons to show (default: Ok)
+        
+        Returns:
+            Button clicked result
+        """
+        msg_box = QMessageBox(self)
+        msg_box.setIcon(icon)
+        msg_box.setWindowTitle(title)
+        msg_box.setText(text)
+        msg_box.setStandardButtons(buttons)
+        msg_box.setWindowFlags(msg_box.windowFlags() | Qt.WindowStaysOnTopHint)
+        return msg_box.exec_()
 
     def close_helper_dialogs(self):
         """Close any open helper dialogs"""
