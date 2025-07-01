@@ -2753,8 +2753,20 @@ class MrcTab(BaseRechargeTab):
                 writer.writeheader()
                 
                 for event in self.recharge_events:
+                    # Handle event_date whether it's a datetime object or string
+                    event_date = event['event_date']
+                    if hasattr(event_date, 'strftime'):
+                        # It's a datetime object
+                        formatted_date = event_date.strftime('%Y-%m-%d')
+                    else:
+                        # It's already a string
+                        formatted_date = str(event_date)
+                        # Try to extract just the date part if it's a full datetime string
+                        if ' ' in formatted_date:
+                            formatted_date = formatted_date.split(' ')[0]
+                    
                     writer.writerow({
-                        'Event_Date': event['event_date'].strftime('%Y-%m-%d'),
+                        'Event_Date': formatted_date,
                         'Water_Year': event['water_year'],
                         'Water_Level_ft': f"{event['water_level']:.2f}",
                         'Predicted_Level_ft': f"{event['predicted_level']:.2f}",
@@ -2801,8 +2813,20 @@ class MrcTab(BaseRechargeTab):
             # 1. Recharge events data
             events_data = []
             for event in self.recharge_events:
+                # Handle event_date whether it's a datetime object or string
+                event_date = event['event_date']
+                if hasattr(event_date, 'strftime'):
+                    # It's a datetime object
+                    formatted_date = event_date.strftime('%Y-%m-%d')
+                else:
+                    # It's already a string
+                    formatted_date = str(event_date)
+                    # Try to extract just the date part if it's a full datetime string
+                    if ' ' in formatted_date:
+                        formatted_date = formatted_date.split(' ')[0]
+                
                 events_data.append({
-                    'Event Date': event['event_date'],
+                    'Event Date': formatted_date,
                     'Water Year': event['water_year'],
                     'Water Level (ft)': event['water_level'],
                     'Predicted Level (ft)': event['predicted_level'],
