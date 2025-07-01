@@ -83,12 +83,16 @@ class RechargeTab(QWidget):
         # Header with info and settings button
         header_layout = QHBoxLayout()
         
-        # Info label at the top
-        info_label = QLabel(
-            "Select a well below to analyze for recharge estimation. "
-            "Unconfined aquifer wells are recommended for water table fluctuation methods."
-        )
-        info_label.setWordWrap(True)
+        # Compact info label
+        info_label = QLabel("Recharge Analysis - Select well and method")
+        info_label.setStyleSheet("""
+            QLabel {
+                font-weight: bold;
+                color: #2c3e50;
+                font-size: 13px;
+                padding: 2px;
+            }
+        """)
         header_layout.addWidget(info_label)
         
         # Settings button
@@ -125,44 +129,62 @@ class RechargeTab(QWidget):
         layout.addWidget(recharge_methods)
     
     def create_well_selection(self):
-        """Create well selection controls."""
+        """Create compact well selection controls."""
         from PyQt5.QtWidgets import QComboBox, QHBoxLayout
         import sqlite3
         
-        group_box = QGroupBox("Well Selection")
-        layout = QVBoxLayout(group_box)
+        # Create a compact horizontal layout without group box
+        selection_widget = QWidget()
+        selection_layout = QHBoxLayout(selection_widget)
+        selection_layout.setContentsMargins(0, 5, 0, 5)
+        selection_layout.setSpacing(8)
         
-        # Create horizontal layout for dropdowns
-        selection_layout = QHBoxLayout()
-        
-        # Aquifer filter dropdown
-        aquifer_label = QLabel("Filter by Aquifer:")
+        # Compact aquifer filter
+        aquifer_label = QLabel("Aquifer:")
+        aquifer_label.setStyleSheet("font-weight: bold; color: #34495e; font-size: 12px;")
+        aquifer_label.setFixedWidth(50)
         selection_layout.addWidget(aquifer_label)
         
         self.aquifer_combo = QComboBox()
-        self.aquifer_combo.setMinimumWidth(150)
+        self.aquifer_combo.setFixedWidth(120)
+        self.aquifer_combo.setStyleSheet("""
+            QComboBox {
+                padding: 4px 8px;
+                border: 1px solid #bdc3c7;
+                border-radius: 4px;
+                font-size: 12px;
+            }
+        """)
         self.aquifer_combo.currentTextChanged.connect(self.on_aquifer_filter_changed)
         selection_layout.addWidget(self.aquifer_combo)
         
-        # Well selection dropdown
-        well_label = QLabel("Select Well:")
+        # Compact well selection
+        well_label = QLabel("Well:")
+        well_label.setStyleSheet("font-weight: bold; color: #34495e; font-size: 12px;")
+        well_label.setFixedWidth(30)
         selection_layout.addWidget(well_label)
         
         self.well_combo = QComboBox()
-        self.well_combo.setMinimumWidth(200)
+        self.well_combo.setFixedWidth(180)
+        self.well_combo.setStyleSheet("""
+            QComboBox {
+                padding: 4px 8px;
+                border: 1px solid #bdc3c7;
+                border-radius: 4px;
+                font-size: 12px;
+            }
+        """)
         self.well_combo.currentTextChanged.connect(self.on_well_selected)
         selection_layout.addWidget(self.well_combo)
         
         # Add stretch to push everything to the left
         selection_layout.addStretch()
         
-        layout.addLayout(selection_layout)
-        
         # Load initial data
         self.load_aquifer_filters()
         self.load_wells()
         
-        return group_box
+        return selection_widget
     
     def load_aquifer_filters(self):
         """Load aquifer options for filtering with caching."""

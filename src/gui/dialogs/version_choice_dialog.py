@@ -32,9 +32,9 @@ class VersionChoiceDialog(QDialog):
     def setup_ui(self):
         """Setup the dialog UI"""
         self.setWindowTitle(f"Version Choice - {self.project_name}")
-        self.setMinimumWidth(600)
-        self.setMinimumHeight(450)
-        self.resize(650, 500)
+        self.setMinimumWidth(700)  # Increased for better text visibility
+        self.setMinimumHeight(550)  # Increased height for more content
+        self.resize(750, 600)  # Larger default size
         
         # Set white background
         self.setStyleSheet("""
@@ -278,7 +278,7 @@ class VersionChoiceDialog(QDialog):
             elif status == 'outdated':
                 self.cache_radio = QRadioButton("💾 Use Local Cache")
                 self.cache_radio.setStyleSheet("color: #ff9800; font-weight: bold;")
-                cache_desc = "⚠️ Fast but older - You may miss recent changes from other users"
+                cache_desc = "⚠️ Instant loading - Your cached version is older than the cloud version"
             else:
                 self.cache_radio = QRadioButton("💾 Use Local Cache")
                 self.cache_radio.setStyleSheet("color: #2196f3; font-weight: bold;")
@@ -288,7 +288,14 @@ class VersionChoiceDialog(QDialog):
             layout.addWidget(self.cache_radio)
             
             cache_desc_label = QLabel(cache_desc)
-            cache_desc_label.setStyleSheet("margin-left: 25px; color: #666; font-size: 11px;")
+            cache_desc_label.setWordWrap(True)  # Enable text wrapping
+            cache_desc_label.setStyleSheet("""
+                margin-left: 25px; 
+                color: #666; 
+                font-size: 12px;
+                line-height: 1.3;
+                padding: 2px 0;
+            """)
             layout.addWidget(cache_desc_label)
             
             layout.addSpacing(10)
@@ -297,14 +304,14 @@ class VersionChoiceDialog(QDialog):
         if needs_download and status == 'outdated':
             self.download_radio = QRadioButton("☁️ Download Fresh from Cloud (Recommended)")
             self.download_radio.setStyleSheet("color: #4caf50; font-weight: bold;")
-            download_desc = "🔄 Download latest changes (slower but guaranteed current)"
+            download_desc = "🔄 Download the latest version with all recent changes"
             if not has_local:
                 self.download_radio.setChecked(True)  # Default when no local cache
         else:
             self.download_radio = QRadioButton("☁️ Download Fresh from Cloud")
             self.download_radio.setStyleSheet("color: #2196f3; font-weight: bold;")
             if status == 'current':
-                download_desc = "🔄 Re-download identical version (unnecessary but ensures perfect sync)"
+                download_desc = "🔄 Re-download identical version (ensures perfect synchronization)"
             else:
                 download_desc = "🔄 Download latest version from cloud (slower)"
             if not has_local:
@@ -314,7 +321,14 @@ class VersionChoiceDialog(QDialog):
         layout.addWidget(self.download_radio)
         
         download_desc_label = QLabel(download_desc)
-        download_desc_label.setStyleSheet("margin-left: 25px; color: #666; font-size: 11px;")
+        download_desc_label.setWordWrap(True)  # Enable text wrapping
+        download_desc_label.setStyleSheet("""
+            margin-left: 25px; 
+            color: #666; 
+            font-size: 12px;
+            line-height: 1.3;
+            padding: 2px 0;
+        """)
         layout.addWidget(download_desc_label)
         
         return group

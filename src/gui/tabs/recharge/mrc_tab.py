@@ -469,17 +469,7 @@ class MrcTab(BaseRechargeTab):
         layout.setContentsMargins(2, 2, 2, 2)  # Minimal panel margins
         layout.setSpacing(6)  # Further reduced spacing
         
-        # Well selection
-        well_layout = QHBoxLayout()
-        well_label = QLabel("Well:")
-        well_label.setFixedWidth(35)  # Fixed narrow width for label
-        well_layout.addWidget(well_label)
-        self.well_combo = QComboBox()
-        self.well_combo.setEnabled(False)
-        self.well_combo.currentIndexChanged.connect(self.on_well_selected)
-        self.well_combo.setMaximumWidth(350)  # Strict maximum width limit
-        well_layout.addWidget(self.well_combo)
-        layout.addLayout(well_layout)
+        # Well selection removed - now handled by parent recharge tab
         
         # Move curve selection and fitting into Step 2 below
         
@@ -5069,8 +5059,10 @@ class InteractiveCurveFittingDialog(QDialog):
             for i in range(len(self.segments)):
                 mask = np.array(self.segment_colors) == i
                 if np.any(mask):
+                    # Only add label for the first segment to create a single "Segments" legend entry
+                    label = 'Recession Segments' if i == 0 else ""
                     ax.scatter(np.array(self.all_times)[mask], self.normalized_array[mask], 
-                              c=[colors[i]], alpha=0.7, s=30, label=f'Segment {i+1}')
+                              c=[colors[i]], alpha=0.7, s=30, label=label)
             
             # Plot fitted curve if available
             if self.fitted_params is not None:

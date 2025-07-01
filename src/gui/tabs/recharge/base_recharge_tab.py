@@ -9,6 +9,7 @@ from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
@@ -145,6 +146,8 @@ class BaseRechargeTab(QWidget):
             well_name = "Unknown Well"
             if hasattr(self, 'well_combo') and self.well_combo.currentText():
                 well_name = self.well_combo.currentText()
+            elif hasattr(self, 'current_well') and self.current_well:
+                well_name = str(self.current_well)
             
             method_name = self.get_method_name()  # Child classes should implement this
             ax.set_title(f'{method_name} Analysis - {well_name}', 
@@ -161,11 +164,35 @@ class BaseRechargeTab(QWidget):
                                  shadow=True, fontsize=10)
                 legend.get_frame().set_alpha(0.9)
             
-            # Format x-axis dates
-            ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-            ax.xaxis.set_major_locator(mdates.AutoDateLocator())
+            # Improved date formatting based on data range
+            if self.raw_data is not None and not self.raw_data.empty:
+                date_range = self.raw_data['timestamp'].max() - self.raw_data['timestamp'].min()
+                
+                if date_range.days > 730:  # More than 2 years
+                    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
+                    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+                    ax.xaxis.set_minor_locator(mdates.MonthLocator(interval=3))
+                elif date_range.days > 365:  # More than 1 year
+                    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
+                    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
+                    ax.xaxis.set_minor_locator(mdates.MonthLocator())
+                elif date_range.days > 90:  # More than 3 months
+                    ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+                    ax.xaxis.set_major_locator(mdates.MonthLocator())
+                    ax.xaxis.set_minor_locator(mdates.WeekdayLocator())
+                else:  # Less than 3 months
+                    ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+                    ax.xaxis.set_major_locator(mdates.WeekdayLocator(interval=2))
+                    ax.xaxis.set_minor_locator(mdates.DayLocator())
+            else:
+                # Default formatting
+                ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
+                ax.xaxis.set_major_locator(mdates.AutoDateLocator())
             
-            # Rotate date labels for better readability
+            # Rotate date labels for better readability with improved spacing
+            plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha='right', fontsize=10)
+            
+            # Ensure proper spacing between date labels
             self.figure.autofmt_xdate(rotation=45, ha='right')
             
             # Set y-axis to show water levels with proper range
