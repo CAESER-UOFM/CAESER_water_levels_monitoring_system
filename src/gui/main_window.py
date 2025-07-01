@@ -3578,6 +3578,8 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
                     self.db_manager.open_database(setup_dialog._created_db_path)
                     # Database was created successfully, refresh the UI
                     self._update_db_info_label()
+                    # Refresh the database dropdown to show the new database
+                    self._load_databases()
                     self.status_bar.showMessage("New database created and loaded successfully", 3000)
             
         except Exception as e:
