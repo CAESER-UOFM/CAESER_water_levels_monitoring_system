@@ -469,7 +469,40 @@ class MrcTab(BaseRechargeTab):
         layout.setContentsMargins(2, 2, 2, 2)  # Minimal panel margins
         layout.setSpacing(6)  # Further reduced spacing
         
-        # Well selection removed - now handled by parent recharge tab
+        # Well selection section
+        well_group = QGroupBox("Well Selection")
+        well_layout = QVBoxLayout(well_group)
+        
+        # Well selection dropdown
+        well_selection_layout = QHBoxLayout()
+        well_label = QLabel("Selected Well:")
+        well_label.setStyleSheet("font-weight: bold; color: #495057; font-size: 11px;")
+        well_selection_layout.addWidget(well_label)
+        
+        self.well_combo = QComboBox()
+        self.well_combo.setEnabled(False)
+        self.well_combo.currentIndexChanged.connect(self.on_well_selected)
+        self.well_combo.setMinimumHeight(26)
+        self.well_combo.setStyleSheet("""
+            QComboBox {
+                padding: 4px 8px;
+                border: 1px solid #ced4da;
+                border-radius: 4px;
+                background-color: white;
+                font-size: 10px;
+            }
+            QComboBox:hover {
+                border-color: #80bdff;
+            }
+            QComboBox:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+            }
+        """)
+        well_selection_layout.addWidget(self.well_combo)
+        well_layout.addLayout(well_selection_layout)
+        
+        layout.addWidget(well_group)
         
         # Move curve selection and fitting into Step 2 below
         
