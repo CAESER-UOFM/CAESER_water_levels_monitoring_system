@@ -267,8 +267,8 @@ class BaselineHelperDialog(EditToolHelperDialog):
         self.manual_mode = QRadioButton("Manual Measurements")
         self.free_mode = QRadioButton("Free Leveling")
         
-        # Set manual mode as default
-        self.manual_mode.setChecked(True)
+        # Set free leveling as default (per user request)
+        self.free_mode.setChecked(True)
         
         # Add to layout
         options_layout.addWidget(self.manual_mode)
@@ -283,12 +283,51 @@ class BaselineHelperDialog(EditToolHelperDialog):
         self.value_spin.setValue(0)
         self.value_spin.setDecimals(3)
         self.value_spin.setSingleStep(0.1)
-        self.value_spin.setEnabled(False)  # Initially disabled
+        self.value_spin.setEnabled(True)  # Now enabled by default since free leveling is default
         value_layout.addWidget(self.value_spin)
+        
+        # Difference calculation option
+        diff_group = QGroupBox("Difference Calculation (Optional)")
+        diff_layout = QVBoxLayout()
+        
+        # Checkbox to enable difference calculation
+        self.use_difference = QCheckBox("Calculate adjustment from two elevation points")
+        diff_layout.addWidget(self.use_difference)
+        
+        # Two input fields for elevation values
+        points_layout = QHBoxLayout()
+        points_layout.addWidget(QLabel("Point 1 Elevation (ft):"))
+        self.point1_spin = QDoubleSpinBox()
+        self.point1_spin.setRange(-1000, 10000)
+        self.point1_spin.setDecimals(3)
+        self.point1_spin.setSingleStep(0.1)
+        self.point1_spin.setEnabled(False)
+        points_layout.addWidget(self.point1_spin)
+        
+        points_layout.addWidget(QLabel("Point 2 Elevation (ft):"))
+        self.point2_spin = QDoubleSpinBox()
+        self.point2_spin.setRange(-1000, 10000)
+        self.point2_spin.setDecimals(3)
+        self.point2_spin.setSingleStep(0.1)
+        self.point2_spin.setEnabled(False)
+        points_layout.addWidget(self.point2_spin)
+        
+        # Calculate button
+        self.calc_diff_btn = QPushButton("Calculate Difference")
+        self.calc_diff_btn.setEnabled(False)
+        self.calc_diff_btn.clicked.connect(self._calculate_difference)
+        
+        diff_layout.addLayout(points_layout)
+        diff_layout.addWidget(self.calc_diff_btn)
+        diff_group.setLayout(diff_layout)
+        
+        # Connect difference calculation signals
+        self.use_difference.toggled.connect(self._on_difference_toggled)
         
         # Add all to params layout
         params_layout.addWidget(options_group)
         params_layout.addLayout(value_layout)
+        params_layout.addWidget(diff_group)
         params_group.setLayout(params_layout)
         
         # Add to main layout before buttons
@@ -307,6 +346,35 @@ class BaselineHelperDialog(EditToolHelperDialog):
             # Don't emit parameter changes for preview
         except Exception as e:
             logger.error(f"Error in mode change: {e}", exc_info=True)
+    
+    def _on_difference_toggled(self, checked):
+        """Handle difference calculation checkbox toggle"""
+        try:
+            # Enable/disable difference calculation controls
+            self.point1_spin.setEnabled(checked)
+            self.point2_spin.setEnabled(checked)
+            self.calc_diff_btn.setEnabled(checked)
+            
+            # If unchecked, clear the calculated value
+            if not checked:
+                # Don't reset the main value - user might want to keep it
+                pass
+        except Exception as e:
+            logger.error(f"Error in difference toggle: {e}", exc_info=True)
+    
+    def _calculate_difference(self):
+        """Calculate difference between two elevation points and set as adjustment value"""
+        try:
+            point1 = self.point1_spin.value()
+            point2 = self.point2_spin.value()
+            difference = point2 - point1
+            
+            # Set the calculated difference as the adjustment value
+            self.value_spin.setValue(difference)
+            
+            logger.info(f"Calculated difference: {point2} - {point1} = {difference} ft")
+        except Exception as e:
+            logger.error(f"Error calculating difference: {e}", exc_info=True)
     
     def get_current_parameters(self):
         """Get current parameters"""

@@ -81,3 +81,98 @@ databases/temp/
 # Service account credentials (keep local)
 config/service_account_test.json
 **/service_account_test.json
+
+# =============================================================================
+# MAIN BRANCH PROTECTION: PREVENT TESTING AND DEVELOPMENT FILES
+# =============================================================================
+# These files should ONLY exist in development branches, NEVER in main
+
+# Testing directories and files
+claude_testing/
+**/claude_testing/
+test_*/
+**/test_*
+*test*.py
+*test*.json
+*test*.md
+
+# Development and debugging files
+debug_*.py
+*debug*.py
+*debug*.bat
+PATH_MANAGEMENT_WARNING.md
+
+# Development batch files and installers
+setup_debug.bat
+setup_simple.bat  
+simple_setup.bat
+test_installer.bat
+create_ico_test.bat
+icon_test_*.bat
+icon_debug_*.bat
+
+# Example and demo files
+example_*.py
+*example*.py
+
+# AI agent instruction files (development only)
+CLAUDE.md
+.claude.md
+**/CLAUDE.md
+**/.claude.md
+
+# Multi-level Claude instruction system (local development only)
+.claude_global.md
+.claude_shared_tasks.json
+.claude_team_notes.md
+.claude_branch.md
+.claude_branch_*.md
+.claude_dev_notes.md
+.claude_progress.json
+.claude_project.md
+.claude_dependencies.md
+.claude_*_TEMPLATE.md
+.claude_setup_dev.py
+**/.claude_*
+
+# IDE configuration (personal settings)
+.spyproject/
+.spyder-py3/
+
+# Large test data files
+imported_xle_files/
+last_run/
+**/imported_xle_files/
+**/last_run/
+
+# Development documentation (keep in branches only)
+docs/**/PHASE*.md
+docs/**/PHASE*.json
+docs/**/TEST*.md
+docs/**/TEST*.json
+docs/FINAL_TODO_LIST.md
+docs/google_drive_analysis.md
+docs/dual_database_*.md
+**/WELL_SELECTION_FIX_SUMMARY.md
+
+# Development process documentation (branches only)
+docs/AUTHORIZED_USER_SETUP.md
+docs/CLOUD_DATABASE_CACHING.md
+docs/DOCUMENTATION_STRUCTURE.md
+docs/GITHUB_NAVIGATION_TIPS.md
+docs/INSTALLATION_AND_UPDATE_SYSTEM.md
+docs/RELEASE_SETUP_GUIDE.md
+docs/MAIN_BRANCH_GUIDELINES.md
+
+# Template and configuration files (branches only)
+docs/app_organization.txt
+docs/*_TEMPLATE.json
+docs/gitignore_template
+docs/*_template.json
+
+# Runtime data and temporary outputs
+*.log
+*.tmp
+None
+None-shm  
+None-wal

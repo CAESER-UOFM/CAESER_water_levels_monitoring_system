@@ -172,8 +172,20 @@ class DatabaseTab(QWidget):
             logger.error(f"Error injecting connection code: {e}")
 
     def load_existing_databases(self):
-        """This method is no longer needed"""
-        pass
+        """Refresh the database dropdown by calling the main window's _load_databases method."""
+        try:
+            # Get reference to main window and refresh database dropdown
+            main_window = self.parent()
+            while main_window and not hasattr(main_window, '_load_databases'):
+                main_window = main_window.parent()
+            
+            if main_window and hasattr(main_window, '_load_databases'):
+                main_window._load_databases()
+                logger.info("Database dropdown refreshed")
+            else:
+                logger.warning("Could not find main window to refresh database dropdown")
+        except Exception as e:
+            logger.error(f"Error refreshing database dropdown: {e}")
 
     def load_wells(self):
         """Load wells from the selected database and display them on a map."""

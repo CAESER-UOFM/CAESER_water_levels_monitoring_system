@@ -273,13 +273,17 @@ class SingleFileImportDialog(QDialog):
                     start_date = pd.to_datetime(self.metadata['preview_data']['timestamp_utc'].min())
                     end_date = pd.to_datetime(self.metadata['preview_data']['timestamp_utc'].max())
                     
+                    # Convert pandas Timestamps to string format for SQLite compatibility
+                    start_date_str = start_date.strftime('%Y-%m-%d %H:%M:%S')
+                    end_date_str = end_date.strftime('%Y-%m-%d %H:%M:%S')
+                    
                     with sqlite3.connect(self.baro_model.db_path) as conn:
                         cursor = conn.cursor()
                         cursor.execute('''
                             INSERT INTO barologger_imported_files
                             (serial_number, starting_date, end_date)
                             VALUES (?, ?, ?)
-                        ''', (serial_number, start_date, end_date))
+                        ''', (serial_number, start_date_str, end_date_str))
                         conn.commit()
                         logger.info(f"Logged imported file for barologger {serial_number}")
                 except Exception as e:

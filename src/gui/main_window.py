@@ -996,8 +996,9 @@ class MainWindow(QMainWindow):
         progress_dialog.update(5, "Initializing database connection...")
         QApplication.processEvents()
         
-        # Open the database
-        db_path = Path() / db_name
+        # Open the database using the configured database directory
+        local_db_directory = Path(self.settings_handler.get_setting("local_db_directory", str(Path.cwd())))
+        db_path = local_db_directory / db_name
         self.db_manager.open_database(db_path)
         
         # Update UI
@@ -3388,7 +3389,46 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
                 
                 if reply == QMessageBox.Yes:
                     dialog = UnifiedCredentialsDialog(self.settings_handler, self)
-                    dialog.exec_()
+                    result = dialog.exec_()
+                    
+                    if result == QDialog.Accepted:
+                        # Settings were updated, reload Google Drive components
+                        try:
+                            # Reinitialize Google Drive service
+                            if hasattr(self, 'drive_service'):
+                                logger.info("Force re-authenticating Google Drive service")
+                                auth_result = self.drive_service.authenticate(force=True)
+                                logger.info(f"Google Drive authentication result: {auth_result}")
+                                logger.info(f"Google Drive service authenticated: {self.drive_service.authenticated}")
+                            
+                            # Reinitialize cloud database handler with new settings
+                            if self.drive_service.authenticated:
+                                logger.info("Reinitializing Google Drive components after credential setup")
+                                
+                                # Initialize Cloud database handler
+                                self.cloud_db_handler = CloudDatabaseHandler(self.drive_service, self.settings_handler)
+                                
+                                # Initialize Google Drive database handler
+                                if not hasattr(self, 'drive_db_handler') or self.drive_db_handler is None:
+                                    self.drive_db_handler = GoogleDriveDatabaseHandler(self.settings_handler)
+                                self.drive_db_handler.authenticate()
+                                
+                                # Set Google Drive handler for database manager
+                                self.db_manager.set_google_drive_handler(self.drive_db_handler)
+                                
+                                logger.info("Google Drive components reinitialized successfully")
+                                
+                                # Reload databases after successful component initialization
+                                logger.info("Reloading databases after credential setup")
+                                QTimer.singleShot(100, self._load_databases)
+                            else:
+                                logger.warning("Google Drive service not authenticated after credential setup")
+                                # Still reload databases to show local ones
+                                logger.info("Reloading local databases only")
+                                QTimer.singleShot(100, self._load_databases)
+                                
+                        except Exception as e:
+                            logger.error(f"Error reinitializing Google Drive components: {e}")
                 else:
                     logger.info("User chose to skip credential setup")
             else:
@@ -3605,6 +3645,8 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
                     self.db_manager.open_database(setup_dialog._created_db_path)
                     # Database was created successfully, refresh the UI
                     self._update_db_info_label()
+                    # Refresh the database dropdown to show the new database
+                    self._load_databases()
                     self.status_bar.showMessage("New database created and loaded successfully", 3000)
             
         except Exception as e:

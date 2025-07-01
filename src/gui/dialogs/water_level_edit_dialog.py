@@ -2868,11 +2868,16 @@ class WaterLevelEditDialog(QDialog):
             self.transducer_data.loc[indices, 'water_level_level_corrected'] = \
                 self.transducer_data.loc[indices, 'water_level'] + adjustment
             
+            # CRITICAL: Set the flag to indicate this data has been modified
+            self.transducer_data.loc[indices, 'level_flag_mod'] = 'level_mod'
+            
             # Also update plot_data if indices exist there
             common_indices = indices.intersection(self.plot_data.index)
             if len(common_indices) > 0:
                 self.plot_data.loc[common_indices, 'water_level_level_corrected'] = \
                     self.plot_data.loc[common_indices, 'water_level'] + adjustment
+                # Set flag in plot_data too
+                self.plot_data.loc[common_indices, 'level_flag_mod'] = 'level_mod'
             
             # Simple plot update - just add a new line for adjusted data
             adjusted_data = visible_data.copy()

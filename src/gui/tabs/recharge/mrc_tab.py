@@ -2908,11 +2908,23 @@ class MrcTab(BaseRechargeTab):
             return
             
         try:
-            # Get curve ID - either from loaded curve or need to save current curve first
+            # Get curve ID - try multiple sources for better reliability
             curve_id = None
-            if 'id' in self.current_curve:
+            
+            # First, try to get from current_curve if it exists and has an ID
+            if hasattr(self, 'current_curve') and self.current_curve and isinstance(self.current_curve, dict) and 'id' in self.current_curve:
                 curve_id = self.current_curve['id']
-            else:
+                logger.info(f"Found curve ID from current_curve: {curve_id}")
+            
+            # If no ID from current_curve, try from combo box selection
+            if not curve_id:
+                combo_curve_id = self.curve_combo.currentData()
+                if combo_curve_id and combo_curve_id is not None:  # Ensure it's not the "No curve selected" option
+                    curve_id = combo_curve_id
+                    logger.info(f"Found curve ID from combo box: {curve_id}")
+            
+            # If still no curve ID found, the curve needs to be saved first
+            if not curve_id:
                 # Ask user if they want to save the curve first
                 reply = QMessageBox.question(
                     self, 
@@ -2922,12 +2934,17 @@ class MrcTab(BaseRechargeTab):
                 )
                 
                 if reply == QMessageBox.Yes:
-                    self.save_curve()
-                    # Curve should now be saved, get the ID from current_curve
-                    curve_id = self.current_curve.get('id') if hasattr(self, 'current_curve') and self.current_curve else None
-                    if not curve_id:
-                        # Fallback to combo box
-                        curve_id = self.curve_combo.currentData()
+                    if self.save_curve():
+                        # Try again to get the curve ID after saving
+                        if hasattr(self, 'current_curve') and self.current_curve and 'id' in self.current_curve:
+                            curve_id = self.current_curve['id']
+                        else:
+                            # Fallback to combo box after save
+                            curve_id = self.curve_combo.currentData()
+                        logger.info(f"After save, curve ID: {curve_id}")
+                    else:
+                        QMessageBox.warning(self, "Save Failed", "Failed to save the curve.")
+                        return
                 else:
                     return
             
@@ -3817,19 +3834,46 @@ class MrcTab(BaseRechargeTab):
             )
             
             if dialog.exec_() == QDialog.Accepted:
-                # Get the saved curve ID from the dialog
+                # Get the curve data from the dialog  
+                dialog_curve_data = dialog.get_curve_data()
+                saved_curve_id = None
+                
+                # Update main tab's current_curve with the fitted curve data
+                if dialog_curve_data:
+                    self.current_curve = dialog_curve_data.copy()
+                    logger.info(f"Updated main tab current_curve with dialog data: {list(self.current_curve.keys())}")
+                
+                # Check if the curve has an ID (was saved in the dialog)
                 if hasattr(dialog, 'current_curve') and dialog.current_curve and 'id' in dialog.current_curve:
                     saved_curve_id = dialog.current_curve['id']
-                    # Update main tab's current_curve with the saved ID
+                    # Add the ID to our current_curve
                     if self.current_curve:
                         self.current_curve['id'] = saved_curve_id
                     else:
                         self.current_curve = {'id': saved_curve_id}
-                    logger.info(f"Updated main tab current_curve with saved ID: {saved_curve_id}")
+                    logger.info(f"Dialog saved curve with ID: {saved_curve_id}")
                 
                 # Reload segments and curves after successful save
                 self.load_segments_for_well(self.current_well)
                 self.load_curves_for_well(self.current_well)
+                
+                # CRITICAL FIX: Update combo box selection to show the saved curve
+                # This ensures the UI state matches the database state
+                if saved_curve_id:
+                    for i in range(self.curve_combo.count()):
+                        if self.curve_combo.itemData(i) == saved_curve_id:
+                            self.curve_combo.setCurrentIndex(i)
+                            logger.info(f"Updated curve combo box to show saved curve ID: {saved_curve_id}")
+                            break
+                else:
+                    # If no saved ID but we have curve data, add as "current fitted curve"
+                    if self.current_curve:
+                        # Add current fitted curve option if not already there
+                        if self.curve_combo.itemText(self.curve_combo.count() - 1) != "Current fitted curve (unsaved)":
+                            self.curve_combo.addItem("Current fitted curve (unsaved)", "current")
+                        self.curve_combo.setCurrentIndex(self.curve_combo.count() - 1)
+                        logger.info("Added current fitted curve to combo box")
+                
                 return True
             return False
             
