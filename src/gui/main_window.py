@@ -994,8 +994,9 @@ class MainWindow(QMainWindow):
         progress_dialog.update(5, "Initializing database connection...")
         QApplication.processEvents()
         
-        # Open the database
-        db_path = Path() / db_name
+        # Open the database using the configured database directory
+        local_db_directory = Path(self.settings_handler.get_setting("local_db_directory", str(Path.cwd())))
+        db_path = local_db_directory / db_name
         self.db_manager.open_database(db_path)
         
         # Update UI
