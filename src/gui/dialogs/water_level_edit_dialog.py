@@ -171,7 +171,7 @@ class WaterLevelEditDialog(QDialog):
             non_master_mask = df_sorted['baro_flag'] != 'master'
             if non_master_mask.any():
                 # Get indices where status changes
-                status_changes = non_master_mask.diff().fillna(False).astype(bool)
+                status_changes = non_master_mask.diff().fillna(False).infer_objects(copy=False).astype(bool)
                 change_indices = status_changes[status_changes].index.tolist()
                 
                 # Add the last index if it's not already included
@@ -191,7 +191,7 @@ class WaterLevelEditDialog(QDialog):
             master_mask = df_sorted['baro_flag'] == 'master'
             if master_mask.any():
                 # Similar logic for master groups
-                status_changes = master_mask.diff().fillna(False).astype(bool)
+                status_changes = master_mask.diff().fillna(False).infer_objects(copy=False).astype(bool)
                 change_indices = status_changes[status_changes].index.tolist()
                 
                 if len(change_indices) % 2 != 0:

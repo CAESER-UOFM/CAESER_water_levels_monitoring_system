@@ -1345,10 +1345,10 @@ class BarologgerEditDialog(QDialog):
             if time_range == 0 or pressure_range == 0:
                 return None
             
-            time_norm = [(t - start_time).total_seconds() / time_range for t in time_values]
+            time_norm = [(pd.to_datetime(t) - pd.to_datetime(start_time)).total_seconds() / time_range for t in time_values]
             pressure_norm = (pressure_values - pressure_values.min()) / pressure_range
             
-            click_time_norm = (click_time - start_time).total_seconds() / time_range
+            click_time_norm = (pd.to_datetime(click_time) - pd.to_datetime(start_time)).total_seconds() / time_range
             click_pressure_norm = (click_pressure - pressure_values.min()) / pressure_range
             
             # Calculate Euclidean distances
@@ -1380,8 +1380,9 @@ class BarologgerEditDialog(QDialog):
                 marker = 's'
                 label = 'Spike End'
             
-            # Add scatter point
-            scatter = self.ax.scatter([timestamp], [pressure], 
+            # Add scatter point - ensure timestamp is properly converted
+            timestamp_converted = pd.to_datetime(timestamp)
+            scatter = self.ax.scatter([timestamp_converted], [pressure], 
                                    color=color, s=60, marker=marker, 
                                    alpha=0.9, zorder=15, 
                                    label=label if num_points < 2 else "")
@@ -1399,8 +1400,8 @@ class BarologgerEditDialog(QDialog):
                 # Convert matplotlib date number back to datetime
                 prev_timestamp = mdates.num2date(prev_timestamp)
                 
-                # Draw preview line
-                line, = self.ax.plot([prev_timestamp, timestamp], [prev_pressure, pressure],
+                # Draw preview line - ensure both timestamps are properly converted
+                line, = self.ax.plot([prev_timestamp, timestamp_converted], [prev_pressure, pressure],
                                    'r--', linewidth=2, alpha=0.7, zorder=14)
                 self.spike_preview_lines.append(line)
             
