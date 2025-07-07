@@ -458,6 +458,25 @@ class WellFlagManagementDialog(QDialog):
             if not self.db_manager.current_db:
                 return
                 
+            # Track the change if this is a cloud database
+            if (hasattr(self.db_manager, 'change_tracker') and 
+                self.db_manager.change_tracker):
+                from ..handlers.change_tracker import ChangeType, ChangeAction
+                self.db_manager.change_tracker.track_change(
+                    change_type=ChangeType.MANUAL,
+                    action=ChangeAction.UPDATE,
+                    table_name="wells",
+                    record_id=self.well_id,
+                    field_name="user_flag",
+                    old_value=self.current_flag,
+                    new_value=new_flag,
+                    description=f"User flag changed from '{self.current_flag}' to '{new_flag}' for well {self.well_id}",
+                    context={
+                        "well_number": self.well_id,
+                        "ui_action": "flag_management_dialog"
+                    }
+                )
+                
             with sqlite3.connect(self.db_manager.current_db) as conn:
                 cursor = conn.cursor()
                 
@@ -470,6 +489,9 @@ class WellFlagManagementDialog(QDialog):
                 
                 conn.commit()
                 logger.info(f"Updated well {self.well_id} flag to {new_flag}")
+                
+            # Mark database as modified
+            self.db_manager.mark_as_modified()
                 
         except Exception as e:
             logger.error(f"Error updating well flag: {e}")

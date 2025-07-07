@@ -46,6 +46,7 @@ class UserNotesDialog(QDialog):
         self.db_manager = db_manager
         self.well_number = well_number
         self.user_name = user_name
+        self.parent_widget = parent  # Store parent reference for accessing change tracker
         
         self.setup_ui()
         self.load_notes_history()
@@ -481,6 +482,30 @@ class UserNotesDialog(QDialog):
             
             # Save to database
             if self.save_note_to_db(note_text, time_range_type, time_range_start, time_range_end):
+                # Track the change if this is a cloud database
+                if (hasattr(self.db_manager, 'change_tracker') and 
+                    self.db_manager.change_tracker):
+                    from ..handlers.change_tracker import ChangeType, ChangeAction
+                    self.db_manager.change_tracker.track_change(
+                        change_type=ChangeType.MANUAL,
+                        action=ChangeAction.INSERT,
+                        table_name="user_notes",
+                        record_id=self.well_number,
+                        field_name=None,
+                        old_value=None,
+                        new_value=note_text[:100] + "..." if len(note_text) > 100 else note_text,
+                        description=f"User note added for well {self.well_number}: {time_range_display}",
+                        context={
+                            "well_number": self.well_number,
+                            "time_range_type": time_range_type,
+                            "note_length": len(note_text),
+                            "ui_action": "add_user_note"
+                        }
+                    )
+                
+                # Mark database as modified
+                self.db_manager.mark_as_modified()
+                
                 # Emit signal for external updates
                 self.note_added.emit(self.well_number, note_text, time_range_display)
                 
