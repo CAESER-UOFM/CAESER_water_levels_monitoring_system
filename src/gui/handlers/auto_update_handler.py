@@ -477,6 +477,75 @@ class AutoUpdateHandler:
                             processed_count += 1
                             logger.info(f"Successfully processed barologger file: {file_info['name']}")
                             
+                            # FIXED: Add XLE file organization and tracking for cloud upload
+                            try:
+                                # Get file metadata for organization
+                                from .solinst_reader import SolinstReader
+                                from pathlib import Path
+                                import pandas as pd
+                                
+                                solinst_reader = SolinstReader()
+                                metadata, _ = solinst_reader.get_file_metadata(temp_file)
+                                
+                                # Create file organizer
+                                from ..utils.file_organizer import XLEFileOrganizer
+                                db_name = Path(baro_tab.baro_model.db_path).stem if baro_tab.baro_model.db_path else None
+                                file_organizer = XLEFileOrganizer(
+                                    Path(__file__).parent.parent.parent.parent,
+                                    db_name=db_name
+                                )
+                                
+                                # Get timestamp range
+                                start_date = pd.to_datetime(metadata.start_time)
+                                end_date = pd.to_datetime(metadata.stop_time)
+                                
+                                # Organize the file
+                                organized_path = file_organizer.organize_barologger_file(
+                                    Path(temp_file),
+                                    metadata.serial_number,
+                                    metadata.location,
+                                    start_date,
+                                    end_date
+                                )
+                                
+                                if organized_path:
+                                    logger.info(f"Organized barologger file: {organized_path}")
+                                    
+                                    # Track XLE file for cloud upload if this is a cloud database
+                                    if (baro_tab.baro_model.db_manager and 
+                                        hasattr(baro_tab.baro_model.db_manager, 'is_cloud_database') and 
+                                        baro_tab.baro_model.db_manager.is_cloud_database and
+                                        hasattr(baro_tab.baro_model.db_manager, 'cloud_db_handler') and
+                                        baro_tab.baro_model.db_manager.cloud_db_handler and
+                                        hasattr(baro_tab.baro_model.db_manager.cloud_db_handler, 'xle_manager') and
+                                        baro_tab.baro_model.db_manager.cloud_db_handler.xle_manager):
+                                        
+                                        # Get project name from cloud database manager
+                                        project_name = getattr(baro_tab.baro_model.db_manager, 'cloud_project_name', None)
+                                        
+                                        if project_name:
+                                            # Track the organized XLE file for cloud upload
+                                            file_id = baro_tab.baro_model.db_manager.cloud_db_handler.xle_manager.track_xle_file(
+                                                file_path=str(organized_path),
+                                                file_type='barologger',
+                                                serial_number=metadata.serial_number,
+                                                well_number=None,  # Not applicable for barologgers
+                                                start_date=start_date.isoformat(),
+                                                end_date=end_date.isoformat(),
+                                                project_name=project_name
+                                            )
+                                            logger.info(f"XLE file tracked for cloud upload (ID: {file_id})")
+                                        else:
+                                            logger.warning("Cannot track XLE file - no project name available")
+                                    else:
+                                        logger.info("Not a cloud database, XLE file tracking skipped")
+                                else:
+                                    logger.warning("File organization failed")
+                                    
+                            except Exception as e:
+                                logger.error(f"Error organizing/tracking XLE file for {file_info['name']}: {e}")
+                                # Continue even if file organization fails
+                            
                             # Track the change if we have a change tracker
                             if self.db_manager.change_tracker:
                                 from ..handlers.change_tracker import ChangeType, ChangeAction
@@ -530,6 +599,93 @@ class AutoUpdateHandler:
                         if success:
                             processed_count += 1
                             logger.info(f"Successfully processed water level file: {file_info['name']}")
+                            
+                            # FIXED: Add XLE file organization and tracking for cloud upload
+                            try:
+                                # Get file metadata for organization
+                                from .solinst_reader import SolinstReader
+                                from pathlib import Path
+                                import pandas as pd
+                                import sqlite3
+                                
+                                solinst_reader = SolinstReader()
+                                metadata, _ = solinst_reader.get_file_metadata(temp_file)
+                                
+                                # Get well number from CAE number
+                                well_number = None
+                                if water_tab.water_level_model.db_path:
+                                    try:
+                                        with sqlite3.connect(water_tab.water_level_model.db_path) as conn:
+                                            cursor = conn.cursor()
+                                            cursor.execute("SELECT well_number FROM wells WHERE cae_number = ?", (file_info['cae_number'],))
+                                            result = cursor.fetchone()
+                                            if result:
+                                                well_number = result[0]
+                                    except Exception as e:
+                                        logger.error(f"Error getting well number for CAE {file_info['cae_number']}: {e}")
+                                
+                                if well_number:
+                                    # Create file organizer
+                                    from ..utils.file_organizer import XLEFileOrganizer
+                                    db_name = Path(water_tab.water_level_model.db_path).stem if water_tab.water_level_model.db_path else None
+                                    file_organizer = XLEFileOrganizer(
+                                        Path(__file__).parent.parent.parent.parent,
+                                        db_name=db_name
+                                    )
+                                    
+                                    # Get timestamp range
+                                    start_date = pd.to_datetime(metadata.start_time)
+                                    end_date = pd.to_datetime(metadata.stop_time)
+                                    
+                                    # Organize the file
+                                    organized_path = file_organizer.organize_transducer_file(
+                                        Path(temp_file),
+                                        metadata.serial_number,
+                                        metadata.location,
+                                        start_date,
+                                        end_date,
+                                        well_number  # Pass well number for folder organization
+                                    )
+                                    
+                                    if organized_path:
+                                        logger.info(f"Organized water level file: {organized_path}")
+                                        
+                                        # Track XLE file for cloud upload if this is a cloud database
+                                        if (water_tab.water_level_model.db_manager and 
+                                            hasattr(water_tab.water_level_model.db_manager, 'is_cloud_database') and 
+                                            water_tab.water_level_model.db_manager.is_cloud_database and
+                                            hasattr(water_tab.water_level_model.db_manager, 'cloud_db_handler') and
+                                            water_tab.water_level_model.db_manager.cloud_db_handler and
+                                            hasattr(water_tab.water_level_model.db_manager.cloud_db_handler, 'xle_manager') and
+                                            water_tab.water_level_model.db_manager.cloud_db_handler.xle_manager):
+                                            
+                                            # Get project name from cloud database manager
+                                            project_name = getattr(water_tab.water_level_model.db_manager, 'cloud_project_name', None)
+                                            
+                                            if project_name:
+                                                # Track the organized XLE file for cloud upload
+                                                file_id = water_tab.water_level_model.db_manager.cloud_db_handler.xle_manager.track_xle_file(
+                                                    file_path=str(organized_path),
+                                                    file_type='water_level',
+                                                    serial_number=metadata.serial_number,
+                                                    well_number=well_number,
+                                                    start_date=start_date.isoformat(),
+                                                    end_date=end_date.isoformat(),
+                                                    project_name=project_name
+                                                )
+                                                logger.info(f"XLE file tracked for cloud upload (ID: {file_id})")
+                                            else:
+                                                logger.warning("Cannot track XLE file - no project name available")
+                                        else:
+                                            logger.info("Not a cloud database, XLE file tracking skipped")
+                                    else:
+                                        logger.warning("File organization failed")
+                                else:
+                                    logger.warning(f"Could not find well number for CAE {file_info['cae_number']}")
+                                    
+                            except Exception as e:
+                                logger.error(f"Error organizing/tracking XLE file for {file_info['name']}: {e}")
+                                # Continue even if file organization fails
                             
                             # Track the change if we have a change tracker
                             if self.db_manager.change_tracker:
