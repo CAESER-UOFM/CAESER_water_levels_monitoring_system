@@ -1487,20 +1487,12 @@ class WaterLevelEditDialog(QDialog):
             x_coord = event.xdata
             y_coord = event.ydata
             clicked_time = matplotlib.dates.num2date(x_coord).replace(tzinfo=None)
-            # Find the closest transducer data point
-            closest_idx = None
-            min_distance = float('inf')
-            for idx, row in self.transducer_data.iterrows():
-                time_diff = abs((row['timestamp_utc'] - clicked_time).total_seconds())
-                if time_diff < min_distance:
-                    min_distance = time_diff
-                    closest_idx = idx
-            if closest_idx is None:
+            # Find the closest transducer data point using efficient vectorized operations
+            closest_point = self.find_closest_data_point(clicked_time, y_coord)
+            if closest_point is None:
                 QApplication.restoreOverrideCursor()
                 return
-            point_data = self.transducer_data.loc[closest_idx]
-            timestamp = point_data['timestamp_utc']
-            level = point_data['water_level']
+            timestamp, level = closest_point
             # Pass point to helper dialog (handles first/second logic and pair logging)
             if hasattr(self, 'spike_helper_dialog') and self.spike_helper_dialog:
                 self.spike_helper_dialog.set_selected_point(timestamp, level)
@@ -1509,11 +1501,65 @@ class WaterLevelEditDialog(QDialog):
             point_label = None
             point = self.ax.scatter([timestamp], [level], color=point_color, s=100, zorder=10, label=point_label)
             self.spike_points.append((point, timestamp, level))
-            self.canvas.draw()
+            self.canvas.draw_idle()
         except Exception as e:
             logger.error(f"Error processing point click: {e}", exc_info=True)
         finally:
             QApplication.restoreOverrideCursor()
+
+    def find_closest_data_point(self, click_time, click_level):
+        """Find the closest data point to the click location using efficient vectorized operations"""
+        try:
+            if self.transducer_data is None or self.transducer_data.empty:
+                return None
+            
+            # Get current time range from the visible data
+            xlim = self.ax.get_xlim()
+            start_time = matplotlib.dates.num2date(xlim[0]).replace(tzinfo=None)
+            end_time = matplotlib.dates.num2date(xlim[1]).replace(tzinfo=None)
+            
+            # Filter data to current view
+            mask = (self.transducer_data['timestamp_utc'] >= start_time) & \
+                   (self.transducer_data['timestamp_utc'] <= end_time)
+            view_data = self.transducer_data[mask]
+            
+            if view_data.empty:
+                return None
+            
+            # Convert to numpy arrays for efficient calculation
+            time_values = view_data['timestamp_utc'].values
+            level_values = view_data['water_level'].values
+            
+            # Calculate time differences in seconds
+            time_diffs = np.array([(pd.to_datetime(t) - pd.to_datetime(click_time)).total_seconds() 
+                                 for t in time_values])
+            
+            # Normalize time and level scales for distance calculation
+            time_range = (end_time - start_time).total_seconds()
+            level_range = level_values.max() - level_values.min()
+            
+            if time_range == 0 or level_range == 0:
+                # If no range, just use time difference
+                min_idx = np.argmin(np.abs(time_diffs))
+            else:
+                # Normalize to [0, 1] scale for distance calculation
+                time_norm = time_diffs / time_range
+                level_norm = (level_values - level_values.min()) / level_range
+                click_level_norm = (click_level - level_values.min()) / level_range
+                
+                # Calculate Euclidean distances
+                distances = time_norm**2 + (level_norm - click_level_norm)**2
+                min_idx = np.argmin(distances)
+            
+            # Get the closest point
+            closest_timestamp = time_values[min_idx]
+            closest_level = level_values[min_idx]
+            
+            return pd.to_datetime(closest_timestamp), closest_level
+            
+        except Exception as e:
+            logger.error(f"Error finding closest data point: {e}")
+            return None
 
     def apply_spike_fix(self):
         """Apply linear interpolation for all selected pairs at once"""
@@ -3145,202 +3191,72 @@ class WaterLevelEditDialog(QDialog):
         except Exception as e:
             logger.error(f"Error in baseline adjustment: {e}", exc_info=True)
             QMessageBox.critical(self, "Error", f"Baseline adjustment failed: {str(e)}")
+    
+    def calculate_baseline_adjustment(self):
+        """Calculate baseline adjustment by comparing transducer and manual readings"""
+        try:
+            # Check if we have both transducer and manual data
+            if self.transducer_data.empty or self.manual_data.empty:
+                logger.warning("Cannot calculate baseline: missing transducer or manual data")
+                return None
             
-            # Get working copy of selected data
-            df = self.selected_data.copy()
+            # Get the data range to work with
+            if self.selected_data is not None and not self.selected_data.empty:
+                # Use selected time range
+                selected_times = self.selected_data['timestamp_utc']
+                time_min = selected_times.min()
+                time_max = selected_times.max()
+            else:
+                # Use visible range
+                xlim = self.ax.get_xlim()
+                time_min = matplotlib.dates.num2date(xlim[0]).replace(tzinfo=None)
+                time_max = matplotlib.dates.num2date(xlim[1]).replace(tzinfo=None)
             
-            # Calculate adjustment based on method
-            if params["method"] == "manual":
-                # Filter selected transducer data
-                # First check for our custom marker column
-                if 'data_source_type' in df.columns:
-                    transducer_mask = df['data_source_type'] == 'Transducer'
-                # Then try the regular data_source column
-                elif 'data_source' in df.columns:
-                    transducer_mask = df['data_source'].str.contains('Transducer', case=False, na=False)
-                else:
-                    # If data_source column doesn't exist, assume all data in transducer_data is transducer data
-                    transducer_mask = df.index.isin(self.transducer_data.index)
+            # Filter manual readings within the time range
+            manual_mask = (self.manual_data['timestamp_utc'] >= time_min) & \
+                         (self.manual_data['timestamp_utc'] <= time_max)
+            relevant_manual = self.manual_data[manual_mask]
+            
+            if relevant_manual.empty:
+                logger.warning("No manual readings found in selected time range")
+                return None
+            
+            # For each manual reading, find the closest transducer reading in time
+            adjustments = []
+            
+            for _, manual_reading in relevant_manual.iterrows():
+                manual_time = manual_reading['timestamp_utc']
+                manual_level = manual_reading['water_level']
+                
+                # Find closest transducer reading (within reasonable time window, e.g., 1 hour)
+                time_diff = abs(self.transducer_data['timestamp_utc'] - manual_time)
+                closest_idx = time_diff.idxmin()
+                
+                # Check if closest reading is within 1 hour
+                if time_diff[closest_idx].total_seconds() <= 3600:  # 1 hour = 3600 seconds
+                    transducer_level = self.transducer_data.loc[closest_idx, 'water_level']
+                    adjustment = manual_level - transducer_level
+                    adjustments.append(adjustment)
                     
-                transducer_data = df[transducer_mask]
-                
-                logger.debug(f"Found {len(transducer_data)} transducer data points")
-                # Check if we have transducer data
-                if transducer_data.empty:
-                    logger.debug("No transducer data found - showing error")
-                    msg_box = QMessageBox(self)
-                    msg_box.setWindowTitle("Error")
-                    msg_box.setText("No transducer data found in selected range.")
-                    msg_box.setIcon(QMessageBox.Warning)
-                    msg_box.setWindowFlags(msg_box.windowFlags() | Qt.WindowStaysOnTopHint)
-                    msg_box.exec_()
-                    return
-                
-                # For manual method, expand the time range by 1 hour on each side to find manual measurements
-                min_time = df['timestamp_utc'].min()
-                max_time = df['timestamp_utc'].max()
-                
-                # Expand time range by 1 hour in each direction for manual measurements only
-                expanded_min_time = min_time - pd.Timedelta(hours=1)
-                expanded_max_time = max_time + pd.Timedelta(hours=1)
-                
-                logger.debug("Searching for manual measurements")
-                # Use self.manual_data directly instead of filtering from plot_data
-                manual_readings = []
-                
-                logger.debug(f"Manual data available: {not self.manual_data.empty}, length: {len(self.manual_data) if not self.manual_data.empty else 0}")
-                # Only use manual_data source which was provided separately to the dialog
-                if not self.manual_data.empty:
-                    expanded_mask = (self.manual_data['timestamp_utc'] >= expanded_min_time) & \
-                                   (self.manual_data['timestamp_utc'] <= expanded_max_time)
-                    
-                    manual_from_manual_data = self.manual_data[expanded_mask].copy()
-                    if not manual_from_manual_data.empty:
-                        manual_readings.append(manual_from_manual_data)
-                
-                # Combine manual readings
-                manual_data = pd.concat(manual_readings) if manual_readings else pd.DataFrame()
-                
-                if manual_data.empty:
-                    # Create message box that stays on top
-                    msg_box = QMessageBox(self)
-                    msg_box.setWindowTitle("Error")
-                    msg_box.setText("No manual measurements found in the expanded range (±1 hour).")
-                    msg_box.setIcon(QMessageBox.Warning)
-                    msg_box.setWindowFlags(msg_box.windowFlags() | Qt.WindowStaysOnTopHint)
-                    msg_box.exec_()
-                    return
-                
-                # Log the data we're working with
-                logger.debug(f"Using {len(manual_data)} manual measurements from expanded range")
-                logger.debug(f"Using {len(transducer_data)} transducer readings from selected range")
-                
-                # Calculate differences between manual and closest transducer readings
-                dh_values = []
-                matches = []  # Store match details for a single summary log
-                for _, manual_row in manual_data.iterrows():
-                    time_diff = abs(transducer_data['timestamp_utc'] - manual_row['timestamp_utc'])
-                    if time_diff.empty:
-                        continue
-                    closest_idx = time_diff.idxmin()
-                    closest_transducer = transducer_data.loc[closest_idx]
-                    # Use original water_level for calculation
-                    dh = manual_row['water_level'] - closest_transducer['water_level']
-                    dh_values.append(dh)
-                    
-                    # Store match info for summary instead of logging each one
-                    time_difference_minutes = time_diff.min().total_seconds() / 60
-                    matches.append({
-                        'manual_time': manual_row['timestamp_utc'],
-                        'transducer_time': closest_transducer['timestamp_utc'],
-                        'time_diff_min': time_difference_minutes,
-                        'dh': dh
-                    })
-                
-                # Log a single summary of all matches (much less verbose)
-                if matches:
-                    logger.debug(f"Manual-Transducer matches summary:")
-                    for i, match in enumerate(matches, 1):
-                        logger.debug(f"  Match {i}: Manual at {match['manual_time']} → Transducer at {match['transducer_time']} "
-                                    f"(diff: {match['time_diff_min']:.1f} min, dh: {match['dh']:.3f} ft)")
-                
-                if not dh_values:
-                    # Create message box that stays on top
-                    msg_box = QMessageBox(self)
-                    msg_box.setWindowTitle("Error")
-                    msg_box.setText("Could not calculate adjustment values from manual readings.")
-                    msg_box.setIcon(QMessageBox.Warning)
-                    msg_box.setWindowFlags(msg_box.windowFlags() | Qt.WindowStaysOnTopHint)
-                    msg_box.exec_()
-                    return
-                
-                adjustment = np.mean(dh_values)
-                logger.debug(f"Calculated manual adjustment (average of {len(dh_values)} differences): {adjustment:.3f} ft")
-            else:  # Free leveling
-                adjustment = params["adjustment_value"]
-                logger.debug(f"Using free adjustment value: {adjustment:.3f} ft")
-                # For free leveling, filter for transducer data only
-                # First check for our custom marker column
-                if 'data_source_type' in df.columns:
-                    transducer_mask = df['data_source_type'] == 'Transducer'
-                # Then try the regular data_source column
-                elif 'data_source' in df.columns:
-                    transducer_mask = df['data_source'].str.contains('Transducer', case=False, na=False)
-                else:
-                    # If data_source column doesn't exist, assume all data in transducer_data is transducer data
-                    transducer_mask = df.index.isin(self.transducer_data.index)
-                    
-                transducer_data = df[transducer_mask]
-                
-                if transducer_data.empty:
-                    # Create message box that stays on top
-                    msg_box = QMessageBox(self)
-                    msg_box.setWindowTitle("Error")
-                    msg_box.setText("No transducer data found in selected range.")
-                    msg_box.setIcon(QMessageBox.Warning)
-                    msg_box.setWindowFlags(msg_box.windowFlags() | Qt.WindowStaysOnTopHint)
-                    msg_box.exec_()
-                    return
+                    logger.debug(f"Manual: {manual_level:.3f} ft, Transducer: {transducer_level:.3f} ft, "
+                               f"Adjustment: {adjustment:.3f} ft at {manual_time}")
             
-            # Sort data by timestamp for better line plotting
-            transducer_data = transducer_data.sort_values('timestamp_utc')
+            if not adjustments:
+                logger.warning("No matching transducer readings found for manual measurements")
+                return None
             
-            if not transducer_data.empty:
-                # Plot just the adjusted data (dashed line)
-                adjusted_levels = transducer_data['water_level'] + adjustment
-                adjusted_line, = self.ax.plot(
-                    transducer_data['timestamp_utc'],
-                    adjusted_levels,
-                    color='green',
-                    linestyle='--',
-                    linewidth=2,
-                    label=f"Adjusted Level ({adjustment:.3f} ft)",
-                    zorder=6
-                )
-                
-                # Store the adjusted line
-                self.baseline_preview_line = adjusted_line
-                
-            # Update the water_level_level_corrected column for actual plot updates
-            indices_to_update = transducer_data.index
-            self.plot_data.loc[indices_to_update, 'water_level_level_corrected'] = \
-                self.plot_data.loc[indices_to_update, 'water_level'] + adjustment
+            # Calculate average adjustment
+            avg_adjustment = np.mean(adjustments)
+            std_adjustment = np.std(adjustments) if len(adjustments) > 1 else 0
             
-            # Update only the modification flag, not the original flag
-            self.plot_data.loc[indices_to_update, 'level_flag_mod'] = 'level_mod'
+            logger.info(f"Calculated baseline adjustment: {avg_adjustment:.3f} ± {std_adjustment:.3f} ft "
+                       f"(from {len(adjustments)} manual readings)")
             
-            # Also update the transducer_data DataFrame
-            self.transducer_data.loc[indices_to_update, 'water_level_level_corrected'] = \
-                self.transducer_data.loc[indices_to_update, 'water_level'] + adjustment
-            self.transducer_data.loc[indices_to_update, 'level_flag_mod'] = 'level_mod'
-            
-            # Track changes for this instance
-            changes = {}
-            for idx in indices_to_update:
-                changes[idx] = {
-                    'water_level_level_corrected': self.transducer_data.loc[idx, 'water_level_level_corrected'],
-                    'level_flag_mod': 'level_mod'
-                }
-            
-            # Apply changes using the new tracking system
-            if changes:
-                self.apply_instance_edits(self.baseline_helper.instance_id, 'baseline', changes)
-            
-            # Update the legend and redraw
-            self.ax.legend(loc='upper right')
-            self.canvas.draw()
-            
-            logger.debug(f"Baseline adjustment of {adjustment:.3f} ft applied to {len(transducer_data)} points")
+            return avg_adjustment
             
         except Exception as e:
-            logger.error(f"Error applying baseline changes: {e}", exc_info=True)
-            # Display error message
-            msg_box = QMessageBox(self)
-            msg_box.setWindowTitle("Error")
-            msg_box.setText(f"Error applying baseline changes: {str(e)}")
-            msg_box.setIcon(QMessageBox.Critical)
-            msg_box.setWindowFlags(msg_box.windowFlags() | Qt.WindowStaysOnTopHint)
-            msg_box.exec_()
+            logger.error(f"Error calculating baseline adjustment: {e}", exc_info=True)
+            return None
 
     def set_start_to_first_point(self):
         """Set the start date to the first point in the plot data and update the span selector"""

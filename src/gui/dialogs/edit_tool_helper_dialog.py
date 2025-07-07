@@ -433,8 +433,18 @@ class BaselineHelperDialog(EditToolHelperDialog):
     def get_current_parameters(self):
         """Get current parameters"""
         try:
+            method = "free" if self.free_mode.isChecked() else "manual"
+            
+            # If manual mode and parent has data, calculate adjustment automatically
+            if method == "manual" and hasattr(self.parent(), 'calculate_baseline_adjustment'):
+                calculated_adjustment = self.parent().calculate_baseline_adjustment()
+                if calculated_adjustment is not None:
+                    # Update the spinbox with calculated value
+                    self.value_spin.setValue(calculated_adjustment)
+                    logger.info(f"Auto-calculated baseline adjustment: {calculated_adjustment} ft")
+            
             return {
-                "method": "free" if self.free_mode.isChecked() else "manual",
+                "method": method,
                 "adjustment_value": self.value_spin.value()
             }
         except Exception as e:
