@@ -491,5 +491,9 @@ class DatabaseManager(QObject):
         if self.is_google_drive_db:
             self._modified_since_sync = True
         
+        # Mark cloud databases as modified to enable upload button
+        if self.is_cloud_database:
+            self.is_cloud_modified = True
+        
         # Always emit the database_modified signal for UI updates
         self.database_modified.emit()
