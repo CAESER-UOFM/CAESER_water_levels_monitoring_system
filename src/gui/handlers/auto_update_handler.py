@@ -666,7 +666,7 @@ class AutoUpdateHandler:
                                                 # Track the organized XLE file for cloud upload
                                                 file_id = water_tab.water_level_model.db_manager.cloud_db_handler.xle_manager.track_xle_file(
                                                     file_path=str(organized_path),
-                                                    file_type='water_level',
+                                                    file_type='transducer',
                                                     serial_number=metadata.serial_number,
                                                     well_number=well_number,
                                                     start_date=start_date.isoformat(),
