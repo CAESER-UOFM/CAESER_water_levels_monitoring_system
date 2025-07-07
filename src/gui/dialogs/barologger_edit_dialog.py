@@ -1293,7 +1293,7 @@ class BarologgerEditDialog(QDialog):
             QApplication.setOverrideCursor(Qt.WaitCursor)
             
             # Convert click coordinates to data coordinates
-            click_time = pd.to_datetime(mdates.num2date(event.xdata))
+            click_time = pd.to_datetime(mdates.num2date(event.xdata)).replace(tzinfo=None)
             click_pressure = event.ydata
             
             # Find closest data point
@@ -1322,9 +1322,9 @@ class BarologgerEditDialog(QDialog):
             if self.original_data is None or self.original_data.empty:
                 return None
             
-            # Get current time range
-            start_time = self.start_date.dateTime().toPyDateTime()
-            end_time = self.end_date.dateTime().toPyDateTime()
+            # Get current time range - ensure timezone-naive
+            start_time = self.start_date.dateTime().toPyDateTime().replace(tzinfo=None)
+            end_time = self.end_date.dateTime().toPyDateTime().replace(tzinfo=None)
             
             # Filter data to current view
             mask = (self.original_data['timestamp_utc'] >= start_time) & \
@@ -1345,10 +1345,10 @@ class BarologgerEditDialog(QDialog):
             if time_range == 0 or pressure_range == 0:
                 return None
             
-            time_norm = [(pd.to_datetime(t) - pd.to_datetime(start_time)).total_seconds() / time_range for t in time_values]
+            time_norm = [(pd.to_datetime(t).replace(tzinfo=None) - pd.to_datetime(start_time).replace(tzinfo=None)).total_seconds() / time_range for t in time_values]
             pressure_norm = (pressure_values - pressure_values.min()) / pressure_range
             
-            click_time_norm = (pd.to_datetime(click_time) - pd.to_datetime(start_time)).total_seconds() / time_range
+            click_time_norm = (pd.to_datetime(click_time).replace(tzinfo=None) - pd.to_datetime(start_time).replace(tzinfo=None)).total_seconds() / time_range
             click_pressure_norm = (click_pressure - pressure_values.min()) / pressure_range
             
             # Calculate Euclidean distances
@@ -1360,7 +1360,7 @@ class BarologgerEditDialog(QDialog):
             closest_time = time_values[min_idx]
             closest_pressure = pressure_values[min_idx]
             
-            return pd.to_datetime(closest_time), float(closest_pressure)
+            return pd.to_datetime(closest_time).replace(tzinfo=None), float(closest_pressure)
             
         except Exception as e:
             logger.error(f"Error finding closest data point: {e}")
@@ -1380,8 +1380,8 @@ class BarologgerEditDialog(QDialog):
                 marker = 's'
                 label = 'Spike End'
             
-            # Add scatter point - ensure timestamp is properly converted
-            timestamp_converted = pd.to_datetime(timestamp)
+            # Add scatter point - ensure timestamp is properly converted and timezone-naive
+            timestamp_converted = pd.to_datetime(timestamp).replace(tzinfo=None)
             scatter = self.ax.scatter([timestamp_converted], [pressure], 
                                    color=color, s=60, marker=marker, 
                                    alpha=0.9, zorder=15, 
@@ -1397,8 +1397,8 @@ class BarologgerEditDialog(QDialog):
                 prev_timestamp = prev_scatter.get_offsets()[0][0]
                 prev_pressure = prev_scatter.get_offsets()[0][1]
                 
-                # Convert matplotlib date number back to datetime
-                prev_timestamp = mdates.num2date(prev_timestamp)
+                # Convert matplotlib date number back to datetime and ensure timezone-naive
+                prev_timestamp = pd.to_datetime(mdates.num2date(prev_timestamp)).replace(tzinfo=None)
                 
                 # Draw preview line - ensure both timestamps are properly converted
                 line, = self.ax.plot([prev_timestamp, timestamp_converted], [prev_pressure, pressure],
