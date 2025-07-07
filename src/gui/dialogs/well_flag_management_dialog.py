@@ -230,9 +230,9 @@ class WellFlagManagementDialog(QDialog):
         
         # History table
         self.history_table = QTableWidget()
-        self.history_table.setColumnCount(5)
+        self.history_table.setColumnCount(6)
         self.history_table.setHorizontalHeaderLabels([
-            "Date/Time", "User", "Old Flag", "New Flag", "Comment"
+            "Date/Time", "User", "Old Flag", "New Flag", "Comment", "Resolved"
         ])
         
         # Style the table
@@ -270,6 +270,7 @@ class WellFlagManagementDialog(QDialog):
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Old Flag
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # New Flag
         header.setSectionResizeMode(4, QHeaderView.Stretch)           # Comment
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Resolved
         
         layout.addWidget(self.history_table)
         
@@ -319,20 +320,33 @@ class WellFlagManagementDialog(QDialog):
                     self.history_table.setRowCount(0)
                     return
                 
+                # Check if resolution column exists
+                cursor.execute("PRAGMA table_info(well_flag_changes)")
+                columns = [column[1] for column in cursor.fetchall()]
+                has_resolution = 'is_resolved' in columns
+                
                 # Get flag change history
-                cursor.execute("""
-                    SELECT timestamp, user_name, old_flag_value, new_flag_value, comment
-                    FROM well_flag_changes 
-                    WHERE well_id = ?
-                    ORDER BY timestamp DESC
-                """, (self.well_id,))
+                if has_resolution:
+                    cursor.execute("""
+                        SELECT id, timestamp, user_name, old_flag_value, new_flag_value, comment, is_resolved
+                        FROM well_flag_changes 
+                        WHERE well_id = ?
+                        ORDER BY timestamp DESC
+                    """, (self.well_id,))
+                else:
+                    cursor.execute("""
+                        SELECT id, timestamp, user_name, old_flag_value, new_flag_value, comment, 0 as is_resolved
+                        FROM well_flag_changes 
+                        WHERE well_id = ?
+                        ORDER BY timestamp DESC
+                    """, (self.well_id,))
                 
                 history = cursor.fetchall()
                 
                 # Populate table
                 self.history_table.setRowCount(len(history))
                 
-                for row, (timestamp, user, old_flag, new_flag, comment) in enumerate(history):
+                for row, (record_id, timestamp, user, old_flag, new_flag, comment, is_resolved) in enumerate(history):
                     # Format timestamp
                     try:
                         dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
@@ -356,6 +370,22 @@ class WellFlagManagementDialog(QDialog):
                     self.history_table.setItem(row, 3, new_flag_item)
                     
                     self.history_table.setItem(row, 4, QTableWidgetItem(comment or ""))
+                    
+                    # Add resolution checkbox
+                    from PyQt5.QtWidgets import QCheckBox, QWidget, QHBoxLayout
+                    checkbox = QCheckBox()
+                    checkbox.setChecked(bool(is_resolved))
+                    checkbox.setProperty('record_id', record_id)  # Store record ID for updates
+                    checkbox.stateChanged.connect(self.on_resolution_changed)
+                    
+                    # Center the checkbox in the cell
+                    checkbox_widget = QWidget()
+                    checkbox_layout = QHBoxLayout(checkbox_widget)
+                    checkbox_layout.addWidget(checkbox)
+                    checkbox_layout.setAlignment(Qt.AlignCenter)
+                    checkbox_layout.setContentsMargins(0, 0, 0, 0)
+                    
+                    self.history_table.setCellWidget(row, 5, checkbox_widget)
                 
                 # If no history, show a message
                 if len(history) == 0:
@@ -363,7 +393,7 @@ class WellFlagManagementDialog(QDialog):
                     no_history_item = QTableWidgetItem("No flag changes recorded for this well")
                     no_history_item.setTextAlignment(Qt.AlignCenter)
                     self.history_table.setItem(0, 0, no_history_item)
-                    self.history_table.setSpan(0, 0, 1, 5)
+                    self.history_table.setSpan(0, 0, 1, 6)
                     
         except Exception as e:
             logger.error(f"Error loading flag history: {e}")
@@ -384,30 +414,55 @@ class WellFlagManagementDialog(QDialog):
             comment = self.comment_text.toPlainText().strip()
             
             # Validation
-            if new_flag == self.current_flag:
-                QMessageBox.information(self, "No Change", 
-                    "The selected flag is the same as the current flag.")
-                return
-                
             if not comment:
                 QMessageBox.warning(self, "Comment Required", 
-                    "Please enter a comment explaining the flag change.")
+                    "Please enter a comment.")
                 return
+            
+            # Check if flag is changing or just adding a comment
+            is_flag_change = new_flag != self.current_flag
             
             # Save to database
             if self.save_flag_change_to_db(new_flag, comment):
-                # Update well flag in wells table
-                self.update_well_flag(new_flag)
-                
-                # Emit signal for external updates
-                self.flag_changed.emit(self.well_id, new_flag, comment)
+                # Only update well flag in wells table if flag actually changed
+                if is_flag_change:
+                    self.update_well_flag(new_flag)
+                    # Emit signal for external updates when flag changes
+                    self.flag_changed.emit(self.well_id, new_flag, comment)
+                else:
+                    # Just mark database as modified for comment-only additions
+                    self.db_manager.mark_as_modified()
+                    # Track the comment addition
+                    if (hasattr(self.db_manager, 'change_tracker') and 
+                        self.db_manager.change_tracker):
+                        from ..handlers.change_tracker import ChangeType, ChangeAction
+                        self.db_manager.change_tracker.track_change(
+                            change_type=ChangeType.MANUAL,
+                            action=ChangeAction.INSERT,
+                            table_name="well_flag_changes",
+                            record_id=self.well_id,
+                            field_name="comment",
+                            old_value=None,
+                            new_value=comment[:100] + "..." if len(comment) > 100 else comment,
+                            description=f"Additional comment added for well {self.well_id} (flag: {new_flag})",
+                            context={
+                                "well_number": self.well_id,
+                                "flag_value": new_flag,
+                                "ui_action": "add_flag_comment"
+                            }
+                        )
                 
                 # Show success message
-                QMessageBox.information(self, "Flag Updated", 
-                    f"Flag updated successfully from '{self.current_flag}' to '{new_flag}'.")
+                if is_flag_change:
+                    QMessageBox.information(self, "Flag Updated", 
+                        f"Flag updated successfully from '{self.current_flag}' to '{new_flag}'.")
+                    # Update current flag only if it actually changed
+                    self.current_flag = new_flag
+                else:
+                    QMessageBox.information(self, "Comment Added", 
+                        f"Comment added successfully for flag '{new_flag}'.")
                 
-                # Update current flag and reload history
-                self.current_flag = new_flag
+                # Reload history
                 self.load_flag_history()
                 
                 # Reset form
@@ -496,3 +551,62 @@ class WellFlagManagementDialog(QDialog):
         except Exception as e:
             logger.error(f"Error updating well flag: {e}")
             raise
+    
+    def on_resolution_changed(self, state):
+        """Handle resolution checkbox changes"""
+        try:
+            checkbox = self.sender()
+            record_id = checkbox.property('record_id')
+            is_resolved = checkbox.isChecked()
+            
+            if not self.db_manager.current_db:
+                return
+                
+            # Update the resolution status in the database
+            with sqlite3.connect(self.db_manager.current_db) as conn:
+                cursor = conn.cursor()
+                
+                # Add resolution column if it doesn't exist
+                try:
+                    cursor.execute("ALTER TABLE well_flag_changes ADD COLUMN is_resolved INTEGER DEFAULT 0")
+                except sqlite3.OperationalError:
+                    # Column already exists
+                    pass
+                
+                # Update resolution status
+                cursor.execute("""
+                    UPDATE well_flag_changes 
+                    SET is_resolved = ?
+                    WHERE id = ?
+                """, (1 if is_resolved else 0, record_id))
+                
+                conn.commit()
+                
+            # Track the resolution change
+            if (hasattr(self.db_manager, 'change_tracker') and 
+                self.db_manager.change_tracker):
+                from ..handlers.change_tracker import ChangeType, ChangeAction
+                self.db_manager.change_tracker.track_change(
+                    change_type=ChangeType.MANUAL,
+                    action=ChangeAction.UPDATE,
+                    table_name="well_flag_changes",
+                    record_id=record_id,
+                    field_name="is_resolved",
+                    old_value=not is_resolved,
+                    new_value=is_resolved,
+                    description=f"Comment marked as {'resolved' if is_resolved else 'unresolved'} for well {self.well_id}",
+                    context={
+                        "well_number": self.well_id,
+                        "ui_action": "resolve_comment"
+                    }
+                )
+            
+            # Mark database as modified
+            self.db_manager.mark_as_modified()
+            
+            logger.info(f"Resolution status updated for record {record_id}: {'resolved' if is_resolved else 'unresolved'}")
+            
+        except Exception as e:
+            logger.error(f"Error updating resolution status: {e}")
+            # Revert checkbox state on error
+            checkbox.setChecked(not checkbox.isChecked())
