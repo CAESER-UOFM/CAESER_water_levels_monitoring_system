@@ -1,0 +1,11 @@
+{
+  "version": "1.0.0-dev",
+  "release_date": "2025-07-03T10:57:13.441974",
+  "description": "Development version",
+  "github_repo": "benjaled/water_levels_monitoring_-for_external_edits-",
+  "auto_update": {
+    "enabled": false,
+    "check_on_startup": false,
+    "backup_count": 3
+  }
+}

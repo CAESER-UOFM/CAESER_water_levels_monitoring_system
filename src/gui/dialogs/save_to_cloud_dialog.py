@@ -88,15 +88,32 @@ class SaveToCloudDialog(QDialog):
         
         self.change_text = QTextEdit()
         
+        # DEBUG: Log change tracker state
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"CHANGE_TRACKER_DEBUG: Save dialog opened")
+        logger.info(f"CHANGE_TRACKER_DEBUG: change_tracker exists: {self.change_tracker is not None}")
+        if self.change_tracker:
+            logger.info(f"CHANGE_TRACKER_DEBUG: change_tracker.changes count: {len(self.change_tracker.changes) if hasattr(self.change_tracker, 'changes') else 'no changes attr'}")
+            if hasattr(self.change_tracker, 'changes') and self.change_tracker.changes:
+                for i, change in enumerate(self.change_tracker.changes):
+                    logger.info(f"CHANGE_TRACKER_DEBUG: Change {i}: {change}")
+        logger.info(f"CHANGE_TRACKER_DEBUG: existing_description: {self.existing_description}")
+        
         # Pre-populate with existing draft description or tracked changes
         if self.existing_description:
             # Use existing draft description (preserves previous description)
+            logger.info(f"CHANGE_TRACKER_DEBUG: Using existing description")
             self.change_text.setPlainText(self.existing_description)
         elif self.change_tracker and self.change_tracker.changes:
             # Use tracked changes if no existing description
+            logger.info(f"CHANGE_TRACKER_DEBUG: Using tracked changes")
             suggested_description = self.change_tracker.get_manual_changes_description()
+            logger.info(f"CHANGE_TRACKER_DEBUG: Suggested description: {suggested_description}")
             if suggested_description and suggested_description != "No manual changes made":
                 self.change_text.setPlainText(suggested_description)
+        else:
+            logger.info(f"CHANGE_TRACKER_DEBUG: No changes to auto-populate")
         
         self.change_text.setPlaceholderText(
             "Please describe the changes you made...\n\n"

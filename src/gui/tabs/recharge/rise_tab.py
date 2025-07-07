@@ -8,7 +8,6 @@ import numpy as np
 import os
 import sys
 from datetime import datetime, timedelta
-from pathlib import Path
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, 
     QDoubleSpinBox, QPushButton, QGroupBox, QTableWidget, 
@@ -74,9 +73,6 @@ class RiseTab(BaseRechargeTab):
         
         # Setup UI
         self.setup_ui()
-        
-        # Update save button visibility based on initial database mode
-        self.update_save_button_visibility()
     
     def _comprehensive_process_data(self, raw_data):
         """Comprehensive data processing method that applies all global settings."""
@@ -166,6 +162,11 @@ class RiseTab(BaseRechargeTab):
                 logger.warning("Could not get database path from db manager")
                 return
             
+            # Safety check to prevent None file creation
+            if db_path is None or str(db_path) == "None":
+                logger.warning("No database selected - skipping RISE database initialization")
+                return
+                
             # Initialize RISE database manager
             self.rise_db = RiseDatabase(db_path)
             
@@ -185,14 +186,6 @@ class RiseTab(BaseRechargeTab):
         """Set up the UI for the RISE tab."""
         layout = QVBoxLayout(self)
         
-        # Instructions
-        instructions = QLabel(
-            "The RISE method estimates recharge based on water level rises "
-            "multiplied by specific yield. "
-            "It identifies rapid water level rises and calculates recharge for each rise event."
-        )
-        instructions.setWordWrap(True)
-        layout.addWidget(instructions)
         
         # Create main splitter (Parameters on left, Plot on right)
         self.main_splitter = QSplitter(Qt.Horizontal)
@@ -232,7 +225,7 @@ class RiseTab(BaseRechargeTab):
         left_layout.addWidget(self.left_tabs)
         
         # Set fixed width for visual consistency across all tabs
-        left_widget.setFixedWidth(400)
+        left_widget.setFixedWidth(300)
         
         return left_widget
     
@@ -241,7 +234,7 @@ class RiseTab(BaseRechargeTab):
         """Create the event selection panel with filtering and events table."""
         panel = QWidget()
         layout = QVBoxLayout(panel)
-        layout.setSpacing(10)
+        layout.setSpacing(5)
         
         # Well selection
         well_layout = QHBoxLayout()
@@ -255,15 +248,16 @@ class RiseTab(BaseRechargeTab):
         # Step 1: Identify Events button
         self.identify_events_btn = QPushButton("Identify Events")
         self.identify_events_btn.setEnabled(False)
-        self.identify_events_btn.setMinimumHeight(40)
+        self.identify_events_btn.setMinimumHeight(28)
         self.identify_events_btn.clicked.connect(self.identify_rise_events_ui)
         self.identify_events_btn.setToolTip("Analyze water level data to identify potential rise events. All parameters are configured in Global Settings.")
         self.identify_events_btn.setStyleSheet("""
             QPushButton {
-                padding: 5px 10px;
+                padding: 3px 8px;
                 border: 1px solid #ccc;
                 border-radius: 4px;
                 background-color: #f8f9fa;
+                font-size: 11px;
             }
             QPushButton:hover {
                 background-color: #e9ecef;
@@ -307,10 +301,11 @@ class RiseTab(BaseRechargeTab):
         select_all_btn.clicked.connect(self.select_all_events)
         select_all_btn.setStyleSheet("""
             QPushButton {
-                padding: 5px 10px;
+                padding: 2px 6px;
                 border: 1px solid #ccc;
-                border-radius: 4px;
+                border-radius: 3px;
                 background-color: #f8f9fa;
+                font-size: 10px;
             }
             QPushButton:hover {
                 background-color: #e9ecef;
@@ -328,10 +323,11 @@ class RiseTab(BaseRechargeTab):
         deselect_all_btn.clicked.connect(self.deselect_all_events)
         deselect_all_btn.setStyleSheet("""
             QPushButton {
-                padding: 5px 10px;
+                padding: 2px 6px;
                 border: 1px solid #ccc;
-                border-radius: 4px;
+                border-radius: 3px;
                 background-color: #f8f9fa;
+                font-size: 10px;
             }
             QPushButton:hover {
                 background-color: #e9ecef;
@@ -351,14 +347,15 @@ class RiseTab(BaseRechargeTab):
         self.calculate_recharge_btn = QPushButton("Calculate Recharge for Selected")
         self.calculate_recharge_btn.clicked.connect(self.calculate_recharge_for_selected)
         self.calculate_recharge_btn.setEnabled(False)  # Disabled until events are identified
-        self.calculate_recharge_btn.setMinimumHeight(40)  # Make button larger and more prominent
+        self.calculate_recharge_btn.setMinimumHeight(28)  # Compact button height
         self.calculate_recharge_btn.setToolTip("Calculate recharge values for the selected rise events from the table above.")
         self.calculate_recharge_btn.setStyleSheet("""
             QPushButton {
-                padding: 5px 10px;
+                padding: 3px 8px;
                 border: 1px solid #ccc;
                 border-radius: 4px;
                 background-color: #f8f9fa;
+                font-size: 11px;
             }
             QPushButton:hover {
                 background-color: #e9ecef;
@@ -378,7 +375,7 @@ class RiseTab(BaseRechargeTab):
         """Create the results panel with yearly summary."""
         panel = QWidget()
         layout = QVBoxLayout(panel)
-        layout.setSpacing(10)
+        layout.setSpacing(5)
         
         # Create yearly statistics table
         self.yearly_stats_table = QTableWidget()
@@ -394,13 +391,13 @@ class RiseTab(BaseRechargeTab):
         # Summary section
         summary_group = QGroupBox("Recharge Summary")
         summary_layout = QVBoxLayout(summary_group)
-        summary_layout.setSpacing(10)
+        summary_layout.setSpacing(5)
         
         # Total recharge
         total_layout = QHBoxLayout()
         total_layout.addWidget(QLabel("Total Recharge:"))
         self.total_recharge_label = QLabel("0.0 inches")
-        self.total_recharge_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.total_recharge_label.setStyleSheet("font-weight: bold; font-size: 11px;")
         total_layout.addWidget(self.total_recharge_label)
         total_layout.addStretch()
         summary_layout.addLayout(total_layout)
@@ -409,7 +406,7 @@ class RiseTab(BaseRechargeTab):
         rate_layout = QHBoxLayout()
         rate_layout.addWidget(QLabel("Annual Rate:"))
         self.annual_rate_label = QLabel("0.0 inches/year")
-        self.annual_rate_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.annual_rate_label.setStyleSheet("font-weight: bold; font-size: 11px;")
         rate_layout.addWidget(self.annual_rate_label)
         rate_layout.addStretch()
         summary_layout.addLayout(rate_layout)
@@ -418,7 +415,7 @@ class RiseTab(BaseRechargeTab):
         count_layout = QHBoxLayout()
         count_layout.addWidget(QLabel("Total Rises:"))
         self.events_count_label = QLabel("0")
-        self.events_count_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.events_count_label.setStyleSheet("font-weight: bold; font-size: 11px;")
         count_layout.addWidget(self.events_count_label)
         count_layout.addStretch()
         summary_layout.addLayout(count_layout)
@@ -427,7 +424,7 @@ class RiseTab(BaseRechargeTab):
         avg_layout = QHBoxLayout()
         avg_layout.addWidget(QLabel("Avg. Annual Recharge:"))
         self.avg_annual_label = QLabel("0.0 inches/year")
-        self.avg_annual_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.avg_annual_label.setStyleSheet("font-weight: bold; font-size: 11px;")
         avg_layout.addWidget(self.avg_annual_label)
         avg_layout.addStretch()
         summary_layout.addLayout(avg_layout)
@@ -441,10 +438,11 @@ class RiseTab(BaseRechargeTab):
         export_csv_btn.clicked.connect(self.export_to_csv)
         export_csv_btn.setStyleSheet("""
             QPushButton {
-                padding: 5px 10px;
+                padding: 2px 6px;
                 border: 1px solid #ccc;
-                border-radius: 4px;
+                border-radius: 3px;
                 background-color: #f8f9fa;
+                font-size: 10px;
             }
             QPushButton:hover {
                 background-color: #e9ecef;
@@ -462,10 +460,11 @@ class RiseTab(BaseRechargeTab):
         export_excel_btn.clicked.connect(self.export_to_excel)
         export_excel_btn.setStyleSheet("""
             QPushButton {
-                padding: 5px 10px;
+                padding: 2px 6px;
                 border: 1px solid #ccc;
-                border-radius: 4px;
+                border-radius: 3px;
                 background-color: #f8f9fa;
+                font-size: 10px;
             }
             QPushButton:hover {
                 background-color: #e9ecef;
@@ -491,10 +490,11 @@ class RiseTab(BaseRechargeTab):
         self.save_to_db_btn.setToolTip("Save the current RISE calculation to the database")
         self.save_to_db_btn.setStyleSheet("""
             QPushButton {
-                padding: 5px 10px;
+                padding: 2px 6px;
                 border: 1px solid #ccc;
-                border-radius: 4px;
+                border-radius: 3px;
                 background-color: #f8f9fa;
+                font-size: 10px;
             }
             QPushButton:hover {
                 background-color: #e9ecef;
@@ -507,30 +507,6 @@ class RiseTab(BaseRechargeTab):
             }
         """)
         db_layout.addWidget(self.save_to_db_btn)
-        
-        # Save Locally button for cloud mode
-        self.save_locally_btn = QPushButton("Save Locally")
-        self.save_locally_btn.clicked.connect(self.save_locally)
-        self.save_locally_btn.setToolTip("Create a local copy of the current cloud database with saved calculation")
-        self.save_locally_btn.setStyleSheet("""
-            QPushButton {
-                padding: 5px 10px;
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                background-color: #f8f9fa;
-            }
-            QPushButton:hover {
-                background-color: #e9ecef;
-                border-color: #adb5bd;
-            }
-            QPushButton:disabled {
-                background-color: #e9ecef;
-                color: #6c757d;
-                border-color: #dee2e6;
-            }
-        """)
-        self.save_locally_btn.setVisible(False)  # Hidden by default
-        db_layout.addWidget(self.save_locally_btn)
         
         # Load button
         self.load_from_db_btn = QPushButton("Load from Database")
@@ -2059,29 +2035,12 @@ class RiseTab(BaseRechargeTab):
             )
             
             if success:
-                # Track the change for cloud databases
-                if hasattr(self, 'parent') and self.parent and hasattr(self.parent, 'db_manager'):
-                    db_manager = self.parent.db_manager
-                    if db_manager.is_cloud_database and db_manager.change_tracker:
-                        # Track the RISE calculation save
-                        from ...handlers.change_tracker import ChangeType, ChangeAction
-                        db_manager.change_tracker.track_change(
-                            change_type=ChangeType.MANUAL,
-                            action=ChangeAction.INSERT,
-                            table_name='rise_calculations',
-                            record_id=success,  # success contains the calculation ID
-                            description=f"Saved RISE calculation for well {well_name}",
-                            context={
-                                'well_id': well_id,
-                                'well_name': well_name,
-                                'total_recharge': total_recharge,
-                                'annual_rate': annual_rate,
-                                'num_events': len(events_to_save)
-                            }
-                        )
-                        # Mark database as modified
-                        db_manager.mark_cloud_modified()
-                        logger.info(f"Tracked RISE calculation change for cloud database")
+                # Mark cloud database as modified if applicable
+                if (hasattr(self, 'parent') and self.parent and 
+                    hasattr(self.parent, 'db_manager') and self.parent.db_manager and 
+                    self.parent.db_manager.is_cloud_database):
+                    self.parent.db_manager.mark_cloud_modified()
+                    logger.info("Marked cloud database as modified after RISE calculation save")
                 
                 QMessageBox.information(
                     self, 
@@ -2092,9 +2051,6 @@ class RiseTab(BaseRechargeTab):
                     f"Number of rises: {len(events_to_save)}"
                 )
                 logger.info(f"Saved RISE calculation for well {well_id} to database")
-                
-                # Update save button visibility after successful save
-                self.update_save_button_visibility()
             else:
                 QMessageBox.warning(
                     self, 
@@ -3019,106 +2975,6 @@ class RiseTab(BaseRechargeTab):
         self.update_plot()
         
         logger.info("[PREPROCESS_DEBUG] RISE tab updated with shared data")
-    
-    def update_save_button_visibility(self):
-        """Update save button visibility based on database mode."""
-        try:
-            # Check if we have access to the database manager
-            if hasattr(self, 'parent') and self.parent and hasattr(self.parent, 'db_manager'):
-                db_manager = self.parent.db_manager
-                is_cloud_db = db_manager.is_cloud_database
-                
-                if is_cloud_db:
-                    # Cloud mode: show "Save to Cloud" and "Save Locally" buttons
-                    self.save_to_db_btn.setText("Save to Cloud")
-                    self.save_to_db_btn.setToolTip("Save the current RISE calculation to the cloud database")
-                    self.save_locally_btn.setVisible(True)
-                else:
-                    # Local mode: show standard "Save to Database" button, hide "Save Locally"
-                    self.save_to_db_btn.setText("Save to Database")
-                    self.save_to_db_btn.setToolTip("Save the current RISE calculation to the database")
-                    self.save_locally_btn.setVisible(False)
-            else:
-                # Fallback: hide cloud-specific button
-                self.save_locally_btn.setVisible(False)
-                
-        except Exception as e:
-            logger.warning(f"Error updating save button visibility: {e}")
-            # Fallback: hide cloud-specific button
-            if hasattr(self, 'save_locally_btn'):
-                self.save_locally_btn.setVisible(False)
-    
-    def save_locally(self):
-        """Create a local copy of the cloud database with the current calculation saved."""
-        try:
-            # Check if we're in cloud mode
-            if not (hasattr(self, 'parent') and self.parent and hasattr(self.parent, 'db_manager')):
-                QMessageBox.warning(self, "Error", "Database manager not available.")
-                return
-            
-            db_manager = self.parent.db_manager
-            if not db_manager.is_cloud_database:
-                QMessageBox.warning(self, "Not Cloud Database", "This feature is only available for cloud databases.")
-                return
-            
-            # Check if we have data to save
-            if not hasattr(self, 'rise_events') or not self.rise_events:
-                QMessageBox.warning(self, "No Data", "No results to save. Calculate recharge first.")
-                return
-            
-            # Ask user for local database location
-            from PyQt5.QtWidgets import QFileDialog
-            file_path, _ = QFileDialog.getSaveFileName(
-                self,
-                "Save Local Copy",
-                f"{db_manager.cloud_project_name}_local_copy.db",
-                "SQLite Database (*.db)"
-            )
-            
-            if not file_path:
-                return
-            
-            # Create a copy of the current cloud database
-            import shutil
-            shutil.copy2(db_manager.temp_db_path, file_path)
-            logger.info(f"Created local copy of cloud database at: {file_path}")
-            
-            # Open the new local database temporarily to save the calculation
-            original_current_db = db_manager.current_db
-            original_is_cloud = db_manager.is_cloud_database
-            original_cloud_modified = db_manager.is_cloud_modified
-            
-            try:
-                # Temporarily switch to local mode for saving
-                db_manager.open_database(Path(file_path))
-                db_manager.is_cloud_database = False
-                
-                # Save the calculation to the local database
-                self.save_to_database()
-                
-                QMessageBox.information(
-                    self,
-                    "Local Copy Saved",
-                    f"Local copy created successfully at:\n{file_path}\n\n"
-                    f"The calculation has been saved to the local database."
-                )
-                
-            finally:
-                # Restore original cloud database state
-                db_manager.current_db = original_current_db
-                db_manager.is_cloud_database = original_is_cloud
-                db_manager.is_cloud_modified = original_cloud_modified
-                
-                # Restore the UI state
-                self.update_save_button_visibility()
-                
-        except Exception as e:
-            logger.error(f"Error creating local copy: {e}", exc_info=True)
-            QMessageBox.critical(
-                self,
-                "Error",
-                f"Failed to create local copy:\n{str(e)}"
-            )
 
 
 class LoadCalculationDialog(QDialog):

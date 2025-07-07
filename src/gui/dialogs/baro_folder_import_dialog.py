@@ -12,15 +12,16 @@ import matplotlib.dates as mdates
 from datetime import datetime
 from ..handlers.baro_folder_processor import BaroFolderProcessor
 from .baro_progress_dialog import BaroProgressDialog
+from ..utils.button_styles import ButtonStyles
 
 logger = logging.getLogger(__name__)
 
 class BaroFolderImportDialog(QDialog):
-    def __init__(self, baro_model, parent=None):
+    def __init__(self, baro_model, parent=None, settings_handler=None):
         super().__init__(parent)
         self.baro_model = baro_model
         self.folder_path = None
-        self.processor = BaroFolderProcessor(baro_model)
+        self.processor = BaroFolderProcessor(baro_model, settings_handler=settings_handler)
         self.current_serial = None
         self.scan_results = None
         
@@ -35,6 +36,27 @@ class BaroFolderImportDialog(QDialog):
         self.setWindowTitle("Import Barologger Files")
         self.setMinimumWidth(1000)
         self.setMinimumHeight(800)
+        
+        # Apply blue background styling
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f6fafd;
+            }
+            QGroupBox {
+                font-weight: bold;
+                border: 1px solid #CCCCCC;
+                border-radius: 5px;
+                margin-top: 10px;
+                padding-top: 10px;
+                background-color: #ffffff;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top center;
+                padding: 0 5px;
+            }
+        """)
+        
         main_layout = QVBoxLayout(self)
 
         # Folder selection group
@@ -53,12 +75,14 @@ class BaroFolderImportDialog(QDialog):
         button_layout.setSpacing(2)  # Very tight spacing between controls
         button_layout.setContentsMargins(0, 0, 0, 0)  # No margins
         
-        self.select_folder_btn = QPushButton("Select Folder")
+        self.select_folder_btn = QPushButton("📁 Select Folder")
+        ButtonStyles.apply_button_style(self.select_folder_btn, 'primary')
         self.select_folder_btn.clicked.connect(self.select_folder)
         
         self.subfolder_cb = QCheckBox("Include Subfolders")
         
-        self.scan_btn = QPushButton("Scan Folder")
+        self.scan_btn = QPushButton("🔍 Scan Folder")
+        ButtonStyles.apply_button_style(self.scan_btn, 'import')
         self.scan_btn.clicked.connect(self.scan_folder)
         self.scan_btn.setEnabled(False)
         
@@ -120,9 +144,12 @@ class BaroFolderImportDialog(QDialog):
         controls_layout = QHBoxLayout()
         controls_layout.addStretch()
         
-        self.import_btn = QPushButton("Import Selected")
+        self.import_btn = QPushButton("📥 Import Selected")
+        ButtonStyles.apply_button_style(self.import_btn, 'create')
         self.import_btn.clicked.connect(self.import_selected)
+        
         self.cancel_btn = QPushButton("Cancel")
+        ButtonStyles.apply_button_style(self.cancel_btn, 'cancel')
         self.cancel_btn.clicked.connect(self.reject)
         
         controls_layout.addWidget(self.import_btn)
@@ -515,6 +542,40 @@ class BaroFolderImportDialog(QDialog):
                             )
                             if organized_path:
                                 progress_dialog.log_message(f"File organized at: {organized_path}")
+                                
+                                # Track XLE file for cloud upload if we have a cloud database
+                                try:
+                                    if (self.baro_model.db_manager and 
+                                        hasattr(self.baro_model.db_manager, 'is_cloud_database') and 
+                                        self.baro_model.db_manager.is_cloud_database and
+                                        hasattr(self.baro_model.db_manager, 'cloud_db_handler') and
+                                        self.baro_model.db_manager.cloud_db_handler and
+                                        hasattr(self.baro_model.db_manager.cloud_db_handler, 'xle_manager') and
+                                        self.baro_model.db_manager.cloud_db_handler.xle_manager):
+                                        
+                                        # Get project name from cloud database manager
+                                        project_name = getattr(self.baro_model.db_manager, 'cloud_project_name', None)
+                                        
+                                        if project_name:
+                                            # Track the organized XLE file for cloud upload
+                                            file_id = self.baro_model.db_manager.cloud_db_handler.xle_manager.track_xle_file(
+                                                file_path=str(organized_path),
+                                                file_type='barologger',
+                                                serial_number=serial,
+                                                well_number=None,  # Not applicable for barologgers
+                                                start_date=start_date.isoformat(),
+                                                end_date=end_date.isoformat(),
+                                                project_name=project_name
+                                            )
+                                            progress_dialog.log_message(f"XLE file tracked for cloud upload (ID: {file_id})")
+                                        else:
+                                            progress_dialog.log_message("Warning: Cannot track XLE file - no project name available")
+                                    else:
+                                        progress_dialog.log_message("Note: Not a cloud database, XLE file tracking skipped")
+                                except Exception as e:
+                                    logger.error(f"Error tracking XLE file for cloud upload: {e}")
+                                    progress_dialog.log_message(f"Warning: Failed to track XLE file for cloud upload: {str(e)}")
+                                    # Continue even if XLE tracking fails
                 except Exception as e:
                     logger.error(f"Error organizing files after import: {e}")
                     progress_dialog.log_message(f"Warning: Failed to organize files: {str(e)}")

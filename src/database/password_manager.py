@@ -124,7 +124,7 @@ class PasswordManager:
     @staticmethod
     def is_strong_password(password: str) -> Tuple[bool, str]:
         """
-        Check if a password meets strength requirements
+        Check if a password meets minimum requirements
         
         Args:
             password: Password to check
@@ -136,42 +136,14 @@ class PasswordManager:
             if not password:
                 return False, "Password cannot be empty"
             
-            # Minimum length requirement
-            if len(password) < 8:
-                return False, "Password must be at least 8 characters long"
+            # Minimum length requirement (relaxed to 4 characters)
+            if len(password) < 4:
+                return False, "Password must be at least 4 characters long"
             
-            # Check for different character types
-            has_upper = any(c.isupper() for c in password)
-            has_lower = any(c.islower() for c in password)
-            has_digit = any(c.isdigit() for c in password)
-            has_special = any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in password)
+            # All other complexity requirements removed - users can choose any password they want
+            # as long as it's at least 4 characters
             
-            # Count character types present
-            char_types = sum([has_upper, has_lower, has_digit, has_special])
-            
-            # Require at least 3 of 4 character types for strong password
-            if char_types < 3:
-                missing = []
-                if not has_upper:
-                    missing.append("uppercase letters")
-                if not has_lower:
-                    missing.append("lowercase letters")
-                if not has_digit:
-                    missing.append("numbers")
-                if not has_special:
-                    missing.append("special characters")
-                
-                return False, f"Password should include at least 3 of: {', '.join(missing)}"
-            
-            # Check for common weak patterns
-            if password.lower() in ['password', '123456', 'qwerty', 'admin', 'user']:
-                return False, "Password is too common"
-            
-            # Check for sequential patterns
-            if any(password.lower().find(seq) != -1 for seq in ['123', 'abc', 'qwe']):
-                return False, "Password contains sequential patterns"
-            
-            return True, "Password meets strength requirements"
+            return True, "Password meets requirements"
             
         except Exception as e:
             logger.error(f"Error checking password strength: {e}")

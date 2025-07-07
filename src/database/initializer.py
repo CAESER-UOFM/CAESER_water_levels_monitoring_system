@@ -16,6 +16,8 @@ class DatabaseInitializer:
             cursor = conn.cursor()
             
             self._create_wells_table(cursor)
+            self._create_well_flag_changes_table(cursor)
+            self._create_user_notes_table(cursor)
             self._create_transducers_table(cursor)
             self._create_baro_tables(cursor)
             self._create_water_level_readings_table(cursor)
@@ -68,6 +70,45 @@ class DatabaseInitializer:
                 special_instructions TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
+        ''')
+    
+    def _create_well_flag_changes_table(self, cursor: sqlite3.Cursor):
+        """Create table for tracking well user flag changes with comments"""
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS well_flag_changes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                well_id TEXT NOT NULL,
+                old_flag_value TEXT,
+                new_flag_value TEXT NOT NULL,
+                comment TEXT NOT NULL,
+                user_name TEXT,
+                timestamp TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (well_id) REFERENCES wells (well_number)
+            )
+        ''')
+    
+    def _create_user_notes_table(self, cursor: sqlite3.Cursor):
+        """Create table for tracking user notes about water level data analysis"""
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                well_number TEXT NOT NULL,
+                user_name TEXT NOT NULL,
+                note_text TEXT NOT NULL,
+                time_range_type TEXT CHECK(time_range_type IN ('full', 'specific')) NOT NULL,
+                time_range_start TIMESTAMP,
+                time_range_end TIMESTAMP,
+                timestamp_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (well_number) REFERENCES wells (well_number)
+            )
+        ''')
+        
+        # Create index for efficient queries by well and creation time
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_user_notes_well_time 
+            ON user_notes (well_number, created_at DESC)
         ''')
     
     def _create_transducers_table(self, cursor: sqlite3.Cursor):

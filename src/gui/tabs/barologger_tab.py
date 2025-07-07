@@ -12,10 +12,12 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QPixmap
 from pathlib import Path
+import sqlite3
 from ..utils.tooltip_info import TooltipInfo
 from ..dialogs.barologger_dialog import BarologgerDialog
 from ..dialogs.barologger_location_dialog import BarologgerLocationDialog
 from ..dialogs.baro_folder_import_dialog import BaroFolderImportDialog  # Add this line
+from ..dialogs.barologger_edit_dialog import BarologgerEditDialog
 from ..utils.tooltip_info import TooltipInfo
 from ...database.models.barologger import BarologgerModel
 import sqlite3
@@ -57,6 +59,7 @@ class BarologgerTab(QWidget):
 
         # Initialize UI elements
         self.master_baro_btn = QPushButton()
+        self.delete_master_baro_btn = QPushButton()
         self.baro_table = QTableWidget()
         self.baro_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.baro_table.setSelectionMode(QTableWidget.ExtendedSelection)  # Allow multi-selection
@@ -74,6 +77,7 @@ class BarologgerTab(QWidget):
         if db_manager and db_manager.current_db:
             logger.debug("Initializing with existing database")
             self.baro_model = BarologgerModel(db_manager.current_db)
+            self.baro_model.set_db_manager(db_manager)
             # Use QTimer to ensure UI is fully loaded before refreshing
             logger.debug("Scheduling initial_data_load")
             QTimer.singleShot(100, self.initial_data_load)
@@ -111,17 +115,19 @@ class BarologgerTab(QWidget):
                     else:
                         # Just check if any data exists rather than loading it all
                         cursor.execute("SELECT COUNT(*) FROM master_baro_readings LIMIT 1")
-                        has_rows = cursor.fetchone()[0] > 0
+                        count = cursor.fetchone()[0]
+                        has_rows = count > 0
+                        logger.info(f"MASTER BARO CHECK: Found {count} rows in master_baro_readings table")
                         
                         if has_rows:
                             self.has_master_data = True
                             # We'll load the actual data later when needed
                             self.master_data = None
-                            logger.debug("PERF: Master baro data exists, will load on demand")
+                            logger.info("MASTER BARO CHECK: Master baro data exists, will load on demand")
                         else:
                             self.has_master_data = False
                             self.master_data = None
-                            logger.debug("PERF: Master baro table exists but is empty")
+                            logger.info("MASTER BARO CHECK: Master baro table exists but is empty")
             except Exception as e:
                 logger.error(f"Error checking master data: {e}")
                 self.has_master_data = False
@@ -130,8 +136,13 @@ class BarologgerTab(QWidget):
             logger.debug(f"has_master_data set to: {self.has_master_data}")
             
             # Update master baro button text
-            master_btn_text = "Edit Master Baro" if self.has_master_data else "Create Master Baro"
+            master_btn_text = "⚙️ Edit Master" if self.has_master_data else "⚙️ Create Master"
             self.master_baro_btn.setText(master_btn_text)
+            
+            # Update delete master baro button state
+            if hasattr(self, 'delete_master_baro_btn'):
+                self.delete_master_baro_btn.setEnabled(self.has_master_data)
+                logger.debug(f"Delete master baro button enabled: {self.has_master_data}")
             
             # Set the flag before refreshing
             self._refresh_scheduled = True
@@ -193,30 +204,37 @@ class BarologgerTab(QWidget):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(8)
         
-        add_btn = QPushButton("Add Barologger")
+        add_btn = QPushButton("➕ Add Barologger")
+        add_btn.setFixedHeight(32)
         add_btn.setToolTip(TooltipInfo.BARO_ADD)
         add_btn.clicked.connect(self.add_barologger)
         add_btn.setStyleSheet("""
             QPushButton {
                 padding: 8px 16px;
-                border: 1px solid #0056b3;
+                border: 1px solid #ccc;
                 border-radius: 6px;
-                background-color: #007bff;
-                color: white;
+                background-color: #e8f5e8;
+                color: #2e7d32;
                 font-weight: 500;
-                min-height: 32px;
+                min-height: 24px;
             }
             QPushButton:hover {
-                background-color: #0056b3;
-                border-color: #004085;
+                background-color: #c8e6c9;
+                border-color: #4caf50;
             }
             QPushButton:pressed {
-                background-color: #004085;
-                border-color: #003266;
+                background-color: #a5d6a7;
+                border-color: #388e3c;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
             }
         """)
 
-        edit_btn = QPushButton("Edit")
+        edit_btn = QPushButton("✏️ Edit")
+        edit_btn.setFixedHeight(32)
         edit_btn.setToolTip(TooltipInfo.BARO_EDIT)
         edit_btn.clicked.connect(self.edit_barologger)
         edit_btn.setStyleSheet("""
@@ -224,46 +242,88 @@ class BarologgerTab(QWidget):
                 padding: 8px 16px;
                 border: 1px solid #ccc;
                 border-radius: 6px;
-                background-color: #f8f9fa;
+                background-color: #e3f2fd;
+                color: #1565c0;
                 font-weight: 500;
-                min-height: 32px;
+                min-height: 24px;
             }
             QPushButton:hover {
-                background-color: #e9ecef;
-                border-color: #adb5bd;
+                background-color: #bbdefb;
+                border-color: #2196f3;
             }
             QPushButton:pressed {
-                background-color: #dee2e6;
-                border-color: #8d9499;
+                background-color: #90caf9;
+                border-color: #1976d2;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
             }
         """)
 
-        delete_btn = QPushButton("Delete")
+        delete_btn = QPushButton("🗑️ Delete")
+        delete_btn.setFixedHeight(32)
         delete_btn.setToolTip(TooltipInfo.BARO_DELETE)
         delete_btn.clicked.connect(self.delete_barologger)
         delete_btn.setStyleSheet("""
             QPushButton {
                 padding: 8px 16px;
-                border: 1px solid #c82333;
+                border: 1px solid #ccc;
                 border-radius: 6px;
-                background-color: #dc3545;
-                color: white;
+                background-color: #ffebee;
+                color: #c62828;
                 font-weight: 500;
-                min-height: 32px;
+                min-height: 24px;
             }
             QPushButton:hover {
-                background-color: #c82333;
-                border-color: #bd2130;
+                background-color: #ffcdd2;
+                border-color: #f44336;
             }
             QPushButton:pressed {
-                background-color: #bd2130;
-                border-color: #a71e2a;
+                background-color: #ef9a9a;
+                border-color: #d32f2f;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
+            }
+        """)
+
+        edit_data_btn = QPushButton("✏️ Edit Data")
+        edit_data_btn.setFixedHeight(32)
+        edit_data_btn.setToolTip("Edit barologger data with spike correction filtering")
+        edit_data_btn.clicked.connect(self.edit_barologger_data)
+        edit_data_btn.setStyleSheet("""
+            QPushButton {
+                padding: 8px 16px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #e3f2fd;
+                color: #1565c0;
+                font-weight: 500;
+                min-height: 24px;
+            }
+            QPushButton:hover {
+                background-color: #bbdefb;
+                border-color: #2196f3;
+            }
+            QPushButton:pressed {
+                background-color: #90caf9;
+                border-color: #1976d2;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
             }
         """)
 
         btn_layout.addWidget(add_btn)
         btn_layout.addWidget(edit_btn)
         btn_layout.addWidget(delete_btn)
+        btn_layout.addWidget(edit_data_btn)
         
         # Add selection info
         self.selection_info = QLabel("0 barologgers selected")
@@ -332,73 +392,120 @@ class BarologgerTab(QWidget):
 
         # Import buttons group
         btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(8)
+        btn_layout.setSpacing(6)
 
-        import_file_btn = QPushButton("Import Single File")
+        import_file_btn = QPushButton("📄 Import File")
+        import_file_btn.setFixedHeight(32)
         import_file_btn.clicked.connect(self.import_single_file)
         import_file_btn.setStyleSheet("""
             QPushButton {
-                padding: 8px 16px;
-                border: 1px solid #0056b3;
+                padding: 6px 12px;
+                border: 1px solid #ccc;
                 border-radius: 6px;
-                background-color: #007bff;
-                color: white;
+                background-color: #e7f3ff;
+                color: #0d47a1;
                 font-weight: 500;
-                min-height: 32px;
+                min-height: 24px;
             }
             QPushButton:hover {
-                background-color: #0056b3;
-                border-color: #004085;
+                background-color: #bbdefb;
+                border-color: #1976d2;
             }
             QPushButton:pressed {
-                background-color: #004085;
-                border-color: #003266;
+                background-color: #90caf9;
+                border-color: #1565c0;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
             }
         """)
         
-        import_folder_btn = QPushButton("Import Folder")
+        import_folder_btn = QPushButton("📁 Import Folder")
+        import_folder_btn.setFixedHeight(32)
         import_folder_btn.clicked.connect(self.import_folder)
         import_folder_btn.setStyleSheet("""
             QPushButton {
-                padding: 8px 16px;
-                border: 1px solid #0056b3;
+                padding: 6px 12px;
+                border: 1px solid #ccc;
                 border-radius: 6px;
-                background-color: #007bff;
-                color: white;
+                background-color: #e7f3ff;
+                color: #0d47a1;
                 font-weight: 500;
-                min-height: 32px;
+                min-height: 24px;
             }
             QPushButton:hover {
-                background-color: #0056b3;
-                border-color: #004085;
+                background-color: #bbdefb;
+                border-color: #1976d2;
             }
             QPushButton:pressed {
-                background-color: #004085;
-                border-color: #003266;
+                background-color: #90caf9;
+                border-color: #1565c0;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
             }
         """)
         
         self.master_baro_btn = QPushButton()
-        master_btn_text = "Edit Master Baro" if self.has_master_data else "Create Master Baro"
+        master_btn_text = "⚙️ Edit Master" if self.has_master_data else "⚙️ Create Master"
         self.master_baro_btn.setText(master_btn_text)
         self.master_baro_btn.clicked.connect(self.create_master_baro)
         self.master_baro_btn.setStyleSheet("""
             QPushButton {
-                padding: 8px 16px;
-                border: 1px solid #0056b3;
+                padding: 6px 12px;
+                border: 1px solid #ccc;
                 border-radius: 6px;
-                background-color: #007bff;
-                color: white;
+                background-color: #fff8e1;
+                color: #f57c00;
                 font-weight: 500;
-                min-height: 32px;
+                min-height: 24px;
             }
             QPushButton:hover {
-                background-color: #0056b3;
-                border-color: #004085;
+                background-color: #ffecb3;
+                border-color: #ff9800;
             }
             QPushButton:pressed {
-                background-color: #004085;
-                border-color: #003266;
+                background-color: #ffe082;
+                border-color: #ef6c00;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
+            }
+        """)
+        
+        # Add Delete Master Baro Data button
+        self.delete_master_baro_btn = QPushButton("🗑️ Delete Master")
+        self.delete_master_baro_btn.setFixedHeight(32)
+        self.delete_master_baro_btn.clicked.connect(self.delete_master_baro_data)
+        self.delete_master_baro_btn.setEnabled(self.has_master_data)
+        self.delete_master_baro_btn.setStyleSheet("""
+            QPushButton {
+                padding: 6px 12px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #ffebee;
+                color: #c62828;
+                font-weight: 500;
+                min-height: 24px;
+            }
+            QPushButton:hover {
+                background-color: #ffcdd2;
+                border-color: #e53935;
+            }
+            QPushButton:pressed {
+                background-color: #ef9a9a;
+                border-color: #d32f2f;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
             }
         """)
 
@@ -406,11 +513,17 @@ class BarologgerTab(QWidget):
         btn_layout.addWidget(import_folder_btn)
         # Removed auto_update_btn from layout
         btn_layout.addWidget(self.master_baro_btn)
+        btn_layout.addWidget(self.delete_master_baro_btn)
         layout.addLayout(btn_layout)
+        
+        # Force update the delete button state after creation - TEMPORARILY ALWAYS ENABLED FOR DEBUGGING
+        self.delete_master_baro_btn.setEnabled(True)  # Always enabled for debugging
+        logger.debug(f"Force updated delete master baro button enabled: {self.has_master_data} (but set to True for debugging)")
 
         # Plot controls
         plot_controls = QHBoxLayout()
-        self.show_temp_btn = QPushButton("Show Temperature")
+        self.show_temp_btn = QPushButton("🌡️ Show Temperature")
+        self.show_temp_btn.setFixedHeight(32)
         self.show_temp_btn.setCheckable(True)
         self.show_temp_btn.clicked.connect(self.toggle_plot_type)
         self.show_temp_btn.setStyleSheet("""
@@ -418,26 +531,64 @@ class BarologgerTab(QWidget):
                 padding: 8px 16px;
                 border: 1px solid #ccc;
                 border-radius: 6px;
-                background-color: #f8f9fa;
+                background-color: #f3e5f5;
+                color: #7b1fa2;
                 font-weight: 500;
-                min-height: 32px;
+                min-height: 24px;
             }
             QPushButton:hover {
-                background-color: #e9ecef;
-                border-color: #adb5bd;
+                background-color: #e1bee7;
+                border-color: #9c27b0;
             }
             QPushButton:checked {
-                background-color: #28a745;
-                border-color: #1e7e34;
+                background-color: #9c27b0;
+                border-color: #9c27b0;
                 color: white;
             }
             QPushButton:checked:hover {
-                background-color: #218838;
-                border-color: #1c7430;
+                background-color: #8e24aa;
+                border-color: #7b1fa2;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
             }
         """)
         plot_controls.addStretch()
         plot_controls.addWidget(self.show_temp_btn)
+        
+        # Add Expand View button
+        self.expand_view_btn = QPushButton("🔍 Expand View")
+        self.expand_view_btn.setFixedHeight(32)
+        self.expand_view_btn.clicked.connect(self.open_enhanced_plot_dialog)
+        self.expand_view_btn.setStyleSheet("""
+            QPushButton {
+                padding: 8px 16px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #fce4ec;
+                color: #c2185b;
+                font-weight: 500;
+                min-height: 24px;
+            }
+            QPushButton:hover {
+                background-color: #f8bbd9;
+                border-color: #e91e63;
+            }
+            QPushButton:pressed {
+                background-color: #f48fb1;
+                border-color: #d81b60;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
+            }
+        """)
+        self.expand_view_btn.setToolTip("Open enhanced plot viewer with advanced features")
+        plot_controls.addWidget(self.expand_view_btn)
+        
         layout.addLayout(plot_controls)
 
         # Initialize figure
@@ -458,9 +609,9 @@ class BarologgerTab(QWidget):
     def toggle_plot_type(self):
         """Toggle between pressure and temperature plots"""
         if self.show_temp_btn.isChecked():
-            self.show_temp_btn.setText("Show Pressure")
+            self.show_temp_btn.setText("🌡️ Show Pressure")
         else:
-            self.show_temp_btn.setText("Show Temperature")
+            self.show_temp_btn.setText("🌡️ Show Temperature")
             
         # Only show loading indicator if we have barologgers selected
         if self.selected_barologgers:
@@ -496,6 +647,7 @@ class BarologgerTab(QWidget):
             # Create new baro model with current database
             model_start = time.time()
             self.baro_model = BarologgerModel(self.db_manager.current_db)
+            self.baro_model.set_db_manager(self.db_manager)
             logger.debug(f"PERF: Created new baro model in {(time.time() - model_start)*1000:.2f}ms")
             
             # Apply SQLite optimizations before loading data
@@ -553,7 +705,7 @@ class BarologgerTab(QWidget):
             
             # Update master baro button text
             ui_start = time.time()
-            master_btn_text = "Edit Master Baro" if self.has_master_data else "Create Master Baro"
+            master_btn_text = "⚙️ Edit Master Baro" if self.has_master_data else "⚙️ Create Master Baro"
             self.master_baro_btn.setText(master_btn_text)
             logger.debug(f"PERF: Updated UI in {(time.time() - ui_start)*1000:.2f}ms")
             
@@ -586,11 +738,10 @@ class BarologgerTab(QWidget):
             self.refresh_barologger_list(skip_plot_refresh=True)
             logger.debug(f"PERF: refresh_barologger_list took {(time.time() - list_start)*1000:.2f}ms")
             
-            # Only refresh the plot if we have master data
-            if self.has_master_data:
-                plot_start = time.time()
-                self.refresh_timeline_plot()
-                logger.debug(f"PERF: refresh_timeline_plot took {(time.time() - plot_start)*1000:.2f}ms")
+            # Always refresh the plot to clear old data or show new data
+            plot_start = time.time()
+            self.refresh_timeline_plot()
+            logger.debug(f"PERF: refresh_timeline_plot took {(time.time() - plot_start)*1000:.2f}ms")
         finally:
             # Always reset the flag, even if refresh fails
             self._refresh_scheduled = False
@@ -608,6 +759,7 @@ class BarologgerTab(QWidget):
             # Database is already opened by MainWindow, just use the current connection
             logger.debug("on_database_changed called - this is redundant with sync_database_selection")
             self.baro_model = BarologgerModel(self.db_manager.current_db)
+            self.baro_model.set_db_manager(self.db_manager)
             
         except Exception as e:
             logger.error(f"Error handling database change: {e}")
@@ -799,7 +951,7 @@ class BarologgerTab(QWidget):
                         return
 
                 # Show import dialog
-                dialog = SingleFileImportDialog(self.baro_model, file_path, self, metadata)
+                dialog = SingleFileImportDialog(self.baro_model, file_path, self, metadata, settings_handler=self.db_manager.settings_handler)
                 if dialog.exec_() == QDialog.Accepted:
                     self.refresh_timeline_plot()
 
@@ -823,7 +975,8 @@ class BarologgerTab(QWidget):
         try:
             dialog = BaroFolderImportDialog(
                 self.baro_model,
-                parent=self
+                parent=self,
+                settings_handler=self.db_manager.settings_handler
             )
             dialog.exec_()  # The dialog will handle the refreshes if accepted
         except Exception as e:
@@ -894,8 +1047,8 @@ class BarologgerTab(QWidget):
                             master_data['timestamp_utc'] = pd.to_datetime(master_data['timestamp_utc'])
                             master_data = master_data.sort_values('timestamp_utc')
                             time_diff = master_data['timestamp_utc'].diff()
-                            # Increased gap threshold to 48 hours for daily intervals
-                            gaps = time_diff > pd.Timedelta(hours=48)
+                            # Use 2-hour gap threshold for 15-minute data intervals (consistent with individual barologgers)
+                            gaps = time_diff > pd.Timedelta(hours=2)
                             segment_ids = gaps.cumsum()
                             process_end = time.time()
                             logger.debug(f"PERF: Master data processing took {(process_end - process_start)*1000:.2f}ms")
@@ -948,14 +1101,13 @@ class BarologgerTab(QWidget):
                             
                             # Database query timing
                             query_start = time.time()
-                            # Modified to use daily intervals for better performance without forcing an index
+                            # Use full resolution data to match master baro sampling rate
                             query = f"""
                                 SELECT 
-                                    MIN(timestamp_utc) as timestamp_utc, 
-                                    AVG({data_type}) as {data_type}
+                                    timestamp_utc, 
+                                    {data_type}
                                 FROM barometric_readings
                                 WHERE serial_number = ?
-                                GROUP BY FLOOR(julian_timestamp)
                                 ORDER BY julian_timestamp
                             """
                             df = pd.read_sql_query(query, conn, params=(serial,))
@@ -966,8 +1118,8 @@ class BarologgerTab(QWidget):
                                 process_start = time.time()
                                 df['timestamp_utc'] = pd.to_datetime(df['timestamp_utc'])
                                 time_diff = df['timestamp_utc'].diff()
-                                # Increased gap threshold to 48 hours for daily intervals
-                                gaps = time_diff > pd.Timedelta(hours=48)
+                                # Use 2-hour gap threshold for 15-minute data intervals (match master baro)
+                                gaps = time_diff > pd.Timedelta(hours=2)
                                 segment_ids = gaps.cumsum()
                                 logger.debug(f"T+{time.time() - start_time:.3f}s: Data processing for {serial} completed in {time.time() - process_start:.3f}s, found {len(segment_ids.unique())} segments")
 
@@ -1007,8 +1159,8 @@ class BarologgerTab(QWidget):
                     ax.grid(True, linestyle='--', alpha=0.6)
                     ax.tick_params(axis='both', labelsize=9)
 
-                    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))
-                    ax.tick_params(axis='x', rotation=45)
+                    # Apply intelligent date formatting
+                    self.format_date_axis(ax)
                     title = 'Barologger Temperature Data' if self.show_temp_btn.isChecked() else 'Barologger Pressure Data'
                     self.figure.suptitle(title, y=0.95, fontsize=11)
 
@@ -1047,6 +1199,180 @@ class BarologgerTab(QWidget):
         except Exception as e:
             logger.error(f"Error refreshing timeline plot: {e}")
 
+    def format_date_axis(self, ax):
+        """Format the date axis with intelligent spacing based on data range."""
+        try:
+            # Get the current x-axis limits to determine data range
+            xlim = ax.get_xlim()
+            date_range_days = xlim[1] - xlim[0]  # Range in matplotlib date units (days)
+            
+            # Determine appropriate tick spacing and format based on data range
+            if date_range_days <= 7:  # Less than a week
+                # Daily ticks, show date only
+                try:
+                    ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+                except TypeError:
+                    # Fallback for older matplotlib versions
+                    ax.xaxis.set_major_locator(mdates.DayLocator())
+                ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+                try:
+                    ax.xaxis.set_minor_locator(mdates.HourLocator(interval=6))
+                except TypeError:
+                    ax.xaxis.set_minor_locator(mdates.HourLocator())
+            elif date_range_days <= 30:  # Less than a month
+                # Every few days, show date only
+                interval = max(1, int(date_range_days / 6))  # ~6 ticks maximum
+                try:
+                    ax.xaxis.set_major_locator(mdates.DayLocator(interval=interval))
+                except TypeError:
+                    # Fallback for older matplotlib versions
+                    ax.xaxis.set_major_locator(mdates.DayLocator())
+                ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+                ax.xaxis.set_minor_locator(mdates.DayLocator())
+            elif date_range_days <= 365:  # Less than a year
+                # Monthly ticks, show month/year
+                interval = max(1, int(date_range_days / 180))  # ~6 ticks maximum
+                try:
+                    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=interval))
+                except TypeError:
+                    # Fallback for older matplotlib versions
+                    ax.xaxis.set_major_locator(mdates.MonthLocator())
+                ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%y'))
+                ax.xaxis.set_minor_locator(mdates.MonthLocator())
+            elif date_range_days <= 1095:  # Less than 3 years
+                # Quarterly ticks, show month/year
+                try:
+                    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
+                except TypeError:
+                    # Fallback for older matplotlib versions
+                    ax.xaxis.set_major_locator(mdates.MonthLocator())
+                ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%y'))
+                ax.xaxis.set_minor_locator(mdates.MonthLocator())
+            else:  # More than 3 years
+                # Yearly ticks, show year only
+                interval = max(1, int(date_range_days / 1825))  # ~6 ticks maximum
+                try:
+                    ax.xaxis.set_major_locator(mdates.YearLocator(interval=interval))
+                except TypeError:
+                    # Fallback for older matplotlib versions
+                    ax.xaxis.set_major_locator(mdates.YearLocator())
+                ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+                try:
+                    ax.xaxis.set_minor_locator(mdates.MonthLocator(interval=6))
+                except TypeError:
+                    ax.xaxis.set_minor_locator(mdates.MonthLocator())
+        except Exception as e:
+            logger.warning(f"Error formatting date axis, using default formatting: {e}")
+            # Fallback to basic date formatting
+            ax.xaxis.set_major_locator(mdates.MonthLocator())
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%y'))
+        
+        # Use smaller rotation angle and font size for cleaner look
+        import matplotlib.pyplot as plt
+        plt.setp(ax.get_xticklabels(), rotation=30, ha='right', fontsize=9)
+        
+        # Reduce bottom margin to reclaim plot space
+        self.figure.subplots_adjust(bottom=0.12)
+
+    def open_enhanced_plot_dialog(self):
+        """Open the enhanced plot dialog with current barologger data."""
+        try:
+            # Get currently plotted data
+            plot_data = self.get_current_barologger_plot_data()
+            
+            if not plot_data:
+                QMessageBox.information(self, "No Data", 
+                    "Please select barologgers and load data first to use the enhanced plot viewer.")
+                return
+            
+            # Import and open the enhanced plot dialog
+            from ..dialogs.enhanced_plot_dialog import EnhancedPlotDialog
+            
+            # Create dialog with current data
+            plot_title = "Barologger Temperature Data - Enhanced View" if self.show_temp_btn.isChecked() else "Barologger Pressure Data - Enhanced View"
+            
+            dialog = EnhancedPlotDialog(
+                parent=self,
+                plot_data=plot_data,
+                plot_title=plot_title
+            )
+            
+            # Show the dialog
+            dialog.exec_()
+            
+        except Exception as e:
+            logger.error(f"Error opening enhanced plot dialog: {e}")
+            QMessageBox.critical(self, "Error", 
+                f"Failed to open enhanced plot viewer:\n{str(e)}")
+    
+    def get_current_barologger_plot_data(self):
+        """Get the currently plotted barologger data for the enhanced dialog."""
+        plot_data = {}
+        
+        try:
+            # Use the selected_barologgers set that's already maintained by the selection system
+            if self.selected_barologgers:
+                # Get data for each selected barologger
+                for serial_number in self.selected_barologgers:
+                    # Query data from database
+                    data = self.get_barologger_data_from_db(serial_number)
+                    if data is not None and not data.empty:
+                        plot_data[serial_number] = data
+            else:
+                # Fallback: check for highlighted rows if selected_barologgers is empty
+                selected_model_rows = self.baro_table.selectionModel().selectedRows()
+                for index in selected_model_rows:
+                    row = index.row()
+                    serial_number = self.baro_table.item(row, 0).text()  # Column 0 is Serial Number
+                    
+                    # Query data from database
+                    data = self.get_barologger_data_from_db(serial_number)
+                    if data is not None and not data.empty:
+                        plot_data[serial_number] = data
+            
+        except Exception as e:
+            logger.error(f"Error getting current barologger plot data: {e}")
+        
+        return plot_data
+    
+    def get_barologger_data_from_db(self, serial_number):
+        """Get barologger data for a specific device from the database."""
+        if not self.db_manager.current_db:
+            return None
+            
+        try:
+            import sqlite3
+            with sqlite3.connect(self.db_manager.current_db) as conn:
+                # Determine what data to query based on current display mode
+                if self.show_temp_btn.isChecked():
+                    # Query temperature data
+                    query = """
+                        SELECT timestamp_utc as timestamp, temperature as pressure
+                        FROM barometric_readings 
+                        WHERE serial_number = ? AND temperature IS NOT NULL
+                        ORDER BY timestamp_utc
+                    """
+                else:
+                    # Query pressure data
+                    query = """
+                        SELECT timestamp_utc as timestamp, pressure
+                        FROM barometric_readings 
+                        WHERE serial_number = ? AND pressure IS NOT NULL
+                        ORDER BY timestamp_utc
+                    """
+                
+                data = pd.read_sql_query(query, conn, params=(serial_number,))
+                
+                # Convert timestamp to datetime
+                if not data.empty:
+                    data['timestamp'] = pd.to_datetime(data['timestamp'])
+                
+                return data
+                
+        except Exception as e:
+            logger.error(f"Error querying data for barologger {serial_number}: {e}")
+            return None
+
     def add_barologger(self):
         """Open dialog to add new barologger"""
         if not self.db_manager or not self.db_manager.current_db:
@@ -1054,6 +1380,7 @@ class BarologgerTab(QWidget):
             return
         if not self.baro_model:
             self.baro_model = BarologgerModel(self.db_manager.current_db)
+            self.baro_model.set_db_manager(self.db_manager)
         dialog = BarologgerDialog(self.baro_model, self)
         if dialog.exec_() == QDialog.Accepted:
             self.refresh_barologger_list()
@@ -1115,7 +1442,9 @@ class BarologgerTab(QWidget):
         
         if confirm == QMessageBox.Yes:
             try:
+                logger.info(f"DELETE_DEBUG: UI delete_barologger method called for {len(serial_numbers)} barologger(s)")
                 for serial in serial_numbers:
+                    logger.info(f"DELETE_DEBUG: UI calling baro_model.delete_barologger for serial: {serial}")
                     logger.info(f"Deleting barologger: {serial}")
                     self.baro_model.delete_barologger(serial)
                     
@@ -1126,6 +1455,37 @@ class BarologgerTab(QWidget):
             except Exception as e:
                 logger.error(f"Error deleting barologger: {e}")
                 QMessageBox.critical(self, "Error", f"Failed to delete: {str(e)}")
+
+    def edit_barologger_data(self):
+        """Open dialog to edit barologger data with spike correction"""
+        if not self.baro_model:
+            QMessageBox.warning(self, "Warning", "Please select a database first")
+            return
+
+        selected_rows = set()
+        for item in self.baro_table.selectedItems():
+            selected_rows.add(self.baro_table.row(item))
+            
+        if not selected_rows:
+            QMessageBox.warning(self, "Warning", "Please select barologger(s) to edit data")
+            return
+            
+        # Get serial numbers for all selected rows
+        selected_barologgers = []
+        for row in selected_rows:
+            serial_number = self.baro_table.item(row, 0).text()
+            selected_barologgers.append(serial_number)
+        
+        try:
+            # Open the barologger edit dialog
+            dialog = BarologgerEditDialog(selected_barologgers, self.db_manager, self)
+            if dialog.exec_() == QDialog.Accepted:
+                # Refresh the plot and data display
+                self.refresh_timeline_plot()
+                
+        except Exception as e:
+            logger.error(f"Error opening barologger edit dialog: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to open edit dialog: {str(e)}")
 
     def create_master_baro(self):
         """Open dialog to create master baro readings"""
@@ -1174,8 +1534,12 @@ class BarologgerTab(QWidget):
 
             # Update button text
             progress_dialog.update(60, "Updating interface...")
-            master_btn_text = "Edit Master Baro" if self.has_master_data else "Create Master Baro"
+            master_btn_text = "⚙️ Edit Master" if self.has_master_data else "⚙️ Create Master"
             self.master_baro_btn.setText(master_btn_text)
+            
+            # Update delete master baro button state
+            if hasattr(self, 'delete_master_baro_btn'):
+                self.delete_master_baro_btn.setEnabled(self.has_master_data)
             
             # Refresh the plot with master baro data only
             progress_dialog.update(90, "Refreshing visualization...")
@@ -1187,6 +1551,79 @@ class BarologgerTab(QWidget):
             progress_dialog.close()
             logger.error(f"Error reloading master baro data: {e}")
             QMessageBox.warning(self, "Warning", f"Error reloading master baro data: {str(e)}")
+
+    def delete_master_baro_data(self):
+        """Delete all master baro data with confirmation"""
+        logger.info(f"DELETE MASTER BARO: Starting delete process")
+        logger.info(f"DELETE MASTER BARO: baro_model exists: {self.baro_model is not None}")
+        logger.info(f"DELETE_DEBUG: BAROLOGGER TAB delete_master_baro_data() method called")
+        logger.info(f"DELETE MASTER BARO: has_master_data: {self.has_master_data}")
+        
+        if not self.baro_model:
+            logger.warning("DELETE MASTER BARO: No baro_model available")
+            QMessageBox.warning(self, "Warning", "Please select a database first")
+            return
+            
+        # Temporarily skip the has_master_data check for debugging
+        # if not self.has_master_data:
+        #     QMessageBox.information(self, "Information", "No master baro data found to delete")
+        #     return
+        
+        # Let's check directly in the database
+        try:
+            logger.info("DELETE MASTER BARO: Checking database directly for master baro data...")
+            with sqlite3.connect(self.baro_model.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT COUNT(*) FROM master_baro_readings")
+                count = cursor.fetchone()[0]
+                logger.info(f"DELETE MASTER BARO: Found {count} master baro records in database")
+                
+                if count == 0:
+                    QMessageBox.information(self, "Information", f"No master baro data found to delete (checked database directly: {count} records)")
+                    return
+        except Exception as e:
+            logger.error(f"DELETE MASTER BARO: Error checking database: {e}")
+            QMessageBox.critical(self, "Error", f"Error checking database: {str(e)}")
+            return
+        
+        # Show confirmation dialog with clear warning
+        reply = QMessageBox.question(
+            self,
+            "Confirm Delete Master Baro Data",
+            "Are you sure you want to delete ALL master barometric data?\n\n"
+            "This will permanently remove all calculated master baro readings.\n"
+            "This action cannot be undone!\n\n"
+            "Individual barologger data will NOT be affected.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            try:
+                # Delete master baro data
+                success, message = self.baro_model.delete_master_baro_data()
+                
+                if success:
+                    # Update state
+                    self.has_master_data = False
+                    self.master_data = None
+                    
+                    # Update UI
+                    self.master_baro_btn.setText("⚙️ Create Master")
+                    self.delete_master_baro_btn.setEnabled(False)
+                    
+                    # Refresh plot
+                    self.refresh_timeline_plot()
+                    
+                    QMessageBox.information(self, "Success", message)
+                    logger.info(f"Master baro data deleted successfully: {message}")
+                else:
+                    QMessageBox.warning(self, "Error", f"Failed to delete master baro data: {message}")
+                    logger.error(f"Failed to delete master baro data: {message}")
+                    
+            except Exception as e:
+                logger.error(f"Error deleting master baro data: {e}")
+                QMessageBox.critical(self, "Error", f"Failed to delete master baro data: {str(e)}")
 
     def cleanup(self):
         """Clean up resources before closing"""

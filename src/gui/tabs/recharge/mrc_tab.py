@@ -10,7 +10,6 @@ import os
 import sys
 import json
 from datetime import datetime, timedelta
-from pathlib import Path
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, 
     QDoubleSpinBox, QPushButton, QGroupBox, QTableWidget, 
@@ -329,9 +328,6 @@ class MrcTab(BaseRechargeTab):
         
         # Setup UI
         self.setup_ui()
-        
-        # Update save button visibility based on initial database mode
-        self.update_save_button_visibility()
     
     def get_db_path(self):
         """Get database path from data manager."""
@@ -370,6 +366,11 @@ class MrcTab(BaseRechargeTab):
             logger.error("[DB_DEBUG] Still no db_path after get_db_path")
             return None
             
+        # Additional safety check to prevent "None" file creation
+        if str(self.db_path) == "None" or self.db_path is None:
+            logger.warning("No database selected - skipping MRC database initialization")
+            return None
+            
         try:
             # Create a new database connection for this thread
             mrc_db = MrcDatabase(self.db_path)
@@ -390,13 +391,6 @@ class MrcTab(BaseRechargeTab):
         """Set up the UI for the MRC tab."""
         layout = QVBoxLayout(self)
         
-        # Instructions
-        instructions = QLabel(
-            "The MRC method estimates recharge by identifying deviations from a master recession curve. "
-            "First create or select a recession curve, then calculate recharge based on positive deviations."
-        )
-        instructions.setWordWrap(True)
-        layout.addWidget(instructions)
         
         # Create main splitter (Parameters on left, Plot on right)
         self.main_splitter = QSplitter(Qt.Horizontal)
@@ -410,8 +404,8 @@ class MrcTab(BaseRechargeTab):
         right_panel = self.create_plot_panel()
         self.main_splitter.addWidget(right_panel)
         
-        # Set splitter sizes to match fixed widths (400px left, 800px right)
-        self.main_splitter.setSizes([400, 800])
+        # Set splitter sizes to match fixed widths (300px left, 900px right)
+        self.main_splitter.setSizes([300, 900])
         
         layout.addWidget(self.main_splitter)
         
@@ -459,7 +453,7 @@ class MrcTab(BaseRechargeTab):
         left_layout.addWidget(self.left_tabs)
         
         # Set fixed width for visual consistency across all tabs
-        left_widget.setFixedWidth(400)
+        left_widget.setFixedWidth(300)
         left_widget.setContentsMargins(0, 0, 0, 0)  # Remove any extra margins
         
         return left_widget
@@ -468,10 +462,10 @@ class MrcTab(BaseRechargeTab):
     def create_curve_management_panel(self):
         """Create the curve management panel unique to MRC."""
         panel = QWidget()
-        panel.setMaximumWidth(395)  # Ensure panel never exceeds width
+        panel.setMaximumWidth(295)  # Ensure panel never exceeds width
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(2, 2, 2, 2)  # Minimal panel margins
-        layout.setSpacing(6)  # Further reduced spacing
+        layout.setSpacing(3)  # Further reduced spacing
         
         # Well selection section
         well_group = QGroupBox("Well Selection")
@@ -871,7 +865,7 @@ class MrcTab(BaseRechargeTab):
         total_layout = QHBoxLayout()
         total_layout.addWidget(QLabel("Total Recharge:"))
         self.total_recharge_label = QLabel("0.0 inches")
-        self.total_recharge_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.total_recharge_label.setStyleSheet("font-weight: bold; font-size: 11px;")
         total_layout.addWidget(self.total_recharge_label)
         total_layout.addStretch()
         summary_layout.addLayout(total_layout)
@@ -880,7 +874,7 @@ class MrcTab(BaseRechargeTab):
         rate_layout = QHBoxLayout()
         rate_layout.addWidget(QLabel("Annual Rate:"))
         self.annual_rate_label = QLabel("0.0 inches/year")
-        self.annual_rate_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.annual_rate_label.setStyleSheet("font-weight: bold; font-size: 11px;")
         rate_layout.addWidget(self.annual_rate_label)
         rate_layout.addStretch()
         summary_layout.addLayout(rate_layout)
@@ -889,7 +883,7 @@ class MrcTab(BaseRechargeTab):
         count_layout = QHBoxLayout()
         count_layout.addWidget(QLabel("Total Events:"))
         self.events_count_label = QLabel("0")
-        self.events_count_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.events_count_label.setStyleSheet("font-weight: bold; font-size: 11px;")
         count_layout.addWidget(self.events_count_label)
         count_layout.addStretch()
         summary_layout.addLayout(count_layout)
@@ -902,10 +896,11 @@ class MrcTab(BaseRechargeTab):
         # Define button styling
         button_style = """
             QPushButton {
-                padding: 5px 10px;
+                padding: 2px 6px;
                 border: 1px solid #ccc;
-                border-radius: 4px;
+                border-radius: 3px;
                 background-color: #f8f9fa;
+                font-size: 10px;
             }
             QPushButton:hover {
                 background-color: #e9ecef;
@@ -934,20 +929,12 @@ class MrcTab(BaseRechargeTab):
         db_group = QGroupBox("Database Operations")
         db_layout = QVBoxLayout(db_group)
         
-        # Save button - changes based on database mode
+        # Save button
         self.save_to_db_btn = QPushButton("Save to Database")
         self.save_to_db_btn.clicked.connect(self.save_to_database)
         self.save_to_db_btn.setToolTip("Save the current MRC calculation to the database")
         self.save_to_db_btn.setStyleSheet(button_style)
         db_layout.addWidget(self.save_to_db_btn)
-        
-        # Save Locally button for cloud mode
-        self.save_locally_btn = QPushButton("Save Locally")
-        self.save_locally_btn.clicked.connect(self.save_locally)
-        self.save_locally_btn.setToolTip("Create a local copy of the current cloud database with saved calculation")
-        self.save_locally_btn.setStyleSheet(button_style)
-        self.save_locally_btn.setVisible(False)  # Hidden by default
-        db_layout.addWidget(self.save_locally_btn)
         
         # Load button
         self.load_from_db_btn = QPushButton("Load from Database")
@@ -1073,9 +1060,6 @@ class MrcTab(BaseRechargeTab):
             
         well_id = self.well_combo.currentData()
         well_name = self.well_combo.currentText()
-        
-        # Update save button visibility based on database mode
-        self.update_save_button_visibility()
         
         # Save current well state before switching (if we have a current well)
         if self.current_well and self.session_saving_enabled:
@@ -3066,29 +3050,12 @@ class MrcTab(BaseRechargeTab):
             )
             
             if calc_id:
-                # Track the change for cloud databases
-                if hasattr(self, 'parent') and self.parent and hasattr(self.parent, 'db_manager'):
-                    db_manager = self.parent.db_manager
-                    if db_manager.is_cloud_database and db_manager.change_tracker:
-                        # Track the MRC calculation save
-                        from ...handlers.change_tracker import ChangeType, ChangeAction
-                        db_manager.change_tracker.track_change(
-                            change_type=ChangeType.MANUAL,
-                            action=ChangeAction.INSERT,
-                            table_name='mrc_calculations',
-                            record_id=calc_id,
-                            description=f"Saved MRC calculation for well {self.well_combo.currentText()}",
-                            context={
-                                'well_id': self.current_well,
-                                'well_name': self.well_combo.currentText(),
-                                'total_recharge': total_recharge,
-                                'annual_rate': annual_rate,
-                                'num_events': len(self.recharge_events)
-                            }
-                        )
-                        # Mark database as modified
-                        db_manager.mark_cloud_modified()
-                        logger.info(f"Tracked MRC calculation change for cloud database")
+                # Mark cloud database as modified if applicable
+                if (hasattr(self, 'parent') and self.parent and 
+                    hasattr(self.parent, 'db_manager') and self.parent.db_manager and 
+                    self.parent.db_manager.is_cloud_database):
+                    self.parent.db_manager.mark_cloud_modified()
+                    logger.info("Marked cloud database as modified after MRC calculation save")
                 
                 QMessageBox.information(
                     self, 
@@ -3099,9 +3066,6 @@ class MrcTab(BaseRechargeTab):
                     f"Number of events: {len(self.recharge_events)}"
                 )
                 logger.info(f"Saved MRC calculation {calc_id} for well {self.current_well}")
-                
-                # Update save button visibility after successful save
-                self.update_save_button_visibility()
             else:
                 QMessageBox.warning(
                     self, 
@@ -3971,106 +3935,6 @@ class MrcTab(BaseRechargeTab):
             logger.error(f"Error opening curve fitting dialog: {e}")
             QMessageBox.critical(self, "Error", f"Failed to save curve: {str(e)}")
             return False
-    
-    def update_save_button_visibility(self):
-        """Update save button visibility based on database mode."""
-        try:
-            # Check if we have access to the database manager
-            if hasattr(self, 'parent') and self.parent and hasattr(self.parent, 'db_manager'):
-                db_manager = self.parent.db_manager
-                is_cloud_db = db_manager.is_cloud_database
-                
-                if is_cloud_db:
-                    # Cloud mode: show "Save to Cloud" and "Save Locally" buttons
-                    self.save_to_db_btn.setText("Save to Cloud")
-                    self.save_to_db_btn.setToolTip("Save the current MRC calculation to the cloud database")
-                    self.save_locally_btn.setVisible(True)
-                else:
-                    # Local mode: show standard "Save to Database" button, hide "Save Locally"
-                    self.save_to_db_btn.setText("Save to Database")
-                    self.save_to_db_btn.setToolTip("Save the current MRC calculation to the database")
-                    self.save_locally_btn.setVisible(False)
-            else:
-                # Fallback: hide cloud-specific button
-                self.save_locally_btn.setVisible(False)
-                
-        except Exception as e:
-            logger.warning(f"Error updating save button visibility: {e}")
-            # Fallback: hide cloud-specific button
-            if hasattr(self, 'save_locally_btn'):
-                self.save_locally_btn.setVisible(False)
-    
-    def save_locally(self):
-        """Create a local copy of the cloud database with the current calculation saved."""
-        try:
-            # Check if we're in cloud mode
-            if not (hasattr(self, 'parent') and self.parent and hasattr(self.parent, 'db_manager')):
-                QMessageBox.warning(self, "Error", "Database manager not available.")
-                return
-            
-            db_manager = self.parent.db_manager
-            if not db_manager.is_cloud_database:
-                QMessageBox.warning(self, "Not Cloud Database", "This feature is only available for cloud databases.")
-                return
-            
-            # Check if we have data to save
-            if not hasattr(self, 'recharge_events') or not self.recharge_events:
-                QMessageBox.warning(self, "No Data", "No results to save. Calculate recharge first.")
-                return
-            
-            # Ask user for local database location
-            from PyQt5.QtWidgets import QFileDialog
-            file_path, _ = QFileDialog.getSaveFileName(
-                self,
-                "Save Local Copy",
-                f"{db_manager.cloud_project_name}_local_copy.db",
-                "SQLite Database (*.db)"
-            )
-            
-            if not file_path:
-                return
-            
-            # Create a copy of the current cloud database
-            import shutil
-            shutil.copy2(db_manager.temp_db_path, file_path)
-            logger.info(f"Created local copy of cloud database at: {file_path}")
-            
-            # Open the new local database temporarily to save the calculation
-            original_current_db = db_manager.current_db
-            original_is_cloud = db_manager.is_cloud_database
-            original_cloud_modified = db_manager.is_cloud_modified
-            
-            try:
-                # Temporarily switch to local mode for saving
-                db_manager.open_database(Path(file_path))
-                db_manager.is_cloud_database = False
-                
-                # Save the calculation to the local database
-                self.save_to_database()
-                
-                QMessageBox.information(
-                    self,
-                    "Local Copy Saved",
-                    f"Local copy created successfully at:\n{file_path}\n\n"
-                    f"The calculation has been saved to the local database."
-                )
-                
-            finally:
-                # Restore original cloud database state
-                db_manager.current_db = original_current_db
-                db_manager.is_cloud_database = original_is_cloud
-                db_manager.is_cloud_modified = original_cloud_modified
-                
-                # Restore the UI state
-                self.update_save_button_visibility()
-                
-        except Exception as e:
-            logger.error(f"Error creating local copy: {e}", exc_info=True)
-            QMessageBox.critical(
-                self,
-                "Error",
-                f"Failed to create local copy:\n{str(e)}"
-            )
 
 
 class LoadSegmentsDialog(QDialog):
@@ -5650,6 +5514,13 @@ class InteractiveCurveFittingDialog(QDialog):
             if curve_id:
                 QMessageBox.information(self, "Save Successful", 
                     "Master recession curve saved successfully.")
+                
+                # Mark cloud database as modified if applicable
+                if (self.parent_tab and hasattr(self.parent_tab, 'parent') and self.parent_tab.parent and 
+                    hasattr(self.parent_tab.parent, 'db_manager') and self.parent_tab.parent.db_manager and 
+                    self.parent_tab.parent.db_manager.is_cloud_database):
+                    self.parent_tab.parent.db_manager.mark_cloud_modified()
+                    logger.info("Marked cloud database as modified after MRC curve save")
                 
                 # Update current_curve with the new ID so it won't ask to save again
                 if hasattr(self, 'current_curve') and self.current_curve:

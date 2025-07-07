@@ -206,13 +206,7 @@ start "" "%INSTALL_DIR%"
 pause
 
 echo.
-echo    [*] Cleaning up source files...
-echo    [*] Creating cleanup script...
-echo @echo off > "%TEMP%\cleanup_caeser.bat"
-echo timeout /t 2 /nobreak ^>nul >> "%TEMP%\cleanup_caeser.bat"
-echo rmdir /s /q "%CODE_DIR%" 2^>nul >> "%TEMP%\cleanup_caeser.bat"
-echo del "%TEMP%\cleanup_caeser.bat" 2^>nul >> "%TEMP%\cleanup_caeser.bat"
-start /min "" "%TEMP%\cleanup_caeser.bat"
-echo    [+] Source files will be cleaned up shortly...
+echo    [*] Installation completed successfully!
+echo    [+] Source files preserved in original location.
 
 endlocal

@@ -9,8 +9,9 @@ import logging
 from datetime import datetime
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
-    QFrame, QButtonGroup, QRadioButton, QGroupBox
+    QFrame, QButtonGroup, QRadioButton, QGroupBox, QScrollArea
 )
+from ..utils.dialog_utils import DialogUtils
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 
@@ -32,9 +33,9 @@ class VersionChoiceDialog(QDialog):
     def setup_ui(self):
         """Setup the dialog UI"""
         self.setWindowTitle(f"Version Choice - {self.project_name}")
-        self.setMinimumWidth(700)  # Increased for better text visibility
-        self.setMinimumHeight(550)  # Increased height for more content
-        self.resize(750, 600)  # Larger default size
+        
+        # Use responsive dialog setup
+        DialogUtils.setup_responsive_dialog(self, min_width=700, min_height=550)
         
         # Set white background
         self.setStyleSheet("""
@@ -202,9 +203,22 @@ class VersionChoiceDialog(QDialog):
         main_layout.addLayout(button_layout)
         
     def create_version_details(self):
-        """Create version details section"""
+        """Create version details section with scrollable content"""
         group = QGroupBox("Version Details")
         layout = QVBoxLayout(group)
+        
+        # Create scroll area for the content
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setMaximumHeight(150)  # Limit height to ensure scrolling
+        scroll_area.setMinimumHeight(100)  # Minimum height for readability
+        
+        # Content widget inside scroll area
+        content_widget = QFrame()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(0, 0, 0, 0)
         
         # Local version info
         local_time = self.version_comparison.get('local_time', 'None')
@@ -227,10 +241,22 @@ class VersionChoiceDialog(QDialog):
             local_formatted = local_time
             cloud_formatted = cloud_time
         
+        # Determine database type for better display
+        db_type = self.version_comparison.get('db_type', 'cache')
+        if db_type in ['working', 'working_outdated']:
+            local_icon = "💼"
+            local_label = "WORKING DATABASE"
+            local_desc = "(Preserved from previous upload)"
+        else:
+            local_icon = "💾"
+            local_label = "LOCAL CACHE"
+            local_desc = "(Downloaded copy)"
+        
         details_text = f"""
-💾 LOCAL CACHE:
+{local_icon} {local_label}:
 • Version: {local_formatted}
 • Size: {file_size} MB
+• Type: {local_desc}
 • Exists: {'✅ Yes' if self.version_comparison.get('local_db_exists', False) else '❌ No'}
 
 ☁️ CLOUD VERSION:
@@ -252,7 +278,33 @@ class VersionChoiceDialog(QDialog):
                 line-height: 1.4;
             }
         """)
-        layout.addWidget(details_label)
+        
+        content_layout.addWidget(details_label)
+        scroll_area.setWidget(content_widget)
+        
+        # Style the scroll area
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                background-color: #ffffff;
+            }
+            QScrollBar:vertical {
+                background-color: #f0f0f0;
+                width: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background-color: #c0c0c0;
+                border-radius: 6px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background-color: #a0a0a0;
+            }
+        """)
+        
+        layout.addWidget(scroll_area)
         
         return group
     
@@ -268,21 +320,37 @@ class VersionChoiceDialog(QDialog):
         needs_download = self.version_comparison.get('needs_download', True)
         has_local = self.version_comparison.get('local_db_exists', False)
         
-        # Option 1: Use local cache (if available and reasonable)
+        # Option 1: Use local database (working database or cache)
         if has_local:
+            db_type = self.version_comparison.get('db_type', 'cache')
+            
+            # Customize text based on database type
+            if db_type in ['working', 'working_outdated']:
+                db_icon = "💼"
+                db_label = "Working Database"
+            else:
+                db_icon = "💾"
+                db_label = "Local Cache"
+            
             if status == 'current':
-                self.cache_radio = QRadioButton("💾 Use Local Cache (Recommended)")
+                self.cache_radio = QRadioButton(f"{db_icon} Use {db_label} (Recommended)")
                 self.cache_radio.setStyleSheet("color: #4caf50; font-weight: bold;")
-                cache_desc = "⚡ Instant loading - Your cached version is up-to-date"
+                if db_type in ['working', 'working_outdated']:
+                    cache_desc = "⚡ Continue with your preserved working database - fully up-to-date"
+                else:
+                    cache_desc = "⚡ Instant loading - Your cached version is up-to-date"
                 self.cache_radio.setChecked(True)  # Default for current versions
             elif status == 'outdated':
-                self.cache_radio = QRadioButton("💾 Use Local Cache")
+                self.cache_radio = QRadioButton(f"{db_icon} Use {db_label}")
                 self.cache_radio.setStyleSheet("color: #ff9800; font-weight: bold;")
-                cache_desc = "⚠️ Instant loading - Your cached version is older than the cloud version"
+                if db_type == 'working_outdated':
+                    cache_desc = "⚠️ Continue with your working database (outdated) - you may miss recent changes by others"
+                else:
+                    cache_desc = "⚠️ Instant loading - Your cached version is older than the cloud version"
             else:
-                self.cache_radio = QRadioButton("💾 Use Local Cache")
+                self.cache_radio = QRadioButton(f"{db_icon} Use {db_label}")
                 self.cache_radio.setStyleSheet("color: #2196f3; font-weight: bold;")
-                cache_desc = "⚡ Fast loading with existing cached version"
+                cache_desc = "⚡ Fast loading with existing local version"
             
             self.button_group.addButton(self.cache_radio, 1)
             layout.addWidget(self.cache_radio)

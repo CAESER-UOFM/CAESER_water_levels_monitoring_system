@@ -21,6 +21,11 @@ class RiseDatabase:
         Args:
             db_path: Path to the main SQLite database file
         """
+        # Safety check to prevent None path
+        if db_path is None or str(db_path) == "None":
+            logger.error(f"RiseDatabase initialized with invalid path: {repr(db_path)}")
+            raise ValueError("Database path cannot be None or 'None'")
+            
         self.db_path = str(db_path)
         
     def get_connection(self):

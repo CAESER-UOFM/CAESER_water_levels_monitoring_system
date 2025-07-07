@@ -56,6 +56,15 @@ class BarologgerModel(BaseModel):
                 
                 conn.commit()
                 
+                # Track the barologger addition for change tracking
+                if (self.db_manager and hasattr(self.db_manager, 'change_tracker') and 
+                    self.db_manager.change_tracker):
+                    from src.gui.handlers.change_tracker import ChangeType, ChangeAction
+                    self.db_manager.change_tracker.track_change(
+                        ChangeType.MANUAL, ChangeAction.INSERT, "barologgers",
+                        data['serial_number'], description=f"Added new barologger {data['serial_number']} at {data['location_description']}"
+                    )
+                
                 # Mark the database as modified
                 self.mark_modified()
                 
@@ -67,28 +76,187 @@ class BarologgerModel(BaseModel):
             
     def delete_barologger(self, serial_number: str) -> Tuple[bool, str]:
         """Delete a barologger"""
+        logger.info(f"DELETE_DEBUG: Starting barologger deletion for serial: {serial_number}")
+        logger.info(f"DELETE_DEBUG: Database path: {self.db_path}")
+        logger.info(f"DELETE_DEBUG: Database manager: {self.db_manager}")
+        
+        # Check if this is a cloud database
+        is_cloud_db = (hasattr(self.db_manager, 'is_cloud_database') and 
+                      self.db_manager.is_cloud_database if self.db_manager else False)
+        logger.info(f"DELETE_DEBUG: Is cloud database: {is_cloud_db}")
+        
+        if self.db_manager and hasattr(self.db_manager, 'current_db'):
+            logger.info(f"DELETE_DEBUG: Database manager current_db: {self.db_manager.current_db}")
+            
+        if self.db_manager and hasattr(self.db_manager, 'temp_db_path'):
+            logger.info(f"DELETE_DEBUG: Database manager temp_db_path: {self.db_manager.temp_db_path}")
+            
+        # CRITICAL: Check if current_db and temp_db_path are the same
+        if (self.db_manager and 
+            hasattr(self.db_manager, 'current_db') and 
+            hasattr(self.db_manager, 'temp_db_path')):
+            current_db_str = str(self.db_manager.current_db) if self.db_manager.current_db else "None"
+            temp_db_str = str(self.db_manager.temp_db_path) if self.db_manager.temp_db_path else "None"
+            logger.info(f"DELETE_DEBUG: current_db == temp_db_path: {current_db_str == temp_db_str}")
+            logger.info(f"DELETE_DEBUG: self.db_path == current_db: {str(self.db_path) == current_db_str}")
+            logger.info(f"DELETE_DEBUG: self.db_path == temp_db_path: {str(self.db_path) == temp_db_str}")
+            
         try:
+            # Check if file exists and get size before deletion
+            import os
+            if os.path.exists(self.db_path):
+                file_size_before = os.path.getsize(self.db_path)
+                logger.info(f"DELETE_DEBUG: Database file size before deletion: {file_size_before} bytes")
+            else:
+                logger.warning(f"DELETE_DEBUG: Database file does not exist: {self.db_path}")
+                
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
+                # Count existing records first
+                cursor.execute("SELECT COUNT(*) FROM barologgers WHERE serial_number = ?", (serial_number,))
+                baro_count = cursor.fetchone()[0]
+                cursor.execute("SELECT COUNT(*) FROM barologger_locations WHERE serial_number = ?", (serial_number,))
+                location_count = cursor.fetchone()[0]
+                cursor.execute("SELECT COUNT(*) FROM barometric_readings WHERE serial_number = ?", (serial_number,))
+                reading_count = cursor.fetchone()[0]
+                
+                logger.info(f"DELETE_DEBUG: Found {baro_count} barologger(s), {location_count} location(s), {reading_count} reading(s)")
+                
                 # Delete from barologgers table
                 cursor.execute("DELETE FROM barologgers WHERE serial_number = ?", (serial_number,))
+                deleted_baro = cursor.rowcount
+                logger.info(f"DELETE_DEBUG: Deleted {deleted_baro} barologger registration(s)")
                 
                 # Delete from barologger_locations table
                 cursor.execute("DELETE FROM barologger_locations WHERE serial_number = ?", (serial_number,))
+                deleted_locations = cursor.rowcount
+                logger.info(f"DELETE_DEBUG: Deleted {deleted_locations} barologger location(s)")
                 
                 # Delete from barometric_readings table
                 cursor.execute("DELETE FROM barometric_readings WHERE serial_number = ?", (serial_number,))
+                deleted_readings = cursor.rowcount
+                logger.info(f"DELETE_DEBUG: Deleted {deleted_readings} barometric reading(s)")
+                
+                # Track the deletion for change tracking
+                if (self.db_manager and hasattr(self.db_manager, 'change_tracker') and 
+                    self.db_manager.change_tracker):
+                    total_deletions = deleted_baro + deleted_locations + deleted_readings
+                    if total_deletions > 0:
+                        from src.gui.handlers.change_tracker import ChangeType, ChangeAction
+                        self.db_manager.change_tracker.track_change(
+                            ChangeType.MANUAL, ChangeAction.DELETE, "barologger", 
+                            serial_number, description=f"Deleted barologger {serial_number} with {deleted_readings} readings"
+                        )
                 
                 conn.commit()
+                logger.info(f"DELETE_DEBUG: Transaction committed to database")
+                
+                # Force SQLite to write changes to disk immediately
+                cursor.execute("PRAGMA wal_checkpoint(FULL)")
+                cursor.execute("VACUUM")
+                conn.commit()
+                logger.info(f"DELETE_DEBUG: WAL checkpoint and VACUUM completed")
+                
+                # Check file size after deletion
+                if os.path.exists(self.db_path):
+                    file_size_after = os.path.getsize(self.db_path)
+                    logger.info(f"DELETE_DEBUG: Database file size after deletion: {file_size_after} bytes")
+                    logger.info(f"DELETE_DEBUG: File size change: {file_size_before - file_size_after} bytes")
                 
                 # Mark the database as modified
                 self.mark_modified()
+                logger.info(f"DELETE_DEBUG: Database marked as modified")
                 
                 return True, f"Barologger {serial_number} deleted successfully"
                 
         except Exception as e:
             logger.error(f"Error deleting barologger: {e}")
+            return False, str(e)
+    
+    def delete_master_baro_data(self) -> Tuple[bool, str]:
+        """Delete all master baro readings from the database"""
+        logger.info(f"DELETE_DEBUG: Starting master baro deletion")
+        logger.info(f"DELETE_DEBUG: Database path: {self.db_path}")
+        logger.info(f"DELETE_DEBUG: Database manager: {self.db_manager}")
+        
+        # Check if this is a cloud database
+        is_cloud_db = (hasattr(self.db_manager, 'is_cloud_database') and 
+                      self.db_manager.is_cloud_database if self.db_manager else False)
+        logger.info(f"DELETE_DEBUG: Is cloud database: {is_cloud_db}")
+        
+        if self.db_manager and hasattr(self.db_manager, 'current_db'):
+            logger.info(f"DELETE_DEBUG: Database manager current_db: {self.db_manager.current_db}")
+            
+        if self.db_manager and hasattr(self.db_manager, 'temp_db_path'):
+            logger.info(f"DELETE_DEBUG: Database manager temp_db_path: {self.db_manager.temp_db_path}")
+            
+        # CRITICAL: Check if current_db and temp_db_path are the same
+        if (self.db_manager and 
+            hasattr(self.db_manager, 'current_db') and 
+            hasattr(self.db_manager, 'temp_db_path')):
+            current_db_str = str(self.db_manager.current_db) if self.db_manager.current_db else "None"
+            temp_db_str = str(self.db_manager.temp_db_path) if self.db_manager.temp_db_path else "None"
+            logger.info(f"DELETE_DEBUG: current_db == temp_db_path: {current_db_str == temp_db_str}")
+            logger.info(f"DELETE_DEBUG: self.db_path == current_db: {str(self.db_path) == current_db_str}")
+            logger.info(f"DELETE_DEBUG: self.db_path == temp_db_path: {str(self.db_path) == temp_db_str}")
+            
+        try:
+            # Check if file exists and get size before deletion
+            import os
+            if os.path.exists(self.db_path):
+                file_size_before = os.path.getsize(self.db_path)
+                logger.info(f"DELETE_DEBUG: Database file size before deletion: {file_size_before} bytes")
+            else:
+                logger.warning(f"DELETE_DEBUG: Database file does not exist: {self.db_path}")
+                
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Count existing records first
+                cursor.execute("SELECT COUNT(*) FROM master_baro_readings")
+                count = cursor.fetchone()[0]
+                logger.info(f"DELETE_DEBUG: Found {count} master baro readings to delete")
+                
+                if count == 0:
+                    return False, "No master baro data found to delete"
+                
+                # Delete all master baro readings
+                cursor.execute("DELETE FROM master_baro_readings")
+                deleted_count = cursor.rowcount
+                logger.info(f"DELETE_DEBUG: SQL DELETE affected {deleted_count} rows")
+                
+                # Track the deletion for change tracking
+                if (self.db_manager and hasattr(self.db_manager, 'change_tracker') and 
+                    self.db_manager.change_tracker and deleted_count > 0):
+                    from src.gui.handlers.change_tracker import ChangeType, ChangeAction
+                    self.db_manager.change_tracker.track_change(
+                        ChangeType.MANUAL, ChangeAction.DELETE, "master_baro_readings", 
+                        "all", description=f"Deleted all {deleted_count} master barometric readings"
+                    )
+                
+                conn.commit()
+                logger.info(f"DELETE_DEBUG: Transaction committed to database")
+                
+                # Force SQLite to write changes to disk immediately
+                cursor.execute("PRAGMA wal_checkpoint(FULL)")
+                cursor.execute("VACUUM")
+                conn.commit()
+                logger.info(f"DELETE_DEBUG: WAL checkpoint and VACUUM completed")
+                
+                # Check file size after deletion
+                if os.path.exists(self.db_path):
+                    file_size_after = os.path.getsize(self.db_path)
+                    logger.info(f"DELETE_DEBUG: Database file size after deletion: {file_size_after} bytes")
+                    logger.info(f"DELETE_DEBUG: File size change: {file_size_before - file_size_after} bytes")
+                
+                self.mark_modified()
+                logger.info(f"DELETE_DEBUG: Database marked as modified")
+                
+                return True, f"Successfully deleted {count} master baro readings"
+                
+        except Exception as e:
+            logger.error(f"Error deleting master baro data: {e}")
             return False, str(e)
             
     def import_readings(self, df: pd.DataFrame, serial_number: str, overwrite: bool = False) -> bool:
@@ -129,15 +297,49 @@ class BarologgerModel(BaseModel):
                         WHERE serial_number = ? AND timestamp_utc BETWEEN ? AND ?
                     """, (serial_number, min_date, max_date))
                     
-                # Insert new data
-                cursor.executemany("""
-                    INSERT INTO barometric_readings (
-                        serial_number, timestamp_utc, julian_timestamp, pressure, 
-                        temperature, quality_flag, notes
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, records)
+                # Insert new data with duplicate protection
+                try:
+                    cursor.executemany("""
+                        INSERT INTO barometric_readings (
+                            serial_number, timestamp_utc, julian_timestamp, pressure, 
+                            temperature, quality_flag, notes
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """, records)
+                except sqlite3.IntegrityError as e:
+                    if "UNIQUE constraint failed" in str(e):
+                        # Handle duplicate timestamps by inserting records one by one
+                        logger.warning(f"UNIQUE constraint violation detected, attempting individual record insertion for barologger {serial_number}")
+                        successful_inserts = 0
+                        failed_inserts = 0
+                        
+                        for record in records:
+                            try:
+                                cursor.execute("""
+                                    INSERT INTO barometric_readings (
+                                        serial_number, timestamp_utc, julian_timestamp, pressure, 
+                                        temperature, quality_flag, notes
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                                """, record)
+                                successful_inserts += 1
+                            except sqlite3.IntegrityError:
+                                # Skip duplicate record silently
+                                failed_inserts += 1
+                        
+                        logger.info(f"Individual insertion completed: {successful_inserts} successful, {failed_inserts} skipped duplicates")
+                    else:
+                        # Re-raise if it's a different integrity error
+                        raise
                 
                 conn.commit()
+                
+                # Track the import for change tracking
+                if (self.db_manager and hasattr(self.db_manager, 'change_tracker') and 
+                    self.db_manager.change_tracker and len(records) > 0):
+                    from src.gui.handlers.change_tracker import ChangeType, ChangeAction
+                    self.db_manager.change_tracker.track_change(
+                        ChangeType.MANUAL, ChangeAction.INSERT, "barometric_readings",
+                        serial_number, description=f"Imported {len(records)} barometric readings for barologger {serial_number}"
+                    )
                 
                 # Mark the database as modified
                 self.mark_modified()
@@ -165,7 +367,7 @@ class BarologgerModel(BaseModel):
             if processed_data.empty:
                 return False, "No valid data after processing"
 
-            return self._save_master_baro_data(processed_data, serial_numbers, notes)
+            return self._save_master_baro_data(processed_data, serial_numbers, notes, overwrite)
         except Exception as e:
             logger.error(f"Error creating master baro: {e}")
             return False, str(e)
@@ -318,6 +520,17 @@ class BarologgerModel(BaseModel):
                 """, insert_data)
     
                 conn.commit()
+                
+                # Track the master baro creation for change tracking
+                if (self.db_manager and hasattr(self.db_manager, 'change_tracker') and 
+                    self.db_manager.change_tracker and len(insert_data) > 0):
+                    from src.gui.handlers.change_tracker import ChangeType, ChangeAction
+                    self.db_manager.change_tracker.track_change(
+                        ChangeType.MANUAL, ChangeAction.INSERT, "master_baro_readings",
+                        "batch", description=f"Created master baro with {len(insert_data)} readings from {len(source_barologgers)} barologgers"
+                    )
+                
+                self.mark_modified()
                 return True, f"Successfully created master baro from {len(source_barologgers)} barologgers"
     
         except Exception as e:
@@ -589,12 +802,36 @@ class BarologgerModel(BaseModel):
                                 row.get('notes', '')
                             ))
                         
-                        # Batch insert readings
-                        cursor.executemany("""
-                            INSERT INTO barometric_readings 
-                            (serial_number, timestamp_utc, julian_timestamp, pressure, temperature, quality_flag, notes)
-                            VALUES (?, ?, ?, ?, ?, ?, ?)
-                        """, readings_data)
+                        # Batch insert readings with duplicate protection
+                        try:
+                            cursor.executemany("""
+                                INSERT INTO barometric_readings 
+                                (serial_number, timestamp_utc, julian_timestamp, pressure, temperature, quality_flag, notes)
+                                VALUES (?, ?, ?, ?, ?, ?, ?)
+                            """, readings_data)
+                        except sqlite3.IntegrityError as e:
+                            if "UNIQUE constraint failed" in str(e):
+                                # Handle duplicate timestamps by inserting records one by one
+                                logger.warning(f"UNIQUE constraint violation in batch, attempting individual record insertion for barologger {serial_number}")
+                                successful_inserts = 0
+                                failed_inserts = 0
+                                
+                                for record in readings_data:
+                                    try:
+                                        cursor.execute("""
+                                            INSERT INTO barometric_readings 
+                                            (serial_number, timestamp_utc, julian_timestamp, pressure, temperature, quality_flag, notes)
+                                            VALUES (?, ?, ?, ?, ?, ?, ?)
+                                        """, record)
+                                        successful_inserts += 1
+                                    except sqlite3.IntegrityError:
+                                        # Skip duplicate record silently
+                                        failed_inserts += 1
+                                
+                                logger.info(f"Individual insertion completed for {serial_number}: {successful_inserts} successful, {failed_inserts} skipped duplicates")
+                            else:
+                                # Re-raise if it's a different integrity error
+                                raise
                         
                         total_readings += len(readings_data)
                         processed_loggers += 1
@@ -604,6 +841,17 @@ class BarologgerModel(BaseModel):
                         
                     # Commit transaction
                     conn.commit()
+                    
+                    # Track the batch import for change tracking
+                    if (self.db_manager and hasattr(self.db_manager, 'change_tracker') and 
+                        self.db_manager.change_tracker and total_readings > 0):
+                        from src.gui.handlers.change_tracker import ChangeType, ChangeAction
+                        self.db_manager.change_tracker.track_change(
+                            ChangeType.MANUAL, ChangeAction.INSERT, "barometric_readings",
+                            "batch", description=f"Batch imported {total_readings} barometric readings for {processed_loggers} barologgers"
+                        )
+                    
+                    self.mark_modified()
                     
                     return True, f"Successfully imported {total_readings} readings for {processed_loggers} loggers"
                     

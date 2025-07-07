@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (
     QLabel, QPushButton, QSpinBox, QDoubleSpinBox,
     QSlider, QCheckBox, QButtonGroup, QRadioButton
 )
+from ..utils.button_styles import ButtonStyles
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 
 # Configure logging
@@ -27,7 +28,28 @@ class EditToolHelperDialog(QDialog):
     def __init__(self, title, parent=None):
         super().__init__(parent)
         self.setWindowTitle(title)
-        self.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
+        # Remove WindowStaysOnTopHint to allow other dialogs to appear in front
+        self.setWindowFlags(Qt.Window)
+        
+        # Add blue background styling
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f6fafd;
+            }
+            QGroupBox {
+                font-weight: bold;
+                border: 1px solid #CCCCCC;
+                border-radius: 5px;
+                margin-top: 10px;
+                padding-top: 10px;
+                background-color: #ffffff;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top center;
+                padding: 0 5px;
+            }
+        """)
         
         # Instance tracking
         self.instance_id = str(uuid.uuid4())
@@ -47,10 +69,12 @@ class EditToolHelperDialog(QDialog):
         preview_layout.addWidget(self.preview_checkbox)
         self.preview_group.setLayout(preview_layout)
         
-        # Buttons
+        # Buttons with styling
         button_layout = QHBoxLayout()
         self.apply_btn = QPushButton("Apply")
+        self.apply_btn.setStyleSheet(ButtonStyles.get_save_button_style())
         self.reset_btn = QPushButton("Reset")
+        self.reset_btn.setStyleSheet(ButtonStyles.get_warning_button_style())
         
         # Add debugging to see which button is clicked
         self.apply_btn.clicked.connect(lambda: logger.info(f"Apply button clicked in {self.__class__.__name__}"))
@@ -275,16 +299,7 @@ class BaselineHelperDialog(EditToolHelperDialog):
         options_layout.addWidget(self.free_mode)
         options_group.setLayout(options_layout)
         
-        # Value adjustment control
-        value_layout = QHBoxLayout()
-        value_layout.addWidget(QLabel("Adjustment Value (ft):"))
-        self.value_spin = QDoubleSpinBox()
-        self.value_spin.setRange(-1000, 1000)
-        self.value_spin.setValue(0)
-        self.value_spin.setDecimals(3)
-        self.value_spin.setSingleStep(0.1)
-        self.value_spin.setEnabled(True)  # Now enabled by default since free leveling is default
-        value_layout.addWidget(self.value_spin)
+        # Remove value adjustment control from here - will be moved to bottom
         
         # Difference calculation option
         diff_group = QGroupBox("Difference Calculation (Optional)")
@@ -312,8 +327,9 @@ class BaselineHelperDialog(EditToolHelperDialog):
         self.point2_spin.setEnabled(False)
         points_layout.addWidget(self.point2_spin)
         
-        # Calculate button
+        # Calculate button with styling
         self.calc_diff_btn = QPushButton("Calculate Difference")
+        self.calc_diff_btn.setStyleSheet(ButtonStyles.get_primary_button_style())
         self.calc_diff_btn.setEnabled(False)
         self.calc_diff_btn.clicked.connect(self._calculate_difference)
         
@@ -326,12 +342,40 @@ class BaselineHelperDialog(EditToolHelperDialog):
         
         # Add all to params layout
         params_layout.addWidget(options_group)
-        params_layout.addLayout(value_layout)
         params_layout.addWidget(diff_group)
         params_group.setLayout(params_layout)
         
         # Add to main layout before buttons
         self.layout.insertWidget(self.layout.count() - 1, params_group)
+        
+        # Value adjustment control group - moved to bottom
+        value_group = QGroupBox("Adjustment Value")
+        value_group_layout = QVBoxLayout()
+        
+        # Create horizontal layout with sign toggle button
+        value_layout = QHBoxLayout()
+        value_layout.addWidget(QLabel("Adjustment Value (ft):"))
+        
+        self.value_spin = QDoubleSpinBox()
+        self.value_spin.setRange(-1000, 1000)
+        self.value_spin.setValue(0)
+        self.value_spin.setDecimals(3)
+        self.value_spin.setSingleStep(0.1)
+        self.value_spin.setEnabled(True)  # Now enabled by default since free leveling is default
+        value_layout.addWidget(self.value_spin)
+        
+        # Add sign toggle button with ± symbol
+        self.sign_toggle_btn = QPushButton("±")
+        self.sign_toggle_btn.setMaximumWidth(40)
+        self.sign_toggle_btn.setToolTip("Click to change sign of the value")
+        self.sign_toggle_btn.clicked.connect(self._toggle_sign)
+        value_layout.addWidget(self.sign_toggle_btn)
+        
+        value_group_layout.addLayout(value_layout)
+        value_group.setLayout(value_group_layout)
+        
+        # Add value group before buttons
+        self.layout.insertWidget(self.layout.count() - 1, value_group)
         
         # Connect signals but don't trigger parameter changes
         self.manual_mode.toggled.connect(self._on_mode_changed)
@@ -375,6 +419,16 @@ class BaselineHelperDialog(EditToolHelperDialog):
             logger.info(f"Calculated difference: {point2} - {point1} = {difference} ft")
         except Exception as e:
             logger.error(f"Error calculating difference: {e}", exc_info=True)
+    
+    def _toggle_sign(self):
+        """Toggle the sign of the adjustment value by multiplying by -1"""
+        try:
+            current_value = self.value_spin.value()
+            new_value = current_value * -1
+            self.value_spin.setValue(new_value)
+            logger.info(f"Toggled sign: {current_value} -> {new_value}")
+        except Exception as e:
+            logger.error(f"Error toggling sign: {e}", exc_info=True)
     
     def get_current_parameters(self):
         """Get current parameters"""

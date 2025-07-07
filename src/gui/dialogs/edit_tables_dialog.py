@@ -51,7 +51,7 @@ class EditTablesDialog(QDialog):
         header_layout.addWidget(title_label)
         
         # Add Load Legacy Tables button
-        load_legacy_button = QPushButton("Load Legacy Tables")
+        load_legacy_button = QPushButton("📋 Load Legacy Tables")
         load_legacy_button.setStyleSheet("""
             background-color: #3070B0;
             color: white;
@@ -191,7 +191,7 @@ class EditTablesDialog(QDialog):
         delete_button.clicked.connect(self.delete_selected_row)
         
         # Add Export to CSV button
-        export_button = QPushButton("Export to CSV")
+        export_button = QPushButton("📤 Export to CSV")
         export_button.setStyleSheet("""
             background-color: #3070B0;
             color: white;
@@ -201,7 +201,7 @@ class EditTablesDialog(QDialog):
         """)
         export_button.clicked.connect(self.export_to_csv)
         
-        save_button = QPushButton("Save Changes")
+        save_button = QPushButton("💾 Save Changes")
         save_button.setStyleSheet(StyleHandler.get_action_button_style())
         save_button.clicked.connect(self.save_changes)
         
@@ -579,12 +579,51 @@ class EditTablesDialog(QDialog):
                 table_name = self.table_combo.currentText()
                 primary_key_column = self.table_widget.horizontalHeaderItem(0).text()
 
+                # DELETE_DEBUG: Add comprehensive debugging for Edit Tables deletions
+                import logging
+                import os
+                logger = logging.getLogger(__name__)
+                
+                logger.info(f"DELETE_DEBUG: Edit Tables deletion starting")
+                logger.info(f"DELETE_DEBUG: Table: {table_name}, Primary key: {primary_key_column} = {primary_key_value}")
+                logger.info(f"DELETE_DEBUG: Database manager current_db: {self.db_manager.current_db}")
+                
+                if hasattr(self.db_manager, 'temp_db_path'):
+                    logger.info(f"DELETE_DEBUG: Database manager temp_db_path: {self.db_manager.temp_db_path}")
+                    
+                if hasattr(self.db_manager, 'is_cloud_database'):
+                    logger.info(f"DELETE_DEBUG: Is cloud database: {self.db_manager.is_cloud_database}")
+                
+                # Check file size before deletion
+                db_path = str(self.db_manager.current_db)
+                if os.path.exists(db_path):
+                    file_size_before = os.path.getsize(db_path)
+                    logger.info(f"DELETE_DEBUG: Database file size before deletion: {file_size_before} bytes")
+                else:
+                    logger.warning(f"DELETE_DEBUG: Database file does not exist: {db_path}")
+                
                 # Delete from database
                 with sqlite3.connect(str(self.db_manager.current_db)) as conn:
                     cursor = conn.cursor()
                     delete_query = f"DELETE FROM {table_name} WHERE {primary_key_column} = ?"
                     cursor.execute(delete_query, (primary_key_value,))
+                    affected_rows = cursor.rowcount
+                    logger.info(f"DELETE_DEBUG: SQL DELETE affected {affected_rows} rows")
+                    
                     conn.commit()
+                    logger.info(f"DELETE_DEBUG: Transaction committed to database")
+                    
+                    # Force SQLite to write changes to disk immediately
+                    cursor.execute("PRAGMA wal_checkpoint(FULL)")
+                    cursor.execute("VACUUM")
+                    conn.commit()
+                    logger.info(f"DELETE_DEBUG: WAL checkpoint and VACUUM completed")
+                
+                # Check file size after deletion
+                if os.path.exists(db_path):
+                    file_size_after = os.path.getsize(db_path)
+                    logger.info(f"DELETE_DEBUG: Database file size after deletion: {file_size_after} bytes")
+                    logger.info(f"DELETE_DEBUG: File size change: {file_size_before - file_size_after} bytes")
 
                 # Remove row from table widget
                 self.table_widget.removeRow(current_row)
@@ -811,23 +850,34 @@ class EditTablesDialog(QDialog):
                 import csv
                 import pandas as pd
                 
-                # Get the legacy tables directory path relative to the database location
-                db_dir = os.path.dirname(str(self.db_manager.current_db))
-                legacy_dir = os.path.join(db_dir, "legacy_tables")
+                # Get the legacy tables directory path from the main application directory
+                # Find the main application directory (where Legacy_tables folder is located)
+                import sys
+                from pathlib import Path
                 
-                if not os.path.exists(legacy_dir):
+                # Get the main application directory (src parent directory)
+                if hasattr(sys, '_MEIPASS'):
+                    # Running as PyInstaller bundle
+                    app_dir = Path(sys._MEIPASS)
+                else:
+                    # Running from source - go up from src/gui/dialogs to main directory
+                    app_dir = Path(__file__).parent.parent.parent.parent
+                
+                legacy_dir = app_dir / "Legacy_tables"
+                
+                if not legacy_dir.exists():
                     raise Exception(f"Legacy tables directory not found at: {legacy_dir}")
                 
                 with sqlite3.connect(str(self.db_manager.current_db)) as conn:
                     for table in legacy_tables:
                         # Construct the CSV file path
-                        csv_path = os.path.join(legacy_dir, f"{table}.csv")
+                        csv_path = legacy_dir / f"{table}.csv"
                         
-                        if not os.path.exists(csv_path):
+                        if not csv_path.exists():
                             raise Exception(f"Legacy file not found: {csv_path}")
                         
                         # Read CSV file using pandas
-                        df = pd.read_csv(csv_path)
+                        df = pd.read_csv(str(csv_path))
                         
                         # Begin transaction for this table
                         cursor = conn.cursor()

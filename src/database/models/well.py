@@ -91,6 +91,11 @@ class WellModel(BaseModel):
                     return False
                 
                 # Create pictures directory if it doesn't exist
+                if not self.db_path:
+                    logger.error("DEBUG: Database path is None, cannot create pictures directory")
+                    logger.error(f"DEBUG: self.db_path value: {repr(self.db_path)}")
+                    return False
+                logger.debug(f"DEBUG: Creating pictures directory from db_path: {self.db_path}")
                 pictures_dir = Path(self.db_path).parent / 'pictures'
                 pictures_dir.mkdir(exist_ok=True)
                 
@@ -571,6 +576,15 @@ class WellModel(BaseModel):
                 
                 conn.commit()
                 
+                # Track the well addition for change tracking
+                if (self.db_manager and hasattr(self.db_manager, 'change_tracker') and 
+                    self.db_manager.change_tracker):
+                    from src.gui.handlers.change_tracker import ChangeType, ChangeAction
+                    self.db_manager.change_tracker.track_change(
+                        ChangeType.MANUAL, ChangeAction.INSERT, "wells",
+                        data['well_number'], description=f"Added new well {data['well_number']} ({data.get('cae_number', 'no CAE')})"
+                    )
+                
                 # Mark the database as modified
                 self.mark_modified()
                 
@@ -644,6 +658,15 @@ class WellModel(BaseModel):
                 
                 conn.commit()
                 
+                # Track the well update for change tracking
+                if (self.db_manager and hasattr(self.db_manager, 'change_tracker') and 
+                    self.db_manager.change_tracker):
+                    from src.gui.handlers.change_tracker import ChangeType, ChangeAction
+                    self.db_manager.change_tracker.track_change(
+                        ChangeType.MANUAL, ChangeAction.UPDATE, "wells",
+                        well_number, description=f"Updated well {well_number} information"
+                    )
+                
                 # Mark the database as modified
                 self.mark_modified()
                 
@@ -654,8 +677,41 @@ class WellModel(BaseModel):
             return False, str(e)
 
     def delete_well(self, well_number: str) -> Tuple[bool, str]:
-        """Delete a well from the database"""
+        """Delete a well and all associated data from the database"""
+        logger.info(f"DELETE_DEBUG: Starting well deletion for well: {well_number}")
+        logger.info(f"DELETE_DEBUG: Database path: {self.db_path}")
+        logger.info(f"DELETE_DEBUG: Database manager: {self.db_manager}")
+        
+        # Check if this is a cloud database
+        is_cloud_db = (hasattr(self.db_manager, 'is_cloud_database') and 
+                      self.db_manager.is_cloud_database if self.db_manager else False)
+        logger.info(f"DELETE_DEBUG: Is cloud database: {is_cloud_db}")
+        
+        if self.db_manager and hasattr(self.db_manager, 'current_db'):
+            logger.info(f"DELETE_DEBUG: Database manager current_db: {self.db_manager.current_db}")
+            
+        if self.db_manager and hasattr(self.db_manager, 'temp_db_path'):
+            logger.info(f"DELETE_DEBUG: Database manager temp_db_path: {self.db_manager.temp_db_path}")
+            
+        # CRITICAL: Check if current_db and temp_db_path are the same
+        if (self.db_manager and 
+            hasattr(self.db_manager, 'current_db') and 
+            hasattr(self.db_manager, 'temp_db_path')):
+            current_db_str = str(self.db_manager.current_db) if self.db_manager.current_db else "None"
+            temp_db_str = str(self.db_manager.temp_db_path) if self.db_manager.temp_db_path else "None"
+            logger.info(f"DELETE_DEBUG: current_db == temp_db_path: {current_db_str == temp_db_str}")
+            logger.info(f"DELETE_DEBUG: self.db_path == current_db: {str(self.db_path) == current_db_str}")
+            logger.info(f"DELETE_DEBUG: self.db_path == temp_db_path: {str(self.db_path) == temp_db_str}")
+            
         try:
+            # Check if file exists and get size before deletion
+            import os
+            if os.path.exists(self.db_path):
+                file_size_before = os.path.getsize(self.db_path)
+                logger.info(f"DELETE_DEBUG: Database file size before deletion: {file_size_before} bytes")
+            else:
+                logger.warning(f"DELETE_DEBUG: Database file does not exist: {self.db_path}")
+                
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
@@ -664,19 +720,74 @@ class WellModel(BaseModel):
                 if not cursor.fetchone():
                     return False, f"Well {well_number} not found"
                 
-                # Check if well has transducers
-                cursor.execute("SELECT 1 FROM transducers WHERE well_number = ?", (well_number,))
-                if cursor.fetchone():
-                    return False, f"Cannot delete well {well_number} because it has transducers"
+                # Count associated data for reporting
+                cursor.execute("SELECT COUNT(*) FROM transducers WHERE well_number = ?", (well_number,))
+                transducer_count = cursor.fetchone()[0]
                 
-                # Delete the well
+                cursor.execute("SELECT COUNT(*) FROM water_level_readings WHERE well_number = ?", (well_number,))
+                water_level_count = cursor.fetchone()[0]
+                
+                cursor.execute("SELECT COUNT(*) FROM user_flags WHERE well_number = ?", (well_number,))
+                user_flag_count = cursor.fetchone()[0]
+                
+                cursor.execute("SELECT COUNT(*) FROM user_notes WHERE well_number = ?", (well_number,))
+                user_note_count = cursor.fetchone()[0]
+                
+                # Delete all associated data in proper order (child tables first)
+                
+                # Delete water level readings
+                cursor.execute("DELETE FROM water_level_readings WHERE well_number = ?", (well_number,))
+                deleted_readings = cursor.rowcount
+                logger.info(f"Deleted {deleted_readings} water level readings for well {well_number}")
+                
+                # Track the deletion for change tracking
+                if (self.db_manager and hasattr(self.db_manager, 'change_tracker') and 
+                    self.db_manager.change_tracker and deleted_readings > 0):
+                    self.db_manager.change_tracker.track_bulk_water_level_delete(well_number, deleted_readings)
+                
+                # Delete user flags
+                cursor.execute("DELETE FROM user_flags WHERE well_number = ?", (well_number,))
+                
+                # Delete user notes
+                cursor.execute("DELETE FROM user_notes WHERE well_number = ?", (well_number,))
+                
+                # Delete transducers (this will cascade to any transducer-specific data)
+                cursor.execute("DELETE FROM transducers WHERE well_number = ?", (well_number,))
+                
+                # Delete the well registration
                 cursor.execute("DELETE FROM wells WHERE well_number = ?", (well_number,))
+                
                 conn.commit()
+                logger.info(f"DELETE_DEBUG: Transaction committed to database")
+                
+                # Force SQLite to write changes to disk immediately
+                cursor.execute("PRAGMA wal_checkpoint(FULL)")
+                cursor.execute("VACUUM")
+                conn.commit()
+                logger.info(f"DELETE_DEBUG: WAL checkpoint and VACUUM completed")
+                
+                # Check file size after deletion
+                if os.path.exists(self.db_path):
+                    file_size_after = os.path.getsize(self.db_path)
+                    logger.info(f"DELETE_DEBUG: Database file size after deletion: {file_size_after} bytes")
+                    logger.info(f"DELETE_DEBUG: File size change: {file_size_before - file_size_after} bytes")
                 
                 # Mark the database as modified
                 self.mark_modified()
+                logger.info(f"DELETE_DEBUG: Database marked as modified")
                 
-                return True, f"Well {well_number} deleted successfully"
+                # Build detailed message about what was deleted
+                deleted_items = [f"well {well_number}"]
+                if transducer_count > 0:
+                    deleted_items.append(f"{transducer_count} transducer(s)")
+                if water_level_count > 0:
+                    deleted_items.append(f"{water_level_count} water level reading(s)")
+                if user_flag_count > 0:
+                    deleted_items.append(f"{user_flag_count} user flag(s)")
+                if user_note_count > 0:
+                    deleted_items.append(f"{user_note_count} user note(s)")
+                
+                return True, f"Successfully deleted {', '.join(deleted_items)}"
                 
         except Exception as e:
             logger.error(f"Error deleting well: {e}")

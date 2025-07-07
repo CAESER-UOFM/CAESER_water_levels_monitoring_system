@@ -125,11 +125,11 @@ class ManageDataDialog(QDialog):
         # Toolbar
         toolbar = QHBoxLayout()
         
-        self.select_all_btn = QPushButton("Select All")
+        self.select_all_btn = QPushButton("☑️ Select All")
         self.select_all_btn.clicked.connect(self.select_all_curves)
         toolbar.addWidget(self.select_all_btn)
         
-        self.select_none_btn = QPushButton("Clear Selection")
+        self.select_none_btn = QPushButton("◻️ Clear Selection")
         self.select_none_btn.clicked.connect(self.clear_selection)
         toolbar.addWidget(self.select_none_btn)
         

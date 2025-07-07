@@ -127,10 +127,10 @@ class ChangeTracker:
             }
         )
     
-    def track_water_level_insert(self, well_number: str, reading_data: Dict) -> str:
+    def track_water_level_insert(self, well_number: str, reading_data: Dict, change_type: ChangeType = ChangeType.AUTOMATIC) -> str:
         """Track water level data insertions"""
         return self.track_change(
-            change_type=ChangeType.AUTOMATIC,
+            change_type=change_type,
             action=ChangeAction.INSERT,
             table_name="water_levels",
             record_id=reading_data.get('id', 'new'),
@@ -162,6 +162,25 @@ class ChangeTracker:
             }
         )
     
+    def track_water_level_edit(self, well_number: str, records_modified: int, change_description: str, change_type: ChangeType = ChangeType.MANUAL) -> str:
+        """Track water level data edits (flag changes, corrections, etc.)"""
+        return self.track_change(
+            change_type=change_type,
+            action=ChangeAction.UPDATE,
+            table_name="water_level_readings",
+            record_id=well_number,
+            field_name="flags_and_values",
+            old_value=None,
+            new_value=f"{records_modified} records modified",
+            description=f"Water level edit for well {well_number}: {change_description}",
+            context={
+                "well_number": well_number,
+                "records_modified": records_modified,
+                "ui_action": "water_level_edit",
+                "edit_type": change_description
+            }
+        )
+    
     def track_bulk_water_level_delete(self, well_number: str, record_count: int) -> str:
         """Track bulk deletion of water level readings for a well"""
         return self.track_change(
@@ -177,6 +196,26 @@ class ChangeTracker:
                 "well_number": well_number,
                 "ui_action": "bulk_delete",
                 "record_count": record_count
+            }
+        )
+    
+    def track_bulk_baro_spike_correction(self, barologger_serials: List[str], record_count: int) -> str:
+        """Track bulk spike correction of barologger pressure readings"""
+        serials_str = ", ".join(barologger_serials)
+        return self.track_change(
+            change_type=ChangeType.MANUAL,
+            action=ChangeAction.UPDATE,
+            table_name="barometric_readings",
+            record_id=serials_str,
+            field_name="pressure",
+            old_value=f"{record_count} spike-affected records",
+            new_value=f"{record_count} corrected records",
+            description=f"Applied spike correction to {record_count} pressure readings for barologger(s): {serials_str}",
+            context={
+                "barologger_serials": barologger_serials,
+                "ui_action": "bulk_spike_correction",
+                "record_count": record_count,
+                "correction_type": "spike_detection_algorithm"
             }
         )
     

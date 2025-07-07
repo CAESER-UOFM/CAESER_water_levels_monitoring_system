@@ -105,10 +105,11 @@ class LoginDialog(QDialog):
         icon_label = QLabel()
         icon_label.setAlignment(Qt.AlignCenter)
         
-        # Try webp first, fall back to ico if needed
-        icon_path = Path('src/gui/icons/app_icon.webp')
+        # Use same absolute path approach as window icon for consistency
+        icon_dir = Path(__file__).parent.parent / "icons"
+        icon_path = icon_dir / "app_icon.webp"
         if not icon_path.exists():
-            icon_path = Path('src/gui/icons/app_icon.ico')
+            icon_path = icon_dir / "water_level_meter.png"
         
         if icon_path.exists():
             icon = QIcon(str(icon_path))
@@ -397,7 +398,9 @@ class LoginDialog(QDialog):
     def validate_credentials(self, username, password):
         """Validate user credentials - fallback method for legacy support"""
         # Look for config/users.json
-        config_dir = Path.cwd() / "config"
+        # Use app directory instead of current working directory
+        app_dir = Path(__file__).parent.parent.parent.parent
+        config_dir = app_dir / "config"
         users_file = config_dir / "users.json"
         
         try:

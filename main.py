@@ -13,50 +13,30 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 
-# Setup logging with more minimal configuration
+# Setup minimal logging - only essential startup info
 logging.basicConfig(
-    level=logging.INFO,  # Changed from DEBUG to INFO for reduced verbosity
+    level=logging.WARNING,  # Only show warnings and errors by default
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-        # Removed file handler due to network folder access issues
-    ]
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
 
-# Set specific loggers to appropriate levels
-logging.getLogger('PyQt5').setLevel(logging.WARNING)
-logging.getLogger('matplotlib').setLevel(logging.WARNING)
-logging.getLogger('PIL').setLevel(logging.WARNING)
-logging.getLogger('googleapiclient').setLevel(logging.WARNING)
-logging.getLogger('google.auth').setLevel(logging.WARNING)
-logging.getLogger('urllib3').setLevel(logging.WARNING)
-
-# Keep DEBUG level for database-related operations to track timing
+# Allow INFO level for main application startup
+logging.getLogger('__main__').setLevel(logging.INFO)
+logging.getLogger('src.gui.handlers.settings_handler').setLevel(logging.INFO)
 logging.getLogger('src.gui.main_window').setLevel(logging.INFO)
-logging.getLogger('src.database.manager').setLevel(logging.INFO)
 
-# Create a custom filter for performance logging
-class PerformanceFilter(logging.Filter):
-    def filter(self, record):
-        # Only allow log messages about database loading times and critical operations
-        if 'database change' in record.getMessage() or 'Database open operation' in record.getMessage():
-            return True
-        # Hide excessive PERF: messages unless they're about total time
-        if 'PERF:' in record.getMessage() and 'Total' not in record.getMessage():
-            return False
-        return True
+# Enable detailed logging for auto-sync debugging
+logging.getLogger('src.gui.handlers.auto_update_handler').setLevel(logging.INFO)
+logging.getLogger('src.gui.handlers.field_data_consolidator').setLevel(logging.INFO)
+logging.getLogger('src.gui.handlers.runs_folder_monitor').setLevel(logging.INFO)
 
-# Apply the filter to relevant loggers
-main_window_logger = logging.getLogger('src.gui.main_window')
-main_window_logger.addFilter(PerformanceFilter())
-db_manager_logger = logging.getLogger('src.database.manager')
-db_manager_logger.addFilter(PerformanceFilter())
-
-# Set very low log level for extremely verbose components
-logging.getLogger('src.gui.tabs.database_tab').setLevel(logging.WARNING)
-logging.getLogger('src.gui.tabs.barologger_tab').setLevel(logging.WARNING)
-logging.getLogger('src.gui.tabs.water_level_tab').setLevel(logging.WARNING)
-logging.getLogger('src.gui.tabs.water_level_runs_tab').setLevel(logging.WARNING)
+# Suppress noisy third-party libraries
+logging.getLogger('PyQt5').setLevel(logging.ERROR)
+logging.getLogger('matplotlib').setLevel(logging.ERROR)
+logging.getLogger('PIL').setLevel(logging.ERROR)
+logging.getLogger('googleapiclient').setLevel(logging.ERROR)
+logging.getLogger('google.auth').setLevel(logging.ERROR)
+logging.getLogger('urllib3').setLevel(logging.ERROR)
 
 logger = logging.getLogger(__name__)
 

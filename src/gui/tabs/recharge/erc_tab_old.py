@@ -4089,6 +4089,13 @@ class ErcTab(BaseRechargeTab):
                             period_end_date=''
                         )
                 
+                # Mark cloud database as modified if applicable
+                if (hasattr(self, 'parent') and self.parent and 
+                    hasattr(self.parent, 'db_manager') and self.parent.db_manager and 
+                    self.parent.db_manager.is_cloud_database):
+                    self.parent.db_manager.mark_cloud_modified()
+                    logger.info("Marked cloud database as modified after ERC curve save")
+                
                 QMessageBox.information(self, "Save Successful", 
                     "ERC curve saved successfully with enhanced metadata.")
                 
@@ -4201,6 +4208,13 @@ class ErcTab(BaseRechargeTab):
             )
             
             if calc_id:
+                # Mark cloud database as modified if applicable
+                if (hasattr(self, 'parent') and self.parent and 
+                    hasattr(self.parent, 'db_manager') and self.parent.db_manager and 
+                    self.parent.db_manager.is_cloud_database):
+                    self.parent.db_manager.mark_cloud_modified()
+                    logger.info("Marked cloud database as modified after ERC calculation save")
+                
                 QMessageBox.information(
                     self, 
                     "Save Successful", 

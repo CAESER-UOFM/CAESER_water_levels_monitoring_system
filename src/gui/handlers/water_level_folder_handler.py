@@ -22,10 +22,11 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 class WaterLevelFolderProcessor:
-    def __init__(self, water_level_model):
+    def __init__(self, water_level_model, settings_handler=None):
         self.water_level_model = water_level_model
         self.processor = WaterLevelProcessor(water_level_model)
         self.solinst_reader = SolinstReader()
+        self.settings_handler = settings_handler
 
     def scan_folder(self, folder_path: Path, include_subfolders: bool = False,
                    progress_dialog: WaterLevelProgressDialog = None,
@@ -240,11 +241,13 @@ class WaterLevelFolderProcessor:
                 progress_dialog.log_message(f"Found {total_wells} wells with {total_files} total files")
                 progress_dialog.update_progress(0, total_files)
             
-            # Create file organizer - moved inside the loop to ensure fresh instance
+            # Create file organizer using settings handler for proper XLE import path
             from ..utils.file_organizer import XLEFileOrganizer
-            app_root_dir = Path(__file__).parent.parent.parent.parent
             
-            logger.info(f"FILE_ORG: App root directory: {app_root_dir}")
+            # Get database name for organizing files by project
+            db_name = Path(self.water_level_model.db_path).stem if self.water_level_model.db_path else None
+            
+            logger.info(f"FILE_ORG: Using settings handler for XLE import directory")
             if progress_dialog:
                 progress_dialog.log_message("File organizer will be initialized per well")
 
@@ -288,8 +291,8 @@ class WaterLevelFolderProcessor:
                     
                     new_data_vector = pd.DataFrame()
                     
-                    # Initialize organizer fresh for each well
-                    organizer = XLEFileOrganizer(app_root_dir)
+                    # Initialize organizer fresh for each well using settings handler
+                    organizer = XLEFileOrganizer(db_name=db_name, settings_handler=self.settings_handler)
                     logger.info(f"FILE_ORG: Initialized organizer for well {well_number}")
                     progress_dialog.log_message(f"File organizer initialized for well {well_number}")
 
@@ -414,7 +417,12 @@ class WaterLevelFolderProcessor:
                 progress_dialog.log_message(f"\n=== Processing Complete ===")
                 progress_dialog.log_message(f"Successfully processed {processed_wells} of {total_wells} wells")
                 progress_dialog.log_message(f"Total files processed: {processed_files} of {total_files}")
-                progress_dialog.log_message(f"Files were organized to: {app_root_dir / 'imported_xle_files'}")
+                # Get XLE import directory from settings for log message
+                # Use app directory instead of current working directory
+                app_dir = Path(__file__).parent.parent.parent.parent
+                xle_import_dir = self.settings_handler.get_setting("xle_import_directory", str(app_dir / "imported_xle_files")) if self.settings_handler else str(app_dir / "imported_xle_files")
+                logger.debug(f"DEBUG: WaterLevelFolderHandler xle_import_dir: {xle_import_dir}")
+                progress_dialog.log_message(f"Files were organized to: {xle_import_dir}")
                 
                 # Show details for each processed well
                 for well_number, info in file_map.items():

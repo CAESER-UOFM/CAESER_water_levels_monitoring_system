@@ -50,6 +50,9 @@ class XLEFileManager:
         Returns:
             ID of the tracked file record
         """
+        logger.info(f"XLE_TRACK: Attempting to track XLE file: {file_path}")
+        logger.info(f"XLE_TRACK: File type: {file_type}, Serial: {serial_number}, Well: {well_number}, Project: {project_name}")
+        
         try:
             if not os.path.exists(file_path):
                 raise FileNotFoundError(f"XLE file not found: {file_path}")
@@ -481,3 +484,211 @@ class XLEFileManager:
         except Exception as e:
             logger.error(f"Error getting upload summary: {e}")
             return {}
+    
+    def rebuild_tracking_from_database(self, project_name: str = None) -> int:
+        """
+        Rebuild XLE file tracking from database after loading a draft.
+        Validates file paths and updates tracking for files that still exist.
+        
+        Args:
+            project_name: Optional project name to rebuild tracking for
+            
+        Returns:
+            Number of files successfully rebuilt
+        """
+        try:
+            with self.db_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # Enhanced logging to debug project name issues
+                logger.info(f"XLE_REBUILD: Starting rebuild for project_name='{project_name}'")
+                
+                # First, let's see what projects we have in the database
+                cursor.execute("SELECT DISTINCT project_name FROM xle_files")
+                projects_in_db = [row[0] for row in cursor.fetchall()]
+                logger.info(f"XLE_REBUILD: Projects found in xle_files table: {projects_in_db}")
+                
+                # Get all tracked XLE files from database
+                if project_name:
+                    # Try exact match first
+                    cursor.execute("""
+                        SELECT id, file_path, file_type, serial_number, well_number, 
+                               start_date, end_date, project_name, upload_status
+                        FROM xle_files 
+                        WHERE project_name = ? AND upload_status != 'uploaded'
+                        ORDER BY created_at
+                    """, (project_name,))
+                    tracked_files = cursor.fetchall()
+                    logger.info(f"XLE_REBUILD: Found {len(tracked_files)} files for exact project match: '{project_name}'")
+                    
+                    # If no exact match, try case-insensitive search
+                    if not tracked_files:
+                        cursor.execute("""
+                            SELECT id, file_path, file_type, serial_number, well_number, 
+                                   start_date, end_date, project_name, upload_status
+                            FROM xle_files 
+                            WHERE LOWER(project_name) = LOWER(?) AND upload_status != 'uploaded'
+                            ORDER BY created_at
+                        """, (project_name,))
+                        tracked_files = cursor.fetchall()
+                        logger.info(f"XLE_REBUILD: Found {len(tracked_files)} files for case-insensitive project match: '{project_name}'")
+                    
+                    # If still no match, try partial match (maybe project name has extra characters)
+                    if not tracked_files:
+                        cursor.execute("""
+                            SELECT id, file_path, file_type, serial_number, well_number, 
+                                   start_date, end_date, project_name, upload_status
+                            FROM xle_files 
+                            WHERE project_name LIKE ? AND upload_status != 'uploaded'
+                            ORDER BY created_at
+                        """, (f"%{project_name}%",))
+                        tracked_files = cursor.fetchall()
+                        logger.info(f"XLE_REBUILD: Found {len(tracked_files)} files for partial project match: '{project_name}'")
+                        
+                        if tracked_files:
+                            found_projects = set(row[7] for row in tracked_files)
+                            logger.info(f"XLE_REBUILD: Partial matches found in projects: {found_projects}")
+                else:
+                    cursor.execute("""
+                        SELECT id, file_path, file_type, serial_number, well_number, 
+                               start_date, end_date, project_name, upload_status
+                        FROM xle_files 
+                        WHERE upload_status != 'uploaded'
+                        ORDER BY created_at
+                    """)
+                    tracked_files = cursor.fetchall()
+                    logger.info(f"XLE_REBUILD: Found {len(tracked_files)} tracked XLE files (all projects)")
+                
+                logger.info(f"XLE_REBUILD: Total tracked files found: {len(tracked_files)}")
+                
+                # Debug: Show what we found
+                if tracked_files:
+                    for file_record in tracked_files:
+                        file_id, file_path, file_type, serial_number, well_number, start_date, end_date, proj_name, upload_status = file_record
+                        logger.debug(f"  - ID {file_id}: {file_type} {serial_number}, path: {file_path}, status: {upload_status}")
+                else:
+                    logger.warning(f"No tracked XLE files found in database for project: {project_name}")
+                    # Let's also check if there are ANY xle_files records at all
+                    cursor.execute("SELECT COUNT(*) FROM xle_files")
+                    total_count = cursor.fetchone()[0]
+                    logger.info(f"Total XLE file records in database: {total_count}")
+                    
+                    if total_count > 0:
+                        # Show what we have
+                        cursor.execute("""
+                            SELECT project_name, upload_status, COUNT(*) 
+                            FROM xle_files 
+                            GROUP BY project_name, upload_status
+                        """)
+                        breakdown = cursor.fetchall()
+                        logger.info("XLE files breakdown by project and status:")
+                        for proj, status, count in breakdown:
+                            logger.info(f"  - Project: {proj}, Status: {status}, Count: {count}")
+                
+                if not tracked_files:
+                    return 0
+                
+                rebuilt_count = 0
+                missing_files = []
+                
+                for file_record in tracked_files:
+                    file_id, file_path, file_type, serial_number, well_number, start_date, end_date, proj_name, upload_status = file_record
+                    
+                    # Check if file still exists at original path
+                    if os.path.exists(file_path):
+                        logger.debug(f"✓ XLE file exists: {file_path}")
+                        rebuilt_count += 1
+                        continue
+                    
+                    # Try to find file in project's import directory structure
+                    potential_paths = self._find_potential_file_paths(
+                        file_path, file_type, serial_number, proj_name
+                    )
+                    
+                    found_path = None
+                    for potential_path in potential_paths:
+                        if os.path.exists(potential_path):
+                            found_path = potential_path
+                            break
+                    
+                    if found_path:
+                        # Update database with new path
+                        cursor.execute("""
+                            UPDATE xle_files 
+                            SET file_path = ?, updated_at = CURRENT_TIMESTAMP
+                            WHERE id = ?
+                        """, (found_path, file_id))
+                        logger.info(f"✓ Updated XLE file path: {os.path.basename(file_path)} -> {found_path}")
+                        rebuilt_count += 1
+                    else:
+                        missing_files.append({
+                            'id': file_id,
+                            'original_path': file_path,
+                            'serial_number': serial_number,
+                            'file_type': file_type
+                        })
+                        logger.warning(f"✗ XLE file not found: {file_path}")
+                
+                # Commit any path updates
+                conn.commit()
+                
+                if missing_files:
+                    logger.warning(f"Could not locate {len(missing_files)} XLE files. They may need to be re-imported:")
+                    for missing in missing_files:
+                        logger.warning(f"  - {missing['file_type']} {missing['serial_number']}: {os.path.basename(missing['original_path'])}")
+                
+                logger.info(f"Rebuilt tracking for {rebuilt_count}/{len(tracked_files)} XLE files")
+                return rebuilt_count
+                
+        except Exception as e:
+            logger.error(f"Error rebuilding XLE tracking from database: {e}")
+            return 0
+    
+    def _find_potential_file_paths(self, original_path: str, file_type: str, serial_number: str, project_name: str) -> List[str]:
+        """
+        Find potential paths where an XLE file might be located based on the import directory structure.
+        
+        Args:
+            original_path: Original file path from database
+            file_type: 'transducer' or 'barologger'
+            serial_number: Device serial number
+            project_name: Project name
+            
+        Returns:
+            List of potential file paths to check
+        """
+        potential_paths = []
+        
+        try:
+            # Get XLE import directory from settings
+            app_dir = Path(__file__).parent.parent.parent.parent
+            xle_import_base = Path(self.settings_handler.get_setting("xle_import_directory", str(app_dir / "imported_xle_files")))
+            
+            # Original filename
+            original_filename = os.path.basename(original_path)
+            
+            # Path 1: Project-specific import directory structure
+            if project_name:
+                if file_type == 'barologger':
+                    potential_path = xle_import_base / project_name / "barologgers" / serial_number / original_filename
+                else:  # transducer
+                    potential_path = xle_import_base / project_name / "transducers" / serial_number / original_filename
+                potential_paths.append(str(potential_path))
+            
+            # Path 2: Base import directory structure (no project name)
+            if file_type == 'barologger':
+                potential_path = xle_import_base / "barologgers" / serial_number / original_filename
+            else:  # transducer  
+                potential_path = xle_import_base / "transducers" / serial_number / original_filename
+            potential_paths.append(str(potential_path))
+            
+            # Path 3: Check if file exists in any subdirectory with matching filename
+            if xle_import_base.exists():
+                for file_path in xle_import_base.rglob(original_filename):
+                    if str(file_path) not in potential_paths:
+                        potential_paths.append(str(file_path))
+            
+        except Exception as e:
+            logger.error(f"Error finding potential file paths: {e}")
+        
+        return potential_paths

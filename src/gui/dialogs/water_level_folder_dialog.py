@@ -18,6 +18,7 @@ from matplotlib.widgets import Cursor
 from PyQt5.QtGui import QIcon
 import numpy as np
 from typing import Optional
+from ..utils.button_styles import ButtonStyles
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,14 @@ class DetailedPlotDialog(QDialog):
     def setup_ui(self):
         self.setWindowTitle(f"Detailed View - Well {self.well_number}")
         self.resize(1200, 800)
+        
+        # Apply blue background styling
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f6fafd;
+            }
+        """)
+        
         layout = QVBoxLayout(self)
         
         # Create figure with larger size
@@ -194,11 +203,11 @@ class DetailedPlotDialog(QDialog):
         self.canvas.setCursor(Qt.CrossCursor)
 
 class WaterLevelFolderDialog(QDialog):
-    def __init__(self, water_level_model, parent=None):
+    def __init__(self, water_level_model, parent=None, settings_handler=None):
         super().__init__(parent)
         self.water_level_model = water_level_model
         self.folder_path = None  # Initialize as None since we select it in dialog
-        self.processor = WaterLevelFolderProcessor(water_level_model)
+        self.processor = WaterLevelFolderProcessor(water_level_model, settings_handler=settings_handler)
         self.data = None
         
         self.setup_ui()  # Set up UI before processing any folder
@@ -213,6 +222,27 @@ class WaterLevelFolderDialog(QDialog):
         self.setWindowTitle("Import Folder Data")
         self.resize(1200, 800)
         self.setMinimumSize(1200, 800)
+        
+        # Apply blue background styling
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f6fafd;
+            }
+            QGroupBox {
+                font-weight: bold;
+                border: 1px solid #CCCCCC;
+                border-radius: 5px;
+                margin-top: 10px;
+                padding-top: 10px;
+                background-color: #ffffff;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top center;
+                padding: 0 5px;
+            }
+        """)
+        
         main_layout = QVBoxLayout(self)
         
         # Folder selection group
@@ -231,12 +261,14 @@ class WaterLevelFolderDialog(QDialog):
         button_layout.setSpacing(2)  # Very tight spacing between these controls
         button_layout.setContentsMargins(0, 0, 0, 0)  # No margins
         
-        self.select_folder_btn = QPushButton("Select Folder")
+        self.select_folder_btn = QPushButton("📁 Select Folder")
+        ButtonStyles.apply_button_style(self.select_folder_btn, 'primary')
         self.select_folder_btn.clicked.connect(self.select_folder)
         
         self.subfolder_cb = QCheckBox("Include Subfolders")
         
-        self.scan_btn = QPushButton("Scan Folder")
+        self.scan_btn = QPushButton("🔍 Scan Folder")
+        ButtonStyles.apply_button_style(self.scan_btn, 'import')
         self.scan_btn.clicked.connect(self.scan_folder)
         self.scan_btn.setEnabled(False)
         
@@ -290,6 +322,7 @@ class WaterLevelFolderDialog(QDialog):
         
         # Add Full View button to toolbar
         self.full_view_btn = QPushButton()
+        ButtonStyles.apply_button_style(self.full_view_btn, 'primary')
         self.full_view_btn.setToolTip("Open in Full View")
         self.full_view_btn.setText("Full View")
         self.full_view_btn.setFixedWidth(100)
@@ -307,15 +340,18 @@ class WaterLevelFolderDialog(QDialog):
         controls_layout = QHBoxLayout()
         controls_layout.setSpacing(10)
         
-        self.process_btn = QPushButton("Process Files")
+        self.process_btn = QPushButton("⚙️ Process Files")
+        ButtonStyles.apply_button_style(self.process_btn, 'edit')
         self.process_btn.clicked.connect(self.process_files)
         self.process_btn.setEnabled(False)
         
-        self.import_btn = QPushButton("Import Selected")
+        self.import_btn = QPushButton("📥 Import Selected")
+        ButtonStyles.apply_button_style(self.import_btn, 'create')
         self.import_btn.clicked.connect(self.import_selected)
         self.import_btn.setEnabled(False)
         
         cancel_btn = QPushButton("Cancel")
+        ButtonStyles.apply_button_style(cancel_btn, 'cancel')
         cancel_btn.clicked.connect(self.reject)
         
         # Set dynamic widths with padding for bottom buttons
@@ -545,12 +581,14 @@ class WaterLevelFolderDialog(QDialog):
                 try:
                     # Import file organizer here to ensure it's available
                     from ..utils.file_organizer import XLEFileOrganizer
-                    app_root_dir = Path(__file__).parent.parent.parent.parent
                     
-                    # Create file organizer
-                    organizer = XLEFileOrganizer(app_root_dir, db_name=Path(self.water_level_model.db_path).stem)
+                    # Create file organizer using settings handler for proper path
+                    db_name = Path(self.water_level_model.db_path).stem if self.water_level_model.db_path else None
+                    organizer = XLEFileOrganizer(db_name=db_name, settings_handler=self.processor.settings_handler)
                     logger.warning("FILE_ORG_IMPORT: Created file organizer")
-                    progress_dialog.log_message(f"File organizer created with root: {app_root_dir}")
+                    # Get XLE import directory for log message
+                    xle_import_dir = self.processor.settings_handler.get_setting("xle_import_directory", str(Path.cwd() / "imported_xle_files")) if self.processor.settings_handler else str(Path.cwd() / "imported_xle_files")
+                    progress_dialog.log_message(f"File organizer created, importing to: {xle_import_dir}")
                     
                     # Process only wells that were successfully imported
                     for well_idx, well_number in enumerate(successfully_imported_wells, 1):
@@ -571,12 +609,14 @@ class WaterLevelFolderDialog(QDialog):
                             progress_dialog.log_message(f"Processing file {file_idx}/{len(self.data[well_number]['files'])}: {file_path.name}")
                             
                             try:
-                                # Get file metadata for organization
-                                metadata, _ = self.processor.solinst_reader.get_file_metadata(file_path)
+                                # Get file metadata and actual data for organization
+                                df, metadata = self.processor.solinst_reader.read_xle(file_path)
                                 
-                                # Get timestamp range from this file's metadata
-                                file_start_date = pd.to_datetime(metadata.start_time)
-                                file_end_date = pd.to_datetime(metadata.stop_time)
+                                # Get timestamp range from actual data instead of metadata
+                                # This prevents issues where metadata has programmed stop time (e.g., 2026)
+                                # but actual data ends earlier (e.g., 2025)
+                                file_start_date = pd.to_datetime(df['timestamp_utc'].min())
+                                file_end_date = pd.to_datetime(df['timestamp_utc'].max())
                                 
                                 # Check if this is a barologger (which should be rare)
                                 is_baro = self.processor.solinst_reader.is_barologger(metadata)
@@ -614,6 +654,55 @@ class WaterLevelFolderDialog(QDialog):
                                 
                                 if result_path:
                                     progress_dialog.log_message(f"  Successfully organized to: {result_path}")
+                                    
+                                    # Track XLE file for cloud upload if we have a cloud database
+                                    try:
+                                        progress_dialog.log_message(f"  XLE_TRACK_DEBUG: Checking cloud upload conditions...")
+                                        db_manager = self.water_level_model.db_manager
+                                        progress_dialog.log_message(f"  XLE_TRACK_DEBUG: db_manager exists: {db_manager is not None}")
+                                        if db_manager:
+                                            progress_dialog.log_message(f"  XLE_TRACK_DEBUG: has is_cloud_database: {hasattr(db_manager, 'is_cloud_database')}")
+                                            progress_dialog.log_message(f"  XLE_TRACK_DEBUG: is_cloud_database: {getattr(db_manager, 'is_cloud_database', False)}")
+                                            progress_dialog.log_message(f"  XLE_TRACK_DEBUG: has cloud_db_handler: {hasattr(db_manager, 'cloud_db_handler')}")
+                                            if hasattr(db_manager, 'cloud_db_handler'):
+                                                progress_dialog.log_message(f"  XLE_TRACK_DEBUG: cloud_db_handler exists: {db_manager.cloud_db_handler is not None}")
+                                                if db_manager.cloud_db_handler:
+                                                    progress_dialog.log_message(f"  XLE_TRACK_DEBUG: has xle_manager: {hasattr(db_manager.cloud_db_handler, 'xle_manager')}")
+                                                    if hasattr(db_manager.cloud_db_handler, 'xle_manager'):
+                                                        progress_dialog.log_message(f"  XLE_TRACK_DEBUG: xle_manager exists: {db_manager.cloud_db_handler.xle_manager is not None}")
+                                        
+                                        if (self.water_level_model.db_manager and 
+                                            hasattr(self.water_level_model.db_manager, 'is_cloud_database') and 
+                                            self.water_level_model.db_manager.is_cloud_database and
+                                            hasattr(self.water_level_model.db_manager, 'cloud_db_handler') and
+                                            self.water_level_model.db_manager.cloud_db_handler and
+                                            hasattr(self.water_level_model.db_manager.cloud_db_handler, 'xle_manager') and
+                                            self.water_level_model.db_manager.cloud_db_handler.xle_manager):
+                                            
+                                            # Get project name from cloud database manager
+                                            project_name = getattr(self.water_level_model.db_manager, 'cloud_project_name', None)
+                                            progress_dialog.log_message(f"  XLE_TRACK_DEBUG: project_name: {project_name}")
+                                            
+                                            if project_name:
+                                                # Track the organized XLE file for cloud upload
+                                                file_id = self.water_level_model.db_manager.cloud_db_handler.xle_manager.track_xle_file(
+                                                    file_path=str(result_path),
+                                                    file_type='transducer',
+                                                    serial_number=metadata.serial_number,
+                                                    well_number=well_number,
+                                                    start_date=file_start_date.isoformat(),
+                                                    end_date=file_end_date.isoformat(),
+                                                    project_name=project_name
+                                                )
+                                                progress_dialog.log_message(f"  XLE file tracked for cloud upload (ID: {file_id})")
+                                            else:
+                                                progress_dialog.log_message("  XLE_TRACK_DEBUG: Cannot track XLE file - no project name available")
+                                        else:
+                                            progress_dialog.log_message("  XLE_TRACK_DEBUG: Not a cloud database or missing components, XLE file tracking skipped")
+                                    except Exception as e:
+                                        logger.error(f"Error tracking XLE file for cloud upload: {e}")
+                                        progress_dialog.log_message(f"  Warning: Failed to track XLE file for cloud upload: {str(e)}")
+                                        # Continue even if XLE tracking fails
                                 else:
                                     progress_dialog.log_message(f"  Warning: File organization returned None")
                                     
@@ -640,6 +729,25 @@ class WaterLevelFolderDialog(QDialog):
             progress_dialog.finish_operation()
 
             if total_imported > 0:
+                # Mark database as modified after successful import
+                try:
+                    # Get the database manager from parent window
+                    parent_window = self.parent()
+                    # Navigate up to find the main window
+                    while parent_window and not hasattr(parent_window, 'db_manager'):
+                        parent_window = parent_window.parent()
+                    
+                    if parent_window and hasattr(parent_window, 'db_manager') and parent_window.db_manager:
+                        if parent_window.db_manager.is_cloud_database:
+                            parent_window.db_manager.mark_cloud_modified()
+                            logger.info(f"Water level folder import: Marked cloud database as modified after importing {total_imported} wells")
+                        else:
+                            # For non-cloud databases, emit the signal directly
+                            parent_window.db_manager.database_modified.emit()
+                            logger.info(f"Water level folder import: Marked database as modified after importing {total_imported} wells")
+                except Exception as e:
+                    logger.error(f"Error marking database as modified after water level folder import: {e}")
+                
                 # Refresh parent UI so wells table icons update
                 parent = self.parent()
                 if parent:
@@ -1049,7 +1157,7 @@ class WaterLevelFolderDialog(QDialog):
                         read_start_time = pd.Timestamp.now()
                         df, metadata = self.processor.solinst_reader.read_xle(file_path)
                         logger.debug(f"Read XLE file in {(pd.Timestamp.now() - read_start_time).total_seconds():.2f} seconds")
-                        progress_dialog.log_message(f"Time Range: {metadata.start_time} to {metadata.stop_time}")
+                        progress_dialog.log_message(f"Time Range: {df['timestamp_utc'].min()} to {df['timestamp_utc'].max()}")
                         progress_dialog.log_message(f"Readings: {len(df)}")
                         
                         # Apply barometric compensation
@@ -1297,11 +1405,13 @@ class WaterLevelFolderDialog(QDialog):
             try:
                 self.log_message("\n=== Organizing Files ===")
                 
-                # Initialize file organizer
+                # Initialize file organizer using settings handler
                 from ..utils.file_organizer import XLEFileOrganizer
-                app_root_dir = Path(__file__).parent.parent.parent.parent
-                organizer = XLEFileOrganizer(app_root_dir, db_name=Path(self.water_level_model.db_path).stem)
-                self.log_message(f"File organizer initialized with root dir: {app_root_dir}")
+                db_name = Path(self.water_level_model.db_path).stem if self.water_level_model.db_path else None
+                organizer = XLEFileOrganizer(db_name=db_name, settings_handler=self.processor.settings_handler)
+                # Get XLE import directory for log message
+                xle_import_dir = self.processor.settings_handler.get_setting("xle_import_directory", str(Path.cwd() / "imported_xle_files")) if self.processor.settings_handler else str(Path.cwd() / "imported_xle_files")
+                self.log_message(f"File organizer initialized, importing to: {xle_import_dir}")
                 
                 for well_number, well_data in self.processed_wells.items():
                     if not well_data.get('has_been_processed'):
@@ -1311,12 +1421,14 @@ class WaterLevelFolderDialog(QDialog):
                     
                     # Organize each file for this well
                     for file_path in well_data['files']:
-                        # Get metadata from file
-                        _, metadata = self.processor.solinst_reader.read_xle(file_path)
+                        # Get file metadata and actual data for organization
+                        df, metadata = self.processor.solinst_reader.read_xle(file_path)
                         
-                        # Get timestamp range for this file
-                        file_start_date = pd.to_datetime(metadata.start_time)
-                        file_end_date = pd.to_datetime(metadata.stop_time)
+                        # Get timestamp range from actual data instead of metadata
+                        # This prevents issues where metadata has programmed stop time (e.g., 2026)
+                        # but actual data ends earlier (e.g., 2025)
+                        file_start_date = pd.to_datetime(df['timestamp_utc'].min())
+                        file_end_date = pd.to_datetime(df['timestamp_utc'].max())
                         
                         self.log_message(f"Organizing file: {file_path.name}")
                         self.log_message(f"  Serial: {metadata.serial_number}")
@@ -1350,6 +1462,44 @@ class WaterLevelFolderDialog(QDialog):
                         
                         if result_path:
                             self.log_message(f"  File successfully organized to: {result_path}")
+                            
+                            # Track XLE file for cloud upload if we have a cloud database
+                            try:
+                                if (self.water_level_model.db_manager and 
+                                    hasattr(self.water_level_model.db_manager, 'is_cloud_database') and 
+                                    self.water_level_model.db_manager.is_cloud_database and
+                                    hasattr(self.water_level_model.db_manager, 'cloud_db_handler') and
+                                    self.water_level_model.db_manager.cloud_db_handler and
+                                    hasattr(self.water_level_model.db_manager.cloud_db_handler, 'xle_manager') and
+                                    self.water_level_model.db_manager.cloud_db_handler.xle_manager):
+                                    
+                                    # Get project name from cloud database manager
+                                    project_name = getattr(self.water_level_model.db_manager, 'cloud_project_name', None)
+                                    
+                                    if project_name:
+                                        # Determine file type
+                                        file_type = 'barologger' if is_baro else 'transducer'
+                                        well_num = None if is_baro else well_number
+                                        
+                                        # Track the organized XLE file for cloud upload
+                                        file_id = self.water_level_model.db_manager.cloud_db_handler.xle_manager.track_xle_file(
+                                            file_path=str(result_path),
+                                            file_type=file_type,
+                                            serial_number=metadata.serial_number,
+                                            well_number=well_num,
+                                            start_date=file_start_date.isoformat(),
+                                            end_date=file_end_date.isoformat(),
+                                            project_name=project_name
+                                        )
+                                        self.log_message(f"  XLE file tracked for cloud upload (ID: {file_id})")
+                                    else:
+                                        self.log_message("  Warning: Cannot track XLE file - no project name available")
+                                else:
+                                    self.log_message("  Note: Not a cloud database, XLE file tracking skipped")
+                            except Exception as e:
+                                logger.error(f"Error tracking XLE file for cloud upload: {e}")
+                                self.log_message(f"  Warning: Failed to track XLE file for cloud upload: {str(e)}")
+                                # Continue even if XLE tracking fails
                         else:
                             self.log_message(f"  Warning: File organization returned None")
                             

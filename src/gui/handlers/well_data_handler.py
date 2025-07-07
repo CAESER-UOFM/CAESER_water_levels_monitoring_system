@@ -84,10 +84,11 @@ class WellDataHandler:
                 result = cursor.fetchone()
                 
                 if not result:
+                    # Return info status instead of warning to prevent redundant notifications
+                    # The dialog system will handle the registration process appropriately
                     return {
-                        'status': 'warning',
-                        'message': f"Transducer {serial_number} not found in database. "
-                                 "Do you want to register it?",
+                        'status': 'info',
+                        'message': f"Transducer {serial_number} not found in database.",
                         'details': {'action': 'register_new'}
                     }
                 

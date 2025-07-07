@@ -11,8 +11,27 @@ class StyleHandler:
     def get_common_stylesheet():
         """Return the common base stylesheet for the application."""
         return """
+            /* Main application background - exclude dialogs with specific styling */
+            QMainWindow {
+                background-color: #f6fafd;
+            }
+            
+            QTabWidget {
+                background-color: #f6fafd;
+            }
+            
+            QTabWidget::pane {
+                background-color: #f6fafd;
+            }
+            
+            /* General widget styling - but allow dialog-specific overrides */
             QWidget {
                 font-family: 'Segoe UI', Arial, sans-serif;
+            }
+            
+            /* Apply light blue background only to main content areas */
+            QWidget[class="main_content"] {
+                background-color: #f6fafd;
             }
             
             QGroupBox {
@@ -157,6 +176,24 @@ class StyleHandler:
         """Return minimal Mac fixes - just dropdown visibility and button contrast."""
         return """
             /* MINIMAL FIXES - Only fix specific issues, preserve existing good styling */
+            
+            /* Main application background - exclude dialogs with specific styling */
+            QMainWindow {
+                background-color: #f6fafd;
+            }
+            
+            QTabWidget {
+                background-color: #f6fafd;
+            }
+            
+            QTabWidget::pane {
+                background-color: #f6fafd;
+            }
+            
+            /* Apply light blue background only to main content areas */
+            QWidget[class="main_content"] {
+                background-color: #f6fafd;
+            }
             
             /* Fix dropdown text visibility - main issue */
             QComboBox {

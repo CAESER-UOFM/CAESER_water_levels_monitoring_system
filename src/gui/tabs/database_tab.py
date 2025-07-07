@@ -73,13 +73,13 @@ class DatabaseTab(QWidget):
         self.db_combo.currentTextChanged.connect(self.on_database_changed)
     
         # Create "New Database" button
-        self.create_db_button = QPushButton("New Database")
-        self.create_db_button.setFixedWidth(140)
+        self.create_db_button = QPushButton("🗄️ New Database")
+        self.create_db_button.setFixedWidth(160)
         self.create_db_button.clicked.connect(self.create_new_database)
     
         # Create "Refresh" button
-        self.refresh_db_button = QPushButton("Refresh")
-        self.refresh_db_button.setFixedWidth(100)
+        self.refresh_db_button = QPushButton("🔄 Refresh")
+        self.refresh_db_button.setFixedWidth(120)
         self.refresh_db_button.clicked.connect(self.load_existing_databases)
     
         # Add widgets to the database selection layout
@@ -595,6 +595,14 @@ class DatabaseTab(QWidget):
         start_time = time.time()
         logger.debug("PERF: Setting up map polling")
         
+        # Option to disable polling entirely to eliminate JavaScript errors
+        # Set this to False to disable well selection polling from maps
+        ENABLE_MAP_POLLING = True
+        
+        if not ENABLE_MAP_POLLING:
+            logger.debug("PERF: Map polling is disabled by configuration")
+            return
+        
         try:
             # First check if our JavaScript function is available
             js_check_start = time.time()
@@ -605,17 +613,21 @@ class DatabaseTab(QWidget):
             js_check_end = time.time()
             logger.debug(f"PERF: JavaScript function check initiated in {(js_check_end - js_check_start)*1000:.2f}ms")
             
-            # Create the polling timer
+            # Prepare the polling timer but don't start it yet - wait for function check
             timer_start = time.time()
+            if hasattr(self, 'polling_timer') and self.polling_timer.isActive():
+                self.polling_timer.stop()
+                logger.debug("PERF: Stopped existing polling timer")
+            
             if not hasattr(self, 'polling_timer'):
                 self.polling_timer = QTimer(self)
-                self.polling_timer.setInterval(500)  # Check every 500ms
                 self.polling_timer.timeout.connect(self._poll_for_well_selection)
             
-            # Start the timer
-            self.polling_timer.start()
+            self.polling_timer.setInterval(5000)  # Check every 5 seconds (further reduced frequency for better performance)
+            
+            # Timer will be started in _check_well_selection_function after confirming function exists
             timer_end = time.time()
-            logger.debug(f"PERF: Polling timer setup took {(timer_end - timer_start)*1000:.2f}ms")
+            logger.debug(f"PERF: Polling timer prepared in {(timer_end - timer_start)*1000:.2f}ms")
             
             total_time = time.time() - start_time
             logger.debug(f"PERF: Total map polling setup took {total_time*1000:.2f}ms")
@@ -628,9 +640,9 @@ class DatabaseTab(QWidget):
         start_time = time.time()
         
         try:
-            # Run the JavaScript to check for selected well
+            # Check if function exists before calling it to prevent errors
             self.map_view.page().runJavaScript(
-                "checkSelectedWell()",
+                "typeof checkSelectedWell === 'function' ? checkSelectedWell() : ''",
                 self._handle_well_selection
             )
             
@@ -640,6 +652,10 @@ class DatabaseTab(QWidget):
                 logger.debug(f"PERF: Map polling took {(end_time - start_time)*1000:.2f}ms")
         except Exception as e:
             logger.error(f"PERF: Error polling for well selection: {e}")
+            # If polling fails repeatedly, stop the timer to prevent spam
+            if hasattr(self, 'polling_timer') and self.polling_timer.isActive():
+                self.polling_timer.stop()
+                logger.warning("PERF: Stopped polling timer due to repeated errors")
 
     def _check_well_selection_function(self, function_exists):
         """Check if the well selection function exists in the map."""
@@ -648,9 +664,13 @@ class DatabaseTab(QWidget):
         
         if function_exists:
             logger.debug("PERF: checkSelectedWell function exists in map")
+            # Function exists, safe to start polling timer
+            if hasattr(self, 'polling_timer') and not self.polling_timer.isActive():
+                self.polling_timer.start()
+                logger.debug("PERF: Started polling timer after confirming function exists")
         else:
             logger.warning("PERF: checkSelectedWell function does not exist in map")
-            # Try to inject it again or handle the error
+            # Try to inject it and then start timer
             try:
                 # Simplified version of the function for injection
                 self.map_view.page().runJavaScript("""
@@ -663,14 +683,17 @@ class DatabaseTab(QWidget):
                         }
                         return "";
                     }
-                """)
+                """, self._on_function_injected)
                 logger.debug("PERF: Attempted to inject checkSelectedWell function")
             except Exception as e:
                 logger.error(f"PERF: Error injecting JavaScript function: {e}")
-        
-        total_time = time.time() - start_time
-        if total_time * 1000 > 10:  # Only log if slow
-            logger.debug(f"PERF: Well selection function check took {total_time*1000:.2f}ms")
+    
+    def _on_function_injected(self, result):
+        """Handle completion of JavaScript function injection."""
+        # Start timer after injection completes
+        if hasattr(self, 'polling_timer') and not self.polling_timer.isActive():
+            self.polling_timer.start()
+            logger.debug("PERF: Started polling timer after function injection")
 
     def _handle_well_selection(self, well_number):
         """Handle well selection from JavaScript"""
@@ -792,6 +815,11 @@ class DatabaseTab(QWidget):
         import time
         start_time = time.time()
         logger.debug(f"PERF: Database tab received database change to {db_name}")
+        
+        # Stop existing polling timer to prevent multiple timers
+        if hasattr(self, 'polling_timer') and self.polling_timer.isActive():
+            self.polling_timer.stop()
+            logger.debug("PERF: Stopped existing polling timer during database change")
         
         if not db_name or db_name == "No databases found":
             logger.debug(f"PERF: Empty database name, clearing map")

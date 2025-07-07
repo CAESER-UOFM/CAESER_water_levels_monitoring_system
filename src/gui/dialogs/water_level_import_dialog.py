@@ -28,6 +28,7 @@ import time
 import sqlite3
 import numpy as np
 import matplotlib.pyplot as plt
+from ..utils.button_styles import ButtonStyles
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,27 @@ class WaterLevelImportDialog(QDialog):
     def setup_ui(self):
         self.setWindowTitle("Import Water Level Data")
         self.resize(1000, 800)
+        
+        # Apply blue background styling
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f6fafd;
+            }
+            QGroupBox {
+                font-weight: bold;
+                border: 1px solid #CCCCCC;
+                border-radius: 5px;
+                margin-top: 10px;
+                padding-top: 10px;
+                background-color: #ffffff;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top center;
+                padding: 0 5px;
+            }
+        """)
+        
         layout = QVBoxLayout(self)
         
         # Data Information Group
@@ -75,7 +97,18 @@ class WaterLevelImportDialog(QDialog):
         # Tab widget for different views
         tab_widget = QTabWidget()
         
-        # Data Preview Tab
+        # Plot Tab (now first tab)
+        plot_tab = QWidget()
+        plot_layout = QVBoxLayout()
+        self.figure = Figure(figsize=(8, 6))
+        self.canvas = FigureCanvasQTAgg(self.figure)
+        self.toolbar = NavigationToolbar2QT(self.canvas, self)  # Add toolbar
+        plot_layout.addWidget(self.toolbar)  # Add toolbar above plot
+        plot_layout.addWidget(self.canvas)
+        plot_tab.setLayout(plot_layout)
+        tab_widget.addTab(plot_tab, "Visualization")
+        
+        # Data Preview Tab (now second tab)
         preview_tab = QWidget()
         preview_layout = QVBoxLayout()
         
@@ -88,17 +121,6 @@ class WaterLevelImportDialog(QDialog):
         preview_layout.addWidget(self.preview_table)
         preview_tab.setLayout(preview_layout)
         tab_widget.addTab(preview_tab, "Data Preview")
-        
-        # Plot Tab
-        plot_tab = QWidget()
-        plot_layout = QVBoxLayout()
-        self.figure = Figure(figsize=(8, 6))
-        self.canvas = FigureCanvasQTAgg(self.figure)
-        self.toolbar = NavigationToolbar2QT(self.canvas, self)  # Add toolbar
-        plot_layout.addWidget(self.toolbar)  # Add toolbar above plot
-        plot_layout.addWidget(self.canvas)
-        plot_tab.setLayout(plot_layout)
-        tab_widget.addTab(plot_tab, "Visualization")
         
         layout.addWidget(tab_widget)
         
@@ -127,9 +149,12 @@ class WaterLevelImportDialog(QDialog):
         self.overwrite_cb.stateChanged.connect(self.toggle_import_button)
         self.overwrite_cb.setVisible(False)  # Hidden by default
         
-        self.import_btn = QPushButton("Import")
-        self.import_btn.clicked.connect(self.import_data)
+        self.import_btn = QPushButton("📥 Import")
+        ButtonStyles.apply_button_style(self.import_btn, 'create')
+        self.import_btn.clicked.connect(self.debug_import_data)
+        
         self.cancel_btn = QPushButton("Cancel")
+        ButtonStyles.apply_button_style(self.cancel_btn, 'cancel')
         self.cancel_btn.clicked.connect(self.reject)
         
         # Layout changes
@@ -674,9 +699,15 @@ class WaterLevelImportDialog(QDialog):
             logger.error(f"Error checking data gap: {e}")
             return float('inf')
         
+    def debug_import_data(self):
+        """Debug wrapper for import_data to track button clicks"""
+        logger.info("XLE_IMPORT_DEBUG: Import button clicked")
+        self.import_data()
+    
     def import_data(self):
         """Handle data import with transducer registration and well selection in the UI."""
         try:
+            logger.info("XLE_IMPORT_DEBUG: import_data method called")
             logger.info("Starting data import")
             
             # Use pre-calculated data
@@ -713,6 +744,8 @@ class WaterLevelImportDialog(QDialog):
                 df,
                 self.overwrite_cb.isChecked()
             )
+            
+            logger.info(f"XLE_ORG_DEBUG: Import success: {success}")
     
             if success:
                 # Log the imported file in the transducer_imported_files table
@@ -740,6 +773,73 @@ class WaterLevelImportDialog(QDialog):
                     logger.error(f"Error logging imported file: {e}")
                     # Continue even if logging fails
                 
+                # Organize the imported file after successful import (EXACT copy of barologger pattern)
+                try:
+                    # Initialize file organizer using settings handler for proper path
+                    db_name = Path(self.water_level_model.db_path).stem if self.water_level_model.db_path else None
+                    
+                    # Get settings handler from water_level_model
+                    settings_handler = None
+                    if hasattr(self.water_level_model, 'db_manager') and self.water_level_model.db_manager:
+                        settings_handler = getattr(self.water_level_model.db_manager, 'settings_handler', None)
+                    
+                    from ..utils.file_organizer import XLEFileOrganizer
+                    file_organizer = XLEFileOrganizer(db_name=db_name, settings_handler=settings_handler)
+                    
+                    # Get location from metadata
+                    location = self.metadata['metadata'].location
+                    
+                    # Get start and end dates from data
+                    start_date = pd.to_datetime(df['timestamp_utc'].min())
+                    end_date = pd.to_datetime(df['timestamp_utc'].max())
+                    
+                    # Organize the file (using transducer method instead of barologger)
+                    organized_path = file_organizer.organize_transducer_file(
+                        Path(self.file_path), serial_number, location, start_date, end_date, well_number
+                    )
+                    
+                    if organized_path:
+                        logger.info(f"File organized at: {organized_path}")
+                        
+                        # Track XLE file for cloud upload if we have a cloud database
+                        try:
+                            if (self.water_level_model.db_manager and 
+                                hasattr(self.water_level_model.db_manager, 'is_cloud_database') and 
+                                self.water_level_model.db_manager.is_cloud_database and
+                                hasattr(self.water_level_model.db_manager, 'cloud_db_handler') and
+                                self.water_level_model.db_manager.cloud_db_handler and
+                                hasattr(self.water_level_model.db_manager.cloud_db_handler, 'xle_manager') and
+                                self.water_level_model.db_manager.cloud_db_handler.xle_manager):
+                                
+                                # Get project name from cloud database manager
+                                project_name = getattr(self.water_level_model.db_manager, 'cloud_project_name', None)
+                                
+                                if project_name:
+                                    # Track the organized XLE file for cloud upload
+                                    file_id = self.water_level_model.db_manager.cloud_db_handler.xle_manager.track_xle_file(
+                                        file_path=str(organized_path),
+                                        file_type='transducer',
+                                        serial_number=serial_number,
+                                        well_number=well_number,
+                                        start_date=start_date.isoformat(),
+                                        end_date=end_date.isoformat(),
+                                        project_name=project_name
+                                    )
+                                    logger.info(f"XLE file tracked for cloud upload (ID: {file_id})")
+                                else:
+                                    logger.warning("Cannot track XLE file - no project name available")
+                            else:
+                                logger.info("Not a cloud database, XLE file tracking skipped")
+                        except Exception as e:
+                            logger.error(f"Error tracking XLE file for cloud upload: {e}")
+                            # Continue even if XLE tracking fails
+                    else:
+                        logger.warning("Failed to organize XLE file")
+                        
+                except Exception as e:
+                    logger.error(f"Error organizing file after import: {e}")
+                    # Continue even if file organization fails
+                
                 QMessageBox.information(self, "Success", "Data imported successfully")
                 self.accept()
     
@@ -753,6 +853,7 @@ class WaterLevelImportDialog(QDialog):
                 QMessageBox.critical(self, "Error", "Failed to import data")
     
         except Exception as e:
+            logger.error(f"XLE_IMPORT_DEBUG: Import failed with exception: {e}", exc_info=True)
             logger.error(f"Import failed: {e}", exc_info=True)
             QMessageBox.critical(self, "Error", f"Import failed: {str(e)}")
 

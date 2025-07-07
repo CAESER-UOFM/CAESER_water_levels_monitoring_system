@@ -12,7 +12,8 @@ class SettingsHandler:
         """Initialize settings handler"""
         if settings_file is None:
             # Store settings in application config directory instead of user home
-            app_dir = Path.cwd()
+            # Use app directory instead of current working directory
+            app_dir = Path(__file__).parent.parent.parent.parent
             settings_dir = app_dir / 'config'
             self.settings_file = settings_dir / 'settings.json'
         else:
@@ -40,7 +41,7 @@ class SettingsHandler:
         """Set default settings if not already set"""
         # Find the default client secret file in the config directory
         default_secret_path = ""
-        config_dir = Path.cwd() / "config"
+        config_dir = Path(__file__).parent.parent.parent.parent / "config"
         if config_dir.exists():
             # Look for client_secret*.json files
             secret_files = list(config_dir.glob("client_secret*.json"))
@@ -68,18 +69,23 @@ class SettingsHandler:
                     continue
         
         # Determine default database directory
-        # Check if we're in an installation (has databases folder in current dir)
-        databases_folder = Path.cwd() / "databases"
+        # Use app directory instead of current working directory
+        app_dir = Path(__file__).parent.parent.parent.parent
+        databases_folder = app_dir / "databases"
         if databases_folder.exists():
             default_db_directory = str(databases_folder)
-            logger.info(f"Using installation databases folder: {default_db_directory}")
+            logger.info(f"Using app databases folder: {default_db_directory}")
         else:
-            # Fallback to current working directory
-            default_db_directory = str(Path.cwd())
-            logger.info(f"Using current working directory for databases: {default_db_directory}")
+            # Fallback to app directory
+            default_db_directory = str(app_dir)
+            logger.info(f"Using app directory for databases: {default_db_directory}")
+        
+        # Set XLE import directory to always be in main app folder
+        xle_import_directory = str(app_dir / "imported_xle_files")
         
         defaults = {
             "local_db_directory": default_db_directory,
+            "xle_import_directory": xle_import_directory,  # Always in main app folder, separate from database location
             "use_google_drive_db": True,
             "google_drive_auto_check": False,
             "google_drive_folder_id": "1vGoxkS-HQ0n0u0ToNcYL_wJGZ02RDhAK",  # Default CAESER folder ID for database
@@ -87,9 +93,9 @@ class SettingsHandler:
             "google_drive_projects_folder_id": "1JjiXRblLAf6rdhiOzrAaYik8bjNpBc9s",  # Default Projects folder ID
             "google_drive_secret_path": default_secret_path,  # Default client secret path (legacy OAuth)
             "service_account_key_path": default_service_account_path,  # Service account key path
-            "transducer_watch_folder": str(Path.cwd()),  # Add transducer watch folder default
-            "barologger_watch_folder": str(Path.cwd()),  # Add barologger watch folder default
-            "water_level_watch_folder": str(Path.cwd()),  # Add water level watch folder default
+            "transducer_watch_folder": str(app_dir),  # Add transducer watch folder default
+            "barologger_watch_folder": str(app_dir),  # Add barologger watch folder default
+            "water_level_watch_folder": str(app_dir),  # Add water level watch folder default
             "field_data_folders": ["1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW"],  # Field laptop Solinst folders (correct folder ID)
             "consolidated_field_data_folder": ""  # Will be set to water_levels_monitoring/FIELD_DATA_CONSOLIDATED
         }
@@ -110,8 +116,17 @@ class SettingsHandler:
                 # Force save immediately to persist the correction
                 self.save_settings()
         
+        # Always force XLE import directory to be in main app folder regardless of database location
+        if "xle_import_directory" in self.settings:
+            current_xle_path = self.settings["xle_import_directory"]
+            if current_xle_path != xle_import_directory:
+                logger.info(f"Updating XLE import directory to main app folder: {current_xle_path} -> {xle_import_directory}")
+                self.settings["xle_import_directory"] = xle_import_directory
+                self.save_settings()
+        
         for key, value in defaults.items():
             if key not in self.settings or not self.settings[key]:
+                logger.debug(f"DEBUG: Setting default for {key}: {repr(value)}")
                 self.settings[key] = value
                 
         # Save settings if any defaults were set
@@ -139,13 +154,14 @@ class SettingsHandler:
     def reset_database_directory(self):
         """Reset database directory to installation default"""
         # Determine default database directory
-        databases_folder = Path.cwd() / "databases"
+        app_dir = Path(__file__).parent.parent.parent.parent
+        databases_folder = app_dir / "databases"
         if databases_folder.exists():
             default_db_directory = str(databases_folder)
             logger.info(f"Resetting to installation databases folder: {default_db_directory}")
         else:
-            default_db_directory = str(Path.cwd())
-            logger.info(f"Resetting to current working directory: {default_db_directory}")
+            default_db_directory = str(app_dir)
+            logger.info(f"Resetting to app directory: {default_db_directory}")
         
         self.settings["local_db_directory"] = default_db_directory
         self.save_settings()

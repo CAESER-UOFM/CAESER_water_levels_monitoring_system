@@ -49,7 +49,9 @@ class GoogleDriveService:
             # If not set in settings, try to find the file in config directory
             if not service_account_path or not os.path.exists(service_account_path):
                 logger.warning("DEBUG: Service account key not found in settings, searching config directory")
-                config_dir = Path.cwd() / "config"
+                # Use app directory instead of current working directory
+                app_dir = Path(__file__).parent.parent.parent.parent
+                config_dir = app_dir / "config"
                 logger.warning(f"DEBUG: Checking config directory: {config_dir}")
                 logger.warning(f"DEBUG: Config directory exists: {config_dir.exists()}")
                 

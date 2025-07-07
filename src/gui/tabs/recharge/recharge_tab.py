@@ -80,20 +80,15 @@ class RechargeTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
         
-        # Header with info and settings button
+        # Header with well selection and settings button on same level
         header_layout = QHBoxLayout()
         
-        # Compact info label
-        info_label = QLabel("Recharge Analysis - Select well and method")
-        info_label.setStyleSheet("""
-            QLabel {
-                font-weight: bold;
-                color: #2c3e50;
-                font-size: 13px;
-                padding: 2px;
-            }
-        """)
-        header_layout.addWidget(info_label)
+        # Add well selection controls directly to header
+        well_selection_widget = self.create_well_selection_inline()
+        header_layout.addWidget(well_selection_widget)
+        
+        # Add stretch to push settings button to the right
+        header_layout.addStretch()
         
         # Settings button
         self.settings_btn = QPushButton("Global Settings")
@@ -114,29 +109,22 @@ class RechargeTab(QWidget):
         """)
         header_layout.addWidget(self.settings_btn)
         
-        
-        # Preferences button removed - using global settings instead
-        # Help button removed - now handled by main application help system
-        
         layout.addLayout(header_layout)
         
-        # Add well selection controls
-        well_selection = self.create_well_selection()
-        layout.addWidget(well_selection)
         
         # Create recharge methods tabs
         recharge_methods = self.create_recharge_methods()
         layout.addWidget(recharge_methods)
     
-    def create_well_selection(self):
-        """Create compact well selection controls."""
+    def create_well_selection_inline(self):
+        """Create compact well selection controls for header."""
         from PyQt5.QtWidgets import QComboBox, QHBoxLayout
         import sqlite3
         
-        # Create a compact horizontal layout without group box
+        # Create a compact horizontal layout for inline use
         selection_widget = QWidget()
         selection_layout = QHBoxLayout(selection_widget)
-        selection_layout.setContentsMargins(0, 5, 0, 5)
+        selection_layout.setContentsMargins(0, 0, 0, 0)
         selection_layout.setSpacing(8)
         
         # Compact aquifer filter
@@ -177,9 +165,6 @@ class RechargeTab(QWidget):
         self.well_combo.currentTextChanged.connect(self.on_well_selected)
         selection_layout.addWidget(self.well_combo)
         
-        # Add stretch to push everything to the left
-        selection_layout.addStretch()
-        
         # Load initial data
         self.load_aquifer_filters()
         self.load_wells()
@@ -196,6 +181,11 @@ class RechargeTab(QWidget):
             self.aquifers_cache):
             logger.debug("[FILTER_DEBUG] Using cached aquifer data")
             self._populate_aquifer_combo()
+            return
+            
+        # Safety check to prevent None file creation
+        if self.db_manager.current_db is None or str(self.db_manager.current_db) == "None":
+            logger.warning("No database selected - skipping aquifer filter loading")
             return
             
         try:
@@ -255,6 +245,12 @@ class RechargeTab(QWidget):
             
         # Set loading flag to prevent concurrent calls
         self.loading_wells = True
+        
+        # Safety check to prevent None file creation
+        if self.db_manager.current_db is None or str(self.db_manager.current_db) == "None":
+            logger.warning("No database selected - skipping well loading")
+            self.loading_wells = False
+            return
         
         try:
             with sqlite3.connect(self.db_manager.current_db) as conn:
@@ -440,10 +436,7 @@ class RechargeTab(QWidget):
     
     def create_recharge_methods(self):
         """Create the tab widget for different recharge methods."""
-        group_box = QGroupBox("Recharge Estimation Methods")
-        layout = QVBoxLayout(group_box)
-        
-        # Create tab widget
+        # Create tab widget directly without group box
         self.methods_tab = QTabWidget()
         
         # Create tabs for each method
@@ -459,9 +452,7 @@ class RechargeTab(QWidget):
         self.methods_tab.addTab(self.mrc_tab, "MRC Method")
         self.methods_tab.addTab(self.emr_tab, "EMR Method")
         
-        layout.addWidget(self.methods_tab)
-        
-        return group_box
+        return self.methods_tab
     
     def update_well_selection(self, selected_wells):
         """

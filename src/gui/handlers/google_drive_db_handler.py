@@ -89,7 +89,9 @@ class GoogleDriveDatabaseHandler:
                 
             # Determine local path with (drive) suffix
             if not local_dir:
-                local_dir = self.settings_handler.get_setting("local_db_directory", str(Path.cwd()))
+                # Use app directory instead of current working directory
+                app_dir = Path(__file__).parent.parent.parent.parent
+                local_dir = self.settings_handler.get_setting("local_db_directory", str(app_dir))
                 
             # Add (drive) suffix to the filename
             db_name_parts = db_name.split('.')
@@ -189,7 +191,9 @@ class GoogleDriveDatabaseHandler:
         try:
             # Determine local path
             if not local_dir:
-                local_dir = self.settings_handler.get_setting("local_db_directory", str(Path.cwd()))
+                # Use app directory instead of current working directory
+                app_dir = Path(__file__).parent.parent.parent.parent
+                local_dir = self.settings_handler.get_setting("local_db_directory", str(app_dir))
                 
             local_path = Path(local_dir) / db_name
             

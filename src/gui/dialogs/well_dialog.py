@@ -6,6 +6,7 @@ from PyQt5.QtCore import Qt
 from pathlib import Path
 import sqlite3
 import logging
+from ..utils.button_styles import ButtonStyles
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +107,7 @@ class WellDialog(QDialog):
         self.picture_path = QLineEdit()
         self.picture_path.setReadOnly(True)
         picture_btn = QPushButton("Browse...")
+        ButtonStyles.apply_button_style(picture_btn, 'import')
         picture_btn.clicked.connect(self.browse_picture)
         picture_layout.addWidget(self.picture_path)
         picture_layout.addWidget(picture_btn)
@@ -122,6 +124,7 @@ class WellDialog(QDialog):
             layout.addWidget(self.data_summary_label)
             
             self.delete_btn = QPushButton("Delete Transducer Data")  # Changed button text
+            ButtonStyles.apply_button_style(self.delete_btn, 'delete')
             self.delete_btn.clicked.connect(self.delete_well_data)
             self.delete_btn.setEnabled(False)
             layout.addWidget(self.delete_btn)
@@ -129,14 +132,23 @@ class WellDialog(QDialog):
             # Update data summary immediately
             self.update_data_summary()
         
-        # Buttons
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel,
-            Qt.Horizontal
-        )
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        # Buttons with professional styling
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        # OK button (Save)
+        ok_btn = QPushButton("Save" if self.well_data else "Create")
+        ButtonStyles.apply_button_style(ok_btn, 'save' if self.well_data else 'create')
+        ok_btn.clicked.connect(self.accept)
+        button_layout.addWidget(ok_btn)
+        
+        # Cancel button
+        cancel_btn = QPushButton("Cancel")
+        ButtonStyles.apply_button_style(cancel_btn, 'cancel')
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_btn)
+        
+        layout.addLayout(button_layout)
         
         # Disable well number if editing
         if self.well_data:

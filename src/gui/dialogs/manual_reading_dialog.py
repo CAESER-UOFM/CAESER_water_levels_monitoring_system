@@ -4,9 +4,10 @@ Dialog for adding manual water level readings.
 
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                            QComboBox, QDateTimeEdit, QDoubleSpinBox,
-                           QLineEdit, QTextEdit, QDialogButtonBox,
+                           QLineEdit, QTextEdit, QDialogButtonBox, QPushButton,
                            QDateEdit, QTimeEdit)
 from PyQt5.QtCore import QDateTime, Qt, QDate, QTime
+from ..utils.button_styles import ButtonStyles
 import sqlite3
 import logging
 from datetime import datetime
@@ -130,12 +131,17 @@ class AddManualReadingDialog(QDialog):
         layout.addWidget(self.comments_edit)
         
         # Buttons
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.Save | QDialogButtonBox.Cancel
-        )
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        layout.addWidget(button_box)
+        btn_layout = QHBoxLayout()
+        save_btn = QPushButton("Save")
+        ButtonStyles.apply_button_style(save_btn, 'save')
+        save_btn.clicked.connect(self.accept)
+        cancel_btn = QPushButton("Cancel")
+        ButtonStyles.apply_button_style(cancel_btn, 'cancel')
+        cancel_btn.clicked.connect(self.reject)
+        
+        btn_layout.addWidget(save_btn)
+        btn_layout.addWidget(cancel_btn)
+        layout.addLayout(btn_layout)
         
         self.setLayout(layout)
         

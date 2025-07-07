@@ -45,7 +45,7 @@ class WellSelectionDialog(QDialog):
         button_container = QHBoxLayout()
         
         # Select/Deselect All button
-        self.select_all_btn = QPushButton("Deselect All")
+        self.select_all_btn = QPushButton("◻️ Deselect All")
         self.select_all_btn.clicked.connect(self.toggle_all_wells)
         self.select_all_btn.setFont(QFont("Arial", 10))
         button_container.addWidget(self.select_all_btn)

@@ -262,10 +262,15 @@ class WaterLevelModel(BaseModel):
             
             # Prepare insertion records
             records = []
+            serial_number = None  # Initialize serial_number
             for _, row in readings_df.iterrows():
                 # Calculate Julian timestamp
                 timestamp = row['timestamp_utc']
                 julian_timestamp = timestamp.to_julian_date()
+                
+                # Extract serial number from first row (they should all be the same)
+                if serial_number is None:
+                    serial_number = row.get('serial_number', None)
                 
                 # Add record with all data, using get() for optional fields
                 records.append((
@@ -329,22 +334,116 @@ class WaterLevelModel(BaseModel):
                     records_to_insert = [r for r in records if r[2] not in existing_timestamps]
                     logger.debug(f"Filtered to {len(records_to_insert)} new records to insert")
                     
+                    # Remove duplicates within the current batch to prevent UNIQUE constraint failures
+                    # This can happen when multiple XLE files contain overlapping time periods
+                    if records_to_insert:
+                        # Create a set to track seen timestamps and deduplicate
+                        seen_timestamps = set()
+                        deduplicated_records = []
+                        duplicate_count = 0
+                        
+                        for record in records_to_insert:
+                            timestamp = record[2]  # timestamp_utc is at index 2
+                            if timestamp not in seen_timestamps:
+                                seen_timestamps.add(timestamp)
+                                deduplicated_records.append(record)
+                            else:
+                                duplicate_count += 1
+                        
+                        records_to_insert = deduplicated_records
+                        if duplicate_count > 0:
+                            logger.warning(f"Removed {duplicate_count} duplicate timestamps within import batch for well {well_number}")
+                        
+                        logger.debug(f"After deduplication: {len(records_to_insert)} unique records to insert")
+                    
                     # Insert new records in batches to avoid memory issues
                     if records_to_insert:
                         batch_size = 10000
                         for i in range(0, len(records_to_insert), batch_size):
                             batch = records_to_insert[i:i+batch_size]
                             logger.debug(f"Inserting batch {i//batch_size + 1}/{(len(records_to_insert)-1)//batch_size + 1} ({len(batch)} records)")
-                            cursor.executemany("""
-                                INSERT INTO water_level_readings (
-                                    well_number, serial_number, timestamp_utc, julian_timestamp, pressure,
-                                    water_pressure, water_level, temperature,
-                                    baro_flag, level_flag
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                            """, batch)
-                            conn.commit()  # Commit each batch
+                            try:
+                                cursor.executemany("""
+                                    INSERT INTO water_level_readings (
+                                        well_number, serial_number, timestamp_utc, julian_timestamp, pressure,
+                                        water_pressure, water_level, temperature,
+                                        baro_flag, level_flag
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                """, batch)
+                                conn.commit()  # Commit each batch
+                            except sqlite3.IntegrityError as e:
+                                if "UNIQUE constraint failed" in str(e):
+                                    # Handle remaining duplicate timestamps by inserting records one by one
+                                    logger.warning(f"UNIQUE constraint violation in batch, attempting individual record insertion for well {well_number}")
+                                    successful_inserts = 0
+                                    failed_inserts = 0
+                                    
+                                    for record in batch:
+                                        try:
+                                            cursor.execute("""
+                                                INSERT INTO water_level_readings (
+                                                    well_number, serial_number, timestamp_utc, julian_timestamp, pressure,
+                                                    water_pressure, water_level, temperature,
+                                                    baro_flag, level_flag
+                                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                            """, record)
+                                            successful_inserts += 1
+                                        except sqlite3.IntegrityError:
+                                            # Skip duplicate record silently
+                                            failed_inserts += 1
+                                    
+                                    conn.commit()
+                                    logger.info(f"Individual insertion completed: {successful_inserts} successful, {failed_inserts} skipped duplicates")
+                                else:
+                                    # Re-raise if it's a different integrity error
+                                    raise
                     else:
                         logger.debug("No new records to insert")
+                
+                # Track the import for change tracking
+                imported_count = len(records_to_insert) if not overwrite else len(records)
+                logger.info(f"WATER_LEVEL_DEBUG: Checking change tracking for {imported_count} imported records")
+                logger.info(f"WATER_LEVEL_DEBUG: overwrite mode: {overwrite}")
+                logger.info(f"WATER_LEVEL_DEBUG: total records in DataFrame: {len(records)}")
+                logger.info(f"WATER_LEVEL_DEBUG: records_to_insert: {len(records_to_insert) if not overwrite else 'N/A (overwrite mode)'}")
+                logger.info(f"WATER_LEVEL_DEBUG: db_manager exists: {self.db_manager is not None}")
+                if self.db_manager:
+                    logger.info(f"WATER_LEVEL_DEBUG: change_tracker exists: {hasattr(self.db_manager, 'change_tracker') and self.db_manager.change_tracker is not None}")
+                
+                # Always track import attempts, even if no new records were inserted
+                if (self.db_manager and hasattr(self.db_manager, 'change_tracker') and 
+                    self.db_manager.change_tracker and len(records) > 0):
+                    # Create summary of what was imported
+                    reading_data = {
+                        'well_number': well_number,
+                        'record_count': imported_count,
+                        'total_processed': len(records),
+                        'serial_number': serial_number or 'unknown',
+                        'date_range': f"{min_date.strftime('%Y-%m-%d')} to {max_date.strftime('%Y-%m-%d')}" if min_date and max_date else 'unknown'
+                    }
+                    logger.info(f"WATER_LEVEL_DEBUG: About to track water level insert for well {well_number}")
+                    # Import ChangeType to specify this is a manual import
+                    from src.gui.handlers.change_tracker import ChangeType, ChangeAction
+                    
+                    # Create more descriptive message
+                    if imported_count > 0:
+                        description = f"Imported {imported_count} new water level readings for well {well_number}"
+                    else:
+                        description = f"Processed {len(records)} water level readings for well {well_number} (no new data added)"
+                    self.db_manager.change_tracker.track_change(
+                        change_type=ChangeType.MANUAL,
+                        action=ChangeAction.INSERT,
+                        table_name="water_level_readings",
+                        record_id=well_number,
+                        description=description,
+                        context=reading_data
+                    )
+                    logger.info(f"WATER_LEVEL_DEBUG: Successfully tracked water level import: {description}")
+                else:
+                    logger.warning(f"WATER_LEVEL_DEBUG: Change tracking not available - db_manager: {self.db_manager is not None}, total_records: {len(records)}")
+                
+                # Mark database as modified
+                self.mark_modified()
                 
                 # Update well statistics after data has changed
                 try:

@@ -23,6 +23,11 @@ class MrcDatabase:
         Args:
             db_path: Path to the SQLite database file
         """
+        # Safety check to prevent None path
+        if db_path is None or str(db_path) == "None":
+            logger.error(f"MrcDatabase initialized with invalid path: {repr(db_path)}")
+            raise ValueError("Database path cannot be None or 'None'")
+            
         self.db_path = db_path
         logger.info(f"Initializing MRC database at: {db_path}")
     

@@ -98,9 +98,9 @@ class FieldDataConsolidator:
             # - 2000606_WEATHER STATION_2025_03_26_To_04_30.xle
             # - 2181050_HA:A-013_2025_04_28_To_05_22.xle
             
-            # Updated patterns to handle time component (HHMMSS)
-            # Pattern 1: Full dates with times - Location_YYYY_MM_DD_HHMMSS_YYYY_MM_DD_HHMMSS.xle
-            pattern_full_time = r'(.+?)_(\d{4})_(\d{2})_(\d{2})_(\d{6})_(\d{4})_(\d{2})_(\d{2})_(\d{6})\.xle'
+            # Updated patterns to handle various filename formats with flexible digit counts and suffixes
+            # Pattern 1: Full dates with times - Location_YYYY_MM_DD_HHMMSS_YYYY_MM_DD_HHMMSS[_suffix].xle
+            pattern_full_time = r'(.+?)_(\d{4})_(\d{1,2})_(\d{1,2})_(\d{6})_(\d{4})_(\d{1,2})_(\d{1,2})_(\d{6})(?:_[^.]*)?\.xle'
             match = re.match(pattern_full_time, filename, re.IGNORECASE)
             
             if match:
@@ -108,22 +108,24 @@ class FieldDataConsolidator:
                 year_month = f"{end_year}-{end_month.zfill(2)}"
                 logger.debug(f"Matched full pattern with time for {filename}")
             else:
-                # Pattern 2: Full dates without times
-                pattern_full = r'(.+?)_(\d{4})_(\d{2})_(\d{2})_To_(\d{4})_(\d{2})_(\d{2})\.xle'
+                # Pattern 2: Full dates without times with flexible digits and suffixes
+                pattern_full = r'(.+?)_(\d{4})_(\d{1,2})_(\d{1,2})_To_(\d{4})_(\d{1,2})_(\d{1,2})(?:_[^.]*)?\.xle'
                 match = re.match(pattern_full, filename, re.IGNORECASE)
                 
                 if match:
                     cae, start_year, start_month, start_day, end_year, end_month, end_day = match.groups()
                     year_month = f"{end_year}-{end_month.zfill(2)}"
+                    logger.debug(f"Matched full pattern for {filename}")
                 else:
-                    # Pattern 3: Abbreviated dates (without year in end date)
-                    pattern_abbrev = r'(.+?)_(\d{4})_(\d{2})_(\d{2})_To_(\d{2})_(\d{2})\.xle'
+                    # Pattern 3: Abbreviated dates (without year in end date) with flexible digits and suffixes
+                    pattern_abbrev = r'(.+?)_(\d{4})_(\d{1,2})_(\d{1,2})_To_(\d{1,2})_(\d{1,2})(?:_[^.]*)?\.xle'
                     match = re.match(pattern_abbrev, filename, re.IGNORECASE)
                     
                     if match:
                         cae, start_year, start_month, start_day, end_month, end_day = match.groups()
                         end_year = start_year
                         year_month = f"{end_year}-{end_month.zfill(2)}"
+                        logger.debug(f"Matched abbreviated pattern for {filename}")
                     else:
                         logger.warning(f"Could not parse date from filename: {filename}")
                         return None

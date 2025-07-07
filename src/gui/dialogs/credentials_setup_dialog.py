@@ -113,7 +113,7 @@ Contact the repository owner to request access.</i>
         self.folder_path_label.setStyleSheet("border: 1px solid #ccc; padding: 8px; background: #f9f9f9;")
         folder_layout.addWidget(self.folder_path_label)
         
-        select_folder_btn = QPushButton("Select Downloaded Folder")
+        select_folder_btn = QPushButton("📁 Select Downloaded Folder")
         select_folder_btn.clicked.connect(self.select_credentials_folder)
         folder_layout.addWidget(select_folder_btn)
         

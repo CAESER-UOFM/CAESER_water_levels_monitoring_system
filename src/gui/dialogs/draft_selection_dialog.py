@@ -198,6 +198,11 @@ class DraftSelectionDialog(QDialog):
         options_section = self.create_options_section()
         layout.addWidget(options_section)
         
+        # Local temp option section (if applicable)
+        if self.should_show_local_temp_option():
+            local_temp_section = self.create_local_temp_section()
+            layout.addWidget(local_temp_section)
+        
         # Set content widget to scroll area
         scroll_area.setWidget(content_widget)
         main_layout.addWidget(scroll_area)
@@ -442,6 +447,72 @@ class DraftSelectionDialog(QDialog):
         layout.addWidget(options_label)
         
         return group
+    
+    def should_show_local_temp_option(self):
+        """Check if we should show the local temp option"""
+        # For now, always show it. Could be enhanced to check actual local temp state
+        return True
+    
+    def create_local_temp_section(self):
+        """Create local temp option section"""
+        group = QGroupBox("Additional Option")
+        layout = QVBoxLayout(group)
+        
+        # Simple text-based options
+        local_temp_text = """
+💾 USE LOCAL TEMP DATABASE:
+• Use the most recent local working copy
+• May contain newer changes than cloud
+• Best if you've been working offline
+• Bypasses cloud download completely
+        """.strip()
+        
+        local_temp_label = QLabel(local_temp_text)
+        local_temp_label.setWordWrap(True)
+        local_temp_label.setStyleSheet("""
+            QLabel {
+                background-color: #e8f5e8;
+                border: 2px solid #4caf50;
+                border-radius: 8px;
+                padding: 15px;
+                font-size: 13px;
+                color: #2e7d32;
+                font-family: monospace;
+            }
+        """)
+        layout.addWidget(local_temp_label)
+        
+        # Add button for local temp option
+        self.local_temp_button = QPushButton("Use Local Temp")
+        self.local_temp_button.setStyleSheet("""
+            QPushButton {
+                background-color: #4caf50;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 6px;
+                font-weight: bold;
+                font-size: 13px;
+                min-width: 140px;
+                min-height: 32px;
+                margin-top: 10px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+            QPushButton:pressed {
+                background-color: #3d8b40;
+            }
+        """)
+        self.local_temp_button.clicked.connect(self.select_local_temp)
+        layout.addWidget(self.local_temp_button)
+        
+        return group
+    
+    def select_local_temp(self):
+        """User chose to use local temp database"""
+        self.selection = 'local_temp'
+        self.accept()
     
     def select_draft(self):
         """User chose to continue with draft"""

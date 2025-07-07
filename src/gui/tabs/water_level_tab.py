@@ -29,6 +29,7 @@ import sqlite3
 from ..handlers.fetch_monet import fetch_monet_data
 from ..dialogs.manual_reading_dialog import AddManualReadingDialog
 from ..dialogs.manual_readings_preview_dialog import ManualReadingsPreviewDialog
+from ..dialogs.well_flag_management_dialog import WellFlagManagementDialog
 from ..handlers.water_level_plot_handler import WaterLevelPlotHandler
 from ..handlers.well_data_handler import WellDataHandler
 from ..handlers.transducer_handler import TransducerHandler
@@ -118,7 +119,10 @@ class WaterLevelTab(QWidget):
         self.well_handler = WellDataHandler(self.db_manager.current_db if self.db_manager else None)
         self.transducer_handler = TransducerHandler(self.db_manager.current_db if self.db_manager else None)
         self.transducer_handler.parent = self  # Set the parent reference
-        self.manual_readings_handler = ManualReadingsHandler(self.db_manager.current_db if self.db_manager else None)
+        self.manual_readings_handler = ManualReadingsHandler(
+            self.db_manager.current_db if self.db_manager else None,
+            self.db_manager
+        )
         
         # Initialize plot components
         self.figure = Figure(figsize=(10, 6))  # Increased from (8, 4)
@@ -151,6 +155,8 @@ class WaterLevelTab(QWidget):
         """Load initial data after UI setup"""
         if self.db_manager.current_db:
             self.water_level_model = WaterLevelModel(self.db_manager.current_db)
+            self.water_level_model.set_db_manager(self.db_manager)
+            logger.info(f"WATER_LEVEL_TAB_DEBUG: Set db_manager on water_level_model, change_tracker available: {hasattr(self.db_manager, 'change_tracker') and self.db_manager.change_tracker is not None}")
             self.refresh_wells_table()
             self.refresh_transducers_table()
     
@@ -177,6 +183,8 @@ class WaterLevelTab(QWidget):
             # No need to recalculate flags as this will use the cached values in the wells table
             model_start_time = time.time() # Timing model creation
             self.water_level_model = WaterLevelModel(db_path)
+            if self.db_manager:
+                self.water_level_model.set_db_manager(self.db_manager)
             logger.debug(f"Initialized WaterLevelModel in {time.time() - model_start_time:.4f} seconds") # Log model time
 
             # Refresh tables
@@ -226,6 +234,7 @@ class WaterLevelTab(QWidget):
             # Database is already opened by MainWindow
             self.water_level_model = None
             self.water_level_model = WaterLevelModel(self.db_manager.current_db)
+            self.water_level_model.set_db_manager(self.db_manager)
             
             # Update handlers
             self.well_handler.update_db_path(self.db_manager.current_db)
@@ -251,24 +260,28 @@ class WaterLevelTab(QWidget):
     def setup_ui(self):
         """Setup the main UI layout"""
         main_layout = QGridLayout(self)
-        main_layout.setSpacing(5)  # Reduced from 10
+        main_layout.setSpacing(3)  # Further reduced from 5 to 3
+        main_layout.setContentsMargins(3, 3, 3, 3)  # Reduced margins
         
         # Add sections
         main_layout.addWidget(self.create_well_list_section(), 0, 0)
         
         # Create right side layout
         right_side = QVBoxLayout()
-        right_side.setSpacing(2)  # Reduced spacing
+        right_side.setSpacing(1)  # Further reduced spacing
+        right_side.setContentsMargins(0, 0, 0, 0)  # Remove margins
         
         # Add plot section at top with more vertical space
         plot_section = QVBoxLayout()
-        plot_section.setSpacing(2)  # Reduced spacing
+        plot_section.setSpacing(1)  # Further reduced spacing
+        plot_section.setContentsMargins(0, 0, 0, 0)  # Remove margins
         
         # Add control buttons in horizontal layout
         plot_controls = QHBoxLayout()
-        plot_controls.setSpacing(8)  # Better spacing
+        plot_controls.setSpacing(6)  # Reduced spacing
+        plot_controls.setContentsMargins(0, 0, 0, 0)  # Remove margins
         
-        self.edit_data_btn = QPushButton("Edit Data")
+        self.edit_data_btn = QPushButton("✏️ Edit Data")
         self.edit_data_btn.setFixedHeight(32)  # Reduced from 40
         self.edit_data_btn.clicked.connect(self.open_edit_dialog)
         self.edit_data_btn.setStyleSheet("""
@@ -276,22 +289,59 @@ class WaterLevelTab(QWidget):
                 padding: 8px 16px;
                 border: 1px solid #ccc;
                 border-radius: 6px;
-                background-color: #f8f9fa;
+                background-color: #e3f2fd;
                 font-weight: 500;
                 min-height: 24px;
+                color: #1565c0;
             }
             QPushButton:hover {
-                background-color: #e9ecef;
-                border-color: #adb5bd;
+                background-color: #bbdefb;
+                border-color: #2196f3;
             }
             QPushButton:pressed {
-                background-color: #dee2e6;
-                border-color: #8d9499;
+                background-color: #90caf9;
+                border-color: #1976d2;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
             }
         """)
         plot_controls.addWidget(self.edit_data_btn)
         
-        self.refresh_btn = QPushButton("Refresh Tab")
+        # Add flag management button
+        self.manage_flags_btn = QPushButton("🏷️ Manage Flags")
+        self.manage_flags_btn.setFixedHeight(32)
+        self.manage_flags_btn.clicked.connect(self.open_flag_management_dialog)
+        self.manage_flags_btn.setToolTip("Open flag management dialog for selected well")
+        self.manage_flags_btn.setStyleSheet("""
+            QPushButton {
+                padding: 8px 16px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #fff3cd;
+                font-weight: 500;
+                min-height: 24px;
+                color: #856404;
+            }
+            QPushButton:hover {
+                background-color: #ffeaa7;
+                border-color: #ffc107;
+            }
+            QPushButton:pressed {
+                background-color: #ffecb5;
+                border-color: #e0a800;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
+            }
+        """)
+        plot_controls.addWidget(self.manage_flags_btn)
+        
+        self.refresh_btn = QPushButton("🔄 Refresh Tab")
         self.refresh_btn.setFixedHeight(32)  # Reduced from 40
         self.refresh_btn.clicked.connect(self.refresh_all_data)
         self.refresh_btn.setIcon(QIcon(str(Path(__file__).parent.parent / "icons" / "refresh.png")))
@@ -301,17 +351,23 @@ class WaterLevelTab(QWidget):
                 padding: 8px 16px;
                 border: 1px solid #ccc;
                 border-radius: 6px;
-                background-color: #f8f9fa;
+                background-color: #e8f5e8;
                 font-weight: 500;
                 min-height: 24px;
+                color: #2e7d32;
             }
             QPushButton:hover {
-                background-color: #e9ecef;
-                border-color: #adb5bd;
+                background-color: #c8e6c9;
+                border-color: #4caf50;
             }
             QPushButton:pressed {
-                background-color: #dee2e6;
-                border-color: #8d9499;
+                background-color: #a5d6a7;
+                border-color: #388e3c;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
             }
         """)
         plot_controls.addWidget(self.refresh_btn)
@@ -325,7 +381,7 @@ class WaterLevelTab(QWidget):
         self.show_gaps_cb.stateChanged.connect(self.toggle_gap_highlighting)
         plot_controls.addWidget(self.show_gaps_cb)
         
-        self.show_temp_btn = QPushButton("Show Temperature")
+        self.show_temp_btn = QPushButton("🌡️ Show Temperature")
         self.show_temp_btn.setFixedHeight(32)  # Added fixed height
         self.show_temp_btn.setCheckable(True)
         self.show_temp_btn.clicked.connect(self.toggle_plot_type)
@@ -334,25 +390,63 @@ class WaterLevelTab(QWidget):
                 padding: 8px 16px;
                 border: 1px solid #ccc;
                 border-radius: 6px;
+                background-color: #f3e5f5;
+                font-weight: 500;
+                min-height: 24px;
+                color: #7b1fa2;
+            }
+            QPushButton:hover {
+                background-color: #e1bee7;
+                border-color: #9c27b0;
+            }
+            QPushButton:checked {
+                background-color: #9c27b0;
+                border-color: #9c27b0;
+                color: white;
+            }
+            QPushButton:checked:hover {
+                background-color: #8e24aa;
+                border-color: #7b1fa2;
+            }
+            QPushButton:disabled {
                 background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
+            }
+        """)
+        plot_controls.addWidget(self.show_temp_btn)
+        
+        # Add Expand View button
+        self.expand_view_btn = QPushButton("🔍 Expand View")
+        self.expand_view_btn.setFixedHeight(32)
+        self.expand_view_btn.clicked.connect(self.open_enhanced_plot_dialog)
+        self.expand_view_btn.setStyleSheet("""
+            QPushButton {
+                padding: 8px 16px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #fce4ec;
+                color: #c2185b;
                 font-weight: 500;
                 min-height: 24px;
             }
             QPushButton:hover {
-                background-color: #e9ecef;
-                border-color: #adb5bd;
+                background-color: #f8bbd9;
+                border-color: #e91e63;
             }
-            QPushButton:checked {
-                background-color: #28a745;
-                border-color: #1e7e34;
-                color: white;
+            QPushButton:pressed {
+                background-color: #f48fb1;
+                border-color: #d81b60;
             }
-            QPushButton:checked:hover {
-                background-color: #218838;
-                border-color: #1c7430;
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
             }
         """)
-        plot_controls.addWidget(self.show_temp_btn)
+        self.expand_view_btn.setToolTip("Open enhanced plot viewer with advanced features")
+        plot_controls.addWidget(self.expand_view_btn)
+        
         plot_section.addLayout(plot_controls)
         
         # Plot container with maximized plot space
@@ -382,12 +476,12 @@ class WaterLevelTab(QWidget):
         plot_layout.addWidget(self.canvas)
         
         plot_section.addWidget(plot_container)
-        right_side.addLayout(plot_section, stretch=8)  # Dramatically increased from 5 to 8 for much taller plot
+        right_side.addLayout(plot_section, stretch=16)  # Increased from 13 to 16 for even more plot space
 
-        # Bottom grid layout with reduced spacing
+        # Bottom grid layout with minimal spacing
         bottom_grid = QGridLayout()
-        bottom_grid.setSpacing(2)  # Reduced spacing further
-        bottom_grid.setContentsMargins(2, 2, 2, 2)  # Minimal margins
+        bottom_grid.setSpacing(0)  # Removed spacing entirely
+        bottom_grid.setContentsMargins(0, 0, 0, 0)  # Removed all margins
         
         # Add panels with reduced spacing
         telemetry_group = self.create_compact_telemetry_panel()
@@ -397,17 +491,19 @@ class WaterLevelTab(QWidget):
         # Create app logo with reduced size
         self.logo_area = self.create_logo_area()
         
-        # Add components to bottom grid
+        # Add components to bottom grid with logo in horizontal position
         bottom_grid.addWidget(telemetry_group, 0, 0)
         bottom_grid.addWidget(transducer_group, 1, 0)
         bottom_grid.addWidget(manual_group, 2, 0)
-        bottom_grid.addWidget(self.logo_area, 0, 1, 3, 1)  # Span all rows
+        
+        # Add logo to bottom-right position (aligned to bottom of the grid)
+        bottom_grid.addWidget(self.logo_area, 2, 1, 1, 1, Qt.AlignBottom)  # Row 2 (bottom), Column 1, aligned to bottom
         
         # Adjust column stretches
-        bottom_grid.setColumnStretch(0, 6)  # Increased to push logo more to the right
-        bottom_grid.setColumnStretch(1, 1)
+        bottom_grid.setColumnStretch(0, 6)  # Panels column gets more space
+        bottom_grid.setColumnStretch(1, 1)   # Logo column gets minimal space
         
-        right_side.addLayout(bottom_grid, stretch=1)
+        right_side.addLayout(bottom_grid, stretch=1)  # Keep at 1 for 16:1 ratio (plot gets ~94% of space)
 
         # Create widget to hold right side layout
         right_widget = QWidget()
@@ -758,19 +854,119 @@ class WaterLevelTab(QWidget):
         # Well Management Buttons
         btn_layout = QHBoxLayout()
     
-        add_well_btn = QPushButton("Add Well")
+        add_well_btn = QPushButton("➕ Add Well")
+        add_well_btn.setFixedHeight(32)
         add_well_btn.clicked.connect(self.add_well)
+        add_well_btn.setStyleSheet("""
+            QPushButton {
+                padding: 8px 16px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #e8f5e8;
+                color: #2e7d32;
+                font-weight: 500;
+                min-height: 24px;
+            }
+            QPushButton:hover {
+                background-color: #c8e6c9;
+                border-color: #4caf50;
+            }
+            QPushButton:pressed {
+                background-color: #a5d6a7;
+                border-color: #388e3c;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
+            }
+        """)
     
-        self.edit_well_btn = QPushButton("Edit Well")  # Make it instance variable
+        self.edit_well_btn = QPushButton("✏️ Edit Well")  # Make it instance variable
+        self.edit_well_btn.setFixedHeight(32)
         self.edit_well_btn.clicked.connect(self.edit_well)
         self.edit_well_btn.setEnabled(False)  # Initially disabled
+        self.edit_well_btn.setStyleSheet("""
+            QPushButton {
+                padding: 8px 16px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #e3f2fd;
+                color: #1565c0;
+                font-weight: 500;
+                min-height: 24px;
+            }
+            QPushButton:hover {
+                background-color: #bbdefb;
+                border-color: #2196f3;
+            }
+            QPushButton:pressed {
+                background-color: #90caf9;
+                border-color: #1976d2;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
+            }
+        """)
         
-        self.delete_well_btn = QPushButton("Delete Well")  # Add delete button
+        self.delete_well_btn = QPushButton("🗑️ Delete Well")  # Add delete button
+        self.delete_well_btn.setFixedHeight(32)
         self.delete_well_btn.clicked.connect(self.delete_well)
         self.delete_well_btn.setEnabled(False)  # Initially disabled
+        self.delete_well_btn.setStyleSheet("""
+            QPushButton {
+                padding: 8px 16px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #ffebee;
+                color: #c62828;
+                font-weight: 500;
+                min-height: 24px;
+            }
+            QPushButton:hover {
+                background-color: #ffcdd2;
+                border-color: #f44336;
+            }
+            QPushButton:pressed {
+                background-color: #ef9a9a;
+                border-color: #d32f2f;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
+            }
+        """)
     
-        import_well_btn = QPushButton("Import CSV")  # Changed from "Import Wells" to "Import CSV"
+        import_well_btn = QPushButton("📂 Import CSV")  # Changed from "Import Wells" to "Import CSV"
+        import_well_btn.setFixedHeight(32)
         import_well_btn.clicked.connect(self.import_wells)
+        import_well_btn.setStyleSheet("""
+            QPushButton {
+                padding: 8px 16px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #e7f3ff;
+                color: #0d47a1;
+                font-weight: 500;
+                min-height: 24px;
+            }
+            QPushButton:hover {
+                background-color: #bbdefb;
+                border-color: #1976d2;
+            }
+            QPushButton:pressed {
+                background-color: #90caf9;
+                border-color: #1565c0;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
+            }
+        """)
     
         btn_layout.addWidget(add_well_btn)
         btn_layout.addWidget(self.edit_well_btn)
@@ -797,10 +993,87 @@ class WaterLevelTab(QWidget):
         transducer_layout.addWidget(QLabel("Transducers:"))
 
         btn_layout = QHBoxLayout()
-        add_btn = QPushButton("Add Transducer")
-        edit_btn = QPushButton("Edit")
+        add_btn = QPushButton("➕ Add Transducer")
+        add_btn.setFixedHeight(32)
+        add_btn.setStyleSheet("""
+            QPushButton {
+                padding: 8px 16px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #e8f5e8;
+                color: #2e7d32;
+                font-weight: 500;
+                min-height: 24px;
+            }
+            QPushButton:hover {
+                background-color: #c8e6c9;
+                border-color: #4caf50;
+            }
+            QPushButton:pressed {
+                background-color: #a5d6a7;
+                border-color: #388e3c;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
+            }
+        """)
+        
+        edit_btn = QPushButton("✏️ Edit")
+        edit_btn.setFixedHeight(32)
+        edit_btn.setStyleSheet("""
+            QPushButton {
+                padding: 8px 16px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #e3f2fd;
+                color: #1565c0;
+                font-weight: 500;
+                min-height: 24px;
+            }
+            QPushButton:hover {
+                background-color: #bbdefb;
+                border-color: #2196f3;
+            }
+            QPushButton:pressed {
+                background-color: #90caf9;
+                border-color: #1976d2;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
+            }
+        """)
+        
         # Removed the location_btn = QPushButton("Update Location")
-        delete_btn = QPushButton("Delete")
+        delete_btn = QPushButton("🗑️ Delete")
+        delete_btn.setFixedHeight(32)
+        delete_btn.setStyleSheet("""
+            QPushButton {
+                padding: 8px 16px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #ffebee;
+                color: #c62828;
+                font-weight: 500;
+                min-height: 24px;
+            }
+            QPushButton:hover {
+                background-color: #ffcdd2;
+                border-color: #f44336;
+            }
+            QPushButton:pressed {
+                background-color: #ef9a9a;
+                border-color: #d32f2f;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
+            }
+        """)
 
         add_btn.clicked.connect(self.add_transducer)
         edit_btn.clicked.connect(self.edit_transducer) 
@@ -883,6 +1156,11 @@ class WaterLevelTab(QWidget):
     def refresh_wells_table(self):
         """Refresh the wells table contents"""
         if not self.db_manager.well_model:
+            return
+            
+        # Safety check to prevent None file creation
+        if self.db_manager.current_db is None or str(self.db_manager.current_db) == "None":
+            logger.warning("No database selected - skipping wells table refresh")
             return
             
         try:
@@ -1004,7 +1282,7 @@ class WaterLevelTab(QWidget):
             item = self.wells_table.item(row, col)
             if item:
                 current_status = item.data(Qt.UserRole)
-                # Cycle through statuses: unchecked -> error -> approved -> unchecked
+                # Simple cycling for quick flag changes
                 status_cycle = {'unchecked': 'error', 'error': 'approved', 'approved': 'unchecked'}
                 new_status = status_cycle.get(current_status, 'unchecked')
                 
@@ -1054,6 +1332,106 @@ class WaterLevelTab(QWidget):
             self.db_manager.mark_as_modified()
         except Exception as e:
             logger.error(f"Error updating user flag: {e}")
+
+    def on_flag_changed_from_dialog(self, well_id, new_flag, comment):
+        """Handle flag change signal from the flag management dialog"""
+        try:
+            # Find the well in the table and update its flag icon
+            for row in range(self.wells_table.rowCount()):
+                well_number_item = self.wells_table.item(row, 3)  # Well Number is in column 3
+                if well_number_item and well_number_item.text() == well_id:
+                    # Update the flag icon and data
+                    flag_item = self.wells_table.item(row, 0)  # User flag is in column 0
+                    if flag_item:
+                        flag_item.setIcon(self.create_user_flag_icon(new_flag))
+                        flag_item.setData(Qt.UserRole, new_flag)
+                        
+                        # Update tooltip
+                        tooltips = {
+                            'unchecked': 'Not checked yet',
+                            'error': 'Error found by user',
+                            'approved': 'Approved by user'
+                        }
+                        flag_item.setToolTip(tooltips.get(new_flag, ''))
+                    break
+                    
+            logger.info(f"Flag updated for well {well_id}: {new_flag} (Comment: {comment})")
+            
+        except Exception as e:
+            logger.error(f"Error handling flag change from dialog: {e}")
+
+    def open_flag_management_dialog(self):
+        """Open flag management dialog for selected well"""
+        try:
+            # Get selected wells
+            selected_rows = set()
+            for item in self.wells_table.selectedItems():
+                selected_rows.add(item.row())
+            
+            if not selected_rows:
+                QMessageBox.information(self, "No Selection", 
+                    "Please select a well from the table to manage its flag.")
+                return
+            
+            if len(selected_rows) > 1:
+                QMessageBox.information(self, "Multiple Selection", 
+                    "Please select only one well to manage its flag.")
+                return
+            
+            # Get the selected well details
+            row = list(selected_rows)[0]
+            well_number_item = self.wells_table.item(row, 3)  # Well Number is in column 3
+            flag_item = self.wells_table.item(row, 0)  # User flag is in column 0
+            
+            if not well_number_item or not flag_item:
+                QMessageBox.warning(self, "Error", "Unable to get well information.")
+                return
+            
+            well_number = well_number_item.text()
+            current_flag = flag_item.data(Qt.UserRole) or 'unchecked'
+            
+            # Get current user name from main window
+            user_name = "Anonymous"
+            try:
+                # Try to get main window through parent hierarchy
+                main_window = self.parent()
+                while main_window and not hasattr(main_window, 'user_auth_service'):
+                    main_window = main_window.parent()
+                
+                if main_window and hasattr(main_window, 'user_auth_service') and main_window.user_auth_service:
+                    current_user_info = main_window.user_auth_service.get_current_user_info()
+                    if current_user_info:
+                        user_name = current_user_info.get('username', 'Anonymous')
+                        logger.info(f"DEBUG: Got current user for flag management: {user_name}")
+                    else:
+                        logger.warning("DEBUG: user_auth_service.get_current_user_info() returned empty dict")
+                else:
+                    logger.warning("DEBUG: Could not find main window or user_auth_service")
+            except Exception as e:
+                logger.error(f"DEBUG: Error getting current user: {e}")
+                pass  # Use default if we can't get user info
+            
+            # Open flag management dialog
+            dialog = WellFlagManagementDialog(
+                db_manager=self.db_manager,
+                well_id=well_number,
+                current_flag=current_flag,
+                user_name=user_name,
+                parent=self
+            )
+            
+            # Connect signal to update UI when flag changes
+            dialog.flag_changed.connect(self.on_flag_changed_from_dialog)
+            
+            # Show dialog
+            result = dialog.exec_()
+            if result == QDialog.Accepted:
+                # Dialog was accepted, refresh the table to show changes
+                self.refresh_wells_table()
+                
+        except Exception as e:
+            logger.error(f"Error opening flag management dialog: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to open flag management dialog: {str(e)}")
 
     def create_flag_icon_from_qcolor(self, color: QColor, diameter: int = 10):
         """Create an icon with a filled circle of the given QColor."""
@@ -1308,6 +1686,11 @@ class WaterLevelTab(QWidget):
                 if response == QMessageBox.No:
                     return
             
+            # Handle info status (e.g., transducer not found but registration available)
+            if transducer_status['status'] == 'info' and transducer_status['details'].get('action') == 'register_new':
+                # This is handled by the dialog system, no additional notification needed
+                pass
+            
             # Show import dialog
             progress_dialog.update(90, "Preparing import dialog...")
             
@@ -1385,7 +1768,8 @@ class WaterLevelTab(QWidget):
             from ..dialogs.water_level_folder_dialog import WaterLevelFolderDialog
             dialog = WaterLevelFolderDialog(
                 water_level_model=self.water_level_model,
-                parent=self
+                parent=self,
+                settings_handler=self.db_manager.settings_handler
             )
             logger.debug("WaterLevelFolderDialog created")
             
@@ -1555,6 +1939,63 @@ class WaterLevelTab(QWidget):
             
             progress_dialog.update(75, "Finalizing...")
             
+            # Mark database as modified and add change tracking if data was added
+            if records_added > 0:
+                logger.info(f"MONET_DEBUG: Starting post-import processing for {records_added} records")
+                logger.info(f"MONET_DEBUG: Code version check - this should show in latest logs")
+                try:
+                    # Get the database manager from parent window
+                    main_window = self.window()
+                    logger.info(f"MONET_DEBUG: Got main window: {main_window is not None}")
+                    
+                    if main_window and hasattr(main_window, 'db_manager') and main_window.db_manager:
+                        logger.info(f"MONET_DEBUG: Got db_manager, is_cloud_database: {main_window.db_manager.is_cloud_database}")
+                        
+                        if main_window.db_manager.is_cloud_database:
+                            main_window.db_manager.mark_cloud_modified()
+                            logger.info(f"MONET import: Marked cloud database as modified after adding {records_added} records")
+                        else:
+                            # For non-cloud databases, emit the signal directly
+                            main_window.db_manager.database_modified.emit()
+                            logger.info(f"MONET import: Marked database as modified after adding {records_added} records")
+                        
+                        # Add change tracking for MONET import
+                        logger.info(f"MONET_DEBUG: Checking change tracker availability")
+                        logger.info(f"MONET_DEBUG: Has change_tracker attr: {hasattr(main_window.db_manager, 'change_tracker')}")
+                        if hasattr(main_window.db_manager, 'change_tracker'):
+                            logger.info(f"MONET_DEBUG: change_tracker exists: {main_window.db_manager.change_tracker is not None}")
+                        
+                        if (hasattr(main_window.db_manager, 'change_tracker') and 
+                            main_window.db_manager.change_tracker):
+                            logger.info(f"MONET_DEBUG: About to import change tracker classes")
+                            try:
+                                from ..handlers.change_tracker import ChangeType, ChangeAction
+                                logger.info(f"MONET_DEBUG: Successfully imported ChangeType and ChangeAction")
+                                
+                                # Create summary for change tracking
+                                wells_summary = ", ".join([f"{well}({count})" for well, count in well_updates.items()])
+                                description = f"MONET import: {records_added} readings added to wells: {wells_summary}"
+                                logger.info(f"MONET_DEBUG: Created description: {description}")
+                                
+                                logger.info(f"MONET_DEBUG: About to call track_change")
+                                main_window.db_manager.change_tracker.track_change(
+                                    ChangeType.MANUAL, ChangeAction.INSERT, "manual_level_readings",
+                                    "MONET", description=description
+                                )
+                                logger.info(f"Change tracker: Successfully tracked MONET import of {records_added} readings")
+                                
+                            except ImportError as ie:
+                                logger.error(f"MONET_DEBUG: Import error for change tracker: {ie}")
+                            except Exception as te:
+                                logger.error(f"MONET_DEBUG: Error in change tracking: {te}", exc_info=True)
+                        else:
+                            logger.warning(f"MONET_DEBUG: Change tracker not available or not initialized")
+                    else:
+                        logger.warning(f"MONET_DEBUG: Could not get db_manager from main window")
+                            
+                except Exception as e:
+                    logger.error(f"Error marking database as modified after MONET import: {e}", exc_info=True)
+            
             # Build result message
             message = []
             updated_wells = [well for well, count in well_updates.items() if count > 0]
@@ -1594,15 +2035,15 @@ class WaterLevelTab(QWidget):
         layout = QHBoxLayout()
         
         # Update Monet Data button
-        update_monet_btn = QPushButton("Update Monet Data")
+        update_monet_btn = QPushButton("🌐 Update Monet Data")
         update_monet_btn.clicked.connect(self.update_monet_data)
         
         # Add Manual Reading button
-        add_manual_btn = QPushButton("Add Manual Reading")
+        add_manual_btn = QPushButton("➕ Add Manual Reading")
         add_manual_btn.clicked.connect(self.add_manual_reading)
         
         # Import Manual Readings button
-        import_manual_btn = QPushButton("Import CSV File")
+        import_manual_btn = QPushButton("📊 Import CSV File")
         import_manual_btn.clicked.connect(self.import_csv_file)
         
         layout.addWidget(update_monet_btn)
@@ -1683,6 +2124,41 @@ class WaterLevelTab(QWidget):
             message = "\n".join(message_parts)
             
             if records_added > 0:
+                # Mark database as modified and add change tracking after successful import
+                try:
+                    # Get the database manager from parent window
+                    main_window = self.window()
+                    if main_window and hasattr(main_window, 'db_manager') and main_window.db_manager:
+                        if main_window.db_manager.is_cloud_database:
+                            main_window.db_manager.mark_cloud_modified()
+                            logger.info(f"CSV import: Marked cloud database as modified after adding {records_added} records")
+                        else:
+                            # For non-cloud databases, emit the signal directly
+                            main_window.db_manager.database_modified.emit()
+                            logger.info(f"CSV import: Marked database as modified after adding {records_added} records")
+                        
+                        # Add change tracking for CSV import
+                        if (hasattr(main_window.db_manager, 'change_tracker') and 
+                            main_window.db_manager.change_tracker):
+                            from ..handlers.change_tracker import ChangeType, ChangeAction
+                            
+                            # Create summary for change tracking
+                            wells_list = list(selected_wells.keys())
+                            wells_summary = ", ".join(wells_list[:3])  # Show first 3 wells
+                            if len(wells_list) > 3:
+                                wells_summary += f" (+{len(wells_list)-3} more)"
+                            
+                            description = f"CSV import: {records_added} manual readings added to wells: {wells_summary}"
+                            
+                            main_window.db_manager.change_tracker.track_change(
+                                ChangeType.MANUAL, ChangeAction.INSERT, "manual_level_readings",
+                                "CSV", description=description
+                            )
+                            logger.info(f"Change tracker: Tracked CSV import of {records_added} readings")
+                            
+                except Exception as e:
+                    logger.error(f"Error marking database as modified after CSV import: {e}")
+                
                 QMessageBox.information(self, "Import Complete", message)
                 self.update_plot()
             else:
@@ -1771,9 +2247,13 @@ class WaterLevelTab(QWidget):
         
         reply = QMessageBox.question(
             self,
-            "Confirm Delete",
-            f"Are you sure you want to delete well {well_number}?\n"
-            "This will remove the well and ALL associated data.\n"
+            "Confirm Delete Well",
+            f"Are you sure you want to delete well {well_number}?\n\n"
+            "This will permanently remove:\n"
+            "• Well registration\n"
+            "• All transducers associated with this well\n"
+            "• All water level readings\n"
+            "• All user flags and notes\n\n"
             "This action cannot be undone!",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
@@ -1785,7 +2265,7 @@ class WaterLevelTab(QWidget):
                 if success:
                     self.refresh_wells_table()
                     self.refresh_transducers_table()
-                    QMessageBox.information(self, "Success", "Well deleted successfully")
+                    QMessageBox.information(self, "Success", message)
                 else:
                     QMessageBox.critical(self, "Error", message)
             except Exception as e:
@@ -1925,6 +2405,7 @@ class WaterLevelTab(QWidget):
             progress_dialog.update(80, "Reinitializing data model...")
             if self.db_manager.current_db:
                 self.water_level_model = WaterLevelModel(self.db_manager.current_db)
+            self.water_level_model.set_db_manager(self.db_manager)
             
             # Done
             progress_dialog.update(100, "Refresh complete!")
@@ -2047,85 +2528,95 @@ class WaterLevelTab(QWidget):
     def create_compact_transducer_panel(self):
         """Create a compact transducer data panel with buttons in a single row"""
         group = QGroupBox("Transducer Data")
-        group.setMaximumHeight(70)  # Restrict height for compactness
+        group.setMaximumHeight(50)  # Reduced from 70 to 50 for more compact design
         group.setStyleSheet("""
             QGroupBox {
-                font-size: 9pt;
+                font-size: 8pt;
                 font-weight: bold;
-                border-radius: 6px;
+                border-radius: 4px;
                 background-color: #f8f9fa;
                 border: 1px solid #dee2e6;
-                padding-top: 12px;
-                max-height: 70px;
+                padding-top: 8px;
+                max-height: 50px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 subcontrol-position: top left;
-                padding: 0 6px;
+                padding: 0 4px;
                 color: #495057;
-                font-size: 9pt;
+                font-size: 8pt;
             }
         """)
         
         # Create a horizontal layout for a single row of buttons
         layout = QVBoxLayout(group)
-        layout.setContentsMargins(8, 15, 8, 8)
-        layout.setSpacing(6)
+        layout.setContentsMargins(2, 4, 2, 2)  # Further reduced margins
+        layout.setSpacing(1)  # Minimal spacing
         
         # Create buttons row
         btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(6)
+        btn_layout.setSpacing(2)  # Minimal spacing between buttons
         
         # Create buttons with icons
-        import_file_btn = QPushButton("Import Single File")
+        import_file_btn = QPushButton("📄 Import Single File")
         import_file_btn.clicked.connect(self.import_single_file)
         import_file_btn.setMinimumWidth(120)
         import_file_btn.setStyleSheet("""
             QPushButton {
-                padding: 12px 24px;
-                border: 1px solid #0056b3;
-                border-radius: 8px;
-                background-color: #007bff;
-                color: white;
+                padding: 4px 12px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #e7f3ff;
+                color: #0d47a1;
                 font-weight: 500;
-                font-size: 9pt;
-                min-height: 36px;
-                min-width: 140px;
+                font-size: 8pt;
+                min-height: 24px;
+                min-width: 100px;
             }
             QPushButton:hover {
-                background-color: #0056b3;
-                border-color: #004085;
+                background-color: #bbdefb;
+                border-color: #1976d2;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
             QPushButton:pressed {
-                background-color: #004085;
-                border-color: #002752;
+                background-color: #90caf9;
+                border-color: #1565c0;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
             }
         """)
         
-        import_folder_btn = QPushButton("Import Folder")
+        import_folder_btn = QPushButton("📁 Import Folder")
         import_folder_btn.clicked.connect(self.import_folder)
         import_folder_btn.setMinimumWidth(120)
         import_folder_btn.setStyleSheet("""
             QPushButton {
-                padding: 12px 24px;
-                border: 1px solid #0056b3;
-                border-radius: 8px;
-                background-color: #007bff;
-                color: white;
+                padding: 4px 12px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #e7f3ff;
+                color: #0d47a1;
                 font-weight: 500;
-                font-size: 9pt;
-                min-height: 36px;
-                min-width: 140px;
+                font-size: 8pt;
+                min-height: 24px;
+                min-width: 100px;
             }
             QPushButton:hover {
-                background-color: #0056b3;
-                border-color: #004085;
+                background-color: #bbdefb;
+                border-color: #1976d2;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
             QPushButton:pressed {
-                background-color: #004085;
-                border-color: #002752;
+                background-color: #90caf9;
+                border-color: #1565c0;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
             }
         """)
         
@@ -2138,66 +2629,71 @@ class WaterLevelTab(QWidget):
         layout.addLayout(btn_layout)
         
         # Set a reasonable maximum height for better appearance
-        group.setMaximumHeight(85)
+        group.setMaximumHeight(50)  # Reduced from 85 to 50 for more compact design
         
         return group
     
     def create_compact_telemetry_panel(self):
         """Create a compact telemetry data panel with buttons in a single row"""
         group = QGroupBox("Telemetry Data")
-        group.setMaximumHeight(70)  # Restrict height for compactness
+        group.setMaximumHeight(50)  # Reduced from 70 to 50 for more compact design
         group.setStyleSheet("""
             QGroupBox {
-                font-size: 9pt;
+                font-size: 8pt;
                 font-weight: bold;
-                border-radius: 6px;
+                border-radius: 4px;
                 background-color: #f8f9fa;
                 border: 1px solid #dee2e6;
-                padding-top: 12px;
-                max-height: 70px;
+                padding-top: 8px;
+                max-height: 50px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 subcontrol-position: top left;
-                padding: 0 6px;
+                padding: 0 4px;
                 color: #495057;
-                font-size: 9pt;
+                font-size: 8pt;
             }
         """)
         
         # Create a layout
         layout = QVBoxLayout(group)
-        layout.setContentsMargins(8, 15, 8, 8)
-        layout.setSpacing(6)
+        layout.setContentsMargins(2, 4, 2, 2)  # Further reduced margins
+        layout.setSpacing(1)  # Minimal spacing
         
         # Create button row
         btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(6)
+        btn_layout.setSpacing(2)  # Minimal spacing between buttons
         
         # Create button 
-        update_telemetry_btn = QPushButton("Update Telemetry")
+        update_telemetry_btn = QPushButton("📡 Update Telemetry")
         update_telemetry_btn.clicked.connect(self.update_telemetry_data)
         update_telemetry_btn.setMinimumWidth(120)
         update_telemetry_btn.setStyleSheet("""
             QPushButton {
-                padding: 12px 24px;
-                border: 1px solid #0056b3;
-                border-radius: 8px;
-                background-color: #007bff;
-                color: white;
+                padding: 4px 12px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #f1f8e9;
+                color: #388e3c;
                 font-weight: 500;
-                font-size: 9pt;
-                min-height: 36px;
-                min-width: 140px;
+                font-size: 8pt;
+                min-height: 24px;
+                min-width: 100px;
             }
             QPushButton:hover {
-                background-color: #0056b3;
-                border-color: #004085;
+                background-color: #c8e6c9;
+                border-color: #4caf50;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
             QPushButton:pressed {
-                background-color: #004085;
-                border-color: #002752;
+                background-color: #a5d6a7;
+                border-color: #2e7d32;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
             }
         """)
         
@@ -2209,118 +2705,133 @@ class WaterLevelTab(QWidget):
         layout.addLayout(btn_layout)
         
         # Set a reasonable maximum height for better appearance
-        group.setMaximumHeight(85)
+        group.setMaximumHeight(50)  # Reduced from 85 to 50 for more compact design
         
         return group
     
     def create_compact_manual_panel(self):
         """Create a compact manual readings panel with buttons in a single row"""
         group = QGroupBox("Manual Readings")
-        group.setMaximumHeight(70)  # Restrict height for compactness
+        group.setMaximumHeight(50)  # Reduced from 70 to 50 for more compact design
         group.setStyleSheet("""
             QGroupBox {
-                font-size: 9pt;
+                font-size: 8pt;
                 font-weight: bold;
-                border-radius: 6px;
+                border-radius: 4px;
                 background-color: #f8f9fa;
                 border: 1px solid #dee2e6;
-                padding-top: 12px;
-                max-height: 70px;
+                padding-top: 8px;
+                max-height: 50px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 subcontrol-position: top left;
-                padding: 0 6px;
+                padding: 0 4px;
                 color: #495057;
-                font-size: 9pt;
+                font-size: 8pt;
             }
         """)
         
         # Create a vertical layout with a single row of buttons
         layout = QVBoxLayout(group)
-        layout.setContentsMargins(8, 15, 8, 8)
-        layout.setSpacing(6)
+        layout.setContentsMargins(2, 4, 2, 2)  # Further reduced margins
+        layout.setSpacing(1)  # Minimal spacing
         
         # Create button row
         btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(6)
+        btn_layout.setSpacing(2)  # Minimal spacing between buttons
         
         # Create buttons
-        update_monet_btn = QPushButton("Update Monet Data")
+        update_monet_btn = QPushButton("🌐 Update Monet Data")
         update_monet_btn.clicked.connect(self.update_monet_data)
         update_monet_btn.setMinimumWidth(120)
         update_monet_btn.setStyleSheet("""
             QPushButton {
-                padding: 12px 24px;
-                border: 1px solid #0056b3;
-                border-radius: 8px;
-                background-color: #007bff;
-                color: white;
+                padding: 3px 8px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #fff8e1;
+                color: #f57c00;
                 font-weight: 500;
-                font-size: 9pt;
-                min-height: 36px;
-                min-width: 140px;
+                font-size: 8pt;
+                min-height: 22px;
+                min-width: 80px;
             }
             QPushButton:hover {
-                background-color: #0056b3;
-                border-color: #004085;
+                background-color: #ffecb3;
+                border-color: #ff9800;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
             QPushButton:pressed {
-                background-color: #004085;
-                border-color: #002752;
+                background-color: #ffe082;
+                border-color: #ef6c00;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
             }
         """)
         
-        add_manual_btn = QPushButton("Add Manual Reading")
+        add_manual_btn = QPushButton("➕ Add Manual Reading")
         add_manual_btn.clicked.connect(self.add_manual_reading)
         add_manual_btn.setMinimumWidth(120)
         add_manual_btn.setStyleSheet("""
             QPushButton {
-                padding: 12px 24px;
-                border: 1px solid #0056b3;
-                border-radius: 8px;
-                background-color: #007bff;
-                color: white;
+                padding: 3px 8px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #f3e5f5;
+                color: #7b1fa2;
                 font-weight: 500;
-                font-size: 9pt;
-                min-height: 36px;
-                min-width: 140px;
+                font-size: 8pt;
+                min-height: 22px;
+                min-width: 80px;
             }
             QPushButton:hover {
-                background-color: #0056b3;
-                border-color: #004085;
+                background-color: #e1bee7;
+                border-color: #9c27b0;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
             QPushButton:pressed {
-                background-color: #004085;
-                border-color: #002752;
+                background-color: #ce93d8;
+                border-color: #8e24aa;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
             }
         """)
         
-        import_manual_btn = QPushButton("Import CSV File")
+        import_manual_btn = QPushButton("📊 Import CSV File")
         import_manual_btn.clicked.connect(self.import_csv_file)
         import_manual_btn.setMinimumWidth(120)
         import_manual_btn.setStyleSheet("""
             QPushButton {
-                padding: 12px 24px;
-                border: 1px solid #0056b3;
-                border-radius: 8px;
-                background-color: #007bff;
-                color: white;
+                padding: 3px 8px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #f3e5f5;
+                color: #7b1fa2;
                 font-weight: 500;
-                font-size: 9pt;
-                min-height: 36px;
-                min-width: 140px;
+                font-size: 8pt;
+                min-height: 22px;
+                min-width: 80px;
             }
             QPushButton:hover {
-                background-color: #0056b3;
-                border-color: #004085;
+                background-color: #e1bee7;
+                border-color: #9c27b0;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
             QPushButton:pressed {
-                background-color: #004085;
-                border-color: #002752;
+                background-color: #ce93d8;
+                border-color: #8e24aa;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
             }
         """)
         
@@ -2334,7 +2845,7 @@ class WaterLevelTab(QWidget):
         layout.addLayout(btn_layout)
         
         # Set a reasonable maximum height for better appearance
-        group.setMaximumHeight(85)
+        group.setMaximumHeight(50)  # Reduced from 85 to 50 for more compact design
         
         return group
     
@@ -2390,4 +2901,115 @@ class WaterLevelTab(QWidget):
         # Update the plot handler setting
         self.plot_handler.toggle_gap_highlighting(show_gaps)
         # Update the plot to apply the change
-        self.update_plot()
+    
+    def open_enhanced_plot_dialog(self):
+        """Open the enhanced plot dialog with current data."""
+        try:
+            # Get currently plotted data
+            plot_data = self.get_current_plot_data()
+            
+            if not plot_data:
+                QMessageBox.information(self, "No Data", 
+                    "Please select wells and load data first to use the enhanced plot viewer.")
+                return
+            
+            # Import and open the enhanced plot dialog
+            from ..dialogs.enhanced_plot_dialog import EnhancedPlotDialog
+            
+            # Create dialog with current data
+            dialog = EnhancedPlotDialog(
+                parent=self,
+                plot_data=plot_data,
+                plot_title="Water Level Data - Enhanced View"
+            )
+            
+            # Show the dialog
+            dialog.exec_()
+            
+        except Exception as e:
+            logger.error(f"Error opening enhanced plot dialog: {e}")
+            QMessageBox.critical(self, "Error", 
+                f"Failed to open enhanced plot viewer:\n{str(e)}")
+    
+    def get_current_plot_data(self):
+        """Get the currently plotted data for the enhanced dialog."""
+        plot_data = {}
+        
+        try:
+            # First try to get selected wells using row selection (highlighted rows)
+            selected_model_rows = self.wells_table.selectionModel().selectedRows()
+            selected_rows = []
+            
+            if selected_model_rows:
+                # Use highlighted/selected rows
+                for index in selected_model_rows:
+                    selected_rows.append(index.row())
+            else:
+                # Fallback: check for checked user flags if no rows are highlighted
+                for i in range(self.wells_table.rowCount()):
+                    if self.wells_table.item(i, 0) and self.wells_table.item(i, 0).checkState() == Qt.Checked:
+                        selected_rows.append(i)
+            
+            if not selected_rows:
+                return plot_data
+            
+            # Get data for each selected well
+            for row in selected_rows:
+                well_number = self.wells_table.item(row, 3).text()  # Well Number column
+                
+                # Query data from database
+                data = self.get_well_data_from_db(well_number)
+                if data is not None and not data.empty:
+                    plot_data[well_number] = data
+            
+        except Exception as e:
+            logger.error(f"Error getting current plot data: {e}")
+        
+        return plot_data
+    
+    def get_well_data_from_db(self, well_number):
+        """Get water level data for a specific well from the database."""
+        if not self.db_manager.current_db:
+            return None
+            
+        try:
+            import sqlite3
+            with sqlite3.connect(self.db_manager.current_db) as conn:
+                # Query transducer/telemetry readings
+                transducer_query = """
+                    SELECT timestamp_utc as timestamp, water_level, 'transducer' as source_type
+                    FROM water_level_readings 
+                    WHERE well_number = ?
+                    ORDER BY timestamp_utc
+                """
+                transducer_df = pd.read_sql_query(transducer_query, conn, params=(well_number,))
+                
+                # Query manual readings
+                manual_query = """
+                    SELECT measurement_date_utc as timestamp, water_level, 'manual' as source_type
+                    FROM manual_level_readings
+                    WHERE well_number = ? AND water_level IS NOT NULL
+                    ORDER BY measurement_date_utc
+                """
+                manual_df = pd.read_sql_query(manual_query, conn, params=(well_number,))
+                
+                # Combine both datasets
+                if not transducer_df.empty and not manual_df.empty:
+                    data = pd.concat([transducer_df, manual_df], ignore_index=True)
+                elif not transducer_df.empty:
+                    data = transducer_df
+                elif not manual_df.empty:
+                    data = manual_df
+                else:
+                    return pd.DataFrame()
+                
+                # Sort by timestamp and convert to datetime
+                if not data.empty:
+                    data = data.sort_values('timestamp').reset_index(drop=True)
+                    data['timestamp'] = pd.to_datetime(data['timestamp'])
+                
+                return data
+                
+        except Exception as e:
+            logger.error(f"Error querying data for well {well_number}: {e}")
+            return pd.DataFrame()

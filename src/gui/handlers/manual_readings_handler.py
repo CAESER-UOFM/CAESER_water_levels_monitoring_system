@@ -11,8 +11,9 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 class ManualReadingsHandler:
-    def __init__(self, db_path: str):
+    def __init__(self, db_path: str, db_manager=None):
         self.db_path = db_path
+        self.db_manager = db_manager
 
     def add_reading(self, data: Dict) -> Tuple[bool, str]:
         """Add a single manual reading to the database"""
@@ -126,6 +127,9 @@ class ManualReadingsHandler:
                 conn.commit()
                 logger.debug(f"Import completed. Added {records_added} records with {len(errors)} errors")
                 
+                # TODO: Add change tracking for CSV imports
+                logger.info(f"CSV import completed: {records_added} records added")
+                
             return records_added, errors
             
         except Exception as e:
@@ -237,6 +241,9 @@ class ManualReadingsHandler:
                                 well_updates[gwi_id] = well_updates.get(gwi_id, 0) + 1
                 
                 conn.commit()
+                
+                # TODO: Add change tracking for MONET imports  
+                logger.info(f"MONET import completed: {records_added} records added")
                 
         except Exception as e:
             logger.error(f"Error updating Monet data: {e}")

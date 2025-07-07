@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QFormLayout, QHBoxLayout,
 from PyQt5.QtCore import Qt, QDateTime
 from pathlib import Path
 from ..handlers.solinst_reader import SolinstReader
+from ..utils.button_styles import ButtonStyles
 from typing import Optional, Dict
 import logging
 
@@ -30,6 +31,7 @@ class BarologgerDialog(QDialog):
         serial_layout = QHBoxLayout()
         self.serial_number = QLineEdit()
         import_btn = QPushButton("Import from XLE...")
+        ButtonStyles.apply_button_style(import_btn, 'import')
         import_btn.clicked.connect(self.import_from_xle)
         serial_layout.addWidget(self.serial_number)
         serial_layout.addWidget(import_btn)
@@ -59,8 +61,10 @@ class BarologgerDialog(QDialog):
         # Buttons
         btn_layout = QHBoxLayout()
         save_btn = QPushButton("Save")
+        ButtonStyles.apply_button_style(save_btn, 'save')
         save_btn.clicked.connect(self.accept)
         cancel_btn = QPushButton("Cancel")
+        ButtonStyles.apply_button_style(cancel_btn, 'cancel')
         cancel_btn.clicked.connect(self.reject)
         
         btn_layout.addWidget(save_btn)

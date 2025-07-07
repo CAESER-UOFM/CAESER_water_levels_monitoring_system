@@ -37,6 +37,9 @@ class CloudDatabaseHandler:
         self.version_manager = VersionManager(self.cache_dir)  # Initialize version manager
         self.xle_manager = None  # Initialize when database manager available
         
+        # Session state tracking for enhanced draft management
+        self.session_backups = {}  # {project_name: {"original": path, "last_uploaded": path}}
+        
     def get_projects_folder_id(self):
         """Get the projects folder ID from settings"""
         if not self.projects_folder_id:
@@ -49,7 +52,9 @@ class CloudDatabaseHandler:
     def _get_cache_directory(self) -> str:
         """Get or create the cache directory for storing downloaded databases"""
         # Use databases/temp folder instead of system temp
-        local_db_directory = self.settings_handler.get_setting("local_db_directory", str(Path.cwd()))
+        # Use app directory instead of current working directory
+        app_dir = Path(__file__).parent.parent.parent.parent
+        local_db_directory = self.settings_handler.get_setting("local_db_directory", str(app_dir))
         cache_dir = os.path.join(local_db_directory, "temp")
         
         # Ensure the directory exists and is writable
@@ -78,6 +83,10 @@ class CloudDatabaseHandler:
         """Get the path for cached metadata file"""
         return os.path.join(self.cache_dir, f"{project_name}_metadata.json")
     
+    def _get_working_metadata_path(self, project_name: str) -> str:
+        """Get the path for working database metadata file"""
+        return os.path.join(self.cache_dir, f"{project_name}_working_metadata.json")
+    
     def _is_cache_valid(self, project_name: str, cloud_modified_time: str) -> bool:
         """Check if cached database is still valid (up to date)"""
         try:
@@ -100,6 +109,34 @@ class CloudDatabaseHandler:
             logger.error(f"Error checking cache validity: {e}")
             return False
     
+    def _is_working_database_valid(self, project_name: str, cloud_modified_time: str) -> bool:
+        """Check if working database is still valid (up to date with cloud)"""
+        try:
+            working_metadata_path = self._get_working_metadata_path(project_name)
+            working_db_path = os.path.join(self.cache_dir, f"wlm_{project_name}.db")
+            
+            # Check if both metadata and database files exist
+            if not (os.path.exists(working_metadata_path) and os.path.exists(working_db_path)):
+                return False
+            
+            # Read working database metadata
+            with open(working_metadata_path, 'r') as f:
+                working_metadata = json.load(f)
+            
+            # Compare modification times
+            working_time = working_metadata.get('modifiedTime', '')
+            is_valid = working_time == cloud_modified_time
+            
+            if not is_valid:
+                logger.warning(f"Working database for {project_name} is outdated. "
+                             f"Local: {working_time}, Cloud: {cloud_modified_time}")
+            
+            return is_valid
+            
+        except Exception as e:
+            logger.error(f"Error checking working database validity: {e}")
+            return False
+    
     def _save_cache_metadata(self, project_name: str, project_info: Dict):
         """Save metadata for cached database"""
         try:
@@ -117,6 +154,25 @@ class CloudDatabaseHandler:
                 
         except Exception as e:
             logger.error(f"Error saving cache metadata: {e}")
+    
+    def _save_working_metadata(self, project_name: str, project_info: Dict):
+        """Save metadata for working database"""
+        try:
+            metadata_path = self._get_working_metadata_path(project_name)
+            metadata = {
+                'project_name': project_name,
+                'database_name': project_info['database_name'],
+                'modifiedTime': project_info['modified_time'],
+                'preserved_at': datetime.now().isoformat(),
+                'database_id': project_info['database_id'],
+                'is_working_copy': True
+            }
+            
+            with open(metadata_path, 'w') as f:
+                json.dump(metadata, f, indent=2)
+                
+        except Exception as e:
+            logger.error(f"Error saving working database metadata: {e}")
         
     def list_projects(self) -> List[Dict]:
         """
@@ -243,23 +299,32 @@ class CloudDatabaseHandler:
                     if progress_callback:
                         progress_callback(100, "Draft loaded successfully")
                     return draft_path
-            # Check if we have a valid cached version (unless forced to download)
+            
+            # Check for valid working database first (unless forced to download)
+            working_db_path = os.path.join(self.cache_dir, f"wlm_{project_name}.db")
             cloud_modified_time = project_info.get('modified_time', '')
-            if not force_download and self._is_cache_valid(project_name, cloud_modified_time):
-                logger.info(f"Using cached database for {project_name} (up to date)")
+            
+            if (not force_download and os.path.exists(working_db_path) and 
+                self._is_working_database_valid(project_name, cloud_modified_time)):
+                logger.info(f"Using existing working database for {project_name} (up to date)")
                 if progress_callback:
-                    progress_callback(100, "Using cached database (up to date)")
+                    progress_callback(100, "Using existing working database (up to date)")
+                return working_db_path
+            
+            # OPTIMIZATION: Check if we have a valid working database (unless forced to download)
+            # Single file system - the working database IS the cache
+            working_db_path = os.path.join(self.cache_dir, f"wlm_{project_name}.db")
+            if (not force_download and os.path.exists(working_db_path) and 
+                self._is_working_database_valid(project_name, cloud_modified_time)):
+                logger.info(f"Using existing working database for {project_name} (up to date)")
+                if progress_callback:
+                    progress_callback(100, "Using existing working database (up to date)")
                 
-                # Copy cached file to temp location
-                cached_path = self._get_cached_db_path(project_name)
-                temp_dir = self.cache_dir  # Use databases/temp folder
-                temp_filename = f"wlm_{project_name}_{uuid.uuid4().hex[:8]}.db"
-                temp_path = os.path.join(temp_dir, temp_filename)
-                
-                shutil.copy2(cached_path, temp_path)
-                self.temp_files.append(temp_path)
-                logger.info(f"Copied cached database to: {temp_path}")
-                return temp_path
+                # No copying needed - just return the working file path
+                if working_db_path not in self.temp_files:
+                    self.temp_files.append(working_db_path)
+                logger.info(f"Using existing working database: {working_db_path}")
+                return working_db_path
             
             # Need to download from cloud
             service = self.drive_service.get_service()
@@ -270,13 +335,27 @@ class CloudDatabaseHandler:
             if progress_callback:
                 progress_callback(0, f"Downloading {project_info['database_name']} from cloud...")
                 
-            # Use cached path as destination
-            cached_path = self._get_cached_db_path(project_name)
-            
-            # Create temp file with unique name for final result
+            # OPTIMIZATION: Download directly to working file - single file system!
             temp_dir = self.cache_dir  # Use databases/temp folder
-            temp_filename = f"wlm_{project_name}_{uuid.uuid4().hex[:8]}.db"
+            temp_filename = f"wlm_{project_name}.db"  # Use consistent naming
             temp_path = os.path.join(temp_dir, temp_filename)
+            
+            # Remove old working file if it exists
+            if os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                    logger.debug(f"Removed existing working file: {temp_path}")
+                except Exception as e:
+                    logger.warning(f"Could not remove existing working file {temp_path}: {e}")
+            
+            # Also clean up any legacy cache files
+            legacy_cache_path = self._get_cached_db_path(project_name)
+            if os.path.exists(legacy_cache_path):
+                try:
+                    os.remove(legacy_cache_path)
+                    logger.debug(f"Removed legacy cache file: {legacy_cache_path}")
+                except Exception as e:
+                    logger.warning(f"Could not remove legacy cache file {legacy_cache_path}: {e}")
             
             # Try alternative download method for better performance
             start_time = time.time()
@@ -287,9 +366,9 @@ class CloudDatabaseHandler:
                 file_size = int(file_metadata.get('size', 0))
                 logger.info(f"Database file size: {file_size / (1024*1024):.1f} MB")
                 
-                # Download to cached location first
+                # OPTIMIZATION: Download directly to working file (no cache duplication)
                 request = service.files().get_media(fileId=project_info['database_id'])
-                with open(cached_path, 'wb') as f:
+                with open(temp_path, 'wb') as f:
                     downloader = MediaIoBaseDownload(f, request, chunksize=8*1024*1024)  # 8MB chunks
                     done = False
                     downloaded_bytes = 0
@@ -331,14 +410,13 @@ class CloudDatabaseHandler:
             elapsed_total = time.time() - start_time
             logger.info(f"Download completed in {elapsed_total:.1f} seconds")
             
-            # Save cache metadata
+            # OPTIMIZATION: No cache file needed - work directly with downloaded file!
+            # Save cache metadata for version checking compatibility (but no physical cache file)
             self._save_cache_metadata(project_name, project_info)
             
-            # Copy cached file to temp location
-            shutil.copy2(cached_path, temp_path)
-            
-            # Track temp file for cleanup
-            self.temp_files.append(temp_path)
+            # Track temp file for cleanup (only if not already tracked)
+            if temp_path not in self.temp_files:
+                self.temp_files.append(temp_path)
             
             if progress_callback:
                 progress_callback(100, "Download completed, loading database...")
@@ -409,6 +487,12 @@ class CloudDatabaseHandler:
             
             # 6. Release lock
             self._release_lock(service, project_info)
+            
+            # 7. Get updated project info after upload to get current modified time
+            updated_project_info = self._get_updated_project_info(service, project_info)
+            
+            # 8. Preserve uploaded database as working copy
+            self._preserve_working_database(temp_db_path, project_name, updated_project_info or project_info)
             
             if progress_callback:
                 progress_callback(100, "Save completed successfully!")
@@ -775,18 +859,75 @@ class CloudDatabaseHandler:
         except Exception as e:
             logger.error(f"Error creating changes folder: {e}")
             return None
+    
+    def _get_updated_project_info(self, service, project_info: Dict) -> Optional[Dict]:
+        """Get updated project info after upload to get current modified time"""
+        try:
+            # Get fresh file metadata
+            file_metadata = service.files().get(
+                fileId=project_info['database_id'], 
+                fields="modifiedTime"
+            ).execute()
             
+            # Update project info with new modified time
+            updated_info = project_info.copy()
+            updated_info['modified_time'] = file_metadata.get('modifiedTime', '')
+            logger.debug(f"Updated project info with new modified time: {updated_info['modified_time']}")
+            return updated_info
+            
+        except Exception as e:
+            logger.error(f"Error getting updated project info: {e}")
+            return None
+            
+    def _preserve_working_database(self, uploaded_db_path: str, project_name: str, project_info: Dict):
+        """
+        Preserve the uploaded database as the working copy and remove it from temp cleanup.
+        This ensures the uploaded database remains available after app closure and tracks version info.
+        """
+        try:
+            # Remove the uploaded database from temp files cleanup list
+            if uploaded_db_path in self.temp_files:
+                self.temp_files.remove(uploaded_db_path)
+                logger.info(f"Preserved working database: {uploaded_db_path}")
+                
+            # OPTIMIZATION: No cache file needed - we work directly with uploaded file
+            # The working database IS the cache now (single file system)
+            logger.debug(f"Working with single database file: {uploaded_db_path}")
+                
+            # CRITICAL: Save working database metadata with current cloud version
+            # This ensures we can detect when the cloud version is newer
+            self._save_working_metadata(project_name, project_info)
+            logger.info(f"Saved working database metadata for version tracking")
+                
+        except Exception as e:
+            logger.error(f"Error preserving working database: {e}")
+    
     def cleanup_temp_files(self):
         """Clean up any temporary files created"""
+        files_to_remove = []
         for temp_file in self.temp_files:
             try:
                 if os.path.exists(temp_file):
-                    os.remove(temp_file)
-                    logger.debug(f"Cleaned up temp file: {temp_file}")
+                    # Check if file is in use by checking if we can open it
+                    try:
+                        with open(temp_file, 'r+b'):
+                            pass  # File is not locked
+                        os.remove(temp_file)
+                        logger.debug(f"Cleaned up temp file: {temp_file}")
+                        files_to_remove.append(temp_file)
+                    except (PermissionError, OSError) as lock_error:
+                        # File is locked/in use - skip cleanup for now
+                        logger.warning(f"Temp file {temp_file} is in use, skipping cleanup: {lock_error}")
+                else:
+                    # File doesn't exist anymore, remove from list
+                    files_to_remove.append(temp_file)
             except Exception as e:
                 logger.error(f"Error cleaning up temp file {temp_file}: {e}")
                 
-        self.temp_files.clear()
+        # Only remove successfully cleaned files from the list
+        for removed_file in files_to_remove:
+            if removed_file in self.temp_files:
+                self.temp_files.remove(removed_file)
     
     # Draft Management Methods
     def has_draft(self, project_name: str) -> bool:
@@ -829,9 +970,125 @@ class CloudDatabaseHandler:
             logger.error(f"Error checking draft version changes: {e}")
             return {'changed': False, 'info': None}
     
+    def check_for_outdated_working_databases(self) -> List[Dict]:
+        """
+        Check all working databases for version conflicts.
+        Returns list of outdated databases with details.
+        """
+        outdated_databases = []
+        
+        try:
+            # Get all available projects
+            projects = self.list_projects()
+            
+            for project in projects:
+                project_name = project['name']
+                working_db_path = os.path.join(self.cache_dir, f"wlm_{project_name}.db")
+                
+                # Check if working database exists
+                if os.path.exists(working_db_path):
+                    cloud_modified_time = project.get('modified_time', '')
+                    
+                    # Check if working database is outdated
+                    if not self._is_working_database_valid(project_name, cloud_modified_time):
+                        outdated_info = {
+                            'project_name': project_name,
+                            'working_db_path': working_db_path,
+                            'cloud_modified_time': cloud_modified_time,
+                            'database_name': project.get('database_name', 'Unknown')
+                        }
+                        
+                        # Get local modified time for comparison
+                        try:
+                            working_metadata_path = self._get_working_metadata_path(project_name)
+                            if os.path.exists(working_metadata_path):
+                                with open(working_metadata_path, 'r') as f:
+                                    metadata = json.load(f)
+                                    outdated_info['local_modified_time'] = metadata.get('modifiedTime', 'Unknown')
+                        except Exception as e:
+                            logger.warning(f"Could not read local metadata for {project_name}: {e}")
+                            outdated_info['local_modified_time'] = 'Unknown'
+                        
+                        outdated_databases.append(outdated_info)
+                        logger.warning(f"Found outdated working database: {project_name}")
+            
+        except Exception as e:
+            logger.error(f"Error checking for outdated working databases: {e}")
+        
+        return outdated_databases
+    
     # Version Manager Methods
     def check_version_status(self, project_name: str, cloud_version_time: str) -> Dict:
-        """Check version status between local cache and cloud"""
+        """
+        Check version status between local databases (working + cache) and cloud.
+        Now includes working database checking with priority over cache.
+        """
+        # First check if we have a working database and if it's valid
+        working_db_path = os.path.join(self.cache_dir, f"wlm_{project_name}.db")
+        
+        if os.path.exists(working_db_path):
+            # Check working database version first (highest priority)
+            if self._is_working_database_valid(project_name, cloud_version_time):
+                # Working database is up to date - recommend using it
+                try:
+                    working_metadata_path = self._get_working_metadata_path(project_name)
+                    file_size = os.path.getsize(working_db_path) / (1024 * 1024)
+                    
+                    working_metadata = {}
+                    if os.path.exists(working_metadata_path):
+                        with open(working_metadata_path, 'r') as f:
+                            working_metadata = json.load(f)
+                    
+                    return {
+                        'status': 'current',
+                        'local_time': working_metadata.get('modifiedTime', cloud_version_time),
+                        'cloud_time': cloud_version_time,
+                        'time_diff': 0,
+                        'needs_download': False,
+                        'message': '✅ Working with latest version (preserved working copy)',
+                        'local_db_exists': True,
+                        'file_size_mb': round(file_size, 2),
+                        'db_type': 'working',
+                        'working_db_path': working_db_path
+                    }
+                except Exception as e:
+                    logger.error(f"Error checking working database metadata: {e}")
+            else:
+                # Working database is outdated - needs attention
+                try:
+                    working_metadata_path = self._get_working_metadata_path(project_name)
+                    file_size = os.path.getsize(working_db_path) / (1024 * 1024)
+                    
+                    local_time = cloud_version_time  # Default
+                    if os.path.exists(working_metadata_path):
+                        with open(working_metadata_path, 'r') as f:
+                            working_metadata = json.load(f)
+                            local_time = working_metadata.get('modifiedTime', cloud_version_time)
+                    
+                    # Calculate time difference
+                    try:
+                        local_dt = datetime.fromisoformat(local_time.replace('Z', '+00:00'))
+                        cloud_dt = datetime.fromisoformat(cloud_version_time.replace('Z', '+00:00'))
+                        diff_minutes = int((cloud_dt - local_dt).total_seconds() / 60)
+                    except:
+                        diff_minutes = 0
+                    
+                    return {
+                        'status': 'outdated',
+                        'local_time': local_time,
+                        'cloud_time': cloud_version_time,
+                        'time_diff': max(diff_minutes, 1),  # At least 1 minute difference
+                        'needs_download': True,
+                        'message': '⚠️ Your working copy is outdated - cloud version is newer',
+                        'local_db_exists': True,
+                        'file_size_mb': round(file_size, 2),
+                        'db_type': 'working_outdated',
+                        'working_db_path': working_db_path
+                    }
+                except Exception as e:
+                    logger.error(f"Error checking outdated working database: {e}")
+        
+        # No working database or error checking it - fall back to original cache checking
         return self.version_manager.compare_versions(project_name, cloud_version_time)
     
     def update_local_version_tracking(self, project_name: str, cloud_version_time: str, 
@@ -1074,14 +1331,51 @@ class CloudDatabaseHandler:
             self.xle_manager = XLEFileManager(
                 database_manager, self.drive_service, self.settings_handler
             )
-            logger.info("XLE file manager initialized")
+            logger.info("XLE file manager initialized for cloud database operations")
+        elif self.xle_manager:
+            logger.info("XLE file manager already initialized")
+        else:
+            logger.warning("Cannot initialize XLE file manager - no database manager provided")
+    
+    def rebuild_xle_tracking_after_database_load(self, project_name: str = None):
+        """
+        Rebuild XLE file tracking after a database is loaded.
+        Call this after database is opened/loaded to restore XLE tracking.
+        """
+        logger.info(f"XLE_REBUILD: rebuild_xle_tracking_after_database_load called for project: '{project_name}'")
+        
+        if not self.xle_manager:
+            logger.warning("XLE_REBUILD: Cannot rebuild XLE tracking - XLE manager not initialized")
+            return
+            
+        try:
+            rebuilt_count = self.xle_manager.rebuild_tracking_from_database(project_name)
+            if rebuilt_count > 0:
+                logger.info(f"XLE_REBUILD: Successfully rebuilt tracking for {rebuilt_count} XLE files from database")
+            else:
+                logger.info(f"XLE_REBUILD: No XLE files needed tracking rebuild for project '{project_name}'")
+        except Exception as e:
+            logger.error(f"XLE_REBUILD: Error rebuilding XLE tracking from database: {e}")
     
     def _upload_project_xle_files(self, project_name: str, progress_callback=None):
         """Upload pending XLE files for a project."""
         try:
+            logger.info(f"XLE_UPLOAD: Starting XLE upload for project: '{project_name}'")
+            
             if not self.xle_manager:
-                logger.warning("XLE file manager not initialized - skipping XLE upload")
+                logger.warning("XLE_UPLOAD: XLE file manager not initialized - skipping XLE upload")
                 return
+            
+            # Check what pending files we have before upload
+            pending_files = self.xle_manager.get_pending_uploads(project_name)
+            logger.info(f"XLE_UPLOAD: Found {len(pending_files)} pending XLE files for project '{project_name}'")
+            
+            if pending_files:
+                for i, file_record in enumerate(pending_files):
+                    logger.info(f"XLE_UPLOAD: Pending file {i+1}: {file_record.get('file_name', 'unknown')} "
+                              f"(type: {file_record.get('file_type', 'unknown')}, "
+                              f"serial: {file_record.get('serial_number', 'unknown')}, "
+                              f"status: {file_record.get('upload_status', 'unknown')})")
             
             # Create progress wrapper for XLE uploads
             def xle_progress_callback(progress, message):
@@ -1096,12 +1390,129 @@ class CloudDatabaseHandler:
             )
             
             if results['total'] > 0:
-                logger.info(f"XLE upload results for {project_name}: {results['success']} success, {results['failed']} failed")
+                logger.info(f"XLE_UPLOAD: Upload results for {project_name}: {results['success']} success, {results['failed']} failed")
             else:
-                logger.info(f"No pending XLE files to upload for project: {project_name}")
+                logger.info(f"XLE_UPLOAD: No pending XLE files to upload for project: {project_name}")
                 
         except Exception as e:
-            logger.error(f"Error uploading XLE files for project {project_name}: {e}")
+            logger.error(f"XLE_UPLOAD: Error uploading XLE files for project {project_name}: {e}")
             # Don't fail the entire database upload if XLE upload fails
             if progress_callback:
                 progress_callback(89, "XLE upload encountered issues, continuing...")
+    
+    def create_session_backup(self, project_name: str, database_path: str, backup_type: str):
+        """
+        Create a session backup of the database.
+        
+        Args:
+            project_name: Name of the project
+            database_path: Path to the database to backup
+            backup_type: 'original' (just downloaded) or 'last_uploaded' (after successful upload)
+        """
+        try:
+            import uuid
+            backup_filename = f"{project_name}_{backup_type}_{uuid.uuid4().hex[:8]}.db"
+            backup_path = os.path.join(self.cache_dir, "session_backups", backup_filename)
+            
+            # Ensure backup directory exists
+            os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+            
+            # Create backup copy
+            shutil.copy2(database_path, backup_path)
+            
+            # Track in session backups
+            if project_name not in self.session_backups:
+                self.session_backups[project_name] = {}
+            
+            self.session_backups[project_name][backup_type] = backup_path
+            
+            logger.info(f"Created {backup_type} session backup for {project_name}: {backup_path}")
+            
+        except Exception as e:
+            logger.error(f"Error creating session backup: {e}")
+    
+    def get_session_backup_path(self, project_name: str, backup_type: str) -> Optional[str]:
+        """Get the path to a session backup."""
+        try:
+            backup_path = self.session_backups.get(project_name, {}).get(backup_type)
+            if backup_path and os.path.exists(backup_path):
+                return backup_path
+            return None
+        except Exception as e:
+            logger.error(f"Error getting session backup path: {e}")
+            return None
+    
+    def cleanup_session_backups(self, project_name: str = None):
+        """Clean up session backups for a project or all projects."""
+        try:
+            if project_name:
+                # Clean up specific project backups
+                if project_name in self.session_backups:
+                    for backup_type, backup_path in self.session_backups[project_name].items():
+                        if os.path.exists(backup_path):
+                            os.remove(backup_path)
+                            logger.info(f"Removed session backup: {backup_path}")
+                    del self.session_backups[project_name]
+            else:
+                # Clean up all session backups
+                for proj_name, backups in self.session_backups.items():
+                    for backup_type, backup_path in backups.items():
+                        if os.path.exists(backup_path):
+                            os.remove(backup_path)
+                            logger.info(f"Removed session backup: {backup_path}")
+                self.session_backups.clear()
+                
+                # Also clean up session backups directory
+                backups_dir = os.path.join(self.cache_dir, "session_backups")
+                if os.path.exists(backups_dir):
+                    shutil.rmtree(backups_dir)
+                    logger.info("Cleaned up session backups directory")
+                    
+        except Exception as e:
+            logger.error(f"Error cleaning up session backups: {e}")
+    
+    def has_session_changes_since_upload(self, project_name: str, current_db_path: str) -> bool:
+        """
+        Check if there are changes since the last upload by comparing with the last_uploaded backup.
+        """
+        try:
+            last_uploaded_path = self.get_session_backup_path(project_name, 'last_uploaded')
+            if not last_uploaded_path:
+                # No upload has happened this session, check against original
+                return self.has_session_changes_since_download(project_name, current_db_path)
+            
+            # Compare file sizes and modification times as a quick check
+            current_size = os.path.getsize(current_db_path)
+            last_uploaded_size = os.path.getsize(last_uploaded_path)
+            
+            if current_size != last_uploaded_size:
+                return True
+            
+            # If sizes are same, compare modification times
+            current_mtime = os.path.getmtime(current_db_path)
+            last_uploaded_mtime = os.path.getmtime(last_uploaded_path)
+            
+            return current_mtime > last_uploaded_mtime
+            
+        except Exception as e:
+            logger.error(f"Error checking session changes since upload: {e}")
+            return True  # Assume there are changes if we can't determine
+    
+    def has_session_changes_since_download(self, project_name: str, current_db_path: str) -> bool:
+        """
+        Check if there are changes since the original download by comparing with the original backup.
+        """
+        try:
+            original_path = self.get_session_backup_path(project_name, 'original')
+            if not original_path:
+                return True  # No original backup means we can't determine, assume changes exist
+            
+            # Compare file sizes as a quick check
+            current_size = os.path.getsize(current_db_path)
+            original_size = os.path.getsize(original_path)
+            
+            return current_size != original_size
+            
+        except Exception as e:
+            logger.error(f"Error checking session changes since download: {e}")
+            return True  # Assume there are changes if we can't determine

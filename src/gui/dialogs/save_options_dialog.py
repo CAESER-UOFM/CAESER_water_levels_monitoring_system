@@ -8,10 +8,12 @@ Offers: Save to Cloud, Save as Draft, Discard Changes
 import logging
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
-    QFrame, QButtonGroup, QRadioButton
+    QFrame, QButtonGroup, QRadioButton, QApplication
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
+from ..utils.button_styles import ButtonStyles
+from ..utils.dialog_utils import DialogUtils
 
 logger = logging.getLogger(__name__)
 
@@ -29,18 +31,11 @@ class SaveOptionsDialog(QDialog):
         self.setup_ui()
         
     def setup_ui(self):
-        """Setup the dialog UI"""
+        """Setup the dialog UI with dynamic sizing"""
         self.setWindowTitle("Unsaved Changes")
-        self.setMinimumWidth(600)
-        self.setMinimumHeight(500)
-        self.resize(650, 550)
         
-        # Center the dialog on the parent window
-        if self.parent():
-            parent_geometry = self.parent().geometry()
-            x = parent_geometry.x() + (parent_geometry.width() - self.width()) // 2
-            y = parent_geometry.y() + (parent_geometry.height() - self.height()) // 2
-            self.move(x, y)
+        # Use responsive dialog setup
+        DialogUtils.setup_responsive_dialog(self, min_width=600, min_height=400)
         
         # Set white background
         self.setStyleSheet("""
@@ -68,10 +63,10 @@ class SaveOptionsDialog(QDialog):
             }
         """)
         
-        # Main layout
+        # Main layout with better spacing
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(25, 25, 25, 25)
+        main_layout.setSpacing(20)
         
         # Header
         header_layout = QHBoxLayout()
@@ -121,6 +116,7 @@ class SaveOptionsDialog(QDialog):
             summary_text = f"<b>Changes detected:</b> {changes_summary['total']} modifications"
             
             summary_label = QLabel(summary_text)
+            summary_label.setWordWrap(True)  # Enable word wrapping
             summary_label.setStyleSheet("""
                 QLabel {
                     background-color: #f8f9fa;
@@ -149,7 +145,8 @@ class SaveOptionsDialog(QDialog):
         main_layout.addWidget(self.cloud_radio)
         
         cloud_desc = QLabel("Upload changes to the cloud database immediately")
-        cloud_desc.setStyleSheet("margin-left: 30px; margin-bottom: 10px; color: #666; font-size: 12px; line-height: 1.4;")
+        cloud_desc.setWordWrap(True)  # Enable word wrapping
+        cloud_desc.setStyleSheet("margin-left: 30px; margin-bottom: 15px; color: #666; font-size: 13px; line-height: 1.5;")
         main_layout.addWidget(cloud_desc)
         
         main_layout.addSpacing(15)
@@ -161,7 +158,8 @@ class SaveOptionsDialog(QDialog):
         main_layout.addWidget(self.draft_radio)
         
         draft_desc = QLabel("Save changes locally to continue working later (offline)")
-        draft_desc.setStyleSheet("margin-left: 30px; margin-bottom: 10px; color: #666; font-size: 12px; line-height: 1.4;")
+        draft_desc.setWordWrap(True)  # Enable word wrapping
+        draft_desc.setStyleSheet("margin-left: 30px; margin-bottom: 15px; color: #666; font-size: 13px; line-height: 1.5;")
         main_layout.addWidget(draft_desc)
         
         main_layout.addSpacing(15)
@@ -173,7 +171,8 @@ class SaveOptionsDialog(QDialog):
         main_layout.addWidget(self.discard_radio)
         
         discard_desc = QLabel("Close without saving (all changes will be lost)")
-        discard_desc.setStyleSheet("margin-left: 30px; margin-bottom: 10px; color: #666; font-size: 12px; line-height: 1.4;")
+        discard_desc.setWordWrap(True)  # Enable word wrapping
+        discard_desc.setStyleSheet("margin-left: 30px; margin-bottom: 15px; color: #666; font-size: 13px; line-height: 1.5;")
         main_layout.addWidget(discard_desc)
         
         main_layout.addStretch()
@@ -185,49 +184,19 @@ class SaveOptionsDialog(QDialog):
         button_layout.addStretch()
         
         cancel_button = QPushButton("Cancel")
-        cancel_button.setStyleSheet("""
-            QPushButton {
-                background-color: #ffffff;
-                color: #6c757d;
-                border: 2px solid #dee2e6;
-                padding: 12px 24px;
-                border-radius: 8px;
-                font-size: 14px;
-                font-weight: 500;
-                min-width: 100px;
-                min-height: 40px;
-            }
-            QPushButton:hover {
-                background-color: #f8f9fa;
-                border-color: #adb5bd;
-                color: #495057;
-            }
-        """)
+        ButtonStyles.apply_button_style(cancel_button, 'cancel')
         cancel_button.clicked.connect(self.reject)
         
         ok_button = QPushButton("OK")
-        ok_button.setStyleSheet("""
-            QPushButton {
-                background-color: #007bff;
-                color: white;
-                border: none;
-                padding: 12px 24px;
-                border-radius: 8px;
-                font-weight: bold;
-                font-size: 14px;
-                min-width: 100px;
-                min-height: 40px;
-            }
-            QPushButton:hover {
-                background-color: #0056b3;
-            }
-        """)
+        ButtonStyles.apply_button_style(ok_button, 'primary')
         ok_button.clicked.connect(self.accept_choice)
         ok_button.setDefault(True)
         
         button_layout.addWidget(cancel_button)
         button_layout.addWidget(ok_button)
         main_layout.addLayout(button_layout)
+        
+        # Note: Auto-sizing is handled by DialogUtils.setup_responsive_dialog
     
     def accept_choice(self):
         """Accept the selected choice"""
@@ -241,6 +210,8 @@ class SaveOptionsDialog(QDialog):
             self.choice = "discard"
         
         self.accept()
+    
+    # Removed custom sizing methods - now handled by DialogUtils
     
     def get_choice(self):
         """Get the user's choice"""

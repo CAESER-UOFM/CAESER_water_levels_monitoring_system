@@ -19,6 +19,7 @@ import sqlite3
 import json
 from PyQt5.QtWidgets import QApplication
 from ..handlers.progress_dialog_handler import progress_dialog
+from ..utils.button_styles import ButtonStyles
 
 logger = logging.getLogger(__name__)
 
@@ -36,18 +37,26 @@ class MasterBaroDialog(QDialog):
         self.has_master_data = False
         self.master_data = None
                 
-        # Initialize plot components
-        self.figure = Figure(figsize=(10, 6), tight_layout=True)
+        # Initialize plot components with responsive layout
+        self.figure = Figure(tight_layout=True)  # Remove fixed figsize to allow dynamic sizing
         self.canvas = FigureCanvasQTAgg(self.figure)
+        self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.canvas.setMinimumSize(800, 500)  # Set minimum size instead of fixed
         self.ax = self.figure.add_subplot(111)
+        
+        # Add debug logging for plot initialization
+        logger.debug("Plot initialized with responsive sizing - no fixed figsize")
         
         self.check_master_data()
         self.has_overlap = False
         self.setup_ui()
         self.load_barologger_data()
         
-        # Add screen adaptation after dialog is shown
-        QTimer.singleShot(10, self.adjust_for_screen)
+        # Initial screen setup (removed problematic delayed adjustment)
+        self.center_on_screen()
+        
+        # Add debug logging for dialog initialization
+        logger.debug("Master baro dialog initialized without delayed screen adjustment")
     
     def setup_ui(self):
         """Setup the dialog UI"""
@@ -57,13 +66,13 @@ class MasterBaroDialog(QDialog):
         main_screen = QApplication.primaryScreen()
         screen_size = main_screen.availableGeometry().size()
         
-        # Calculate size as percentage of screen size
-        width = min(int(screen_size.width() * 0.65), 1200)
-        height = min(int(screen_size.height() * 0.65), 800)
+        # Calculate size as percentage of screen size - make larger
+        width = min(int(screen_size.width() * 0.85), 1400)
+        height = min(int(screen_size.height() * 0.85), 900)
         
         # Set size and minimum size
         self.resize(width, height)
-        self.setMinimumSize(800, 550)
+        self.setMinimumSize(1000, 700)
         
         # Main container
         main_container = QVBoxLayout(self)
@@ -102,10 +111,14 @@ class MasterBaroDialog(QDialog):
         
         # The barologger checkboxes will be added here in load_barologger_data()
         
-        # 2. Middle panel - Time Range
+        # 2. Middle panel - Time Range - Reorganized for better layout
         time_group = QGroupBox("Time Range")
         time_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
         time_layout = QVBoxLayout(time_group)
+        time_layout.setSpacing(8)
+        
+        # Date/time inputs in a grid layout for better space usage
+        datetime_grid = QHBoxLayout()
         
         # Start date/time
         start_layout = QVBoxLayout()
@@ -116,7 +129,7 @@ class MasterBaroDialog(QDialog):
         self.start_date.setButtonSymbols(QAbstractSpinBox.UpDownArrows)
         self.start_date.setAccelerated(True)
         start_layout.addWidget(self.start_date)
-        time_layout.addLayout(start_layout)
+        datetime_grid.addLayout(start_layout)
         
         # End date/time
         end_layout = QVBoxLayout()
@@ -127,82 +140,148 @@ class MasterBaroDialog(QDialog):
         self.end_date.setButtonSymbols(QAbstractSpinBox.UpDownArrows)
         self.end_date.setAccelerated(True)
         end_layout.addWidget(self.end_date)
-        time_layout.addLayout(end_layout)
+        datetime_grid.addLayout(end_layout)
         
-        # Buttons for time range
-        button_layout = QVBoxLayout()
+        time_layout.addLayout(datetime_grid)
+        
+        # Buttons for time range - horizontal layout for better space usage
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(8)
         
         self.full_range_btn = QPushButton("Set Full Range")
+        self.full_range_btn.setStyleSheet("""
+            QPushButton {
+                padding: 6px 12px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #e3f2fd;
+                color: #1976d2;
+                font-weight: 500;
+                min-height: 20px;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #bbdefb;
+                border-color: #2196f3;
+            }
+            QPushButton:pressed {
+                background-color: #90caf9;
+                border-color: #1976d2;
+            }
+        """)
         self.full_range_btn.clicked.connect(self.set_full_range)
         button_layout.addWidget(self.full_range_btn)
         
         self.zoom_to_selection_btn = QPushButton("Zoom to Selection")
+        self.zoom_to_selection_btn.setStyleSheet("""
+            QPushButton {
+                padding: 6px 12px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #e3f2fd;
+                color: #1976d2;
+                font-weight: 500;
+                min-height: 20px;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #bbdefb;
+                border-color: #2196f3;
+            }
+            QPushButton:pressed {
+                background-color: #90caf9;
+                border-color: #1976d2;
+            }
+        """)
         self.zoom_to_selection_btn.clicked.connect(self.zoom_to_selected_data)
         button_layout.addWidget(self.zoom_to_selection_btn)
         
         time_layout.addLayout(button_layout)
         
-        # 3. Right panel - Legend
+        # 3. Right panel - Legend (more compact)
         legend_group = QGroupBox("Legend")
         legend_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
         legend_layout = QVBoxLayout(legend_group)
+        legend_layout.setContentsMargins(8, 8, 8, 8)  # Reduce margins
+        legend_layout.setSpacing(4)  # Reduce spacing
         
         self.legend_widget = QLabel("No data loaded")
         self.legend_widget.setWordWrap(True)
         self.legend_widget.setTextFormat(Qt.RichText)
+        self.legend_widget.setStyleSheet("font-size: 11px; color: #666666;")  # Smaller font
         legend_layout.addWidget(self.legend_widget)
         
-        # Add the three panels to the top controls layout with appropriate weights
-        top_controls.addWidget(baro_group, 5)       # Barologger selection (wider)
+        # Add the three panels to the top controls layout with better proportions
+        top_controls.addWidget(baro_group, 4)       # Barologger selection 
         top_controls.addWidget(time_group, 3)       # Time range 
-        top_controls.addWidget(legend_group, 3)     # Legend
+        top_controls.addWidget(legend_group, 2)     # Legend (more compact)
         
-        # Plot section - Give it maximum vertical space
+        # Plot section - Give it maximum vertical space with better margins
         plot_group = QGroupBox("Data Preview")
         plot_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         plot_layout = QVBoxLayout(plot_group)
+        plot_layout.setContentsMargins(10, 10, 10, 10)
+        plot_layout.setSpacing(5)
         
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
         
         plot_layout.addWidget(self.toolbar)
-        plot_layout.addWidget(self.canvas)
+        plot_layout.addWidget(self.canvas, 1)  # Give canvas stretch factor of 1
         
         # Bottom section - Processing options and buttons
         bottom_layout = QVBoxLayout()
         
-        # Processing options
+        # Processing options - better organization
         options_group = QGroupBox("Processing Options")
         options_layout = QHBoxLayout(options_group)
+        options_layout.setSpacing(20)  # More space between controls
         
+        # Left side - Minimum readings
         min_readings_layout = QHBoxLayout()
-        min_readings_layout.addWidget(QLabel("Minimum readings required:"))
+        min_readings_layout.addWidget(QLabel("Minimum readings:"))
         self.min_readings = QSpinBox()
         self.min_readings.setRange(1, 10)
         self.min_readings.setValue(1)
+        self.min_readings.setMaximumWidth(60)  # Make spinbox more compact
         min_readings_layout.addWidget(self.min_readings)
         options_layout.addLayout(min_readings_layout)
         
+        # Center - Overwrite option
         self.overwrite_cb = QCheckBox("Overwrite overlapping data")
-        self.overwrite_cb.setEnabled(False)
-        self.overwrite_cb.setChecked(False)
+        self.overwrite_cb.setEnabled(self.has_master_data)  # Enable if master data exists
+        self.overwrite_cb.setChecked(self.has_master_data)  # Default to checked if master data exists
         self.overwrite_cb.stateChanged.connect(self.on_overwrite_changed)
         options_layout.addWidget(self.overwrite_cb)
+        
+        # Right side - Status indicator
+        status_layout = QHBoxLayout()
+        status_label = QLabel("Status: Ready" if not self.has_master_data else "Status: Master data exists")
+        status_label.setStyleSheet("color: #2e7d32; font-weight: 500;")
+        status_layout.addWidget(status_label)
+        options_layout.addLayout(status_layout)
+        
         options_layout.addStretch()
         
-        # Action buttons
+        # Action buttons with professional styling and better organization
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(12)  # Consistent spacing
         btn_layout.addStretch()
         
         preview_btn = QPushButton("Preview Master Baro")
+        ButtonStyles.apply_button_style(preview_btn, 'import')
+        preview_btn.setMinimumWidth(140)
         preview_btn.clicked.connect(self.preview_master_baro)
         btn_layout.addWidget(preview_btn)
         
         create_btn_text = "Edit Master Baro" if self.has_master_data else "Create Master Baro"
         self.create_btn = QPushButton(create_btn_text)
+        ButtonStyles.apply_button_style(self.create_btn, 'edit' if self.has_master_data else 'create')
+        self.create_btn.setMinimumWidth(140)
         self.create_btn.clicked.connect(self.create_master_baro)
         btn_layout.addWidget(self.create_btn)
         
         cancel_btn = QPushButton("Cancel")
+        ButtonStyles.apply_button_style(cancel_btn, 'cancel')
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
         
@@ -210,9 +289,9 @@ class MasterBaroDialog(QDialog):
         bottom_layout.addLayout(btn_layout)
         
         # Add all sections to main container with appropriate vertical sizing
-        main_container.addLayout(top_controls)
-        main_container.addWidget(plot_group)
-        main_container.addLayout(bottom_layout)
+        main_container.addLayout(top_controls, 0)  # No stretch for controls
+        main_container.addWidget(plot_group, 1)     # Give plot area maximum stretch
+        main_container.addLayout(bottom_layout, 0) # No stretch for bottom buttons
         
         # Create the span selector
         self.span_selector = SpanSelector(
@@ -222,41 +301,13 @@ class MasterBaroDialog(QDialog):
         )
     
     def adjust_for_screen(self):
-        """Adjust dialog layout for the current screen"""
+        """Minimal screen adjustment without plot resizing"""
         try:
-            # Get current screen
-            screen = self.screen()
-            if not screen:
-                screen = QApplication.primaryScreen()
-                
-            # Get screen metrics
-            available_size = screen.availableGeometry().size()
-            dpi_factor = screen.devicePixelRatio()
-            
-            # Resize the dialog appropriately for the screen
-            width = min(int(available_size.width() * 0.65), 1200)
-            height = min(int(available_size.height() * 0.65), 800)
-            
-            # Set size
-            self.resize(width, height)
-            
-            # Update figure size if exists
-            if hasattr(self, 'figure'):
-                # Calculate new figure size in inches (divide pixel size by DPI)
-                # Use a more conservative sizing to ensure proper centering
-                width_inches = (width * 0.65) / (self.figure.dpi * dpi_factor)
-                height_inches = (height * 0.45) / (self.figure.dpi * dpi_factor)
-                self.figure.set_size_inches(width_inches, height_inches)
-                
-                # Force tight layout to ensure proper spacing
-                self.figure.tight_layout(pad=1.5)
-                
-                # Redraw canvas
-                if hasattr(self, 'canvas'):
-                    self.canvas.draw()
-            
-            # Center the dialog on screen
+            # Only center the dialog, don't resize anything to prevent plot jumping
             self.center_on_screen()
+            
+            # Add debug logging
+            logger.debug("Screen adjustment completed - no plot resizing performed to prevent layout jumping")
             
         except Exception as e:
             logger.error(f"Error adjusting for screen: {e}")
@@ -278,15 +329,16 @@ class MasterBaroDialog(QDialog):
         self.move(screen_geometry.left() + x, screen_geometry.top() + y)
 
     def moveEvent(self, event):
-        """Handle move events to adapt to screen changes"""
+        """Handle move events without triggering plot resize"""
         super().moveEvent(event)
-        # Detect if moved to a different screen
+        # Just track current screen without triggering adjustments that cause plot jumping
         new_screen = self.screen()
-        if hasattr(self, 'current_screen') and self.current_screen != new_screen:
+        if not hasattr(self, 'current_screen'):
             self.current_screen = new_screen
-            # Adjust layout for the new screen
-            QTimer.singleShot(100, self.adjust_for_screen)
-        elif not hasattr(self, 'current_screen'):
+            
+        # Add debug logging for screen changes without triggering layout changes
+        if hasattr(self, 'current_screen') and self.current_screen != new_screen:
+            logger.debug(f"Dialog moved to different screen: {new_screen.name() if new_screen else 'Unknown'} - no automatic adjustment to prevent plot resizing")
             self.current_screen = new_screen
     
     def update_preview(self, maintain_limits=False):
@@ -664,6 +716,12 @@ class MasterBaroDialog(QDialog):
         except Exception as e:
             logger.error(f"Error checking master data: {e}")
             self.has_master_data = False
+            
+        # Enable overwrite checkbox if master data exists
+        if hasattr(self, 'overwrite_cb'):
+            self.overwrite_cb.setEnabled(self.has_master_data)
+            if self.has_master_data:
+                self.overwrite_cb.setChecked(True)  # Default to overwrite when master data exists
     
     def create_master_baro(self):
         """Create master baro using cached data"""
@@ -718,44 +776,26 @@ class MasterBaroDialog(QDialog):
                 QMessageBox.warning(self, "Warning", "No valid data to save")
                 return
             
-            # Prepare data for batch insert
+            # Use the model's tracked method instead of direct SQL
             try:
                 progress_dialog.update(60, "Saving to database...")
-                with sqlite3.connect(self.baro_model.db_path) as conn:
-                    cursor = conn.cursor()
-                    
-                    # If overwrite is enabled, delete overlapping timestamps
-                    if self.overwrite_cb.isChecked():
-                        progress_dialog.update(70, "Removing overlapping data...")
-                        cursor.execute("""
-                            DELETE FROM master_baro_readings
-                            WHERE timestamp_utc BETWEEN ? AND ?
-                        """, (start_dt.strftime('%Y-%m-%d %H:%M:%S'),
-                              end_dt.strftime('%Y-%m-%d %H:%M:%S')))
-                    
-                    # Prepare batch insert data
-                    progress_dialog.update(80, "Preparing batch insert...")
-                    sources_json = json.dumps(selected_baros)
-                    insert_data = []
-                    
-                    for _, row in master_data.iterrows():
-                        insert_data.append((
-                            row['timestamp_utc'].strftime('%Y-%m-%d %H:%M:%S'),
-                            row['pressure_mean'],
-                            row['temp_mean'] if 'temp_mean' in row else None,
-                            sources_json,
-                            ''  # notes
-                        ))
-                    
-                    # Batch insert
-                    progress_dialog.update(90, f"Inserting {len(insert_data)} data points...")
-                    cursor.executemany("""
-                        INSERT INTO master_baro_readings 
-                        (timestamp_utc, pressure, temperature, source_barologgers, notes)
-                        VALUES (?, ?, ?, ?, ?)
-                    """, insert_data)
-                    
-                    conn.commit()
+                
+                # Call the model's create_master_baro method which includes change tracking
+                success, message = self.baro_model.create_master_baro(
+                    start_date=start_dt.strftime('%Y-%m-%d %H:%M:%S'),
+                    end_date=end_dt.strftime('%Y-%m-%d %H:%M:%S'),
+                    serial_numbers=selected_baros,
+                    min_readings=self.min_readings.value(),
+                    overwrite=self.overwrite_cb.isChecked(),
+                    notes=""
+                )
+                
+                progress_dialog.update(90, f"Processing complete...")
+                
+                if not success:
+                    progress_dialog.close()
+                    QMessageBox.critical(self, "Error", f"Failed to create master baro: {message}")
+                    return
                 
                 # Instead of closing the dialog immediately, show a message that data will be reloaded
                 progress_dialog.update(95, "Master baro created. Reloading data in main window...")

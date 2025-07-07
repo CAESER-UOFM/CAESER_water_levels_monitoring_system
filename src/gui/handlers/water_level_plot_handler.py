@@ -363,13 +363,72 @@ class WaterLevelPlotHandler:
             return pd.DataFrame()
 
     def format_date_axis(self):
-        """Format the date axis with improved spacing and readability."""
-        # Use more compact date formatting and smaller font
-        self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%y'))
-        
-        # Set more conservative date locators to avoid crowding
-        self.ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
-        self.ax.xaxis.set_minor_locator(mdates.MonthLocator())
+        """Format the date axis with intelligent spacing based on data range."""
+        try:
+            # Get the current x-axis limits to determine data range
+            xlim = self.ax.get_xlim()
+            date_range_days = xlim[1] - xlim[0]  # Range in matplotlib date units (days)
+            
+            # Determine appropriate tick spacing and format based on data range
+            if date_range_days <= 7:  # Less than a week
+                # Daily ticks, show date only
+                try:
+                    self.ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+                except TypeError:
+                    # Fallback for older matplotlib versions
+                    self.ax.xaxis.set_major_locator(mdates.DayLocator())
+                self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+                try:
+                    self.ax.xaxis.set_minor_locator(mdates.HourLocator(interval=6))
+                except TypeError:
+                    self.ax.xaxis.set_minor_locator(mdates.HourLocator())
+            elif date_range_days <= 30:  # Less than a month
+                # Every few days, show date only
+                interval = max(1, int(date_range_days / 6))  # ~6 ticks maximum
+                try:
+                    self.ax.xaxis.set_major_locator(mdates.DayLocator(interval=interval))
+                except TypeError:
+                    # Fallback for older matplotlib versions
+                    self.ax.xaxis.set_major_locator(mdates.DayLocator())
+                self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+                self.ax.xaxis.set_minor_locator(mdates.DayLocator())
+            elif date_range_days <= 365:  # Less than a year
+                # Monthly ticks, show month/year
+                interval = max(1, int(date_range_days / 180))  # ~6 ticks maximum
+                try:
+                    self.ax.xaxis.set_major_locator(mdates.MonthLocator(interval=interval))
+                except TypeError:
+                    # Fallback for older matplotlib versions
+                    self.ax.xaxis.set_major_locator(mdates.MonthLocator())
+                self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%y'))
+                self.ax.xaxis.set_minor_locator(mdates.MonthLocator())
+            elif date_range_days <= 1095:  # Less than 3 years
+                # Quarterly ticks, show month/year
+                try:
+                    self.ax.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
+                except TypeError:
+                    # Fallback for older matplotlib versions
+                    self.ax.xaxis.set_major_locator(mdates.MonthLocator())
+                self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%y'))
+                self.ax.xaxis.set_minor_locator(mdates.MonthLocator())
+            else:  # More than 3 years
+                # Yearly ticks, show year only
+                interval = max(1, int(date_range_days / 1825))  # ~6 ticks maximum
+                try:
+                    self.ax.xaxis.set_major_locator(mdates.YearLocator(interval=interval))
+                except TypeError:
+                    # Fallback for older matplotlib versions
+                    self.ax.xaxis.set_major_locator(mdates.YearLocator())
+                self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+                try:
+                    self.ax.xaxis.set_minor_locator(mdates.MonthLocator(interval=6))
+                except TypeError:
+                    self.ax.xaxis.set_minor_locator(mdates.MonthLocator())
+        except Exception as e:
+            logger.warning(f"Error formatting date axis, using default formatting: {e}")
+            # Fallback to basic date formatting
+            self.ax.xaxis.set_major_locator(mdates.MonthLocator())
+            self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%y'))
         
         # Use smaller rotation angle and font size for cleaner look
         plt.setp(self.ax.get_xticklabels(), rotation=30, ha='right', fontsize=9)

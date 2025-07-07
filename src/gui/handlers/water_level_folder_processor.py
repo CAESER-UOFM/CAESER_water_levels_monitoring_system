@@ -15,7 +15,7 @@ from collections import defaultdict
 from .solinst_reader import SolinstReader
 from ...database.models.water_level import WaterLevelModel
 from ..dialogs.water_level_progress_dialog import WaterLevelProgressDialog
-from ...core.water_level_processor import WaterLevelProcessor  # Add this import
+# from ...core.water_level_processor import WaterLevelProcessor  # This module doesn't exist
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ logger.debug("Initializing water_level_folder_processor.py")
 class WaterLevelFolderProcessor:
     def __init__(self, water_level_model):
         self.water_level_model = water_level_model
-        self.processor = WaterLevelProcessor(water_level_model)
+        # self.processor = WaterLevelProcessor(water_level_model)  # This doesn't exist
         self.solinst_reader = SolinstReader()
     
     def scan_folder(self, folder_path: Path, include_subfolders: bool = False,
@@ -46,6 +46,7 @@ class WaterLevelFolderProcessor:
 
             # Get well mappings first
             well_mapping = self._get_well_mapping()
+            logger.info(f"AUTO_SYNC_DEBUG: Well mapping loaded: {well_mapping}")
             
             # Group files by well
             well_files = defaultdict(list)
@@ -60,22 +61,27 @@ class WaterLevelFolderProcessor:
                 try:
                     # Get metadata from file
                     metadata, _ = self.solinst_reader.get_file_metadata(file_path)
-                    logger.debug(f"Processing file {file_path.name} - Location: {metadata.location}")
+                    logger.info(f"AUTO_SYNC_DEBUG: Processing file {file_path.name}")
+                    logger.info(f"AUTO_SYNC_DEBUG: - File location: '{metadata.location}'")
+                    logger.info(f"AUTO_SYNC_DEBUG: - File serial: '{metadata.serial_number}'")
                     
                     # Skip barologgers
                     if self.solinst_reader.is_barologger(metadata):
+                        logger.info(f"AUTO_SYNC_DEBUG: - Skipping barologger file {file_path.name}")
                         continue
 
                     # Match CAE number to well number
+                    logger.info(f"AUTO_SYNC_DEBUG: - Attempting to match location '{metadata.location}' to well")
                     well_number = self._match_well_location(metadata.location, well_mapping)
+                    logger.info(f"AUTO_SYNC_DEBUG: - Match result: {well_number}")
+                    
                     if not well_number:
-                        logger.warning(f"Could not match CAE {metadata.location} to any well - File: {file_path.name}")
+                        logger.warning(f"AUTO_SYNC_DEBUG: Could not match CAE {metadata.location} to any well - File: {file_path.name}")
+                        logger.info(f"AUTO_SYNC_DEBUG: - Available wells in mapping: {list(well_mapping.keys())}")
                         continue
                         
-                    # Validate transducer
-                    well_info = self.processor.get_well_info(well_number)
-                    if not well_info or not self.processor.validate_transducer(well_number, metadata.serial_number):
-                        continue
+                    # Skip validation for auto-sync - we'll validate during import
+                    well_info = {'well_number': well_number, 'cae_number': metadata.location}
 
                     if well_number not in matched_wells:
                         matched_wells.add(well_number)
@@ -110,7 +116,10 @@ class WaterLevelFolderProcessor:
 
             # Process each well's data to check for overlaps
             results = {}
+            logger.info(f"AUTO_SYNC_DEBUG: Processing {len(well_files)} wells for overlap check: {list(well_files.keys())}")
+            
             for well_number, files in well_files.items():
+                logger.info(f"AUTO_SYNC_DEBUG: Processing well {well_number} with {len(files)} files")
                 well_data = {
                     'files': sorted(files, key=lambda f: metadata_cache[f]['time_range'][0]),
                     'metadata': metadata_cache[files[0]]['metadata'],
@@ -123,43 +132,106 @@ class WaterLevelFolderProcessor:
                 
                 # Check for overlaps with existing data
                 start_time, end_time = well_data['time_range']
-                with sqlite3.connect(self.water_level_model.db_path) as conn:
-                    # Get existing data range
-                    query = """
-                        SELECT MIN(timestamp_utc), MAX(timestamp_utc)
-                        FROM water_levels
-                        WHERE well_number = ?
-                        AND timestamp_utc BETWEEN ? AND ?
-                    """
-                    cursor = conn.cursor()
-                    cursor.execute(query, (
-                        well_number,
-                        start_time.strftime('%Y-%m-%d %H:%M:%S'),
-                        end_time.strftime('%Y-%m-%d %H:%M:%S')
-                    ))
-                    existing_range = cursor.fetchone()
-                    
-                    if existing_range[0]:  # If we have overlapping data
-                        well_data['has_overlap'] = True
-                        well_data['overlap_range'] = (
-                            pd.to_datetime(existing_range[0]),
-                            pd.to_datetime(existing_range[1])
-                        )
-                    else:
-                        well_data['has_overlap'] = False
-                        well_data['overlap_range'] = None
+                logger.info(f"AUTO_SYNC_DEBUG: Checking overlaps for well {well_number}, time range {start_time} to {end_time}")
                 
-                results[well_number] = well_data
+                try:
+                    with sqlite3.connect(self.water_level_model.db_path) as conn:
+                        # Get existing data range - fix table name to water_level_readings
+                        query = """
+                            SELECT MIN(timestamp_utc), MAX(timestamp_utc)
+                            FROM water_level_readings
+                            WHERE well_number = ?
+                            AND timestamp_utc BETWEEN ? AND ?
+                        """
+                        cursor = conn.cursor()
+                        cursor.execute(query, (
+                            well_number,
+                            start_time.strftime('%Y-%m-%d %H:%M:%S'),
+                            end_time.strftime('%Y-%m-%d %H:%M:%S')
+                        ))
+                        existing_range = cursor.fetchone()
+                        
+                        if existing_range[0]:  # If we have overlapping data
+                            well_data['has_overlap'] = True
+                            well_data['overlap_range'] = (
+                                pd.to_datetime(existing_range[0]),
+                                pd.to_datetime(existing_range[1])
+                            )
+                            logger.info(f"AUTO_SYNC_DEBUG: Well {well_number} has overlap: {existing_range}")
+                        else:
+                            well_data['has_overlap'] = False
+                            well_data['overlap_range'] = None
+                            logger.info(f"AUTO_SYNC_DEBUG: Well {well_number} has no overlap")
+                        
+                        results[well_number] = well_data
+                        logger.info(f"AUTO_SYNC_DEBUG: Added well {well_number} to results")
+                        
+                except Exception as e:
+                    logger.error(f"AUTO_SYNC_DEBUG: Error processing well {well_number}: {e}")
+                    # Continue processing other wells even if one fails
+                    continue
 
-            return results
+            logger.info(f"AUTO_SYNC_DEBUG: Final scan results: {len(results)} wells - {list(results.keys())}")
+            return {
+                'wells': results,
+                'processed_count': len(results)
+            }
 
         except Exception as e:
             logger.error(f"Error scanning folder: {e}")
             return {'error': str(e)}
             
     def process_file(self, file_path: Path, well_number: str) -> Tuple[bool, str, Dict]:
-        """Process a single file using the core processor"""
-        return self.processor.process_file(file_path, well_number)
+        """Process a single file - simplified for auto-sync"""
+        try:
+            # Read the XLE file
+            df, metadata = self.solinst_reader.read_xle(file_path)
+            
+            if df.empty:
+                return False, "No data in file", {}
+            
+            # Return the data in the expected format
+            return True, "Success", {
+                'data': df,
+                'metadata': metadata,
+                'well_number': well_number
+            }
+            
+        except Exception as e:
+            logger.error(f"Error processing file {file_path}: {e}")
+            return False, str(e), {}
+    
+    def process_well_files(self, cae_number: str, files: List[Path]) -> Dict:
+        """Process all files for a well - simplified for auto-sync"""
+        try:
+            all_data = []
+            
+            for file_path in files:
+                success, message, result = self.process_file(file_path, cae_number)
+                if success and result.get('data') is not None:
+                    all_data.append(result['data'])
+                    logger.info(f"Processed file {file_path.name} for well {cae_number}")
+                else:
+                    logger.warning(f"Failed to process file {file_path.name}: {message}")
+            
+            if all_data:
+                # Concatenate all data
+                combined_data = pd.concat(all_data, ignore_index=True)
+                # Sort by timestamp
+                combined_data = combined_data.sort_values('timestamp_utc')
+                # Remove duplicates based on timestamp
+                combined_data = combined_data.drop_duplicates(subset=['timestamp_utc'])
+                
+                return {
+                    'data': combined_data,
+                    'files_processed': len(all_data)
+                }
+            else:
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error processing well files for {cae_number}: {e}")
+            return None
 
     def _validate_transducer(self, well_number: str, serial_number: str) -> bool:
         """Validate transducer serial number against well assignments"""

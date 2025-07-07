@@ -46,6 +46,7 @@ class DatabaseManager(QObject):
         self.google_drive_handler = None
         self._modified_since_sync = False  # Track if database has been modified since last sync
         self.settings_handler = None  # Add settings_handler attribute
+        self._loading_database = False  # Flag to prevent change tracking during initialization
         
         # Cloud database support
         self.is_cloud_database = False
@@ -55,6 +56,7 @@ class DatabaseManager(QObject):
         self.is_cloud_modified = False
         self.change_tracker = None
         self.draft_changes_description = None  # Store existing draft description
+        self.cloud_db_handler = None  # Reference to cloud database handler
         
     def set_google_drive_handler(self, handler):
         """Set the Google Drive handler for database operations"""
@@ -67,6 +69,10 @@ class DatabaseManager(QObject):
     def set_user_auth_service(self, service):
         """Set the user authentication service for change tracking"""
         self._user_auth_service = service
+        
+    def set_cloud_db_handler(self, handler):
+        """Set the cloud database handler for XLE file operations"""
+        self.cloud_db_handler = handler
         
     def open_cloud_database(self, temp_path: str, project_name: str, project_info: Dict):
         """
@@ -84,14 +90,25 @@ class DatabaseManager(QObject):
         self.temp_db_path = temp_path
         self.is_cloud_modified = False
         
-        # Initialize change tracker if we have the required dependencies
+        # Set loading flag to prevent change tracking during initialization
+        self._loading_database = True
+        
+        # Open as regular database first
+        self.open_database(Path(temp_path))
+        
+        # Initialize change tracker AFTER database is loaded
         if hasattr(self, '_user_auth_service') and self._user_auth_service:
             from ..gui.handlers.change_tracker import ChangeTracker
             self.change_tracker = ChangeTracker(self, self._user_auth_service)
             logger.info(f"Change tracking initialized for cloud database: {project_name}")
         
-        # Open as regular database
-        self.open_database(Path(temp_path))
+        # Clear loading flag - database is now ready for change tracking
+        self._loading_database = False
+        
+        # Clear any changes that occurred during loading
+        if hasattr(self, 'change_tracker') and self.change_tracker:
+            self.change_tracker.clear_changes()
+            logger.info("Cleared initialization changes from change tracker")
         
     def mark_cloud_modified(self):
         """Mark cloud database as modified"""
@@ -259,7 +276,14 @@ class DatabaseManager(QObject):
     def open_database(self, db_path: str, use_google_drive=False):
         """Open database with improved cleanup and error handling"""
         try:
+            # Set loading flag to prevent change tracking during initialization
+            self._loading_database = True
+            
             # All databases are treated as local after initialization
+            logger.debug(f"DEBUG: DatabaseManager opening database with path: {repr(db_path)}")
+            if not db_path:
+                logger.error("DEBUG: db_path is None or empty!")
+                return False
             path = Path(db_path)
             
             # Set Google Drive flag based on filename suffix
@@ -272,6 +296,7 @@ class DatabaseManager(QObject):
             # If it's the same database, just return
             if self.current_db == path:
                 logger.info(f"Database {db_path} is already open.")
+                self._loading_database = False  # Clear loading flag
                 return True
 
             # Clear existing connections and models first
@@ -284,6 +309,10 @@ class DatabaseManager(QObject):
 
             # Set new database and create models
             self.current_db = path
+            
+            # Clear loading flag before emitting signals
+            self._loading_database = False
+            
             # Only emit after successful switch - use the full name including path
             self.database_changed.emit(path.name)
             logger.info(f"Opened database: {path}")
@@ -291,6 +320,7 @@ class DatabaseManager(QObject):
 
         except Exception as e:
             logger.error(f"Error opening database {db_path}: {e}")
+            self._loading_database = False  # Clear loading flag on error
             self.close()  # Clean up on error
             raise
 
@@ -453,6 +483,11 @@ class DatabaseManager(QObject):
     # Method to mark database as modified
     def mark_as_modified(self):
         """Mark the database as having unsaved changes"""
+        # Skip marking as modified during database loading to prevent spurious changes
+        if hasattr(self, '_loading_database') and self._loading_database:
+            logger.debug("Skipping mark_as_modified during database loading")
+            return
+            
         if self.is_google_drive_db:
             self._modified_since_sync = True
         

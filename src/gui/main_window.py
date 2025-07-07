@@ -48,6 +48,7 @@ from .handlers.progress_dialog_handler import progress_dialog
 from .handlers.style_handler import StyleHandler  # Import the style handler
 from .dialogs.application_help_system import ApplicationHelpSystem
 from .handlers.auto_updater import AutoUpdater
+from .dialogs.feedback_dialog import FeedbackDialog
 from .handlers.version_checker import VersionChecker
 from .dialogs.unified_credentials_dialog import UnifiedCredentialsDialog
 from .dialogs.draft_selection_dialog import DraftSelectionDialog
@@ -90,7 +91,9 @@ class MainWindow(QMainWindow):
         self.cloud_db_handler = None
         
         # Initialize user authentication service with users database
-        config_dir = Path.cwd() / "config"
+        # Use app directory instead of current working directory
+        app_dir = Path(__file__).parent.parent.parent
+        config_dir = app_dir / "config"
         config_dir.mkdir(exist_ok=True)  # Ensure config directory exists
         users_db_path = config_dir / "users.db"
         logger.info(f"Using users database path: {users_db_path}")
@@ -191,9 +194,11 @@ class MainWindow(QMainWindow):
         result = login_dialog.exec_()
         
         if result == QDialog.Accepted:
-            # For compatibility with existing code, set all users as "not guest"
-            # This ensures all tabs will be available regardless of login type
+            # Proper user authentication completed
             self.user_auth_service.is_guest = False
+            
+            # Update status bar with current user
+            self.update_user_status()
             
             # Login was successful
             return True
@@ -201,14 +206,7 @@ class MainWindow(QMainWindow):
             # Dialog was rejected (Exit button)
             return False
     
-    def handle_guest_login(self):
-        """Handle guest login request"""
-        # Set flag but don't differentiate privileges anymore
-        success, message = self.user_auth_service.login_as_guest()
-        # Set is_guest to False to ensure all features are available
-        if success:
-            self.user_auth_service.is_guest = False
-        return success
+    # Guest login functionality removed - all users must authenticate properly
     
     def handle_drive_login(self):
         """Handle Google Drive login request"""
@@ -223,7 +221,8 @@ class MainWindow(QMainWindow):
         # If the client secret path is not set or the file doesn't exist, try to find it in the config directory
         if not client_secret_path or not os.path.exists(client_secret_path):
             logger.warning("Client secret file not found at specified path, looking for default")
-            config_dir = Path.cwd() / "config"
+            app_dir = Path(__file__).parent.parent.parent
+            config_dir = app_dir / "config"
             if config_dir.exists():
                 # Look for client_secret*.json files
                 secret_files = list(config_dir.glob("client_secret*.json"))
@@ -254,20 +253,20 @@ class MainWindow(QMainWindow):
                 client_secret_path = self.settings_handler.get_setting("google_drive_secret_path", "")
                 if not client_secret_path or not os.path.exists(client_secret_path):
                     # Still not configured, continue as guest
-                    QMessageBox.information(
+                    QMessageBox.warning(
                         self,
-                        "Guest Mode",
-                        "Google Drive is not configured. You will continue in guest mode with limited functionality."
+                        "Authentication Required",
+                        "Google Drive is not configured. The application requires proper user authentication."
                     )
-                    return self.handle_guest_login()
+                    return False
             else:
-                # User chose not to configure, continue as guest
-                QMessageBox.information(
+                # User chose not to configure, require authentication
+                QMessageBox.warning(
                     self,
-                    "Guest Mode",
-                    "You will continue in guest mode with limited functionality."
+                    "Authentication Required",
+                    "Google Drive configuration was cancelled. The application requires proper user authentication."
                 )
-                return self.handle_guest_login()
+                return False
         
         # Authenticate with Google Drive
         if not self.authenticate_google_drive():
@@ -275,13 +274,13 @@ class MainWindow(QMainWindow):
                 self,
                 "Authentication Error",
                 "Failed to authenticate with Google Drive. This may be due to network issues or invalid credentials.\n\n"
-                "Would you like to continue in guest mode with limited functionality?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.Yes
+                "The application requires proper authentication to continue.",
+                QMessageBox.Retry | QMessageBox.Cancel,
+                QMessageBox.Retry
             )
             
-            if reply == QMessageBox.Yes:
-                return self.handle_guest_login()
+            if reply == QMessageBox.Retry:
+                return self.handle_drive_login()  # Retry the login process
             else:
                 return False
         
@@ -291,6 +290,8 @@ class MainWindow(QMainWindow):
         if success:
             # Explicitly set is_guest to False to ensure all features are available
             self.user_auth_service.is_guest = False
+            # Update status bar with actual username
+            self.update_user_status()
             QMessageBox.information(self, "Login Successful", 
                                   "Successfully connected to CAESER Google Drive. You now have full access to the application.")
             return True
@@ -299,19 +300,14 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Login Error", 
                               "Failed to log in as administrator. " + message)
             
-            # Try to continue as guest
-            reply = QMessageBox.question(
+            # Authentication required - no guest mode
+            QMessageBox.critical(
                 self,
-                "Continue as Guest?",
-                "Would you like to continue in guest mode with limited functionality?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.Yes
+                "Authentication Required",
+                "User authentication failed. The application requires proper authentication to continue.",
+                QMessageBox.Ok
             )
-            
-            if reply == QMessageBox.Yes:
-                return self.handle_guest_login()
-            else:
-                return False
+            return False
     
     def authenticate_google_drive(self, force=False):
         """Authenticate with Google Drive and set up database handler"""
@@ -332,6 +328,10 @@ class MainWindow(QMainWindow):
                     
                     # Initialize Cloud database handler
                     self.cloud_db_handler = CloudDatabaseHandler(self.drive_service, self.settings_handler)
+                    # Set database manager for XLE file operations
+                    self.cloud_db_handler.set_database_manager(self.db_manager)
+                    # Set cloud handler in database manager for import dialogs
+                    self.db_manager.set_cloud_db_handler(self.cloud_db_handler)
                     
                     # Set Google Drive handler for database manager
                     self.db_manager.set_google_drive_handler(self.drive_db_handler)
@@ -344,6 +344,9 @@ class MainWindow(QMainWindow):
                     
                     # Refresh database dropdown to show cloud projects immediately
                     self._load_databases()
+                    
+                    # Update feedback button visibility
+                    self._update_feedback_button_visibility()
                     
                     return True
                 else:
@@ -408,6 +411,31 @@ class MainWindow(QMainWindow):
         
         # Add spacer to center the title
         header_layout.addStretch()
+        
+        # Add feedback button (shown when Google Drive credentials are set)
+        self.feedback_btn = QPushButton("📝 Feedback")
+        self.feedback_btn.setMaximumWidth(100)
+        self.feedback_btn.setMaximumHeight(30)
+        self.feedback_btn.setToolTip("Submit feedback or bug reports")
+        self.feedback_btn.clicked.connect(self.open_feedback_dialog)
+        self.feedback_btn.setStyleSheet("""
+            QPushButton {
+                padding: 5px 10px;
+                border: 1px solid #007bff;
+                border-radius: 4px;
+                background-color: #007bff;
+                color: white;
+                font-size: 12px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #0056b3;
+                border-color: #004085;
+            }
+        """)
+        # Initially hidden, shown when Google Drive credentials are set
+        self.feedback_btn.setVisible(False)
+        header_layout.addWidget(self.feedback_btn)
         
         # Add help button on the right
         self.help_btn = QPushButton("❓ Help")
@@ -508,17 +536,19 @@ class MainWindow(QMainWindow):
         
 
         # Style the buttons
-        new_db_btn = QPushButton("New")
-        new_db_btn.setStyleSheet(StyleHandler.get_secondary_button_style())
-        new_db_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        new_db_btn.clicked.connect(self._create_new_database)
-
+        self.new_db_btn = QPushButton("New")
+        self.new_db_btn.setStyleSheet(StyleHandler.get_action_button_style())
+        self.new_db_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.new_db_btn.clicked.connect(self._create_new_database)
+        self.new_db_btn.setToolTip("Create a new database")
+        
         # Add Reload Database button
-        reload_db_btn = QPushButton("Reload")
-        reload_db_btn.setStyleSheet(StyleHandler.get_secondary_button_style())
-        reload_db_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        reload_db_btn.clicked.connect(self._reload_database)
-        reload_db_btn.setToolTip("Reload the current database from disk")
+        self.reload_db_btn = QPushButton("Reload")
+        self.reload_db_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.reload_db_btn.clicked.connect(self._reload_database)
+        self.reload_db_btn.setToolTip("Reload the current database from disk")
+        self.reload_db_btn.setEnabled(False)  # Initially disabled until a database is selected
+        self._update_reload_button_style()
         
         # Add Save to Cloud button (initially hidden)
         self.save_cloud_btn = QPushButton("Save to Cloud")
@@ -553,13 +583,31 @@ class MainWindow(QMainWindow):
         self.compare_changes_btn.clicked.connect(self._compare_changes)
         self.compare_changes_btn.setToolTip("Compare local changes against cloud database")
         self.compare_changes_btn.setVisible(False)
+        
+        # Add Create Local Copy button (initially hidden)
+        self.create_local_copy_btn = QPushButton("Create Local Copy")
+        self.create_local_copy_btn.setStyleSheet("""
+            background-color: #FF9800;
+            color: white;
+            border: 1px solid #F57C00;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: bold;
+            font-size: 13px;
+            min-height: 20px;
+        """)
+        self.create_local_copy_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.create_local_copy_btn.clicked.connect(self._create_local_copy)
+        self.create_local_copy_btn.setToolTip("Create a permanent local copy of this cloud database")
+        self.create_local_copy_btn.setVisible(False)
 
         # Add buttons to layout
         db_layout.addWidget(self.db_combo)
-        db_layout.addWidget(reload_db_btn)
-        db_layout.addWidget(new_db_btn)
+        db_layout.addWidget(self.reload_db_btn)
+        db_layout.addWidget(self.new_db_btn)
         db_layout.addWidget(self.save_cloud_btn)
         db_layout.addWidget(self.compare_changes_btn)
+        db_layout.addWidget(self.create_local_copy_btn)
 
         main_layout.addLayout(db_layout)
         
@@ -646,14 +694,14 @@ class MainWindow(QMainWindow):
         # Add folder info to status bar
         import os  # ensure os is available
         initial_folder = self.settings_handler.get_setting("local_db_directory", "")
-        folder_text = initial_folder if os.path.isdir(initial_folder) else "No folder selected"
+        folder_text = self._get_display_path(initial_folder if os.path.isdir(initial_folder) else "")
         self.folder_info_label = QLabel(f"Folder: {folder_text}")
         self.folder_info_label.setStyleSheet("""
             font-weight: bold;
             color: #3070B0;
             padding-right: 5px;
         """)
-        self.folder_info_label.setToolTip(f"Database folder: {folder_text}")
+        self.folder_info_label.setToolTip(f"Database folder: {initial_folder}")
         self.status_bar.addPermanentWidget(self.folder_info_label)
         
         # Setup menu
@@ -687,6 +735,34 @@ class MainWindow(QMainWindow):
         if self._db_combo_connection is not None:
             self.db_combo.currentTextChanged.disconnect(self._on_database_changed)
             self._db_combo_connection = None
+            
+    def _get_display_path(self, full_path):
+        """Get a user-friendly display path by showing only the relative portion"""
+        if not full_path:
+            return "No folder selected"
+            
+        try:
+            from pathlib import Path
+            path = Path(full_path)
+            
+            # Try to get relative path from user's home directory
+            try:
+                home = Path.home()
+                rel_path = path.relative_to(home)
+                return f"~/{rel_path}"
+            except ValueError:
+                pass
+            
+            # If not under home, try to show just the last few directories
+            parts = path.parts
+            if len(parts) > 3:
+                return f".../{'/'.join(parts[-3:])}"
+            else:
+                return str(path)
+                
+        except Exception:
+            # Fallback to original path if anything goes wrong
+            return full_path
 
     def _load_local_databases_only(self):
         """Load only local databases during initial UI setup."""
@@ -720,12 +796,13 @@ class MainWindow(QMainWindow):
             self.db_combo.clear()
             
             # Load local databases from configured directory
-            local_db_directory = Path(self.settings_handler.get_setting("local_db_directory", str(Path.cwd())))
+            app_dir = Path(__file__).parent.parent.parent
+            local_db_directory = Path(self.settings_handler.get_setting("local_db_directory", str(app_dir)))
             if local_db_directory.exists():
                 local_db_files = [db for db in local_db_directory.glob("*.db") if "_(drive)" not in db.name]
             else:
                 logger.warning(f"Database directory does not exist: {local_db_directory}")
-                logger.warning(f"Current working directory: {Path.cwd()}")
+                logger.warning(f"App directory: {app_dir}")
                 logger.warning(f"Database directory setting: {self.settings_handler.get_setting('local_db_directory', 'NOT_FOUND')}")
                 logger.warning(f"Absolute path would be: {local_db_directory.resolve()}")
                 local_db_files = []
@@ -781,13 +858,20 @@ class MainWindow(QMainWindow):
                 current_db_name = self.db_manager.current_db.name
                 logger.debug(f"Current database: {current_db_name}")
                 
-                # Find and select the item
-                index = self.db_combo.findText(current_db_name)
+                # Find and select the item - check for LOCAL: prefix first
+                prefixed_name = f"LOCAL: {current_db_name}"
+                index = self.db_combo.findText(prefixed_name)
                 if index >= 0:
                     self.db_combo.setCurrentIndex(index)
-                    logger.debug(f"Selected database in dropdown at index {index}: {current_db_name}")
+                    logger.debug(f"Selected database in dropdown at index {index}: {prefixed_name}")
                 else:
-                    logger.warning(f"Could not find database {current_db_name} in dropdown")
+                    # Fallback: try cloud database format or exact match
+                    index = self.db_combo.findText(current_db_name)
+                    if index >= 0:
+                        self.db_combo.setCurrentIndex(index)
+                        logger.debug(f"Selected database in dropdown at index {index}: {current_db_name}")
+                    else:
+                        logger.warning(f"Could not find database {current_db_name} in dropdown")
             elif has_databases:
                 # If we have databases but none is selected, set the index to -1
                 self.db_combo.setCurrentIndex(-1)
@@ -808,6 +892,9 @@ class MainWindow(QMainWindow):
         logger.info(f"PERF: Starting database change handling for {db_name}")
         
         if not db_name or db_name == "No databases found" or db_name.startswith("--"):
+            # No valid database selected - disable reload button
+            self.reload_db_btn.setEnabled(False)
+            self._update_reload_button_style()
             return
             
         # If we're already loading databases or the combo box triggered this change, don't process further
@@ -856,6 +943,12 @@ class MainWindow(QMainWindow):
             logger.info(f"PERF: Beginning to open database: {db_name}")
             
             # Check if the database is large (> 100MB) to use optimized opening
+            if not db_name:
+                logger.error("DEBUG: _on_database_changed db_name is None/empty!")
+                progress_dialog.complete()
+                return
+                
+            logger.debug(f"DEBUG: _on_database_changed checking db_name: {repr(db_name)}")
             db_path = Path() / db_name
             is_large_db = False
             try:
@@ -887,11 +980,19 @@ class MainWindow(QMainWindow):
                 import inspect
                 sig = inspect.signature(self.db_manager.open_database)
                 
+                # Double-check db_name before creating path
+                if not db_name:
+                    logger.error("DEBUG: db_name is None/empty in open_database call!")
+                    raise ValueError("Database name cannot be None or empty")
+                    
+                db_file_path = str(Path() / db_name)
+                logger.debug(f"DEBUG: _on_database_changed calling open_database with: {repr(db_file_path)}")
+                
                 if 'quick_validation' in sig.parameters:
-                    self.db_manager.open_database(str(Path() / db_name), quick_validation=is_large_db)
+                    self.db_manager.open_database(db_file_path, quick_validation=is_large_db)
                 else:
                     # Use the original method if quick_validation is not supported
-                    self.db_manager.open_database(str(Path() / db_name))
+                    self.db_manager.open_database(db_file_path)
                 
                 progress_dialog.update(45, "Database opened, initializing tables...")
                 QApplication.processEvents()
@@ -967,6 +1068,9 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logger.error(f"Error in _on_database_changed: {e}")
             logger.error(f"Traceback: {traceback.format_exc()}")
+            # Disable reload button on error
+            self.reload_db_btn.setEnabled(False)
+            self._update_reload_button_style()
             QMessageBox.critical(self, "Database Error", f"Failed to open database: {e}")
 
     def _open_local_database(self, db_name: str, start_time: float):
@@ -997,7 +1101,9 @@ class MainWindow(QMainWindow):
         QApplication.processEvents()
         
         # Open the database using the configured database directory
-        local_db_directory = Path(self.settings_handler.get_setting("local_db_directory", str(Path.cwd())))
+        # Use app directory instead of current working directory
+        app_dir = Path(__file__).parent.parent.parent
+        local_db_directory = Path(self.settings_handler.get_setting("local_db_directory", str(app_dir)))
         db_path = local_db_directory / db_name
         self.db_manager.open_database(db_path)
         
@@ -1094,10 +1200,27 @@ class MainWindow(QMainWindow):
                 if version_dialog.exec_() == QDialog.Accepted:
                     choice = version_dialog.get_choice()
                     if choice == "use_cache":
-                        # Use local cache instead of downloading
-                        cached_path = self.cloud_db_handler.get_cached_database_path(project_name)
-                        if cached_path:
+                        # Use local database instead of downloading (working database has priority over cache)
+                        db_type = version_comparison.get('db_type', 'cache')
+                        
+                        if db_type in ['working', 'working_outdated']:
+                            # Use working database
+                            working_db_path = version_comparison.get('working_db_path')
+                            if working_db_path and os.path.exists(working_db_path):
+                                logger.info(f"Using preserved working database: {working_db_path}")
+                                if db_type == 'working_outdated':
+                                    logger.warning(f"Working database is outdated but user chose to continue with it")
+                                cached_path = working_db_path
+                            else:
+                                # Fallback to regular cache if working database missing
+                                cached_path = self.cloud_db_handler.get_cached_database_path(project_name)
+                                logger.info(f"Working database missing, using cached database: {cached_path}")
+                        else:
+                            # Use regular cache
+                            cached_path = self.cloud_db_handler.get_cached_database_path(project_name)
                             logger.info(f"Using cached database: {cached_path}")
+                        
+                        if cached_path:
                             
                             # Show brief progress
                             progress_dialog.show(f"Loading cached database: {project_name}", "Loading Cache")
@@ -1188,6 +1311,13 @@ class MainWindow(QMainWindow):
         # Store download time for draft version tracking
         self.db_manager.cloud_download_time = project_info.get('modified_time', '')
         
+        # Create session backup of the original downloaded database
+        if not prefer_draft:  # Only create original backup for fresh downloads, not draft loads
+            self.cloud_db_handler.create_session_backup(
+                project_name, temp_path, 'original'
+            )
+            logger.info(f"Created original session backup for: {project_name}")
+        
         # Update version tracking for downloaded database
         if not prefer_draft:  # Only track downloads, not draft loads
             cloud_version_time = project_info.get('modified_time', '')
@@ -1228,8 +1358,11 @@ class MainWindow(QMainWindow):
         is_cloud = "(Cloud)" in display_name
         initial_progress = 85 if is_cloud else 60  # Cloud databases start at 85% due to download
         
-        progress_dialog.update(initial_progress, "Loading tab data...")
-        QApplication.processEvents()
+        # Rebuild XLE tracking now that database is fully loaded (important for drafts)
+        if is_cloud and self.cloud_db_handler:
+            project_name = display_name.replace(" (Cloud)", "").replace(" (Draft)", "")
+            logger.info(f"Calling XLE tracking rebuild for project: '{project_name}'")
+            self.cloud_db_handler.rebuild_xle_tracking_after_database_load(project_name)
         
         # Update window title
         self.setWindowTitle(f"Water Level Monitoring - {display_name}")
@@ -1238,32 +1371,28 @@ class MainWindow(QMainWindow):
         self.db_info_label.setText(f"Database: {display_name}")
         
         # Enable tabs and load data - use correct method names
-        progress_dialog.update(initial_progress + 5, "Loading database tab...")
-        QApplication.processEvents()
+        logger.info("Loading database tab...")
         if "database" in self._tabs:
             try:
                 self._tabs["database"].refresh_data()
             except Exception as e:
                 logger.debug(f"Database tab refresh: {e}")
         
-        progress_dialog.update(initial_progress + 10, "Loading barologger tab...")
-        QApplication.processEvents()
+        logger.info("Loading barologger tab...")
         if "barologger" in self._tabs:
             try:
                 self._tabs["barologger"].refresh_data()
             except Exception as e:
                 logger.debug(f"Barologger tab refresh: {e}")
         
-        progress_dialog.update(initial_progress + 15, "Loading water level tab...")
-        QApplication.processEvents()
+        logger.info("Loading water level tab...")
         if "water_level" in self._tabs:
             try:
                 self._tabs["water_level"].refresh_data()
             except Exception as e:
                 logger.debug(f"Water level tab refresh: {e}")
         
-        progress_dialog.update(initial_progress + 18, "Loading recharge tab...")
-        QApplication.processEvents()
+        logger.info("Loading recharge tab...")
         if "recharge" in self._tabs:
             try:
                 self._tabs["recharge"].sync_database_selection("CAESER_GENERAL")
@@ -1272,8 +1401,7 @@ class MainWindow(QMainWindow):
         
         # For cloud databases, enable runs tab
         if self.db_manager.is_cloud_database:
-            progress_dialog.update(initial_progress + 20, "Loading runs tab...")
-            QApplication.processEvents()
+            logger.info("Loading runs tab...")
             if "water_level_runs" in self._tabs:
                 try:
                     self._tabs["water_level_runs"].refresh_data()
@@ -1289,14 +1417,39 @@ class MainWindow(QMainWindow):
         for i in range(5):  # Database, Barologger, Water Level, Recharge, Geophysical Data tabs
             self.tab_widget.setTabEnabled(i, True)
         
-        # Close progress dialog
-        progress_dialog.update(100, "Database loaded successfully")
-        QApplication.processEvents()
-        progress_dialog.close()
+        # Enable reload button now that a database is loaded
+        self.reload_db_btn.setEnabled(True)
+        self._update_reload_button_style()
         
         total_time = time.time() - start_time
         logger.info(f"PERF: Total database change time: {total_time*1000:.2f}ms")
+        logger.info("Database loaded successfully")
         
+        # Close the progress dialog if it's still open
+        try:
+            if progress_dialog.progress_dialog and progress_dialog.progress_dialog.isVisible():
+                progress_dialog.close()
+        except Exception as e:
+            logger.debug(f"Progress dialog was already closed: {e}")
+        
+    def _update_reload_button_style(self):
+        """Update reload button styling based on enabled/disabled state"""
+        if self.reload_db_btn.isEnabled():
+            # Enabled state - clear blue theme
+            self.reload_db_btn.setStyleSheet(StyleHandler.get_action_button_style())
+        else:
+            # Disabled state - grayed out appearance
+            self.reload_db_btn.setStyleSheet("""
+                background-color: #f5f5f5;
+                color: #a0a0a0;
+                border: 1px solid #d0d0d0;
+                border-radius: 8px;
+                padding: 10px 20px;
+                font-weight: 400;
+                font-size: 13px;
+                min-height: 20px;
+            """)
+    
     def _update_cloud_ui(self, is_cloud: bool, project_name: str = None):
         """Update UI elements for cloud mode"""
         if is_cloud:
@@ -1304,10 +1457,13 @@ class MainWindow(QMainWindow):
             self.save_cloud_btn.setEnabled(False)  # Initially disabled
             self.compare_changes_btn.setVisible(True)
             self.compare_changes_btn.setEnabled(False)  # Initially disabled
+            self.create_local_copy_btn.setVisible(True)
+            self.create_local_copy_btn.setEnabled(True)  # Always enabled for cloud databases
             self.cloud_mode_label.setText(f"Cloud: {project_name}")
         else:
             self.save_cloud_btn.setVisible(False)
             self.compare_changes_btn.setVisible(False)
+            self.create_local_copy_btn.setVisible(False)
             self.cloud_mode_label.setText("")
                     
     def _update_runs_tab_style(self, is_enabled: bool):
@@ -1323,21 +1479,21 @@ class MainWindow(QMainWindow):
                 
                 # Apply the same color as other tabs
                 if original_color.isValid():
-                    self.tab_widget.tabBar().setTabTextColor(3, original_color)
+                    self.tab_widget.tabBar().setTabTextColor(5, original_color)
                 else:
                     # Fallback: clear custom color completely
-                    self.tab_widget.tabBar().setTabTextColor(3, QColor())
+                    self.tab_widget.tabBar().setTabTextColor(5, QColor())
                 
                 # Clear any custom tab data
-                self.tab_widget.tabBar().setTabData(3, QVariant())
+                self.tab_widget.tabBar().setTabData(5, QVariant())
                 
                 # Force repaint to ensure visual update
                 self.tab_widget.tabBar().update()
                 logger.debug("Runs tab enabled: restored to match other tabs")
             else:
                 # Local database - disabled state (grayed out with different background)
-                self.tab_widget.tabBar().setTabTextColor(3, QColor(150, 150, 150))  # Gray text
-                self.tab_widget.tabBar().setTabData(3, "disabled")
+                self.tab_widget.tabBar().setTabTextColor(5, QColor(150, 150, 150))  # Gray text
+                self.tab_widget.tabBar().setTabData(5, "disabled")
                 
                 # Apply custom stylesheet for disabled state
                 self._apply_runs_tab_stylesheet()
@@ -1570,15 +1726,37 @@ class MainWindow(QMainWindow):
         progress_dialog.close()
         
         if success:
+            # Create session backup of the uploaded state
+            self.cloud_db_handler.create_session_backup(
+                self.db_manager.cloud_project_name,
+                self.db_manager.temp_db_path,
+                'last_uploaded'
+            )
+            
+            # Clear change tracker since changes have been uploaded
+            self.db_manager.change_tracker.clear_changes()
+            
             # Update UI
             self.db_manager.is_cloud_modified = False
             self.save_cloud_btn.setEnabled(False)
             self.compare_changes_btn.setEnabled(False)
             self.cloud_mode_label.setText(f"Cloud: {self.db_manager.cloud_project_name}")
             
-            # Clear change tracker
-            if self.db_manager.change_tracker:
-                self.db_manager.change_tracker.clear_changes()
+            # DEBUG: Verify database state after upload
+            import os
+            if self.db_manager.temp_db_path and os.path.exists(self.db_manager.temp_db_path):
+                file_size_after_upload = os.path.getsize(self.db_manager.temp_db_path)
+                logger.info(f"UPLOAD_DEBUG: Database file size after upload: {file_size_after_upload} bytes")
+                logger.info(f"UPLOAD_DEBUG: Database path after upload: {self.db_manager.temp_db_path}")
+                
+                # CRITICAL FIX: Remove uploaded database from cleanup list
+                # The uploaded database is now our current working database and should NOT be cleaned up
+                if (self.cloud_db_handler and hasattr(self.cloud_db_handler, 'temp_files') and 
+                    self.db_manager.temp_db_path in self.cloud_db_handler.temp_files):
+                    self.cloud_db_handler.temp_files.remove(self.db_manager.temp_db_path)
+                    logger.info(f"UPLOAD_DEBUG: Removed uploaded database from cleanup list: {self.db_manager.temp_db_path}")
+            else:
+                logger.warning(f"UPLOAD_DEBUG: Database file not found after upload: {self.db_manager.temp_db_path}")
             
             # Clean up draft after successful upload (local DB is now current)
             if self.cloud_db_handler.has_draft(self.db_manager.cloud_project_name):
@@ -1642,6 +1820,140 @@ class MainWindow(QMainWindow):
         else:
             QMessageBox.critical(self, "Save Failed", "Failed to save database to cloud.")
             return False
+    
+    def _create_local_copy(self):
+        """Create a permanent local copy of the current cloud database"""
+        if not self.db_manager.is_cloud_database:
+            QMessageBox.warning(self, "Not Cloud Database", "This feature is only available for cloud databases.")
+            return
+        
+        try:
+            # Get save location from user - default to databases directory
+            # Use app directory instead of current working directory
+            app_dir = Path(__file__).parent.parent.parent
+            databases_dir = app_dir / "databases"
+            databases_dir.mkdir(exist_ok=True)  # Ensure databases directory exists
+            
+            default_name = f"{self.db_manager.cloud_project_name}_local_copy.db"
+            default_path = databases_dir / default_name
+            
+            file_path, _ = QFileDialog.getSaveFileName(
+                self,
+                "Create Local Copy",
+                str(default_path),
+                "SQLite Database (*.db)"
+            )
+            
+            if not file_path:
+                return
+            
+            # Show confirmation dialog with details
+            reply = QMessageBox.question(
+                self,
+                "Create Local Copy",
+                f"Create a permanent local copy of the cloud database?\n\n"
+                f"Cloud Project: {self.db_manager.cloud_project_name}\n"
+                f"Local File: {file_path}\n\n"
+                f"This will create an independent local database that you can modify \n"
+                f"without affecting the cloud version. The local copy will include \n"
+                f"all current data and changes.\n\n"
+                f"Do you want to continue?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes
+            )
+            
+            if reply != QMessageBox.Yes:
+                return
+            
+            # Create progress dialog
+            progress = QProgressDialog("Creating local copy...", "Cancel", 0, 100, self)
+            progress.setWindowModality(Qt.WindowModal)
+            progress.setMinimumDuration(0)
+            progress.show()
+            
+            progress.setValue(20)
+            progress.setLabelText("Copying database file...")
+            QApplication.processEvents()
+            
+            # Copy the current cloud database file to the specified location
+            shutil.copy2(self.db_manager.temp_db_path, file_path)
+            
+            progress.setValue(60)
+            progress.setLabelText("Updating database metadata...")
+            QApplication.processEvents()
+            
+            # Update the copied database to remove cloud-specific metadata
+            import sqlite3
+            with sqlite3.connect(file_path) as conn:
+                cursor = conn.cursor()
+                
+                # Remove cloud-specific metadata if it exists
+                try:
+                    cursor.execute("DELETE FROM metadata WHERE key LIKE 'cloud_%'")
+                    cursor.execute("DELETE FROM metadata WHERE key = 'is_cloud_database'")
+                    cursor.execute("DELETE FROM metadata WHERE key = 'project_name'")
+                    
+                    # Add local copy metadata
+                    from datetime import datetime
+                    cursor.execute(
+                        "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
+                        ('local_copy_created', datetime.now().isoformat())
+                    )
+                    cursor.execute(
+                        "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
+                        ('original_cloud_project', self.db_manager.cloud_project_name)
+                    )
+                    cursor.execute(
+                        "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
+                        ('copy_type', 'local_copy')
+                    )
+                    
+                    conn.commit()
+                    logger.info(f"Updated metadata for local copy: {file_path}")
+                    
+                except sqlite3.OperationalError as e:
+                    # Metadata table might not exist, that's okay
+                    logger.info(f"Metadata table not found in copied database (this is normal): {e}")
+            
+            progress.setValue(90)
+            progress.setLabelText("Finalizing...")
+            QApplication.processEvents()
+            
+            progress.setValue(100)
+            progress.close()
+            
+            # Ask if user wants to open the local copy
+            reply = QMessageBox.question(
+                self,
+                "Local Copy Created",
+                f"Local copy created successfully!\n\n"
+                f"Location: {file_path}\n\n"
+                f"Would you like to open the local copy now?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes
+            )
+            
+            if reply == QMessageBox.Yes:
+                # Refresh database list to include the new local copy
+                self._load_databases()
+                
+                # Select the newly created database in the combo box
+                db_filename = Path(file_path).name
+                for i in range(self.db_combo.count()):
+                    if self.db_combo.itemText(i) == db_filename:
+                        self.db_combo.setCurrentIndex(i)
+                        logger.info(f"Selected newly created local copy: {db_filename}")
+                        break
+            
+            logger.info(f"Successfully created local copy: {file_path}")
+            
+        except Exception as e:
+            logger.error(f"Error creating local copy: {e}", exc_info=True)
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to create local copy:\n{str(e)}"
+            )
 
     def _save_as_draft_on_close(self) -> bool:
         """Save current changes as a local draft when closing the app"""
@@ -1887,20 +2199,108 @@ class MainWindow(QMainWindow):
         frame_geometry.moveCenter(screen_center)
         self.move(frame_geometry.topLeft())
     
+    def _restore_to_last_upload(self) -> bool:
+        """Restore database to the last uploaded state."""
+        try:
+            project_name = self.db_manager.cloud_project_name
+            last_uploaded_path = self.cloud_db_handler.get_session_backup_path(
+                project_name, 'last_uploaded'
+            )
+            
+            if not last_uploaded_path:
+                QMessageBox.warning(self, "No Backup", 
+                    "No last uploaded backup available.")
+                return False
+            
+            # Copy the backup over the current database
+            import shutil
+            shutil.copy2(last_uploaded_path, self.db_manager.temp_db_path)
+            
+            # Reset modification state
+            self.db_manager.is_cloud_modified = False
+            self.db_manager.change_tracker.clear_changes()
+            
+            QMessageBox.information(self, "Restored", 
+                "Database restored to last uploaded state.")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error restoring to last upload: {e}")
+            QMessageBox.critical(self, "Restore Failed", 
+                f"Failed to restore database: {str(e)}")
+            return False
+    
+    def _restore_to_original(self) -> bool:
+        """Restore database to the original downloaded state."""
+        try:
+            project_name = self.db_manager.cloud_project_name
+            original_path = self.cloud_db_handler.get_session_backup_path(
+                project_name, 'original'
+            )
+            
+            if not original_path:
+                QMessageBox.warning(self, "No Backup", 
+                    "No original backup available.")
+                return False
+            
+            # Copy the backup over the current database
+            import shutil
+            shutil.copy2(original_path, self.db_manager.temp_db_path)
+            
+            # Reset modification state
+            self.db_manager.is_cloud_modified = False
+            self.db_manager.change_tracker.clear_changes()
+            
+            QMessageBox.information(self, "Restored", 
+                "Database restored to original downloaded state.")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error restoring to original: {e}")
+            QMessageBox.critical(self, "Restore Failed", 
+                f"Failed to restore database: {str(e)}")
+            return False
+
     def closeEvent(self, event):
         """Handle application close event with proper cleanup."""
         try:
             # Check for unsaved cloud database changes
             if (hasattr(self, 'db_manager') and self.db_manager and 
                 self.db_manager.is_cloud_database and self.db_manager.is_cloud_modified):
-                # Show draft-aware dialog for unsaved cloud changes
-                from .dialogs.save_options_dialog import SaveOptionsDialog
                 
-                dialog = SaveOptionsDialog(
-                    self.db_manager.cloud_project_name,
-                    self.db_manager.change_tracker,
-                    self
+                # Enhanced logic: Check what kind of changes we have
+                project_name = self.db_manager.cloud_project_name
+                current_db_path = self.db_manager.temp_db_path
+                
+                # Check if we have changes since last upload vs since download
+                has_changes_since_upload = self.cloud_db_handler.has_session_changes_since_upload(
+                    project_name, current_db_path
                 )
+                has_changes_since_download = self.cloud_db_handler.has_session_changes_since_download(
+                    project_name, current_db_path
+                )
+                
+                # Determine dialog type based on session state
+                if has_changes_since_upload:
+                    # User uploaded during session but made more changes
+                    from .dialogs.enhanced_save_options_dialog import EnhancedSaveOptionsDialog
+                    
+                    dialog = EnhancedSaveOptionsDialog(
+                        project_name,
+                        self.db_manager.change_tracker,
+                        self.cloud_db_handler,
+                        "changes_since_upload",
+                        self
+                    )
+                else:
+                    # Regular unsaved changes since download
+                    from .dialogs.save_options_dialog import SaveOptionsDialog
+                    
+                    dialog = SaveOptionsDialog(
+                        self.db_manager.cloud_project_name,
+                        self.db_manager.change_tracker,
+                        self
+                    )
                 
                 result = dialog.exec_()
                 if result != QDialog.Accepted:
@@ -1919,11 +2319,23 @@ class MainWindow(QMainWindow):
                     if not self._save_as_draft_on_close():
                         event.ignore()
                         return
+                elif choice == "restore_upload":
+                    # Restore to last uploaded state (new option)
+                    if not self._restore_to_last_upload():
+                        event.ignore()
+                        return
+                elif choice == "restore_original":
+                    # Restore to original downloaded state (new option)
+                    if not self._restore_to_original():
+                        event.ignore()
+                        return
                 # If choice == "discard", continue to close without saving
             
             # Clean up cloud database resources
             if hasattr(self, 'cloud_db_handler') and self.cloud_db_handler:
                 self.cloud_db_handler.cleanup_temp_files()
+                # Clean up session backups
+                self.cloud_db_handler.cleanup_session_backups()
                 
             # Explicitly disconnect from Google Drive before closing
             if hasattr(self, 'drive_service') and self.drive_service and self.drive_service.authenticated:
@@ -2096,7 +2508,9 @@ class MainWindow(QMainWindow):
                             self._delete_with_retry(file_path)
 
                     # Always delete data folder on close to ensure fresh data on next connection
-                    data_path = Path.cwd() / "data"
+                    # Use app directory instead of current working directory
+                    app_dir = Path(__file__).parent.parent.parent
+                    data_path = app_dir / "data"
                     if data_path.exists():
                         logger.info(f"Cleaning up temporary data folder: {data_path}")
                         try:
@@ -2278,7 +2692,7 @@ class MainWindow(QMainWindow):
         user_menu.addAction(manage_users_action)
         
         # Add user status to status bar
-        self.login_status_label = QLabel("Admin")
+        self.login_status_label = QLabel("Not logged in")
         self.statusBar().addPermanentWidget(QLabel("User: "))
         self.statusBar().addPermanentWidget(self.login_status_label)
         
@@ -2928,7 +3342,19 @@ class MainWindow(QMainWindow):
                     return
 
             # Get current database path and name
+            if not self.db_manager.current_db:
+                logger.error("DEBUG: _reload_database called but current_db is None!")
+                QMessageBox.warning(self, "Database Error", "Cannot reload database: current database is None.")
+                return
+                
             current_db_path = str(self.db_manager.current_db)
+            logger.debug(f"DEBUG: _reload_database current_db_path: {repr(current_db_path)}")
+            
+            if current_db_path == "None" or not current_db_path:
+                logger.error("DEBUG: current_db_path is 'None' or empty, cannot reload!")
+                QMessageBox.warning(self, "Database Error", "Cannot reload database: invalid database path.")
+                return
+                
             current_db_name = Path(current_db_path).name
 
             # Show progress dialog
@@ -2941,6 +3367,7 @@ class MainWindow(QMainWindow):
             progress_dialog.update(50, "Opening database from disk...")
 
             # Reopen the database
+            logger.debug(f"DEBUG: _reload_database calling open_database with: {repr(current_db_path)}")
             self.db_manager.open_database(current_db_path)
 
             progress_dialog.update(70, "Refreshing application data...")
@@ -2985,7 +3412,8 @@ class MainWindow(QMainWindow):
             
             if selected_folder and os.path.isdir(selected_folder):
                 # Update folder info in status bar
-                self.folder_info_label.setText(f"Folder: {selected_folder}")
+                display_path = self._get_display_path(selected_folder)
+                self.folder_info_label.setText(f"Folder: {display_path}")
                 self.folder_info_label.setToolTip(f"Database folder: {selected_folder}")
                 
                 # Note: Don't change working directory - use absolute paths instead
@@ -3073,7 +3501,8 @@ class MainWindow(QMainWindow):
                 
                 try:
                     # Note: Don't change working directory - use absolute paths instead  
-                    self.folder_info_label.setText(f"Folder: {initial_folder}")
+                    display_path = self._get_display_path(initial_folder)
+                    self.folder_info_label.setText(f"Folder: {display_path}")
                     self.folder_info_label.setToolTip(f"Database folder: {initial_folder}")
                     
                     # Reload databases from the new directory (after directory change)
@@ -3119,7 +3548,9 @@ class MainWindow(QMainWindow):
         """Load any available database from the configured databases directory"""
         try:
             # Get the configured database directory
-            local_db_directory = Path(self.settings_handler.get_setting("local_db_directory", str(Path.cwd())))
+            # Use app directory instead of current working directory
+            app_dir = Path(__file__).parent.parent.parent
+            local_db_directory = Path(self.settings_handler.get_setting("local_db_directory", str(app_dir)))
             
             if not local_db_directory.exists():
                 logger.warning(f"Database directory does not exist: {local_db_directory}")
@@ -3279,11 +3710,89 @@ class MainWindow(QMainWindow):
             logger.error(f"Error opening help system: {e}")
             QMessageBox.critical(self, "Help Error", f"Failed to open help system: {str(e)}")
 
+    def open_feedback_dialog(self):
+        """Open the feedback dialog for submitting bug reports and feature requests"""
+        try:
+            # Check if Google Drive service is available
+            if not hasattr(self, 'drive_service') or not self.drive_service:
+                QMessageBox.warning(self, "Feedback Unavailable", 
+                                  "Feedback submission requires Google Drive integration. "
+                                  "Please configure your Google Drive credentials first.")
+                return
+            
+            # Get current user name
+            user_name = "Anonymous"
+            if hasattr(self, 'user_auth_service') and self.user_auth_service:
+                try:
+                    current_user_info = self.user_auth_service.get_current_user_info()
+                    if current_user_info:
+                        user_name = current_user_info.get('username', 'Anonymous')
+                except Exception:
+                    pass  # Use default if we can't get user info
+            
+            # Create and show feedback dialog
+            feedback_dialog = FeedbackDialog(
+                parent=self,
+                drive_service=self.drive_service if self.drive_service else None,
+                user_name=user_name
+            )
+            
+            result = feedback_dialog.exec_()
+            if result == QDialog.Accepted:
+                logger.info(f"Feedback submitted successfully by user: {user_name}")
+            
+        except Exception as e:
+            logger.error(f"Error opening feedback dialog: {e}")
+            QMessageBox.critical(self, "Feedback Error", 
+                               f"Failed to open feedback dialog:\n{str(e)}")
+
+    def _update_feedback_button_visibility(self):
+        """Update feedback button visibility based on Google Drive authentication status"""
+        try:
+            # Check if Google Drive service is authenticated
+            is_authenticated = (hasattr(self, 'drive_service') and 
+                              self.drive_service and 
+                              hasattr(self.drive_service, 'service') and
+                              self.drive_service.service is not None)
+            
+            if hasattr(self, 'feedback_btn'):
+                self.feedback_btn.setVisible(is_authenticated)
+                
+            if is_authenticated:
+                logger.debug("Feedback button shown - Google Drive authentication detected")
+            else:
+                logger.debug("Feedback button hidden - No Google Drive authentication")
+                
+        except Exception as e:
+            logger.error(f"Error updating feedback button visibility: {e}")
+            # Hide button on error to be safe
+            if hasattr(self, 'feedback_btn'):
+                self.feedback_btn.setVisible(False)
+
+    def update_user_status(self):
+        """Update the user status label in the status bar with current user info"""
+        try:
+            if hasattr(self, 'user_auth_service') and self.user_auth_service:
+                current_user_info = self.user_auth_service.get_current_user_info()
+                if current_user_info and 'username' in current_user_info:
+                    username = current_user_info['username']
+                    self.login_status_label.setText(username)
+                    logger.info(f"Updated status bar with username: {username}")
+                else:
+                    self.login_status_label.setText("Unknown User")
+                    logger.warning("Could not get username from user_auth_service")
+            else:
+                self.login_status_label.setText("Not logged in")
+                logger.warning("No user_auth_service available")
+        except Exception as e:
+            logger.error(f"Error updating user status: {e}")
+            self.login_status_label.setText("Error")
+
     def _setup_auto_updater(self):
         """Setup the auto-updater system"""
         try:
             # Determine app root directory
-            app_root = Path(__file__).parent.parent.parent.parent
+            app_root = Path(__file__).parent.parent.parent
             
             # Check if we're in installed app structure
             if (app_root / "version.json").exists():
@@ -3416,6 +3925,8 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
                                 
                                 # Initialize Cloud database handler
                                 self.cloud_db_handler = CloudDatabaseHandler(self.drive_service, self.settings_handler)
+                                # Set database manager for XLE file operations
+                                self.cloud_db_handler.set_database_manager(self.db_manager)
                                 
                                 # Initialize Google Drive database handler
                                 if not hasattr(self, 'drive_db_handler') or self.drive_db_handler is None:
@@ -3430,6 +3941,9 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
                                 # Reload databases after successful component initialization
                                 logger.info("Reloading databases after credential setup")
                                 QTimer.singleShot(100, self._load_databases)
+                                
+                                # Update feedback button visibility
+                                self._update_feedback_button_visibility()
                             else:
                                 logger.warning("Google Drive service not authenticated after credential setup")
                                 # Still reload databases to show local ones
@@ -3442,6 +3956,8 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
                     logger.info("User chose to skip credential setup")
             else:
                 logger.info("Google Drive credentials configured")
+                # Update feedback button visibility since credentials are already configured
+                self._update_feedback_button_visibility()
                 
         except Exception as e:
             logger.error(f"Error checking credentials: {e}")
@@ -3471,6 +3987,8 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
                         
                         # Initialize Cloud database handler
                         self.cloud_db_handler = CloudDatabaseHandler(self.drive_service, self.settings_handler)
+                        # Set database manager for XLE file operations
+                        self.cloud_db_handler.set_database_manager(self.db_manager)
                         
                         # Initialize Google Drive database handler
                         if not hasattr(self, 'drive_db_handler') or self.drive_db_handler is None:
@@ -3485,6 +4003,9 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
                         # Reload databases after successful component initialization
                         logger.info("Reloading databases after credential setup")
                         QTimer.singleShot(100, self._load_databases)
+                        
+                        # Update feedback button visibility
+                        self._update_feedback_button_visibility()
                     else:
                         logger.warning("Google Drive service not authenticated after credential setup")
                         # Still reload databases to show local ones

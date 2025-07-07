@@ -37,9 +37,8 @@ class EnhancedSaveOptionsDialog(QDialog):
         """Setup the enhanced dialog UI"""
         self.setWindowTitle("Unsaved Changes After Upload")
         
-        # Set minimum size with ability to expand
-        self.setMinimumSize(750, 650)  # Wider to accommodate text properly
-        self.resize(750, 650)
+        # Set fixed, reasonable size that fits on most screens
+        self.setFixedSize(650, 600)  # Fixed size to prevent overflow
         
         # Set white background with more compact styling
         self.setStyleSheet("""
@@ -48,14 +47,13 @@ class EnhancedSaveOptionsDialog(QDialog):
                 color: #333333;
             }
             QRadioButton {
-                font-size: 14px;
+                font-size: 13px;
                 font-weight: bold;
-                padding: 10px 8px;
-                margin: 6px 0;
-                border-radius: 6px;
+                padding: 8px 6px;
+                margin: 4px 0;
+                border-radius: 4px;
                 background-color: #f8f9fa;
                 border: 2px solid transparent;
-                min-height: 20px;
             }
             QRadioButton:checked {
                 background-color: #e7f3ff;
@@ -68,10 +66,10 @@ class EnhancedSaveOptionsDialog(QDialog):
             }
         """)
         
-        # Main layout with better spacing
+        # Main layout with compact spacing
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(25, 20, 25, 20)
-        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(20, 15, 20, 15)
+        main_layout.setSpacing(12)
         
         # Header
         header_layout = QHBoxLayout()
@@ -137,9 +135,9 @@ class EnhancedSaveOptionsDialog(QDialog):
         # Radio button group
         self.button_group = QButtonGroup()
         
-        # Create options layout with better spacing
+        # Create a more compact options layout
         options_layout = QVBoxLayout()
-        options_layout.setSpacing(8)
+        options_layout.setSpacing(6)
         
         # Option 1: Save additional changes to Cloud
         self.cloud_radio = QRadioButton("💾 Upload Additional Changes")
@@ -149,8 +147,7 @@ class EnhancedSaveOptionsDialog(QDialog):
         options_layout.addWidget(self.cloud_radio)
         
         cloud_desc = QLabel("Upload your new changes to the cloud database")
-        cloud_desc.setWordWrap(True)
-        cloud_desc.setStyleSheet("margin-left: 28px; margin-bottom: 10px; color: #666; font-size: 12px; line-height: 1.4;")
+        cloud_desc.setStyleSheet("margin-left: 24px; margin-bottom: 8px; color: #666; font-size: 11px;")
         options_layout.addWidget(cloud_desc)
         
         # Option 2: Save as Draft
@@ -160,8 +157,7 @@ class EnhancedSaveOptionsDialog(QDialog):
         options_layout.addWidget(self.draft_radio)
         
         draft_desc = QLabel("Save your additional changes locally to continue working later")
-        draft_desc.setWordWrap(True)
-        draft_desc.setStyleSheet("margin-left: 28px; margin-bottom: 10px; color: #666; font-size: 12px; line-height: 1.4;")
+        draft_desc.setStyleSheet("margin-left: 24px; margin-bottom: 8px; color: #666; font-size: 11px;")
         options_layout.addWidget(draft_desc)
         
         # Option 3: Restore to Last Upload
@@ -171,8 +167,7 @@ class EnhancedSaveOptionsDialog(QDialog):
         options_layout.addWidget(self.restore_upload_radio)
         
         restore_upload_desc = QLabel("Discard additional changes and return to the uploaded state")
-        restore_upload_desc.setWordWrap(True)
-        restore_upload_desc.setStyleSheet("margin-left: 28px; margin-bottom: 10px; color: #666; font-size: 12px; line-height: 1.4;")
+        restore_upload_desc.setStyleSheet("margin-left: 24px; margin-bottom: 8px; color: #666; font-size: 11px;")
         options_layout.addWidget(restore_upload_desc)
         
         # Option 4: Restore to Original
@@ -182,8 +177,7 @@ class EnhancedSaveOptionsDialog(QDialog):
         options_layout.addWidget(self.restore_original_radio)
         
         restore_original_desc = QLabel("Discard all session changes and return to the originally downloaded state")
-        restore_original_desc.setWordWrap(True)
-        restore_original_desc.setStyleSheet("margin-left: 28px; margin-bottom: 10px; color: #666; font-size: 12px; line-height: 1.4;")
+        restore_original_desc.setStyleSheet("margin-left: 24px; margin-bottom: 8px; color: #666; font-size: 11px;")
         options_layout.addWidget(restore_original_desc)
         
         # Option 5: Discard All Changes
@@ -193,8 +187,7 @@ class EnhancedSaveOptionsDialog(QDialog):
         options_layout.addWidget(self.discard_radio)
         
         discard_desc = QLabel("Close without saving additional changes (keep uploaded state)")
-        discard_desc.setWordWrap(True)
-        discard_desc.setStyleSheet("margin-left: 28px; margin-bottom: 10px; color: #666; font-size: 12px; line-height: 1.4;")
+        discard_desc.setStyleSheet("margin-left: 24px; margin-bottom: 8px; color: #666; font-size: 11px;")
         options_layout.addWidget(discard_desc)
         
         main_layout.addLayout(options_layout)

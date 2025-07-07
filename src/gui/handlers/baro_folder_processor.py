@@ -13,13 +13,16 @@ from ..utils.file_organizer import XLEFileOrganizer  # Import the new utility
 logger = logging.getLogger(__name__)
 
 class BaroFolderProcessor:
-    def __init__(self, baro_model):
+    def __init__(self, baro_model, settings_handler=None):
         self.baro_model = baro_model
         self.processor = BaroFileProcessor(baro_model)
         self.solinst_reader = SolinstReader()
         self._scanned_data = {}  # Cache for scanned file data
-        # Initialize file organizer with app root directory (parent of database path)
-        self.file_organizer = XLEFileOrganizer(Path(baro_model.db_path).parent, db_name=Path(baro_model.db_path).stem)
+        
+        # Initialize file organizer using settings handler for XLE import directory
+        # This ensures XLE files always go to main app folder regardless of database location
+        db_name = Path(baro_model.db_path).stem if baro_model.db_path else None
+        self.file_organizer = XLEFileOrganizer(db_name=db_name, settings_handler=settings_handler)
 
     def scan_folder(self, folder_path: Path, include_subfolders: bool = False, 
                    progress_dialog: BaroProgressDialog = None) -> Dict:
@@ -74,12 +77,18 @@ class BaroFolderProcessor:
                             )
                         continue
                     
+                    # Get actual data time range instead of metadata time range
+                    # This prevents issues where metadata has programmed stop time (e.g., 2026)
+                    # but actual data ends earlier (e.g., 2025)
+                    actual_start = df['timestamp_utc'].min()
+                    actual_end = df['timestamp_utc'].max()
+                    
                     if progress_dialog:
                         progress_dialog.log_message(
                             f"Found barologger file: {file_path.name}"
                             f"\n  Serial: {serial}"
                             f"\n  Location: {metadata.location}"
-                            f"\n  Time Range: {metadata.start_time} to {metadata.stop_time}"
+                            f"\n  Time Range: {actual_start} to {actual_end}"
                             f"\n  Readings: {len(df)}"
                         )
                     
@@ -87,12 +96,12 @@ class BaroFolderProcessor:
                     self._scanned_data[file_path] = {
                         'data': df,
                         'metadata': metadata,
-                        'time_range': (metadata.start_time, metadata.stop_time)
+                        'time_range': (actual_start, actual_end)
                     }
                     
                     metadata_cache[file_path] = {
                         'metadata': metadata,
-                        'time_range': (metadata.start_time, metadata.stop_time)
+                        'time_range': (actual_start, actual_end)
                     }
                     barologger_files[serial].append(file_path)
                     processed_files += 1

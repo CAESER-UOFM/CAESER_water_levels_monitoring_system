@@ -14,13 +14,14 @@ from ..utils.file_organizer import XLEFileOrganizer
 logger = logging.getLogger(__name__)
 
 class SingleFileImportDialog(QDialog):
-    def __init__(self, baro_model, file_path, parent=None, metadata=None):
+    def __init__(self, baro_model, file_path, parent=None, metadata=None, settings_handler=None):
         super().__init__(parent)
         self.baro_model = baro_model
         self.file_path = file_path
         self.processor = BaroFileProcessor(baro_model)
         self.solinst_reader = self.processor.solinst_reader  # Add reference to solinst_reader
         self.metadata = metadata  # Store metadata from previous validation
+        self.settings_handler = settings_handler
         self.registration_warning = QLabel()
         self.registration_warning.setStyleSheet("color: orange;")
         self.registration_warning.setVisible(False)
@@ -291,8 +292,9 @@ class SingleFileImportDialog(QDialog):
                 
                 # Organize the imported file after successful import
                 try:
-                    # Initialize file organizer
-                    file_organizer = XLEFileOrganizer(Path(self.baro_model.db_path).parent, db_name=Path(self.baro_model.db_path).stem)
+                    # Initialize file organizer using settings handler for proper path
+                    db_name = Path(self.baro_model.db_path).stem if self.baro_model.db_path else None
+                    file_organizer = XLEFileOrganizer(db_name=db_name, settings_handler=self.settings_handler)
                     
                     # Get location from database
                     location = self._get_location_description(self.metadata['serial_number'])
@@ -308,6 +310,39 @@ class SingleFileImportDialog(QDialog):
                     
                     if organized_path:
                         logger.info(f"File organized at: {organized_path}")
+                        
+                        # Track XLE file for cloud upload if we have a cloud database
+                        try:
+                            if (self.baro_model.db_manager and 
+                                hasattr(self.baro_model.db_manager, 'is_cloud_database') and 
+                                self.baro_model.db_manager.is_cloud_database and
+                                hasattr(self.baro_model.db_manager, 'cloud_db_handler') and
+                                self.baro_model.db_manager.cloud_db_handler and
+                                hasattr(self.baro_model.db_manager.cloud_db_handler, 'xle_manager') and
+                                self.baro_model.db_manager.cloud_db_handler.xle_manager):
+                                
+                                # Get project name from cloud database manager
+                                project_name = getattr(self.baro_model.db_manager, 'cloud_project_name', None)
+                                
+                                if project_name:
+                                    # Track the organized XLE file for cloud upload
+                                    file_id = self.baro_model.db_manager.cloud_db_handler.xle_manager.track_xle_file(
+                                        file_path=str(organized_path),
+                                        file_type='barologger',
+                                        serial_number=self.metadata['serial_number'],
+                                        well_number=None,  # Not applicable for barologgers
+                                        start_date=start_date.isoformat(),
+                                        end_date=end_date.isoformat(),
+                                        project_name=project_name
+                                    )
+                                    logger.info(f"XLE file tracked for cloud upload: {organized_path} (ID: {file_id})")
+                                else:
+                                    logger.warning("Cannot track XLE file: no project name available")
+                            else:
+                                logger.debug("Not a cloud database or XLE manager not available, skipping XLE file tracking")
+                        except Exception as e:
+                            logger.error(f"Error tracking XLE file for cloud upload: {e}")
+                            # Continue even if XLE tracking fails
                 except Exception as e:
                     logger.error(f"Error organizing file: {e}")
                     # Continue with success even if file organization fails

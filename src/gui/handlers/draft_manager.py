@@ -11,6 +11,7 @@ Handles local draft persistence for cloud databases, allowing users to:
 import os
 import json
 import shutil
+import sqlite3
 import logging
 from datetime import datetime
 from typing import Dict, Optional, List
@@ -49,7 +50,11 @@ class DraftManager:
             draft_filename = f"{project_name}_draft.db"
             draft_path = os.path.join(self.drafts_dir, draft_filename)
             
-            # Copy current database to draft location
+            # Force WAL checkpoint to ensure all changes are written to main database file
+            # This is critical because SQLite WAL mode keeps recent changes in separate files
+            self._checkpoint_wal_before_copy(temp_db_path)
+            
+            # Copy current database to draft location (now contains all changes)
             shutil.copy2(temp_db_path, draft_path)
             
             # Save draft metadata
@@ -175,6 +180,9 @@ class DraftManager:
                 logger.warning(f"No existing draft to update for: {project_name}")
                 return False
             
+            # Force WAL checkpoint before updating draft
+            self._checkpoint_wal_before_copy(temp_db_path)
+            
             # Update the draft file
             draft_path = os.path.join(self.drafts_dir, draft_info['draft_filename'])
             shutil.copy2(temp_db_path, draft_path)
@@ -252,3 +260,44 @@ class DraftManager:
         except Exception as e:
             logger.error(f"Error saving drafts metadata: {e}")
             return False
+    
+    def _checkpoint_wal_before_copy(self, db_path: str):
+        """
+        Force SQLite WAL checkpoint to commit all pending changes to main database file.
+        This ensures the main .db file contains all recent changes before copying for draft.
+        """
+        try:
+            # Check if WAL file exists
+            wal_path = f"{db_path}-wal"
+            if not os.path.exists(wal_path):
+                logger.debug(f"No WAL file found for {db_path}, skipping checkpoint")
+                return
+            
+            # Get WAL file size before checkpoint
+            wal_size_before = os.path.getsize(wal_path)
+            logger.debug(f"WAL file size before checkpoint: {wal_size_before} bytes")
+            
+            # Connect and force WAL checkpoint
+            conn = sqlite3.connect(db_path)
+            try:
+                # PRAGMA wal_checkpoint(TRUNCATE) forces a complete checkpoint and truncates WAL
+                cursor = conn.cursor()
+                cursor.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                result = cursor.fetchone()
+                logger.info(f"WAL checkpoint completed for {os.path.basename(db_path)}: {result}")
+                
+                # Check WAL file size after checkpoint (should be 0 or much smaller)
+                if os.path.exists(wal_path):
+                    wal_size_after = os.path.getsize(wal_path)
+                    logger.debug(f"WAL file size after checkpoint: {wal_size_after} bytes")
+                    if wal_size_after < wal_size_before:
+                        logger.info(f"Successfully committed {wal_size_before - wal_size_after} bytes from WAL to main database")
+                else:
+                    logger.info("WAL file removed after checkpoint - all changes committed to main database")
+                    
+            finally:
+                conn.close()
+                
+        except Exception as e:
+            logger.error(f"Error during WAL checkpoint for {db_path}: {e}")
+            # Don't raise - continue with copy even if checkpoint fails

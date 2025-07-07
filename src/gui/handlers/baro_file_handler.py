@@ -17,7 +17,8 @@ class BaroFileHandler:
         self.db_path = db_path
         self.solinst_reader = SolinstReader()
         # Initialize file organizer with app root directory (parent of database)
-        self.file_organizer = XLEFileOrganizer(db_path.parent, db_name=db_path.stem)
+        # For backward compatibility, if no settings_handler is provided, use old behavior
+        self.file_organizer = XLEFileOrganizer(app_root_dir=db_path.parent, db_name=db_path.stem)
 
     def import_file(self, file_path: Path, serial_number: str, 
                    overwrite: bool = False) -> Tuple[bool, str]:

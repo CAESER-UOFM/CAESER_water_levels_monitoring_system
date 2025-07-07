@@ -67,7 +67,8 @@ config/users.db
 
 # Temporary database cache and working files
 temp/
-databases/temp/
+databases/temp/*
+!databases/temp/.gitkeep
 
 # Backup files
 *.bak
@@ -163,10 +164,6 @@ docs/GITHUB_NAVIGATION_TIPS.md
 docs/INSTALLATION_AND_UPDATE_SYSTEM.md
 docs/RELEASE_SETUP_GUIDE.md
 docs/MAIN_BRANCH_GUIDELINES.md
-
-# Merge instructions (local only, never push to remote)
-MERGE_TO_MAIN_INSTRUCTIONS.md
-**/MERGE_TO_MAIN_INSTRUCTIONS.md
 
 # Template and configuration files (branches only)
 docs/app_organization.txt

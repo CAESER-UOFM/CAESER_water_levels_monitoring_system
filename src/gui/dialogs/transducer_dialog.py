@@ -12,6 +12,7 @@ from PyQt5.QtCore import Qt, QDateTime
 from datetime import datetime
 from pathlib import Path
 from ..handlers.solinst_reader import SolinstReader
+from ..utils.button_styles import ButtonStyles
 import logging 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ class TransducerDialog(QDialog):
         serial_layout = QHBoxLayout()
         serial_layout.addWidget(self.serial_number)
         import_btn = QPushButton("Import from XLE...")
+        ButtonStyles.apply_button_style(import_btn, 'import')
         import_btn.clicked.connect(self.import_from_xle)
         serial_layout.addWidget(import_btn)
         form.addRow("Serial Number:", serial_layout)
@@ -62,14 +64,23 @@ class TransducerDialog(QDialog):
         
         layout.addLayout(form)
         
-        # Buttons
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel,
-            Qt.Horizontal
-        )
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        # Buttons with professional styling
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        # OK button (Save/Create)
+        ok_btn = QPushButton("Save" if self.transducer_data else "Create")
+        ButtonStyles.apply_button_style(ok_btn, 'save' if self.transducer_data else 'create')
+        ok_btn.clicked.connect(self.accept)
+        button_layout.addWidget(ok_btn)
+        
+        # Cancel button
+        cancel_btn = QPushButton("Cancel")
+        ButtonStyles.apply_button_style(cancel_btn, 'cancel')
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_btn)
+        
+        layout.addLayout(button_layout)
         
         # Disable serial number if editing
         if self.transducer_data:

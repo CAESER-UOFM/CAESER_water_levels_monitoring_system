@@ -116,9 +116,29 @@ class WaterLevelEditDialog(QDialog):
         # Track active instances
         self.active_instances = {}
         
+        # Add version debug info
+        logger.info("="*50)
+        logger.info("WATER LEVEL EDIT DIALOG - INITIALIZATION DEBUG")
+        logger.info("="*50)
+        logger.info(f"Dialog initialization started - VERSION: 2025-07-03-DEBUG-v1.1")
+        logger.info(f"File path: {__file__}")
+        
+        # Check if we have the new methods
+        has_protocol_method = hasattr(self.__class__, 'open_protocol_feedback_dialog')
+        has_help_method = hasattr(self.__class__, 'open_help_dialog')
+        logger.info(f"Has protocol feedback method: {has_protocol_method}")
+        logger.info(f"Has help dialog method: {has_help_method}")
+        
         self.setup_ui()
         self.setup_initial_dates()
         self.update_plot()  # Initial plot
+        
+        # Initialize Google Drive service and feedback button visibility
+        self.drive_service = None
+        self.user_name = None
+        logger.info("About to initialize feedback system...")
+        self._initialize_feedback_system()
+        logger.info("Feedback system initialization completed")
         
         # Add selection mode attributes
         self.selection_mode = False
@@ -465,11 +485,120 @@ class WaterLevelEditDialog(QDialog):
         time_layout.addWidget(self.zoom_to_selection_btn)
         time_layout.addWidget(self.full_range_btn)
         
+        # DEBUG: Button creation
+        logger.info("Creating Protocol Feedback button...")
+        
+        # Protocol Feedback button (positioned in upper right)
+        self.protocol_feedback_btn = QPushButton("📋 Protocol Feedback")
+        self.protocol_feedback_btn.setToolTip("Submit feedback on water levels processing protocols")
+        self.protocol_feedback_btn.setVisible(False)  # Initially hidden, shown when Drive service available
+        self.protocol_feedback_btn.clicked.connect(self.open_protocol_feedback_dialog)
+        self.protocol_feedback_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #6f42c1;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 11px;
+                min-width: 120px;
+            }
+            QPushButton:hover {
+                background-color: #5a2d91;
+            }
+            QPushButton:disabled {
+                background-color: #6c757d;
+            }
+        """)
+        logger.info(f"Protocol Feedback button created: {self.protocol_feedback_btn}")
+        
+        # DEBUG: Help button creation
+        logger.info("Creating Help button...")
+        
+        # Help button for comprehensive user guidance
+        self.help_btn = QPushButton("❓ Help")
+        self.help_btn.setToolTip("Open comprehensive help and user guide for this dialog")
+        self.help_btn.clicked.connect(self.open_help_dialog)
+        self.help_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #17a2b8;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 11px;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #138496;
+            }
+        """)
+        logger.info(f"Help button created: {self.help_btn}")
+        
+        # DEBUG: User Notes button creation
+        logger.info("Creating User Notes button...")
+        
+        # User Notes button for data analysis notes
+        self.user_notes_btn = QPushButton("📝 Notes")
+        self.user_notes_btn.setToolTip("Add notes about water level data analysis")
+        self.user_notes_btn.clicked.connect(self.open_user_notes_dialog)
+        self.user_notes_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #6f42c1;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 11px;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #5a32a3;
+            }
+            QPushButton:disabled {
+                background-color: #6c757d;
+            }
+        """)
+        logger.info(f"User Notes button created: {self.user_notes_btn}")
+        
+        # Create vertical layout for feedback and help buttons (stacked)
+        buttons_group = QGroupBox()
+        buttons_group.setStyleSheet("""
+            QGroupBox {
+                border: none;
+                margin: 0px;
+                padding: 0px;
+            }
+        """)
+        buttons_layout = QVBoxLayout(buttons_group)
+        buttons_layout.setContentsMargins(4, 4, 4, 4)
+        buttons_layout.setSpacing(4)
+        
+        logger.info("Adding Protocol Feedback button to vertical stack...")
+        buttons_layout.addWidget(self.protocol_feedback_btn)
+        
+        logger.info("Adding User Notes button to vertical stack...")
+        buttons_layout.addWidget(self.user_notes_btn)
+        
+        logger.info("Adding Help button to vertical stack...")
+        buttons_layout.addWidget(self.help_btn)
+        
+        # DEBUG: Adding buttons to layout
+        logger.info("Adding button group to controls layout...")
+        
         # Add all groups to main layout
         controls_layout.addWidget(filters_group)
         controls_layout.addWidget(edit_group)
         controls_layout.addWidget(time_group)
+        controls_layout.addWidget(buttons_group)
         controls_layout.addStretch()
+        
+        logger.info(f"Controls layout widget count: {controls_layout.count()}")
+        logger.info(f"Protocol Feedback button visible: {self.protocol_feedback_btn.isVisible()}")
+        logger.info(f"Help button visible: {self.help_btn.isVisible()}")
         
         return controls_widget
     
@@ -1052,8 +1181,8 @@ class WaterLevelEditDialog(QDialog):
     def apply_changes(self):
         """Apply changes to the database based on modification flags"""
         try:
-            # Close any open helper dialogs first
-            self.close_helper_dialogs()
+            # Don't close helper dialogs at the start - let them stay open for further edits
+            # They will be closed only after successful completion or when dialog is closed
             
             # Find records that have been modified by any of the three methods
             baro_mod_mask = self.transducer_data['baro_flag_mod'] == 'master_mod'  # Compensation
@@ -1193,12 +1322,51 @@ class WaterLevelEditDialog(QDialog):
                 # Use total_updated for the success message
                 logger.info(f"Database updated successfully. {total_updated} records affected.")
                 
-                # Mark cloud database as modified if applicable
-                if (hasattr(self, 'parent') and self.parent() and 
-                    hasattr(self.parent(), 'db_manager') and self.parent().db_manager and 
-                    self.parent().db_manager.is_cloud_database):
-                    self.parent().db_manager.mark_cloud_modified()
-                    logger.info("Marked cloud database as modified after water level edits")
+                # Mark database as modified and emit signals
+                parent_window = self.parent()
+                if (hasattr(self, 'parent') and parent_window and 
+                    hasattr(parent_window, 'db_manager') and parent_window.db_manager):
+                    
+                    # Mark cloud database as modified if applicable
+                    if parent_window.db_manager.is_cloud_database:
+                        parent_window.db_manager.mark_cloud_modified()
+                        logger.info("Marked cloud database as modified after water level edits")
+                    
+                    # Emit database modification signal to enable Save to Cloud button
+                    if hasattr(parent_window.db_manager, 'database_modified'):
+                        parent_window.db_manager.database_modified.emit()
+                        logger.info("Emitted database_modified signal after water level edits")
+                    
+                    # Track changes in the automatic change tracking system
+                    if (hasattr(parent_window.db_manager, 'change_tracker') and 
+                        parent_window.db_manager.change_tracker):
+                        try:
+                            from ...gui.handlers.change_tracker import ChangeType, ChangeAction
+                            
+                            # Group changes by well and summarize them
+                            wells_modified = modified_data['well_number'].unique()
+                            for well_number in wells_modified:
+                                well_changes = modified_data[modified_data['well_number'] == well_number]
+                                change_types = []
+                                if (well_changes['baro_flag_mod'] == 'master_mod').any():
+                                    change_types.append("barometric compensation")
+                                if (well_changes['level_flag_mod'] == 'level_mod').any():
+                                    change_types.append("baseline adjustment")
+                                if (well_changes['spike_flag'] == 'spike_corrected').any():
+                                    change_types.append("spike correction")
+                                
+                                change_description = f"Applied {', '.join(change_types)} to {len(well_changes)} readings"
+                                
+                                change_id = parent_window.db_manager.change_tracker.track_water_level_edit(
+                                    well_number=str(well_number),
+                                    records_modified=len(well_changes),
+                                    change_description=change_description,
+                                    change_type=ChangeType.MANUAL
+                                )
+                                logger.info(f"Tracked water level edit for well {well_number}: {change_description} (ID: {change_id})")
+                        except Exception as e:
+                            logger.error(f"Error tracking water level edit changes: {e}")
+                            # Continue even if change tracking fails
                 
                 QMessageBox.information(self, "Changes Applied", 
                                       f"Successfully updated {total_updated} records in the database.")
@@ -2365,6 +2533,17 @@ class WaterLevelEditDialog(QDialog):
             self.baseline_helper.close()
             self.baseline_helper = None
     
+    def closeEvent(self, event):
+        """Handle dialog closing to ensure helper dialogs are closed"""
+        try:
+            # Close helper dialogs when main dialog is closed
+            self.close_helper_dialogs()
+            # Accept the close event
+            event.accept()
+        except Exception as e:
+            logger.error(f"Error in closeEvent: {e}")
+            event.accept()  # Still close even if there's an error
+    
     def register_edit(self, instance_id, method, affected_indices, original_values, modified_values):
         """Register an edit from a helper dialog instance"""
         edit_record = {
@@ -3235,3 +3414,191 @@ class WaterLevelEditDialog(QDialog):
                     self.spike_helper.pause_btn.setStyleSheet("background-color: #d0d0f0;")
         
         self.canvas.draw_idle()
+    
+    def _initialize_feedback_system(self):
+        """Initialize the protocol feedback system"""
+        try:
+            logger.info("DEBUG: _initialize_feedback_system called")
+            
+            # Check if buttons exist
+            logger.info(f"DEBUG: protocol_feedback_btn exists: {hasattr(self, 'protocol_feedback_btn')}")
+            logger.info(f"DEBUG: help_btn exists: {hasattr(self, 'help_btn')}")
+            
+            # Try to get Google Drive service from main window (traverse parent hierarchy)
+            main_window = self.parent()
+            while main_window and not hasattr(main_window, 'drive_service'):
+                main_window = main_window.parent()
+            
+            if main_window and hasattr(main_window, 'drive_service'):
+                self.drive_service = main_window.drive_service
+                logger.info(f"DEBUG: Got drive_service from main window: {self.drive_service}")
+            else:
+                logger.info("DEBUG: No drive_service found in main window")
+            
+            # Try to get user name from parent if available
+            if hasattr(self.parent(), 'user_name'):
+                self.user_name = self.parent().user_name
+                logger.info(f"DEBUG: Got user_name from parent: {self.user_name}")
+            elif hasattr(self.parent(), 'user_auth_service'):
+                try:
+                    current_user_info = self.parent().user_auth_service.get_current_user_info()
+                    if current_user_info:
+                        self.user_name = current_user_info.get('username', 'CAESER Team Member')
+                    else:
+                        self.user_name = "CAESER Team Member"
+                    logger.info(f"DEBUG: Got user_name from auth service: {self.user_name}")
+                except:
+                    self.user_name = "CAESER Team Member"
+                    logger.info("DEBUG: Failed to get user from auth service, using default")
+            else:
+                self.user_name = "CAESER Team Member"
+                logger.info("DEBUG: No user auth found, using default name")
+            
+            # Update feedback button visibility
+            logger.info("DEBUG: About to update button visibility")
+            self._update_protocol_feedback_button_visibility()
+            
+        except Exception as e:
+            logger.error(f"Error initializing feedback system: {e}")
+            self.user_name = "CAESER Team Member"
+    
+    def _update_protocol_feedback_button_visibility(self):
+        """Update visibility of protocol feedback button based on Drive service availability"""
+        try:
+            logger.info("DEBUG: _update_protocol_feedback_button_visibility called")
+            
+            if hasattr(self, 'protocol_feedback_btn'):
+                logger.info("DEBUG: protocol_feedback_btn exists, checking Drive service...")
+                
+                # Check if Google Drive service is available (same simple logic as main feedback button)
+                is_available = bool(hasattr(self, 'drive_service') and self.drive_service)
+                
+                logger.info(f"DEBUG: Drive service available: {is_available}")
+                logger.info(f"DEBUG: drive_service: {self.drive_service}")
+                
+                # Only show button if Google Drive is available
+                self.protocol_feedback_btn.setVisible(is_available)
+                
+                if is_available:
+                    logger.info("DEBUG: Protocol feedback button shown - Google Drive service available")
+                else:
+                    logger.info("DEBUG: Protocol feedback button hidden - No Google Drive service available")
+                    
+                logger.info(f"DEBUG: Protocol feedback button visibility set: {self.protocol_feedback_btn.isVisible()}")
+            else:
+                logger.error("DEBUG: protocol_feedback_btn does NOT exist!")
+                
+        except Exception as e:
+            logger.error(f"Error updating protocol feedback button visibility: {e}")
+            import traceback
+            logger.error(f"DEBUG: Full traceback: {traceback.format_exc()}")
+            # Hide button on error to be safe
+            if hasattr(self, 'protocol_feedback_btn'):
+                self.protocol_feedback_btn.setVisible(False)
+    
+    def open_protocol_feedback_dialog(self):
+        """Open the water levels protocol feedback dialog"""
+        try:
+            # Since the button is only visible when service is available,
+            # we can assume the service is available when this method is called
+            if not hasattr(self, 'drive_service') or not self.drive_service:
+                # This shouldn't happen since button visibility is controlled,
+                # but added as a safety check
+                QMessageBox.warning(self, "Service Unavailable", 
+                                  "Google Drive service is not available. Please check your connection and authentication.")
+                return
+            
+            # Get current well information
+            well_number = "Unknown"
+            if hasattr(self, 'transducer_data') and not self.transducer_data.empty:
+                if 'well_number' in self.transducer_data.columns:
+                    well_number = str(self.transducer_data['well_number'].iloc[0])
+                elif 'TN113_number' in self.transducer_data.columns:
+                    well_number = str(self.transducer_data['TN113_number'].iloc[0])
+            
+            # Get current data info
+            data_info = {}
+            if hasattr(self, 'transducer_data') and not self.transducer_data.empty:
+                if 'timestamp_utc' in self.transducer_data.columns:
+                    timestamps = pd.to_datetime(self.transducer_data['timestamp_utc'])
+                    data_info = {
+                        'start_date': timestamps.min().strftime('%Y-%m-%d'),
+                        'end_date': timestamps.max().strftime('%Y-%m-%d'),
+                        'total_points': len(self.transducer_data)
+                    }
+            
+            # Import and open the dialog
+            from .water_levels_protocol_feedback_dialog import WaterLevelsProtocolFeedbackDialog
+            
+            dialog = WaterLevelsProtocolFeedbackDialog(
+                parent=self,
+                drive_service=self.drive_service,
+                user_name=self.user_name,
+                well_number=well_number,
+                current_data_info=data_info
+            )
+            
+            dialog.exec_()
+            
+        except Exception as e:
+            logger.error(f"Error opening protocol feedback dialog: {e}")
+            QMessageBox.critical(self, "Error", 
+                               f"Failed to open protocol feedback dialog:\n{str(e)}")
+    
+    def open_help_dialog(self):
+        """Open the comprehensive help dialog for this dialog"""
+        try:
+            from .water_level_edit_help_dialog import WaterLevelEditHelpDialog
+            
+            help_dialog = WaterLevelEditHelpDialog(parent=self)
+            help_dialog.show()
+            
+        except Exception as e:
+            logger.error(f"Error opening help dialog: {e}")
+            QMessageBox.critical(self, "Error", 
+                               f"Failed to open help dialog:\n{str(e)}")
+    
+    def open_user_notes_dialog(self):
+        """Open the user notes dialog for data analysis notes"""
+        try:
+            # Get well number from the data
+            well_number = "Unknown"
+            if not self.transducer_data.empty and 'well_number' in self.transducer_data.columns:
+                well_number = str(self.transducer_data['well_number'].iloc[0])
+            elif not self.manual_data.empty and 'well_number' in self.manual_data.columns:
+                well_number = str(self.manual_data['well_number'].iloc[0])
+            
+            # Ensure user_name is available
+            if not hasattr(self, 'user_name') or not self.user_name:
+                self.user_name = "CAESER Team Member"
+            
+            # Get database manager from parent if available
+            db_manager = None
+            if hasattr(self.parent(), 'db_manager'):
+                db_manager = self.parent().db_manager
+            elif hasattr(self, 'db_path') and self.db_path:
+                # Create a simple object with current_db property
+                class SimpleDBManager:
+                    def __init__(self, db_path):
+                        self.current_db = db_path
+                db_manager = SimpleDBManager(self.db_path)
+            else:
+                QMessageBox.warning(self, "Database Unavailable", 
+                                  "Database connection is not available for saving notes.")
+                return
+            
+            from .user_notes_dialog import UserNotesDialog
+            
+            dialog = UserNotesDialog(
+                db_manager=db_manager,
+                well_number=well_number,
+                user_name=self.user_name,
+                parent=self
+            )
+            
+            dialog.exec_()
+            
+        except Exception as e:
+            logger.error(f"Error opening user notes dialog: {e}")
+            QMessageBox.critical(self, "Error", 
+                               f"Failed to open user notes dialog:\n{str(e)}")

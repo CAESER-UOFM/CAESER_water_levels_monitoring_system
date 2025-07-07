@@ -76,21 +76,6 @@ class EmrTab(BaseRechargeTab):
                    fontsize=16, fontweight='bold',
                    color='#e74c3c')
             
-            # Add description
-            description = (
-                "The EMR method extends the Master Recession Curve approach by linking\n"
-                "each recharge event to specific rainfall episodes. This allows calculation of:\n\n"
-                "• Recharge amount per storm event\n"
-                "• Lag time between rainfall and recharge response\n"
-                "• Storm efficiency (recharge/rainfall ratio)\n"
-                "• Seasonal patterns in recharge efficiency"
-            )
-            ax.text(0.5, 0.45, description, 
-                   transform=ax.transAxes,
-                   ha='center', va='center',
-                   fontsize=12,
-                   color='#495057',
-                   linespacing=1.5)
             
             # Add coming soon message
             ax.text(0.5, 0.15, 

@@ -200,6 +200,7 @@ class DatabaseSetupDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.csv_files = {}  # Store selected CSV files
+        self.parent_window = parent  # Store reference to main window for settings access
         self.setup_ui()
         
     def setup_ui(self):
@@ -372,11 +373,18 @@ class DatabaseSetupDialog(QDialog):
         
     def create_database(self):
         """Create the database with optional CSV import"""
-        # Get database file path
+        # Default to databases directory for consistency
+        # Use app directory instead of current working directory
+        app_dir = Path(__file__).parent.parent.parent.parent
+        databases_dir = app_dir / "databases"
+        databases_dir.mkdir(exist_ok=True)  # Ensure databases directory exists
+        default_directory = str(databases_dir)
+        
+        # Get database file path with proper default directory
         file_path, _ = QFileDialog.getSaveFileName(
             self,
             "Create New Database",
-            "",
+            default_directory,  # Use configured database directory as default
             "Database files (*.db)"
         )
         
@@ -384,13 +392,36 @@ class DatabaseSetupDialog(QDialog):
             return
             
         try:
+            # Show loading progress
+            self.progress_widget.setVisible(True)
+            self.create_button.setEnabled(False)
+            self.progress_label.setText("Creating database...")
+            self.progress_bar.setValue(10)
+            
+            # Process events to update UI
+            from PyQt5.QtWidgets import QApplication
+            QApplication.processEvents()
+            
             # Import database initializer
             from ...database.initializer import DatabaseInitializer
             
             # Create and initialize database
+            self.progress_label.setText("Initializing database structure...")
+            self.progress_bar.setValue(30)
+            QApplication.processEvents()
+            
             db_path = Path(file_path)
             initializer = DatabaseInitializer(db_path)
+            
+            self.progress_label.setText("Creating database tables...")
+            self.progress_bar.setValue(70)
+            QApplication.processEvents()
+            
             initializer.initialize_database()
+            
+            self.progress_label.setText("Database creation completed!")
+            self.progress_bar.setValue(100)
+            QApplication.processEvents()
             
             # Store the created database path
             self._created_db_path = str(db_path)
@@ -399,10 +430,16 @@ class DatabaseSetupDialog(QDialog):
             if self.enable_csv_checkbox.isChecked() and self.csv_files:
                 self._import_csv_files(str(db_path))
             else:
+                # Hide progress and show success
+                self.progress_widget.setVisible(False)
+                self.create_button.setEnabled(True)
                 QMessageBox.information(self, "Success", "Database created successfully!")
                 self.accept()
                 
         except Exception as e:
+            # Reset UI state on error
+            self.progress_widget.setVisible(False)
+            self.create_button.setEnabled(True)
             logger.error(f"Database creation failed: {e}")
             QMessageBox.critical(self, "Error", f"Failed to create database: {str(e)}")
     
