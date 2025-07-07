@@ -1923,8 +1923,12 @@ class RiseTab(BaseRechargeTab):
             return
             
         if not self.rise_db:
-            QMessageBox.warning(self, "Database Error", "Database connection not available.")
-            return
+            # Try to reinitialize database connection
+            logger.warning("RISE database not initialized, attempting to reinitialize...")
+            self.init_database()
+            if not self.rise_db:
+                QMessageBox.warning(self, "Database Error", "Database connection not available.")
+                return
             
         if not self.current_well:
             QMessageBox.warning(self, "No Well", "No well selected.")
@@ -2041,6 +2045,31 @@ class RiseTab(BaseRechargeTab):
                     self.parent.db_manager.is_cloud_database):
                     self.parent.db_manager.mark_cloud_modified()
                     logger.info("Marked cloud database as modified after RISE calculation save")
+                    
+                    # Track the calculation save in change tracker
+                    if (hasattr(self.parent.db_manager, 'change_tracker') and 
+                        self.parent.db_manager.change_tracker):
+                        from ...handlers.change_tracker import ChangeType, ChangeAction
+                        self.parent.db_manager.change_tracker.track_change(
+                            change_type=ChangeType.MANUAL,
+                            action=ChangeAction.INSERT,
+                            table_name="rise_calculations",
+                            record_id=well_id,
+                            field_name=None,
+                            old_value=None,
+                            new_value={
+                                "total_recharge": total_recharge,
+                                "annual_rate": annual_rate,
+                                "rise_events": len(events_to_save)
+                            },
+                            description=f"RISE calculation saved for well {well_name}: {total_recharge:.2f} inches total, {len(events_to_save)} rise events",
+                            context={
+                                "well_number": well_id,
+                                "well_name": well_name,
+                                "calculation_type": "RISE",
+                                "ui_action": "save_calculation"
+                            }
+                        )
                 
                 QMessageBox.information(
                     self, 
@@ -2069,8 +2098,12 @@ class RiseTab(BaseRechargeTab):
     def load_from_database(self):
         """Load a previous RISE calculation from the database."""
         if not self.rise_db:
-            QMessageBox.warning(self, "Database Error", "Database connection not available.")
-            return
+            # Try to reinitialize database connection
+            logger.warning("RISE database not initialized for load, attempting to reinitialize...")
+            self.init_database()
+            if not self.rise_db:
+                QMessageBox.warning(self, "Database Error", "Database connection not available.")
+                return
             
         if not self.current_well:
             QMessageBox.warning(self, "No Well", "Please select a well first.")

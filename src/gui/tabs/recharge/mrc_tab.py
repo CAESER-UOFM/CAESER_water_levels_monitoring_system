@@ -319,8 +319,7 @@ class MrcTab(BaseRechargeTab):
         
         # Initialize database for MRC calculations
         self.mrc_db = None
-        self.db_path = None  # Store path, create connection when needed
-        self.get_db_path()
+        self.init_database()
         
         # Session state management for preserving work across well switches
         self.well_sessions = {}  # Store per-well state data
@@ -353,39 +352,39 @@ class MrcTab(BaseRechargeTab):
             logger.error(f"Error getting database path: {e}")
             self.db_path = None
     
-    def get_mrc_database(self):
-        """Get or create MRC database connection for current thread."""
-        logger.info(f"[DB_DEBUG] get_mrc_database called, self.db_path = {self.db_path}")
-        
-        if not self.db_path:
-            logger.warning("[DB_DEBUG] db_path is None, trying to get it")
-            self.get_db_path()
-            logger.info(f"[DB_DEBUG] After get_db_path, self.db_path = {self.db_path}")
-            
-        if not self.db_path:
-            logger.error("[DB_DEBUG] Still no db_path after get_db_path")
-            return None
-            
-        # Additional safety check to prevent "None" file creation
-        if str(self.db_path) == "None" or self.db_path is None:
-            logger.warning("No database selected - skipping MRC database initialization")
-            return None
-            
+    def init_database(self):
+        """Initialize the MRC database connection and tables."""
         try:
-            # Create a new database connection for this thread
-            mrc_db = MrcDatabase(self.db_path)
+            # Get database path from data manager
+            if hasattr(self.db_manager, 'current_db'):
+                db_path = self.db_manager.current_db
+            else:
+                logger.warning("Could not get database path from db manager")
+                return
+            
+            # Safety check to prevent None file creation
+            if db_path is None or str(db_path) == "None":
+                logger.warning("No database selected - skipping MRC database initialization")
+                return
+                
+            # Initialize MRC database manager
+            self.mrc_db = MrcDatabase(db_path)
             
             # Create tables if they don't exist
-            success = mrc_db.create_tables()
+            success = self.mrc_db.create_tables()
             if success:
-                return mrc_db
+                logger.info(f"MRC database initialized successfully: {db_path}")
             else:
-                logger.error("Failed to initialize MRC database tables")
-                return None
+                logger.error("Failed to create MRC database tables")
+                self.mrc_db = None
                 
         except Exception as e:
-            logger.error(f"Error creating MRC database connection: {e}")
-            return None
+            logger.error(f"Error initializing MRC database: {e}")
+            self.mrc_db = None
+    
+    def get_mrc_database(self):
+        """Get the MRC database connection."""
+        return self.mrc_db
     
     def setup_ui(self):
         """Set up the UI for the MRC tab."""
@@ -1101,7 +1100,7 @@ class MrcTab(BaseRechargeTab):
             # Ensure database is initialized
             if not self.mrc_db:
                 logger.info(f"MRC database not initialized, initializing now...")
-                self.mrc_db = self.get_mrc_database()
+                self.init_database()
                 if not self.mrc_db:
                     logger.error("Failed to initialize MRC database")
                     return
@@ -1194,7 +1193,7 @@ class MrcTab(BaseRechargeTab):
             
             # Ensure database is initialized
             if not self.mrc_db:
-                self.mrc_db = self.get_mrc_database()
+                self.init_database()
                 if not self.mrc_db:
                     logger.error("Failed to initialize MRC database")
                     return
@@ -2947,8 +2946,13 @@ class MrcTab(BaseRechargeTab):
         # Get database connection for this thread
         mrc_db = self.get_mrc_database()
         if not mrc_db:
-            QMessageBox.warning(self, "Database Error", "Database connection not available.")
-            return
+            # Try to reinitialize database connection
+            logger.warning("MRC database not initialized, attempting to reinitialize...")
+            self.init_database()
+            mrc_db = self.get_mrc_database()
+            if not mrc_db:
+                QMessageBox.warning(self, "Database Error", "Database connection not available.")
+                return
             
         if not self.current_curve:
             QMessageBox.warning(self, "No Curve", "No curve selected or fitted.")
@@ -3056,6 +3060,34 @@ class MrcTab(BaseRechargeTab):
                     self.parent.db_manager.is_cloud_database):
                     self.parent.db_manager.mark_cloud_modified()
                     logger.info("Marked cloud database as modified after MRC calculation save")
+                    
+                    # Track the calculation save in change tracker
+                    if (hasattr(self.parent.db_manager, 'change_tracker') and 
+                        self.parent.db_manager.change_tracker):
+                        from ...handlers.change_tracker import ChangeType, ChangeAction
+                        well_name = self.well_combo.currentText()
+                        self.parent.db_manager.change_tracker.track_change(
+                            change_type=ChangeType.MANUAL,
+                            action=ChangeAction.INSERT,
+                            table_name="mrc_calculations",
+                            record_id=self.current_well,
+                            field_name=None,
+                            old_value=None,
+                            new_value={
+                                "calculation_id": calc_id,
+                                "total_recharge": total_recharge,
+                                "annual_rate": annual_rate,
+                                "recharge_events": len(self.recharge_events)
+                            },
+                            description=f"MRC calculation saved for well {well_name}: {total_recharge:.2f} inches total, {len(self.recharge_events)} recharge events",
+                            context={
+                                "well_number": self.current_well,
+                                "well_name": well_name,
+                                "calculation_type": "MRC",
+                                "calculation_id": calc_id,
+                                "ui_action": "save_calculation"
+                            }
+                        )
                 
                 QMessageBox.information(
                     self, 
@@ -3086,8 +3118,13 @@ class MrcTab(BaseRechargeTab):
         # Get database connection for this thread
         mrc_db = self.get_mrc_database()
         if not mrc_db:
-            QMessageBox.warning(self, "Database Error", "Database connection not available.")
-            return
+            # Try to reinitialize database connection
+            logger.warning("MRC database not initialized, attempting to reinitialize...")
+            self.init_database()
+            mrc_db = self.get_mrc_database()
+            if not mrc_db:
+                QMessageBox.warning(self, "Database Error", "Database connection not available.")
+                return
             
         if not self.current_well:
             QMessageBox.warning(self, "No Well", "Please select a well first.")
