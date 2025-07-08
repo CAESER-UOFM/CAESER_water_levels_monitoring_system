@@ -1360,11 +1360,11 @@ class RiseTab(BaseRechargeTab):
                     'date': date,
                     'level': row[level_col],
                     'rise': row['rise'],
-                    'recharge': row['recharge'],
-                    'annual_rate': row['recharge'] * 365,  # Simple annualization for single-day rise
+                    'recharge': 0.0,  # Will be calculated later in calculate_recharge_for_selected
+                    'annual_rate': 0.0,  # Will be calculated later in calculate_recharge_for_selected
                 }
                 
-                logger.debug(f"Added rise record for {date}: {row['rise']:.4f} ft, {row['recharge']:.2f} inches")
+                logger.debug(f"Added rise record for {date}: {row['rise']:.4f} ft (recharge will be calculated later)")
                 daily_rises.append(rise_record)
             
             # Sort rises by date
@@ -3094,14 +3094,23 @@ class RiseTab(BaseRechargeTab):
     def calculate_recharge_for_events(self, selected_events):
         """Calculate recharge values for the provided events."""
         try:
+            # Get specific yield from settings
+            specific_yield = self.current_settings.get('specific_yield', 0.01)
+            
+            # Calculate recharge for each selected event
+            for event in selected_events:
+                # Calculate recharge: rise * specific yield * 12 (ft to inches)
+                event['recharge'] = event['rise'] * specific_yield * 12
+                event['annual_rate'] = event['recharge'] * 365  # Annualized rate
+                
+            logger.info(f"Calculated recharge for {len(selected_events)} selected events with specific yield {specific_yield}")
+            
             # Store the selected events as the final rise_events for results
             self.rise_events = selected_events
             self.rise_events_filtered = selected_events
             
             # Update results with the selected events
             self.update_results_with_events(selected_events)
-            
-            logger.info(f"Calculated recharge for {len(selected_events)} selected events")
             
         except Exception as e:
             logger.error(f"Error calculating recharge for events: {e}", exc_info=True)
@@ -3690,14 +3699,23 @@ class CompareCalculationsDialog(QDialog):
     def calculate_recharge_for_events(self, selected_events):
         """Calculate recharge values for the provided events."""
         try:
+            # Get specific yield from settings
+            specific_yield = self.current_settings.get('specific_yield', 0.01)
+            
+            # Calculate recharge for each selected event
+            for event in selected_events:
+                # Calculate recharge: rise * specific yield * 12 (ft to inches)
+                event['recharge'] = event['rise'] * specific_yield * 12
+                event['annual_rate'] = event['recharge'] * 365  # Annualized rate
+                
+            logger.info(f"Calculated recharge for {len(selected_events)} selected events with specific yield {specific_yield}")
+            
             # Store the selected events as the final rise_events for results
             self.rise_events = selected_events
             self.rise_events_filtered = selected_events
             
             # Update results with the selected events
             self.update_results_with_events(selected_events)
-            
-            logger.info(f"Calculated recharge for {len(selected_events)} selected events")
             
         except Exception as e:
             logger.error(f"Error calculating recharge for events: {e}", exc_info=True)
