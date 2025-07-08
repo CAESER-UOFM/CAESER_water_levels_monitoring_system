@@ -830,6 +830,7 @@ class MrcTab(BaseRechargeTab):
         self.yearly_stats_table.setSortingEnabled(True)
         self.yearly_stats_table.setAlternatingRowColors(True)
         self.yearly_stats_table.verticalHeader().setVisible(False)
+        self.yearly_stats_table.itemClicked.connect(self.on_water_year_clicked)
         layout.addWidget(self.yearly_stats_table)
         
         # Summary section
@@ -1001,7 +1002,16 @@ class MrcTab(BaseRechargeTab):
     def update_well_selection(self, selected_wells):
         """Update the list of selected wells."""
         logger.info(f"[MRC_TAB] update_well_selection called with: {selected_wells}")
+        
+        # Prevent redundant updates if selection hasn't changed
+        if self.selected_wells == selected_wells:
+            logger.info(f"[MRC_TAB] Same wells already selected, skipping update")
+            return
+            
         self.selected_wells = selected_wells
+        
+        # Clear existing segments and results when wells change
+        self.clear_results()
         
         # Store current well information for internal use (no GUI dropdown)
         if selected_wells:
@@ -2643,6 +2653,85 @@ class MrcTab(BaseRechargeTab):
         except Exception as e:
             logger.error(f"Error handling segment selection: {e}", exc_info=True)
 
+    def on_water_year_clicked(self, item):
+        """Handle clicking on a water year in the yearly statistics table to zoom plot."""
+        try:
+            if not item or not hasattr(self, 'raw_data') or self.raw_data is None:
+                return
+            
+            # Get the water year from the clicked row
+            row = item.row()
+            water_year_item = self.yearly_stats_table.item(row, 0)
+            if not water_year_item:
+                return
+            
+            water_year = water_year_item.text()
+            logger.info(f"Water year clicked: {water_year}")
+            
+            # Parse water year (format: "2021-2022")
+            if '-' in water_year:
+                start_year, end_year = water_year.split('-')
+                start_year = int(start_year)
+                end_year = int(end_year)
+            else:
+                # Single year format
+                start_year = int(water_year)
+                end_year = start_year + 1
+            
+            # Calculate water year date range (Oct 1 to Sep 30)
+            from datetime import datetime, date
+            import pandas as pd
+            
+            start_date = datetime(start_year, 10, 1)  # Oct 1
+            end_date = datetime(end_year, 9, 30)      # Sep 30
+            
+            # Convert to pandas timestamps for comparison
+            start_ts = pd.Timestamp(start_date)
+            end_ts = pd.Timestamp(end_date)
+            
+            # Update plot with custom zoom
+            self.zoom_to_date_range(start_ts, end_ts)
+            
+        except Exception as e:
+            logger.error(f"Error handling water year selection: {e}", exc_info=True)
+
+    def zoom_to_date_range(self, start_date, end_date):
+        """Zoom the plot to the specified date range."""
+        try:
+            if not hasattr(self, 'figure') or not self.figure.axes:
+                return
+                
+            ax = self.figure.axes[0]
+            
+            # Set the x-axis limits to the specified date range
+            ax.set_xlim(start_date, end_date)
+            
+            # Optionally adjust y-axis to fit the data in the range
+            if hasattr(self, 'raw_data') and self.raw_data is not None:
+                # Filter data to the date range
+                data = self.raw_data.copy()
+                if 'timestamp_utc' in data.columns:
+                    timestamp_col = 'timestamp_utc'
+                else:
+                    timestamp_col = 'timestamp'
+                
+                data[timestamp_col] = pd.to_datetime(data[timestamp_col])
+                range_data = data[(data[timestamp_col] >= start_date) & (data[timestamp_col] <= end_date)]
+                
+                if len(range_data) > 0:
+                    y_min = range_data['water_level'].min()
+                    y_max = range_data['water_level'].max()
+                    y_range = y_max - y_min
+                    
+                    if y_range > 0:
+                        ax.set_ylim(y_min - 0.1 * y_range, y_max + 0.1 * y_range)
+            
+            # Redraw the canvas
+            self.canvas.draw()
+            
+        except Exception as e:
+            logger.error(f"Error zooming to date range: {e}", exc_info=True)
+
     def clear_results(self):
         """Clear all results and reset UI."""
         self.recession_segments = []
@@ -2661,6 +2750,9 @@ class MrcTab(BaseRechargeTab):
         
         self.fit_curve_btn.setEnabled(False)
         self.calculate_btn.setEnabled(False)
+        
+        # Clear the plot to remove any segments visualization
+        self.update_plot()
     
     def on_preprocessing_changed(self):
         """Handle changes to preprocessing options."""

@@ -453,6 +453,14 @@ class RechargeTab(QWidget):
         self.current_well_id = None
         self.raw_data = None
         self.processed_data = None
+        
+        # Clear all method tabs' results when database changes
+        if hasattr(self, 'rise_tab'):
+            self.rise_tab.clear_results()
+        if hasattr(self, 'mrc_tab'):
+            self.mrc_tab.clear_results()
+        if hasattr(self, 'emr_tab'):
+            self.emr_tab.clear_results()
     
     def create_recharge_methods(self):
         """Create the tab widget for different recharge methods."""
