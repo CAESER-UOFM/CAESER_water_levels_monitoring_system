@@ -54,7 +54,7 @@ class BarologgerTab(QWidget):
         self.is_loading = False  # Flag to track if data loading is in progress
 
         # Initialize plot components but defer actual plotting
-        self.figure = Figure(figsize=(8, 4))
+        self.figure = Figure(figsize=(10, 4.5))  # Increase width and height for better layout
         self.canvas = FigureCanvasQTAgg(self.figure)
 
         # Initialize UI elements
@@ -592,9 +592,9 @@ class BarologgerTab(QWidget):
         layout.addLayout(plot_controls)
 
         # Initialize figure
-        self.figure = Figure(figsize=(8, 4))
+        self.figure = Figure(figsize=(10, 4.5))  # Increase width and height for better layout
         self.canvas = FigureCanvasQTAgg(self.figure)
-        self.canvas.setMinimumSize(600, 400)  # Set minimum size
+        self.canvas.setMinimumSize(800, 450)  # Increase minimum size to match new figure size
         
         # Add navigation toolbar
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
@@ -998,7 +998,8 @@ class BarologgerTab(QWidget):
                 cursor.execute("PRAGMA cache_size = 10000")
                 
                 self.figure.clear()
-                self.figure.subplots_adjust(left=0.12)
+                # Adjust margins to provide space for legend and labels
+                self.figure.subplots_adjust(left=0.08, right=0.85, bottom=0.12, top=0.95)
                 ax = self.figure.add_subplot(111)
 
                 has_data = False
@@ -1168,16 +1169,16 @@ class BarologgerTab(QWidget):
                     legend_start = time.time()
                     handles, labels = ax.get_legend_handles_labels()
                     if handles:
-                        # Set scrollable legend with smaller font if many items
+                        # Position legend in the right margin area for better visibility
                         if len(handles) > 8:
-                            ax.legend(loc='upper right',
-                                     bbox_to_anchor=(0.98, 0.98),
+                            ax.legend(loc='center left',
+                                     bbox_to_anchor=(1.02, 0.5),
                                      fontsize=8,
                                      framealpha=0.9,
-                                     ncol=2 if len(handles) > 12 else 1)
+                                     ncol=1)
                         else:
-                            ax.legend(loc='upper right',
-                                     bbox_to_anchor=(0.98, 0.98),
+                            ax.legend(loc='center left',
+                                     bbox_to_anchor=(1.02, 0.5),
                                      fontsize=9,
                                      framealpha=0.9)
                     logger.debug(f"T+{time.time() - start_time:.3f}s: Legend creation completed in {time.time() - legend_start:.3f}s")
@@ -1271,8 +1272,8 @@ class BarologgerTab(QWidget):
         import matplotlib.pyplot as plt
         plt.setp(ax.get_xticklabels(), rotation=30, ha='right', fontsize=9)
         
-        # Reduce bottom margin to reclaim plot space
-        self.figure.subplots_adjust(bottom=0.12)
+        # Maintain consistent margins for better layout
+        self.figure.subplots_adjust(left=0.08, right=0.85, bottom=0.12, top=0.95)
 
     def open_enhanced_plot_dialog(self):
         """Open the enhanced plot dialog with current barologger data."""
