@@ -577,6 +577,18 @@ class RiseTab(BaseRechargeTab):
         # Plot panel - use BaseRechargeTab's canvas (already initialized)
         self.toolbar = NavigationToolbar(self.canvas, self)
         
+        # Connect home button to reset zoom
+        self.toolbar.home_button_clicked = False
+        original_home = self.toolbar.home
+        
+        def home_with_reset():
+            self.toolbar.home_button_clicked = True
+            original_home()
+            self.update_plot()  # Refresh with no zoom preservation
+            self.toolbar.home_button_clicked = False
+        
+        self.toolbar.home = home_with_reset
+        
         layout.addWidget(self.toolbar)
         layout.addWidget(self.canvas)
         
@@ -1488,7 +1500,9 @@ class RiseTab(BaseRechargeTab):
                 return
             
             # Use base class plotting for consistent appearance
-            ax = self.update_plot_base()
+            # Check if home button was clicked to reset zoom
+            preserve_zoom = not (hasattr(self, 'toolbar') and hasattr(self.toolbar, 'home_button_clicked') and self.toolbar.home_button_clicked)
+            ax = self.update_plot_base(preserve_zoom=preserve_zoom)
             if ax is None:
                 logger.warning("[PLOT_DEBUG] Base plot update returned None")
                 return

@@ -4876,6 +4876,9 @@ class InteractiveCurveFittingDialog(QDialog):
         plot_layout.addWidget(plot_header)
         
         # Create separate figure for segment visualization
+        from matplotlib.figure import Figure
+        from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+        
         self.segment_figure = Figure(figsize=(6, 4))
         self.segment_canvas = FigureCanvas(self.segment_figure)
         plot_layout.addWidget(self.segment_canvas)
