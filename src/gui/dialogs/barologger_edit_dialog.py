@@ -1369,6 +1369,9 @@ class BarologgerEditDialog(QDialog):
     def add_spike_selection_marker(self, timestamp, pressure):
         """Add visual marker for selected spike point"""
         try:
+            # Always calculate num_points for fallback logic
+            num_points = len(self.spike_selection_points)
+            
             # Determine marker color based on helper dialog state (red for first, blue for second point)
             if hasattr(self, 'spike_helper_dialog') and self.spike_helper_dialog and hasattr(self.spike_helper_dialog, 'current_point'):
                 if self.spike_helper_dialog.current_point is None:
@@ -1383,7 +1386,6 @@ class BarologgerEditDialog(QDialog):
                     label = 'Spike End'
             else:
                 # Fallback to old logic if helper dialog not available
-                num_points = len(self.spike_selection_points)
                 if num_points % 2 == 0:
                     color = 'red'
                     marker = 'o'
