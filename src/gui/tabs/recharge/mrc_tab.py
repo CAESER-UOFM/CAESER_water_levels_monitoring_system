@@ -4816,12 +4816,13 @@ class InteractiveCurveFittingDialog(QDialog):
         info_label.setStyleSheet("color: #6c757d; font-style: italic; margin: 5px;")
         layout.addWidget(info_label)
         
-        # Create splitter for table and plot
-        splitter = QSplitter(Qt.Horizontal)
+        # Create main horizontal splitter (left table | right plots)
+        main_splitter = QSplitter(Qt.Horizontal)
         
-        # Left side: Segment table
+        # Left panel: Segment table only
         table_widget = QWidget()
         table_layout = QVBoxLayout(table_widget)
+        table_widget.setFixedWidth(350)  # Fixed width for table panel
         
         # Table header
         table_header = QLabel("Recession Segments")
@@ -4835,7 +4836,6 @@ class InteractiveCurveFittingDialog(QDialog):
         self.segment_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.segment_table.horizontalHeader().setStretchLastSection(True)
         self.segment_table.setAlternatingRowColors(True)
-        self.segment_table.setMaximumHeight(200)
         
         # Populate segment table
         self.populate_segment_table()
@@ -4856,45 +4856,68 @@ class InteractiveCurveFittingDialog(QDialog):
         deselect_all_btn.clicked.connect(self.deselect_all_segments)
         button_layout.addWidget(deselect_all_btn)
         
-        button_layout.addStretch()
-        
-        refit_btn = QPushButton("🔄 Refit with Selected")
-        refit_btn.clicked.connect(self.refit_with_selected_segments)
-        refit_btn.setStyleSheet("font-weight: bold; padding: 5px;")
-        button_layout.addWidget(refit_btn)
-        
         table_layout.addLayout(button_layout)
         
-        splitter.addWidget(table_widget)
+        # Refit button - larger and more prominent
+        refit_btn = QPushButton("🔄 Refit with Selected")
+        refit_btn.clicked.connect(self.refit_with_selected_segments)
+        refit_btn.setStyleSheet("font-weight: bold; padding: 8px; background-color: #007bff; color: white; border-radius: 4px;")
+        table_layout.addWidget(refit_btn)
         
-        # Right side: Segment visualization plot
-        plot_widget = QWidget()
-        plot_layout = QVBoxLayout(plot_widget)
+        main_splitter.addWidget(table_widget)
         
-        plot_header = QLabel("Segment Visualization")
-        plot_header.setStyleSheet("font-weight: bold; font-size: 12px; margin: 5px;")
-        plot_layout.addWidget(plot_header)
+        # Right side: Vertical splitter for two plots
+        right_splitter = QSplitter(Qt.Vertical)
         
-        # Create separate figure for segment visualization
+        # Top right: Curve fitting plot (same as main tab)
+        curve_plot_widget = QWidget()
+        curve_plot_layout = QVBoxLayout(curve_plot_widget)
+        
+        curve_header = QLabel("Curve Fitting with Segment Highlighting")
+        curve_header.setStyleSheet("font-weight: bold; font-size: 12px; margin: 5px;")
+        curve_plot_layout.addWidget(curve_header)
+        
+        # Create curve fitting figure (same as main tab)
         from matplotlib.figure import Figure
         from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
         
-        self.segment_figure = Figure(figsize=(6, 4))
+        self.curve_figure = Figure(figsize=(8, 4))
+        self.curve_canvas = FigureCanvas(self.curve_figure)
+        curve_plot_layout.addWidget(self.curve_canvas)
+        
+        right_splitter.addWidget(curve_plot_widget)
+        
+        # Bottom right: Segment visualization plot
+        segment_plot_widget = QWidget()
+        segment_plot_layout = QVBoxLayout(segment_plot_widget)
+        
+        segment_header = QLabel("Segment Visualization")
+        segment_header.setStyleSheet("font-weight: bold; font-size: 12px; margin: 5px;")
+        segment_plot_layout.addWidget(segment_header)
+        
+        # Create separate figure for segment visualization
+        self.segment_figure = Figure(figsize=(8, 3))
         self.segment_canvas = FigureCanvas(self.segment_figure)
-        plot_layout.addWidget(self.segment_canvas)
+        segment_plot_layout.addWidget(self.segment_canvas)
         
-        splitter.addWidget(plot_widget)
+        right_splitter.addWidget(segment_plot_widget)
         
-        # Set splitter proportions
-        splitter.setSizes([300, 400])
+        # Set vertical splitter proportions (top plot larger than bottom)
+        right_splitter.setSizes([400, 200])
         
-        layout.addWidget(splitter)
+        main_splitter.addWidget(right_splitter)
+        
+        # Set main splitter proportions (table smaller than plots)
+        main_splitter.setSizes([350, 650])
+        
+        layout.addWidget(main_splitter)
         
         # Initialize segment selection tracking
         self.segment_selection = [True] * len(self.segments)  # All segments included by default
         self.selected_segment_for_highlight = None
         
-        # Update segment visualization
+        # Update both plots
+        self.update_curve_fitting_plot()
         self.update_segment_visualization()
         
         return tab
@@ -4934,6 +4957,7 @@ class InteractiveCurveFittingDialog(QDialog):
     def on_segment_checkbox_changed(self, segment_index, state):
         """Handle segment checkbox state changes."""
         self.segment_selection[segment_index] = (state == Qt.Checked)
+        self.update_curve_fitting_plot()
         self.update_segment_visualization()
         logger.info(f"Segment {segment_index + 1} {'included' if state == Qt.Checked else 'excluded'} from fitting")
     
@@ -4944,6 +4968,7 @@ class InteractiveCurveFittingDialog(QDialog):
             self.selected_segment_for_highlight = selected_rows[0].row()
         else:
             self.selected_segment_for_highlight = None
+        self.update_curve_fitting_plot()
         self.update_segment_visualization()
     
     def select_all_segments(self):
@@ -4982,6 +5007,7 @@ class InteractiveCurveFittingDialog(QDialog):
             
             # Update both plots
             self.update_plot()
+            self.update_curve_fitting_plot()
             self.update_segment_visualization()
             
             # Show info about selected segments
@@ -5050,6 +5076,76 @@ class InteractiveCurveFittingDialog(QDialog):
             
         except Exception as e:
             logger.error(f"Error updating segment visualization: {e}")
+    
+    def update_curve_fitting_plot(self):
+        """Update the curve fitting plot (top right) with segment highlighting."""
+        try:
+            self.curve_figure.clear()
+            ax = self.curve_figure.add_subplot(111)
+            
+            if not hasattr(self, 'all_times') or len(self.all_times) == 0:
+                ax.text(0.5, 0.5, "No data to plot", ha='center', va='center', transform=ax.transAxes)
+                self.curve_canvas.draw()
+                return
+            
+            # Plot segment data with highlighting based on selection
+            import matplotlib.pyplot as plt
+            import numpy as np
+            colors = plt.cm.Set3(np.linspace(0, 1, len(self.segments)))
+            
+            # Plot normalized drawdown data
+            for i in range(len(self.segments)):
+                mask = np.array(self.segment_colors) == i
+                if np.any(mask):
+                    # Determine color and style based on selection state
+                    if self.segment_selection[i]:
+                        if self.selected_segment_for_highlight == i:
+                            # Highlighted selected segment
+                            color = 'orange'
+                            s = 50  # Larger size
+                            alpha = 0.9
+                            label = f'Segment {i+1} (Selected)'
+                        else:
+                            # Normal selected segment
+                            color = colors[i]
+                            s = 30
+                            alpha = 0.7
+                            label = 'Recession Segments' if i == 0 else ""
+                    else:
+                        # Deselected segment
+                        color = 'lightgray'
+                        s = 20
+                        alpha = 0.3
+                        label = 'Excluded' if i == 0 else ""
+                    
+                    ax.scatter(np.array(self.all_times)[mask], self.normalized_array[mask], 
+                              c=color, alpha=alpha, s=s, label=label)
+            
+            # Plot fitted curve if available
+            if self.fitted_params is not None:
+                t_fit = np.linspace(min(self.all_times), max(self.all_times), 100)
+                
+                if self.curve_type == 'exponential':
+                    # Q(t) = Q_max * (1 - exp(-α*t))
+                    y_fit = self.fitted_params[0] * (1 - np.exp(-self.fitted_params[1] * t_fit))
+                elif self.curve_type == 'power':
+                    y_fit = self.fitted_params[0] * np.power(np.maximum(t_fit, 0.001), self.fitted_params[1])
+                else:  # linear
+                    y_fit = self.fitted_params[0] - self.fitted_params[1] * t_fit
+                
+                ax.plot(t_fit, y_fit, 'r-', linewidth=2, label=f'Fitted {self.curve_type.title()} Curve')
+            
+            ax.set_xlabel('Time since recession start (days)')
+            ax.set_ylabel('Drawdown (ft)')
+            ax.set_title(f'{self.curve_type.title()} Curve with Segment Selection')
+            ax.grid(True, alpha=0.3)
+            ax.legend()
+            
+            self.curve_figure.tight_layout()
+            self.curve_canvas.draw()
+            
+        except Exception as e:
+            logger.error(f"Error updating curve fitting plot: {e}")
     
     def create_parameter_controls(self, layout):
         """Create parameter controls specific to curve type."""
