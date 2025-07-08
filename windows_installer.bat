@@ -72,6 +72,17 @@ echo    [*] Please wait while we set up your Water Levels Monitoring System...
 echo.
 
 REM Clean up existing installation
+REM Safety check: Never delete the source folder
+set "CODE_DIR_TEMP=%~dp0"
+if "%CODE_DIR_TEMP:~-1%"=="\" set "CODE_DIR_TEMP=%CODE_DIR_TEMP:~0,-1%"
+if /i "%INSTALL_DIR%"=="%CODE_DIR_TEMP%" (
+    echo    [ERROR] Installation directory cannot be the same as source directory!
+    echo    [ERROR] This would delete the installer files. Installation cancelled.
+    echo    [ERROR] Please run the installer from a different location.
+    pause
+    exit /b 1
+)
+
 if exist "%INSTALL_DIR%" (
     echo    [*] Removing existing installation...
     rmdir /s /q "%INSTALL_DIR%" 2>nul
@@ -128,6 +139,10 @@ REM Copy application files
 echo    [*] [7/7] Copying application files...
 set "CODE_DIR=%~dp0"
 if "%CODE_DIR:~-1%"=="\" set "CODE_DIR=%CODE_DIR:~0,-1%"
+
+REM IMPORTANT: This installer preserves the source folder
+REM The CODE_DIR contains the source files and will NOT be deleted
+REM Only the target installation directory is managed by this installer
 
 xcopy "%CODE_DIR%\src" "%INSTALL_DIR%\src\" /E /I /Y >nul
 xcopy "%CODE_DIR%\main.py" "%INSTALL_DIR%\" /Y >nul
@@ -208,5 +223,12 @@ pause
 echo.
 echo    [*] Installation completed successfully!
 echo    [+] Source files preserved in original location.
+echo    [+] Installation folder: %INSTALL_DIR%
+echo    [+] Source folder preserved: %CODE_DIR%
+echo.
+echo    [!] IMPORTANT: The source folder where this installer was run from has been
+echo    [!] preserved and is NOT deleted. Only the target installation directory
+echo    [!] is managed by this installer. You can safely keep this installer
+echo    [!] folder in your shared network location.
 
 endlocal
