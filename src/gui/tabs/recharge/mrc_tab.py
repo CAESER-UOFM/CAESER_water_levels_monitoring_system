@@ -999,6 +999,13 @@ class MrcTab(BaseRechargeTab):
         
         return group_box
     
+    def _clear_data_cache(self):
+        """Clear all cached data when wells change."""
+        self.display_data = None
+        self.raw_data = None
+        self.processed_data = None
+        self.data_loaded = {'display': False, 'full': False}
+    
     def update_well_selection(self, selected_wells):
         """Update the list of selected wells."""
         logger.info(f"[MRC_TAB] update_well_selection called with: {selected_wells}")
@@ -1010,7 +1017,8 @@ class MrcTab(BaseRechargeTab):
             
         self.selected_wells = selected_wells
         
-        # Clear existing segments and results when wells change
+        # Clear existing segments, results, and data cache when wells change
+        self._clear_data_cache()
         self.clear_results()
         
         # Store current well information for internal use (no GUI dropdown)
@@ -2668,6 +2676,18 @@ class MrcTab(BaseRechargeTab):
             water_year = water_year_item.text()
             logger.info(f"Water year clicked: {water_year}")
             
+            # Check if this row is already selected - if so, deselect and return to full view
+            if hasattr(self, '_selected_water_year_row') and self._selected_water_year_row == row:
+                # Deselect the row
+                self.yearly_stats_table.clearSelection()
+                self._selected_water_year_row = None
+                # Return to full view
+                self.reset_plot_zoom()
+                return
+            
+            # Store the selected row
+            self._selected_water_year_row = row
+            
             # Parse water year (format: "2021-2022")
             if '-' in water_year:
                 start_year, end_year = water_year.split('-')
@@ -2732,6 +2752,41 @@ class MrcTab(BaseRechargeTab):
         except Exception as e:
             logger.error(f"Error zooming to date range: {e}", exc_info=True)
 
+    def reset_plot_zoom(self):
+        """Reset the plot to show the full data range."""
+        try:
+            if not hasattr(self, 'figure') or not self.figure.axes:
+                return
+                
+            ax = self.figure.axes[0]
+            
+            # Reset to full data range
+            if hasattr(self, 'raw_data') and self.raw_data is not None:
+                # Get timestamp column
+                if 'timestamp_utc' in self.raw_data.columns:
+                    timestamp_col = 'timestamp_utc'
+                else:
+                    timestamp_col = 'timestamp'
+                
+                timestamps = pd.to_datetime(self.raw_data[timestamp_col])
+                levels = self.raw_data['water_level']
+                
+                # Set full range
+                ax.set_xlim(timestamps.min(), timestamps.max())
+                
+                # Set y-axis to full range with padding
+                y_min = levels.min()
+                y_max = levels.max()
+                y_range = y_max - y_min
+                if y_range > 0:
+                    ax.set_ylim(y_min - 0.1 * y_range, y_max + 0.1 * y_range)
+                
+                # Redraw the canvas
+                self.canvas.draw()
+                
+        except Exception as e:
+            logger.error(f"Error resetting plot zoom: {e}", exc_info=True)
+
     def clear_results(self):
         """Clear all results and reset UI."""
         self.recession_segments = []
@@ -2740,6 +2795,10 @@ class MrcTab(BaseRechargeTab):
         
         self.recession_table.setRowCount(0)
         self.yearly_stats_table.setRowCount(0)
+        
+        # Clear water year selection
+        if hasattr(self, '_selected_water_year_row'):
+            self._selected_water_year_row = None
         
         self.total_recharge_label.setText("0.0 inches")
         self.annual_rate_label.setText("0.0 inches/year")
@@ -2752,7 +2811,13 @@ class MrcTab(BaseRechargeTab):
         self.calculate_btn.setEnabled(False)
         
         # Clear the plot to remove any segments visualization
-        self.update_plot()
+        # Only update plot if we have raw data, otherwise clear the figure
+        if hasattr(self, 'raw_data') and self.raw_data is not None and not self.raw_data.empty:
+            self.update_plot()
+        else:
+            # Clear the figure when no data is available
+            self.figure.clear()
+            self.canvas.draw()
     
     def on_preprocessing_changed(self):
         """Handle changes to preprocessing options."""

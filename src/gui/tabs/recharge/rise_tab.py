@@ -1319,11 +1319,8 @@ class RiseTab(BaseRechargeTab):
             data['rise_original'] = data['rise']  # Save original rise for reference
             data['rise'] = data['rise'].clip(lower=0)  # Set negative rises to zero
             
-            # Calculate recharge for each rise (rise * specific yield, converted to inches)
-            data['recharge'] = data['rise'] * specific_yield * 12  # Convert ft to inches
-            
-            # Calculate cumulative recharge
-            data['cumulative_recharge'] = data['recharge'].cumsum()
+            # Note: Recharge calculation moved to calculate_recharge_for_selected method
+            # Only store rise amounts for event identification
             
             # Identify water years
             if isinstance(timestamp_col, str):
@@ -1405,8 +1402,29 @@ class RiseTab(BaseRechargeTab):
             # Store the processed data for reference
             self.processed_rise_data = data
             
-            # Update the results display
-            self.update_results_with_events(daily_rises)
+            # Only populate the event selection table, don't update results
+            self.populate_event_selection_table(daily_rises)
+            
+            # Enable and style the calculate button after successful event identification
+            self.calculate_recharge_btn.setEnabled(True)
+            self.calculate_recharge_btn.setStyleSheet("""
+                QPushButton {
+                    padding: 3px 8px;
+                    border: 1px solid #28a745;
+                    border-radius: 4px;
+                    background-color: #d4edda;
+                    color: #155724;
+                    font-size: 11px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #c3e6cb;
+                    border-color: #1e7e34;
+                }
+                QPushButton:pressed {
+                    background-color: #b1dfbb;
+                }
+            """)
             
         except Exception as e:
             logger.error(f"Error in identify_rise_events: {e}", exc_info=True)
@@ -1651,6 +1669,10 @@ class RiseTab(BaseRechargeTab):
         """Clear all results and plots."""
         self.results_table.setRowCount(0)
         self.yearly_stats_table.setRowCount(0)
+        
+        # Clear water year selection
+        if hasattr(self, '_selected_water_year_row'):
+            self._selected_water_year_row = None
         self.total_recharge_label.setText("0.0 inches")
         self.annual_rate_label.setText("0.0 inches/year")
         self.events_count_label.setText("0")
@@ -1689,6 +1711,18 @@ class RiseTab(BaseRechargeTab):
             
             water_year = water_year_item.text()
             logger.info(f"Water year clicked: {water_year}")
+            
+            # Check if this row is already selected - if so, deselect and return to full view
+            if hasattr(self, '_selected_water_year_row') and self._selected_water_year_row == row:
+                # Deselect the row
+                self.yearly_stats_table.clearSelection()
+                self._selected_water_year_row = None
+                # Return to full view
+                self.reset_plot_zoom()
+                return
+            
+            # Store the selected row
+            self._selected_water_year_row = row
             
             # Parse water year (format: "2021-2022")
             if '-' in water_year:
@@ -1753,6 +1787,41 @@ class RiseTab(BaseRechargeTab):
             
         except Exception as e:
             logger.error(f"Error zooming to date range: {e}", exc_info=True)
+    
+    def reset_plot_zoom(self):
+        """Reset the plot to show the full data range."""
+        try:
+            if not hasattr(self, 'figure') or not self.figure.axes:
+                return
+                
+            ax = self.figure.axes[0]
+            
+            # Reset to full data range
+            if hasattr(self, 'raw_data') and self.raw_data is not None:
+                # Get timestamp column
+                if 'timestamp_utc' in self.raw_data.columns:
+                    timestamp_col = 'timestamp_utc'
+                else:
+                    timestamp_col = 'timestamp'
+                
+                timestamps = pd.to_datetime(self.raw_data[timestamp_col])
+                levels = self.raw_data['water_level']
+                
+                # Set full range
+                ax.set_xlim(timestamps.min(), timestamps.max())
+                
+                # Set y-axis to full range with padding
+                y_min = levels.min()
+                y_max = levels.max()
+                y_range = y_max - y_min
+                if y_range > 0:
+                    ax.set_ylim(y_min - 0.1 * y_range, y_max + 0.1 * y_range)
+                
+                # Redraw the canvas
+                self.canvas.draw()
+                
+        except Exception as e:
+            logger.error(f"Error resetting plot zoom: {e}", exc_info=True)
     
     def export_to_csv(self):
         """Export results to CSV file."""
@@ -2957,8 +3026,8 @@ class RiseTab(BaseRechargeTab):
             self._temp_water_year_month = water_year_month
             self._temp_water_year_day = water_year_day
             
-            # Use the existing identify_rise_events method but store results separately
-            # This will populate self.rise_events with potential events
+            # Use the existing identify_rise_events method for event identification only
+            # This will populate self.rise_events with potential events (no recharge calculation)
             self.identify_rise_events(data, rise_threshold, None, specific_yield)
             
             # Store the identified events as potential events for table population
