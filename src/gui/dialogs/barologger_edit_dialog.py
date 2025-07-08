@@ -1369,16 +1369,29 @@ class BarologgerEditDialog(QDialog):
     def add_spike_selection_marker(self, timestamp, pressure):
         """Add visual marker for selected spike point"""
         try:
-            # Determine marker color (red for first, blue for second point)
-            num_points = len(self.spike_selection_points)
-            if num_points % 2 == 0:
-                color = 'red'
-                marker = 'o'
-                label = 'Spike Start'
+            # Determine marker color based on helper dialog state (red for first, blue for second point)
+            if hasattr(self, 'spike_helper_dialog') and self.spike_helper_dialog and hasattr(self.spike_helper_dialog, 'current_point'):
+                if self.spike_helper_dialog.current_point is None:
+                    # This will be the first point
+                    color = 'red'
+                    marker = 'o'
+                    label = 'Spike Start'
+                else:
+                    # This will be the second point
+                    color = 'blue'
+                    marker = 's'
+                    label = 'Spike End'
             else:
-                color = 'blue'
-                marker = 's'
-                label = 'Spike End'
+                # Fallback to old logic if helper dialog not available
+                num_points = len(self.spike_selection_points)
+                if num_points % 2 == 0:
+                    color = 'red'
+                    marker = 'o'
+                    label = 'Spike Start'
+                else:
+                    color = 'blue'
+                    marker = 's'
+                    label = 'Spike End'
             
             # Add scatter point - ensure timestamp is properly converted and timezone-naive
             timestamp_converted = pd.to_datetime(timestamp).replace(tzinfo=None)
@@ -1391,7 +1404,7 @@ class BarologgerEditDialog(QDialog):
             self.spike_selection_points.append(scatter)
             
             # Add preview line if this is the second point of a pair
-            if num_points % 2 == 1 and len(self.spike_selection_points) >= 2:
+            if color == 'blue' and len(self.spike_selection_points) >= 2:
                 # Get the previous point
                 prev_scatter = self.spike_selection_points[-2]
                 prev_timestamp = prev_scatter.get_offsets()[0][0]
@@ -1729,20 +1742,10 @@ class BarologgerEditDialog(QDialog):
                         pressure_val = point_data['pressure']
                         pressure_type = "Pressure"
                     
-                    # Check if we're in spike selection mode
+                    # Skip pick event during spike selection mode - only use button_release_event
                     if self.spike_selection_mode and self.spike_helper_dialog:
-                        # Integrate with spike selection workflow
-                        timestamp = point_data['timestamp_utc']
-                        
-                        # Add visual marker for spike selection
-                        self.add_spike_selection_marker(timestamp, pressure_val)
-                        
-                        # Pass to helper dialog (same as on_spike_point_click)
-                        self.spike_helper_dialog.set_selected_point(timestamp, pressure_val)
-                        
-                        logger.debug(f"Spike point selected via pick: {timestamp}, {pressure_val:.3f}")
-                        self.canvas.draw_idle()
-                        
+                        # Do nothing - spike selection is handled by on_spike_point_click
+                        return
                     else:
                         # Normal annotation mode when not in spike selection
                         time_str = point_data['timestamp_utc'].strftime('%Y-%m-%d %H:%M:%S')
