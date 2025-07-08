@@ -79,13 +79,27 @@ class BaseRechargeTab(QWidget):
         
         return options_group
         
-    def update_plot_base(self):
+    def update_plot_base(self, preserve_zoom=True):
         """Base plotting method that creates a standardized raw data visualization.
         
         This method should be called by child classes' update_plot() method
         to ensure consistent base plotting across all tabs.
+        
+        Args:
+            preserve_zoom: Whether to preserve current zoom level (default True)
         """
         try:
+            # Store current zoom level if preserving zoom
+            current_xlim = None
+            current_ylim = None
+            if preserve_zoom and hasattr(self, 'figure') and self.figure.axes:
+                try:
+                    current_ax = self.figure.axes[0]
+                    current_xlim = current_ax.get_xlim()
+                    current_ylim = current_ax.get_ylim()
+                except (IndexError, AttributeError):
+                    pass
+            
             # Clear the figure
             self.figure.clear()
             ax = self.figure.add_subplot(111)
@@ -215,6 +229,14 @@ class BaseRechargeTab(QWidget):
             
             # Optimized layout to maximize plot space
             self.figure.subplots_adjust(bottom=0.12, top=0.94, left=0.08, right=0.96)
+            
+            # Restore zoom level if it was preserved
+            if preserve_zoom and current_xlim is not None and current_ylim is not None:
+                try:
+                    ax.set_xlim(current_xlim)
+                    ax.set_ylim(current_ylim)
+                except Exception as e:
+                    logger.debug(f"Could not restore zoom level: {e}")
             
             # Draw the canvas
             self.canvas.draw()

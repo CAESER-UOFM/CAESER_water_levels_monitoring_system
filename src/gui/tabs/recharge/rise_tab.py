@@ -601,7 +601,7 @@ class RiseTab(BaseRechargeTab):
         
         self.show_selected_event = QCheckBox("Highlight Selected")
         self.show_selected_event.setChecked(True)
-        self.show_selected_event.setToolTip("Highlight the currently selected event with a green fill")
+        self.show_selected_event.setToolTip("Highlight the currently selected event with an orange fill")
         self.show_selected_event.stateChanged.connect(self.update_plot)
         rise_column.addWidget(self.show_selected_event)
         
@@ -1496,6 +1496,9 @@ class RiseTab(BaseRechargeTab):
             # Add RISE-specific elements
             self.add_method_specific_plots(ax)
             
+            # Force canvas refresh to ensure events are immediately visible
+            self.canvas.draw()
+            
             logger.info(f"[PLOT_DEBUG] RISE plot update completed successfully")
             
         except Exception as e:
@@ -1560,19 +1563,19 @@ class RiseTab(BaseRechargeTab):
                             level = event['level']
                             rise = event['rise']
                             
-                            # Highlight the point with a green marker
+                            # Highlight the point with an orange marker
                             existing_labels = ax.get_legend_handles_labels()[1]
-                            ax.plot(date, level, 'go', markersize=6, zorder=15, label='Selected Event' if 'Selected Event' not in existing_labels else "")
+                            ax.plot(date, level, 'o', color='orange', markersize=6, zorder=15, label='Selected Event' if 'Selected Event' not in existing_labels else "")
                             
-                            # Draw a green vertical line for the rise
+                            # Draw an orange vertical line for the rise
                             if rise > 0:
-                                ax.plot([date, date], [level - rise, level], 'g-', linewidth=2, zorder=14)
+                                ax.plot([date, date], [level - rise, level], 'orange', linewidth=2, zorder=14)
                                 
                                 # Shade the area of the rise
                                 ax.fill_between([date - pd.Timedelta(hours=6), date + pd.Timedelta(hours=6)],
                                                 [level - rise, level - rise], 
                                                 [level, level], 
-                                                color='g', alpha=0.3, zorder=13)
+                                                color='orange', alpha=0.3, zorder=13)
             
             # Update title with RISE-specific information
             current_title = ax.get_title()

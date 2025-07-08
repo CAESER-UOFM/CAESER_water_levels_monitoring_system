@@ -603,6 +603,13 @@ class MrcTab(BaseRechargeTab):
         self.recession_table.setMaximumHeight(140)  # Slightly bigger for quality column
         self.recession_table.setMaximumWidth(385)  # Ensure table fits in panel
         self.recession_table.itemChanged.connect(self.on_segment_selection_changed)
+        
+        # Connect selection signal for highlighting segments in plot
+        self.recession_table.selectionModel().selectionChanged.connect(self.on_segment_row_selected)
+        
+        # Track selected segment for highlighting
+        self.selected_segment = None
+        
         self.segments_group.add_widget(self.recession_table)
         
         # Selection summary
@@ -2555,6 +2562,9 @@ class MrcTab(BaseRechargeTab):
             # Add MRC-specific plot elements
             self.add_method_specific_plots(ax)
             
+            # Force canvas refresh to ensure segments are immediately visible
+            self.canvas.draw()
+            
         except Exception as e:
             logger.error(f"Error updating plot: {e}", exc_info=True)
     
@@ -2566,9 +2576,23 @@ class MrcTab(BaseRechargeTab):
                 for i, segment in enumerate(self.recession_segments):
                     if 'data' in segment and segment['data'] is not None and len(segment['data']) > 0:
                         seg_data = segment['data']
-                        label = 'Recession Segments' if i == 0 else ""
-                        ax.plot(seg_data['timestamp'], seg_data['water_level'], 
-                               'r-', linewidth=2, alpha=0.7, label=label)
+                        
+                        # Check if this segment is selected for highlighting
+                        is_selected = (hasattr(self, 'selected_segment') and 
+                                     self.selected_segment is not None and 
+                                     self.selected_segment == i)
+                        
+                        if is_selected:
+                            # Highlight selected segment in orange with thicker line
+                            existing_labels = ax.get_legend_handles_labels()[1]
+                            ax.plot(seg_data['timestamp'], seg_data['water_level'], 
+                                   'orange', linewidth=4, alpha=0.9, zorder=15,
+                                   label='Selected Segment' if 'Selected Segment' not in existing_labels else "")
+                        else:
+                            # Normal red segments
+                            label = 'Recession Segments' if i == 0 else ""
+                            ax.plot(seg_data['timestamp'], seg_data['water_level'], 
+                                   'r-', linewidth=2, alpha=0.7, label=label)
             
             # Plot recession curve and deviations (only if data exists and is properly calculated)
             if (hasattr(self, 'show_recession_curve') and self.show_recession_curve.isChecked() and 
@@ -2599,6 +2623,25 @@ class MrcTab(BaseRechargeTab):
                 
         except Exception as e:
             logger.error(f"Error adding MRC-specific plots: {e}", exc_info=True)
+    
+    def on_segment_row_selected(self):
+        """Handle selection of a segment in the recession table to highlight it in the plot."""
+        try:
+            selected_rows = self.recession_table.selectionModel().selectedRows()
+            if not selected_rows:
+                self.selected_segment = None
+            else:
+                # Get the index of the selected row
+                row_index = selected_rows[0].row()
+                # Store the segment index for highlighting
+                self.selected_segment = row_index
+                logger.info(f"[MRC_TAB] Selected segment row {row_index} for highlighting")
+            
+            # Update the plot to highlight the selected segment (preserve zoom)
+            self.update_plot()
+            
+        except Exception as e:
+            logger.error(f"Error handling segment selection: {e}", exc_info=True)
 
     def clear_results(self):
         """Clear all results and reset UI."""
