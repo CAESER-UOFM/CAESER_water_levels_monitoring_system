@@ -48,6 +48,8 @@ class RiseTab(BaseRechargeTab):
         self.selected_wells = []
         self.well_data = {}
         self.current_well = None
+        self.current_well_cae = None  # CAE number for current well
+        self.current_well_display = None  # Display name for current well
         self.water_years = []
         self.selected_water_year = None
         
@@ -236,14 +238,8 @@ class RiseTab(BaseRechargeTab):
         layout = QVBoxLayout(panel)
         layout.setSpacing(5)
         
-        # Well selection
-        well_layout = QHBoxLayout()
-        well_layout.addWidget(QLabel("Well:"))
-        self.well_combo = QComboBox()
-        self.well_combo.setEnabled(False)
-        self.well_combo.currentIndexChanged.connect(self.on_well_selected)
-        well_layout.addWidget(self.well_combo)
-        layout.addLayout(well_layout)
+        # Well selection is now handled by the parent recharge tab
+        # No duplicate well selection dropdown needed here
         
         # Step 1: Identify Events button
         self.identify_events_btn = QPushButton("Identify Events")
@@ -651,8 +647,11 @@ class RiseTab(BaseRechargeTab):
     
     def update_well_selection(self, selected_wells):
         """Update the list of selected wells."""
+        logger.info(f"[RISE_TAB] update_well_selection called with: {selected_wells}")
+        
         # Prevent redundant updates if selection hasn't changed
         if self.selected_wells == selected_wells:
+            logger.info(f"[RISE_TAB] Same wells already selected, skipping update")
             return
             
         self.selected_wells = selected_wells
@@ -660,67 +659,39 @@ class RiseTab(BaseRechargeTab):
         # Clear data cache when wells change
         self._clear_data_cache()
         
-        # Update combo box
-        self.well_combo.clear()
-        
+        # Store current well information for internal use (no GUI dropdown)
         if selected_wells:
-            self.well_combo.setEnabled(True)
             self.identify_events_btn.setEnabled(True)
             
-            for well_id, cae_number in selected_wells:
-                # well_id is the Well Number, cae_number is the CAE Number
-                # Display well number as primary, with CAE number in parentheses if different
-                if cae_number and cae_number != well_id:
-                    display_name = f"{well_id} ({cae_number})"
+            # Set the current well to the first selected well
+            if len(selected_wells) > 0:
+                first_well_id = selected_wells[0][0]
+                first_well_cae = selected_wells[0][1] if len(selected_wells[0]) > 1 else None
+                
+                # Store current well info
+                self.current_well = first_well_id
+                self.current_well_cae = first_well_cae
+                
+                # Create display name for internal use
+                if first_well_cae and first_well_cae != first_well_id:
+                    self.current_well_display = f"{first_well_id} ({first_well_cae})"
                 else:
-                    # If CAE number is same as well number or missing, just show the well number
-                    display_name = well_id
-                self.well_combo.addItem(display_name, well_id)
+                    self.current_well_display = first_well_id
         else:
-            self.well_combo.setEnabled(False)
             self.identify_events_btn.setEnabled(False)
             self.calculate_recharge_btn.setEnabled(False)
+            self.current_well = None
+            self.current_well_cae = None
+            self.current_well_display = None
     
-    def on_well_selected(self, index):
-        """Handle well selection from dropdown."""
-        logger.info(f"[PLOT_DEBUG] on_well_selected called with index: {index}")
-        
-        if index < 0:
-            logger.info(f"[PLOT_DEBUG] Invalid index, returning")
-            return
-            
-        well_id = self.well_combo.currentData()
-        well_name = self.well_combo.currentText()
-        logger.info(f"[PLOT_DEBUG] Well selected: {well_name} (ID: {well_id})")
-        
-        # If same well is selected, don't reload
-        if self.current_well == well_id:
-            logger.info(f"[PLOT_DEBUG] Same well already selected, returning")
-            return
-            
-        logger.info(f"[PLOT_DEBUG] Switching from well {self.current_well} to {well_id}")
-        self.current_well = well_id
-        
-        # Clear any existing results and data cache for new well
-        logger.info(f"[PLOT_DEBUG] Clearing results and data cache")
-        self.clear_results()
-        self._clear_data_cache()
-        
-        # Reset selected water year
-        self.selected_water_year = "all"
-        
-        # Switch to Parameters tab
-        self.left_tabs.setCurrentIndex(0)  # Switch to Event Selection tab when well changes
-        
-        # Data loading disabled - using centralized preprocessing from parent tab
-        logger.info(f"[PLOT_DEBUG] Skipping individual data loading - waiting for shared data from centralized preprocessing")
+    # on_well_selected method removed - well selection now handled by parent tab
             
         # Update the status in the UI
         self.identify_events_btn.setText("Identify Events")
         self.identify_events_btn.setEnabled(True)
         # Reset step 2 button
         self.calculate_recharge_btn.setEnabled(False)
-        logger.info(f"[PLOT_DEBUG] Well selection complete for {well_name}")
+        logger.info(f"[RISE_TAB] Well selection complete for {self.current_well_display or self.current_well or 'Unknown'}")
     
     def _clear_data_cache(self):
         """Clear all cached data when well changes."""
@@ -1699,7 +1670,7 @@ class RiseTab(BaseRechargeTab):
             file_path, _ = QFileDialog.getSaveFileName(
                 self, 
                 "Export to CSV", 
-                f"{self.well_combo.currentText()}_RISE_results.csv",
+                f"{self.current_well_display or self.current_well or 'Unknown Well'}_RISE_results.csv",
                 "CSV Files (*.csv)"
             )
             
@@ -1712,7 +1683,7 @@ class RiseTab(BaseRechargeTab):
             # Write CSV file
             with open(file_path, 'w', newline='') as csvfile:
                 # Write header information
-                csvfile.write(f"# RISE Calculation Results for {self.well_combo.currentText()}\n")
+                csvfile.write(f"# RISE Calculation Results for {self.current_well_display or self.current_well or 'Unknown Well'}\n")
                 csvfile.write(f"# Exported on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                 csvfile.write(f"# Parameters:\n")
                 
@@ -1780,7 +1751,7 @@ class RiseTab(BaseRechargeTab):
             file_path, _ = QFileDialog.getSaveFileName(
                 self, 
                 "Export to Excel", 
-                f"{self.well_combo.currentText()}_RISE_results.xlsx",
+                f"{self.current_well_display or self.current_well or 'Unknown Well'}_RISE_results.xlsx",
                 "Excel Files (*.xlsx)"
             )
             
@@ -1851,7 +1822,7 @@ class RiseTab(BaseRechargeTab):
                     'Total Recharge (in)', 'Annual Rate (in/yr)', 'Total Rises'
                 ],
                 'Value': [
-                    self.well_combo.currentText(),
+                    self.current_well_display or self.current_well or 'Unknown Well',
                     sy,
                     rise_threshold,
                     f"Month {water_year_month}, Day {water_year_day}",
@@ -1937,7 +1908,7 @@ class RiseTab(BaseRechargeTab):
         try:
             # Get calculation parameters from global settings
             well_id = self.current_well
-            well_name = self.well_combo.currentText()
+            well_name = self.current_well_display or self.current_well or 'Unknown Well'
             
             # Get global settings from parent's unified settings
             if hasattr(self, 'parent') and self.parent and hasattr(self.parent, 'unified_settings') and self.parent.unified_settings:
@@ -2074,7 +2045,7 @@ class RiseTab(BaseRechargeTab):
                 QMessageBox.information(
                     self, 
                     "Save Successful", 
-                    f"RISE calculation saved successfully for {well_name}.\n\n"
+                    f"RISE calculation saved successfully for {self.current_well_display or self.current_well or 'Unknown'}.\n\n"
                     f"Total recharge: {total_recharge:.2f} inches\n"
                     f"Annual rate: {annual_rate:.2f} inches/year\n"
                     f"Number of rises: {len(events_to_save)}"
@@ -2117,7 +2088,7 @@ class RiseTab(BaseRechargeTab):
                 QMessageBox.information(
                     self, 
                     "No Previous Calculations", 
-                    f"No saved RISE calculations found for {self.well_combo.currentText()}."
+                    f"No saved RISE calculations found for {self.current_well_display or self.current_well or 'Unknown Well'}."
                 )
                 return
                 
@@ -2229,7 +2200,7 @@ class RiseTab(BaseRechargeTab):
                     self, 
                     "Insufficient Data", 
                     f"Need at least 2 saved calculations to compare.\n"
-                    f"Found {len(calculations) if calculations else 0} calculation(s) for {self.well_combo.currentText()}."
+                    f"Found {len(calculations) if calculations else 0} calculation(s) for {self.current_well_display or self.current_well or 'Unknown Well'}."
                 )
                 return
                 

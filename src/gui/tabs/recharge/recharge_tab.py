@@ -308,11 +308,15 @@ class RechargeTab(QWidget):
     
     def on_well_selected(self, well_text):
         """Handle well selection."""
+        logger.info(f"[RECHARGE_TAB] on_well_selected called with text: {well_text}")
         well_number = self.well_combo.currentData()
+        logger.info(f"[RECHARGE_TAB] Well number from combo: {well_number}")
+        
         if well_number:
-            logger.info(f"Selected well: {well_number}")
+            logger.info(f"[RECHARGE_TAB] Loading data for well: {well_number}")
             self.load_well_data(well_number)
         else:
+            logger.info(f"[RECHARGE_TAB] No well selected, clearing data")
             # Clear data when no well selected
             self.current_well_id = None
             self.raw_data = None
@@ -359,31 +363,47 @@ class RechargeTab(QWidget):
     
     def process_well_data(self):
         """Process the loaded well data and update all method tabs."""
+        logger.info(f"[RECHARGE_TAB] process_well_data called, raw_data is None: {self.raw_data is None}")
         if self.raw_data is None or self.raw_data.empty:
+            logger.info(f"[RECHARGE_TAB] No raw data to process, returning")
             return
             
         try:
             # Apply comprehensive preprocessing based on current settings
-            logger.info(f"[PREPROCESS_DEBUG] Applying comprehensive processing with settings")
+            logger.info(f"[RECHARGE_TAB] Applying comprehensive processing with settings")
             self.processed_data = self._comprehensive_process_data(self.raw_data.copy())
             
             # Update all method tabs with the selected well
-            # Format the well as expected by the existing interface: list of (well_id, well_name) tuples
-            selected_wells = [(self.current_well_id, self.current_well_id)]
+            # Format the well as expected by the existing interface: list of (well_id, cae_number) tuples
+            # Get the current well display text to extract CAE if available
+            current_well_text = self.well_combo.currentText()
+            
+            # Extract CAE number from display text if it's in format "WELL_ID (CAE_NUMBER)"
+            cae_number = self.current_well_id  # Default to well_id
+            if "(" in current_well_text and ")" in current_well_text:
+                # Extract text between parentheses as CAE number
+                cae_part = current_well_text.split("(")[1].split(")")[0]
+                cae_number = cae_part
+            
+            selected_wells = [(self.current_well_id, cae_number)]
+            logger.info(f"[RECHARGE_TAB] Updating tabs with selected_wells: {selected_wells}")
             
             if hasattr(self, 'rise_tab'):
+                logger.info(f"[RECHARGE_TAB] Updating RISE tab")
                 self.rise_tab.update_well_selection(selected_wells)
                 # Share the processed data
                 if hasattr(self.rise_tab, 'set_shared_data'):
                     self.rise_tab.set_shared_data(self.raw_data.copy(), self.processed_data.copy() if self.processed_data is not None else None)
             
             if hasattr(self, 'mrc_tab'):
+                logger.info(f"[RECHARGE_TAB] Updating MRC tab")
                 self.mrc_tab.update_well_selection(selected_wells)
                 # Share the processed data
                 if hasattr(self.mrc_tab, 'set_shared_data'):
                     self.mrc_tab.set_shared_data(self.raw_data.copy(), self.processed_data.copy() if self.processed_data is not None else None)
             
             if hasattr(self, 'emr_tab'):
+                logger.info(f"[RECHARGE_TAB] Updating EMR tab")
                 self.emr_tab.update_well_selection(selected_wells)
                 # Share the processed data
                 if hasattr(self.emr_tab, 'set_shared_data'):

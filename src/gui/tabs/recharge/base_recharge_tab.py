@@ -144,8 +144,8 @@ class BaseRechargeTab(QWidget):
             
             # Get well name for title
             well_name = "Unknown Well"
-            if hasattr(self, 'well_combo') and self.well_combo.currentText():
-                well_name = self.well_combo.currentText()
+            if hasattr(self, 'current_well_display') and self.current_well_display:
+                well_name = self.current_well_display
             elif hasattr(self, 'current_well') and self.current_well:
                 well_name = str(self.current_well)
             

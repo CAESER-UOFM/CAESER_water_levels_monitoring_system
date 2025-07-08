@@ -284,6 +284,8 @@ class MrcTab(BaseRechargeTab):
         self.selected_wells = []
         self.well_data = {}
         self.current_well = None
+        self.current_well_cae = None  # CAE number for current well
+        self.current_well_display = None  # Display name for current well
         self.water_years = []
         self.selected_water_year = None
         self.raw_data = None  # Store the raw data (15-min intervals)
@@ -466,40 +468,8 @@ class MrcTab(BaseRechargeTab):
         layout.setContentsMargins(2, 2, 2, 2)  # Minimal panel margins
         layout.setSpacing(3)  # Further reduced spacing
         
-        # Well selection section
-        well_group = QGroupBox("Well Selection")
-        well_layout = QVBoxLayout(well_group)
-        
-        # Well selection dropdown
-        well_selection_layout = QHBoxLayout()
-        well_label = QLabel("Selected Well:")
-        well_label.setStyleSheet("font-weight: bold; color: #495057; font-size: 11px;")
-        well_selection_layout.addWidget(well_label)
-        
-        self.well_combo = QComboBox()
-        self.well_combo.setEnabled(False)
-        self.well_combo.currentIndexChanged.connect(self.on_well_selected)
-        self.well_combo.setMinimumHeight(26)
-        self.well_combo.setStyleSheet("""
-            QComboBox {
-                padding: 4px 8px;
-                border: 1px solid #ced4da;
-                border-radius: 4px;
-                background-color: white;
-                font-size: 10px;
-            }
-            QComboBox:hover {
-                border-color: #80bdff;
-            }
-            QComboBox:disabled {
-                background-color: #f8f9fa;
-                color: #6c757d;
-            }
-        """)
-        well_selection_layout.addWidget(self.well_combo)
-        well_layout.addLayout(well_selection_layout)
-        
-        layout.addWidget(well_group)
+        # Well selection is now handled by the parent recharge tab
+        # No duplicate well selection dropdown needed here
         
         # Move curve selection and fitting into Step 2 below
         
@@ -1023,69 +993,38 @@ class MrcTab(BaseRechargeTab):
     
     def update_well_selection(self, selected_wells):
         """Update the list of selected wells."""
+        logger.info(f"[MRC_TAB] update_well_selection called with: {selected_wells}")
         self.selected_wells = selected_wells
         
-        # Update combo box
-        self.well_combo.clear()
-        
+        # Store current well information for internal use (no GUI dropdown)
         if selected_wells:
-            self.well_combo.setEnabled(True)
             self.identify_recessions_btn.setEnabled(True)
             
-            for well_id, cae_number in selected_wells:
-                # well_id is the Well Number, cae_number is the CAE Number
-                # Display well number as primary, with CAE number in parentheses if different
-                if cae_number and cae_number != well_id:
-                    display_name = f"{well_id} ({cae_number})"
-                else:
-                    # If CAE number is same as well number or missing, just show the well number
-                    display_name = well_id
-                self.well_combo.addItem(display_name, well_id)
-                
-            # Load curves and segments for the first well
+            # Set the current well to the first selected well
             if len(selected_wells) > 0:
                 first_well_id = selected_wells[0][0]
+                first_well_cae = selected_wells[0][1] if len(selected_wells[0]) > 1 else None
+                
+                # Store current well info
+                self.current_well = first_well_id
+                self.current_well_cae = first_well_cae
+                
+                # Create display name for internal use
+                if first_well_cae and first_well_cae != first_well_id:
+                    self.current_well_display = f"{first_well_id} ({first_well_cae})"
+                else:
+                    self.current_well_display = first_well_id
+                
                 self.load_curves_for_well(first_well_id)
                 self.load_segments_for_well(first_well_id)
                 self.manage_data_btn.setEnabled(True)
         else:
-            self.well_combo.setEnabled(False)
             self.identify_recessions_btn.setEnabled(False)
+            self.current_well = None
+            self.current_well_cae = None
+            self.current_well_display = None
     
-    def on_well_selected(self, index):
-        """Handle well selection from dropdown."""
-        if index < 0:
-            return
-            
-        well_id = self.well_combo.currentData()
-        well_name = self.well_combo.currentText()
-        
-        # Save current well state before switching (if we have a current well)
-        if self.current_well and self.session_saving_enabled:
-            self.save_current_well_state()
-        
-        self.current_well = well_id
-        
-        # Check if we have session state for this well
-        if well_id in self.well_sessions:
-            # Restore previous session state
-            self.restore_well_state(well_id)
-        else:
-            # Clear results and start fresh
-            self.clear_results()
-            
-            # Data loading disabled - using centralized preprocessing from parent tab
-            logger.info(f"[PLOT_DEBUG] Skipping individual data loading for MRC - waiting for shared data")
-                
-            # Load curves for this well
-            self.load_curves_for_well(well_id)
-            
-            # Load segments for this well
-            self.load_segments_for_well(well_id)
-        
-        # Enable identify recessions button and manage data button
-        self.identify_recessions_btn.setEnabled(True)
-        self.manage_data_btn.setEnabled(True)
+    # on_well_selected method removed - well selection now handled by parent tab
     
     def get_method_name(self):
         """Get the method name for this tab (required by base class)."""
@@ -2713,7 +2652,7 @@ class MrcTab(BaseRechargeTab):
             file_path, _ = QFileDialog.getSaveFileName(
                 self, 
                 "Export to CSV", 
-                f"{self.well_combo.currentText()}_MRC_results.csv",
+                f"{self.current_well_display or self.current_well or 'Unknown Well'}_MRC_results.csv",
                 "CSV Files (*.csv)"
             )
             
@@ -2723,7 +2662,7 @@ class MrcTab(BaseRechargeTab):
             # Write CSV file
             with open(file_path, 'w', newline='') as csvfile:
                 # Write header information
-                csvfile.write(f"# MRC Calculation Results for {self.well_combo.currentText()}\n")
+                csvfile.write(f"# MRC Calculation Results for {self.current_well_display or self.current_well or 'Unknown Well'}\n")
                 csvfile.write(f"# Exported on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                 csvfile.write(f"# Curve Type: {self.current_curve['curve_type'] if self.current_curve else 'N/A'}\n")
                 r_squared = self.current_curve['r_squared'] if self.current_curve else 0
@@ -2800,7 +2739,7 @@ class MrcTab(BaseRechargeTab):
             file_path, _ = QFileDialog.getSaveFileName(
                 self, 
                 "Export to Excel", 
-                f"{self.well_combo.currentText()}_MRC_results.xlsx",
+                f"{self.current_well_display or self.current_well or 'Unknown Well'}_MRC_results.xlsx",
                 "Excel Files (*.xlsx)"
             )
             
@@ -2853,7 +2792,7 @@ class MrcTab(BaseRechargeTab):
                     'Total Recharge (in)', 'Annual Rate (in/yr)', 'Total Events'
                 ],
                 'Value': [
-                    self.well_combo.currentText(),
+                    self.current_well_display or self.current_well or 'Unknown Well',
                     self.current_curve['curve_type'] if self.current_curve else 'N/A',
                     f"{self.current_curve['r_squared']:.4f}" if self.current_curve else 'N/A',
                     self.current_settings.get('specific_yield', 0.2),
@@ -3038,7 +2977,7 @@ class MrcTab(BaseRechargeTab):
             calc_id = mrc_db.save_calculation(
                 curve_id=curve_id,
                 well_number=self.current_well,
-                well_name=self.well_combo.currentText(),
+                well_name=self.current_well_display or self.current_well or 'Unknown Well',
                 specific_yield=settings.get('specific_yield', 0.2),
                 deviation_threshold=settings.get('mrc_deviation_threshold', 0.1),
                 water_year_start_month=settings.get('water_year_month', 10),
@@ -3065,7 +3004,7 @@ class MrcTab(BaseRechargeTab):
                     if (hasattr(self.parent.db_manager, 'change_tracker') and 
                         self.parent.db_manager.change_tracker):
                         from ...handlers.change_tracker import ChangeType, ChangeAction
-                        well_name = self.well_combo.currentText()
+                        well_name = self.current_well_display or self.current_well or 'Unknown Well'
                         self.parent.db_manager.change_tracker.track_change(
                             change_type=ChangeType.MANUAL,
                             action=ChangeAction.INSERT,
@@ -3092,7 +3031,7 @@ class MrcTab(BaseRechargeTab):
                 QMessageBox.information(
                     self, 
                     "Save Successful", 
-                    f"MRC calculation saved successfully for {self.well_combo.currentText()}.\n\n"
+                    f"MRC calculation saved successfully for {self.current_well_display or self.current_well or 'Unknown Well'}.\n\n"
                     f"Total recharge: {total_recharge:.2f} inches\n"
                     f"Annual rate: {annual_rate:.2f} inches/year\n"
                     f"Number of events: {len(self.recharge_events)}"
@@ -3138,7 +3077,7 @@ class MrcTab(BaseRechargeTab):
                 QMessageBox.information(
                     self, 
                     "No Curves", 
-                    f"No saved curves found for {self.well_combo.currentText()}.\n"
+                    f"No saved curves found for {self.current_well_display or self.current_well or 'Unknown Well'}.\n"
                     f"Please create and save a curve first."
                 )
                 return
@@ -3264,7 +3203,7 @@ class MrcTab(BaseRechargeTab):
                     self, 
                     "Insufficient Data", 
                     f"Need at least 2 saved curves to compare calculations.\n"
-                    f"Found {len(curves) if curves else 0} curve(s) for {self.well_combo.currentText()}."
+                    f"Found {len(curves) if curves else 0} curve(s) for {self.current_well_display or self.current_well or 'Unknown Well'}."
                 )
                 return
                 
@@ -5532,7 +5471,7 @@ class InteractiveCurveFittingDialog(QDialog):
             # Save curve
             curve_id = self.mrc_db.save_curve(
                 well_number=self.well_id,
-                well_name=self.parent_tab.well_combo.currentText() if self.parent_tab else "Unknown",
+                well_name=self.current_well_display or self.current_well or 'Unknown',
                 curve_type=self.curve_type,
                 curve_parameters={
                     'min_recession_length': current_settings.get('min_recession_length', 7),
