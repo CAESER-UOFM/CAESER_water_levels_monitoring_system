@@ -4881,7 +4881,7 @@ class InteractiveCurveFittingDialog(QDialog):
         from matplotlib.figure import Figure
         from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
         
-        self.curve_figure = Figure(figsize=(8, 4))
+        self.curve_figure = Figure(figsize=(8, 3.5))
         self.curve_canvas = FigureCanvas(self.curve_figure)
         curve_plot_layout.addWidget(self.curve_canvas)
         
@@ -4896,14 +4896,14 @@ class InteractiveCurveFittingDialog(QDialog):
         segment_plot_layout.addWidget(segment_header)
         
         # Create separate figure for segment visualization
-        self.segment_figure = Figure(figsize=(8, 3))
+        self.segment_figure = Figure(figsize=(8, 3.5))
         self.segment_canvas = FigureCanvas(self.segment_figure)
         segment_plot_layout.addWidget(self.segment_canvas)
         
         right_splitter.addWidget(segment_plot_widget)
         
-        # Set vertical splitter proportions (top plot larger than bottom)
-        right_splitter.setSizes([400, 200])
+        # Set vertical splitter proportions (equal height for both plots)
+        right_splitter.setSizes([300, 300])
         
         main_splitter.addWidget(right_splitter)
         
@@ -5870,7 +5870,7 @@ class InteractiveCurveFittingDialog(QDialog):
             # Save curve
             curve_id = self.mrc_db.save_curve(
                 well_number=self.well_id,
-                well_name=self.current_well_display or self.current_well or 'Unknown',
+                well_name=self.parent_tab.current_well_display or self.parent_tab.current_well or 'Unknown',
                 curve_type=self.curve_type,
                 curve_parameters={
                     'min_recession_length': current_settings.get('min_recession_length', 7),
