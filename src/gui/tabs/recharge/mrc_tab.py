@@ -4621,7 +4621,7 @@ class InteractiveCurveFittingDialog(QDialog):
         else:
             self.setWindowTitle(f"Interactive Curve Fitting - {self.curve_type.title()}")
         self.setModal(True)
-        self.resize(1000, 700)
+        self.resize(1200, 800)
         
         # Main layout
         main_layout = QHBoxLayout(self)
@@ -4771,15 +4771,22 @@ class InteractiveCurveFittingDialog(QDialog):
         
         main_layout.addWidget(left_panel)
         
-        # Right panel: Plot
+        # Right panel: Tabbed interface
         right_panel = QWidget()
         right_layout = QVBoxLayout(right_panel)
+        
+        # Create tab widget
+        self.tab_widget = QTabWidget()
+        
+        # Tab 1: Curve Fitting Plot
+        plot_tab = QWidget()
+        plot_layout = QVBoxLayout(plot_tab)
         
         # Plot title
         plot_title = QLabel("Curve Fitting Visualization")
         plot_title.setStyleSheet("font-size: 14px; font-weight: bold; margin: 5px;")
         plot_title.setAlignment(Qt.AlignCenter)
-        right_layout.addWidget(plot_title)
+        plot_layout.addWidget(plot_title)
         
         # Matplotlib plot
         from matplotlib.figure import Figure
@@ -4787,9 +4794,259 @@ class InteractiveCurveFittingDialog(QDialog):
         
         self.figure = Figure(figsize=(8, 6))
         self.canvas = FigureCanvas(self.figure)
-        right_layout.addWidget(self.canvas)
+        plot_layout.addWidget(self.canvas)
         
+        self.tab_widget.addTab(plot_tab, "📈 Curve Fitting")
+        
+        # Tab 2: Segment Selection
+        segment_tab = self.create_segment_selection_tab()
+        self.tab_widget.addTab(segment_tab, "🔍 Segment Selection")
+        
+        right_layout.addWidget(self.tab_widget)
         main_layout.addWidget(right_panel)
+    
+    def create_segment_selection_tab(self):
+        """Create the segment selection tab for interactive segment management."""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        
+        # Info label
+        info_label = QLabel("Select/deselect segments to see how they affect the curve fitting. Orange segments are excluded from fitting.")
+        info_label.setWordWrap(True)
+        info_label.setStyleSheet("color: #6c757d; font-style: italic; margin: 5px;")
+        layout.addWidget(info_label)
+        
+        # Create splitter for table and plot
+        splitter = QSplitter(Qt.Horizontal)
+        
+        # Left side: Segment table
+        table_widget = QWidget()
+        table_layout = QVBoxLayout(table_widget)
+        
+        # Table header
+        table_header = QLabel("Recession Segments")
+        table_header.setStyleSheet("font-weight: bold; font-size: 12px; margin: 5px;")
+        table_layout.addWidget(table_header)
+        
+        # Segment table
+        self.segment_table = QTableWidget()
+        self.segment_table.setColumnCount(4)
+        self.segment_table.setHorizontalHeaderLabels(["Include", "Segment", "Start Date", "Duration (days)"])
+        self.segment_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.segment_table.horizontalHeader().setStretchLastSection(True)
+        self.segment_table.setAlternatingRowColors(True)
+        self.segment_table.setMaximumHeight(200)
+        
+        # Populate segment table
+        self.populate_segment_table()
+        
+        # Connect selection changes
+        self.segment_table.selectionModel().selectionChanged.connect(self.on_segment_selection_changed)
+        
+        table_layout.addWidget(self.segment_table)
+        
+        # Selection buttons
+        button_layout = QHBoxLayout()
+        
+        select_all_btn = QPushButton("Select All")
+        select_all_btn.clicked.connect(self.select_all_segments)
+        button_layout.addWidget(select_all_btn)
+        
+        deselect_all_btn = QPushButton("Deselect All")
+        deselect_all_btn.clicked.connect(self.deselect_all_segments)
+        button_layout.addWidget(deselect_all_btn)
+        
+        button_layout.addStretch()
+        
+        refit_btn = QPushButton("🔄 Refit with Selected")
+        refit_btn.clicked.connect(self.refit_with_selected_segments)
+        refit_btn.setStyleSheet("font-weight: bold; padding: 5px;")
+        button_layout.addWidget(refit_btn)
+        
+        table_layout.addLayout(button_layout)
+        
+        splitter.addWidget(table_widget)
+        
+        # Right side: Segment visualization plot
+        plot_widget = QWidget()
+        plot_layout = QVBoxLayout(plot_widget)
+        
+        plot_header = QLabel("Segment Visualization")
+        plot_header.setStyleSheet("font-weight: bold; font-size: 12px; margin: 5px;")
+        plot_layout.addWidget(plot_header)
+        
+        # Create separate figure for segment visualization
+        self.segment_figure = Figure(figsize=(6, 4))
+        self.segment_canvas = FigureCanvas(self.segment_figure)
+        plot_layout.addWidget(self.segment_canvas)
+        
+        splitter.addWidget(plot_widget)
+        
+        # Set splitter proportions
+        splitter.setSizes([300, 400])
+        
+        layout.addWidget(splitter)
+        
+        # Initialize segment selection tracking
+        self.segment_selection = [True] * len(self.segments)  # All segments included by default
+        self.selected_segment_for_highlight = None
+        
+        # Update segment visualization
+        self.update_segment_visualization()
+        
+        return tab
+    
+    def populate_segment_table(self):
+        """Populate the segment table with segment information."""
+        try:
+            self.segment_table.setRowCount(len(self.segments))
+            
+            for i, segment in enumerate(self.segments):
+                # Include checkbox
+                checkbox = QCheckBox()
+                checkbox.setChecked(True)
+                checkbox.stateChanged.connect(lambda state, idx=i: self.on_segment_checkbox_changed(idx, state))
+                self.segment_table.setCellWidget(i, 0, checkbox)
+                
+                # Segment number
+                self.segment_table.setItem(i, 1, QTableWidgetItem(f"Segment {i+1}"))
+                
+                # Start date (if available)
+                if 'data' in segment and segment['data'] is not None and len(segment['data']) > 0:
+                    start_date = segment['data']['timestamp'].iloc[0].strftime('%Y-%m-%d %H:%M')
+                    duration = (segment['data']['timestamp'].iloc[-1] - segment['data']['timestamp'].iloc[0]).days
+                else:
+                    start_date = "Unknown"
+                    duration = 0
+                
+                self.segment_table.setItem(i, 2, QTableWidgetItem(start_date))
+                self.segment_table.setItem(i, 3, QTableWidgetItem(f"{duration}"))
+            
+            # Resize columns to fit content
+            self.segment_table.resizeColumnsToContents()
+            
+        except Exception as e:
+            logger.error(f"Error populating segment table: {e}")
+    
+    def on_segment_checkbox_changed(self, segment_index, state):
+        """Handle segment checkbox state changes."""
+        self.segment_selection[segment_index] = (state == Qt.Checked)
+        self.update_segment_visualization()
+        logger.info(f"Segment {segment_index + 1} {'included' if state == Qt.Checked else 'excluded'} from fitting")
+    
+    def on_segment_selection_changed(self):
+        """Handle segment table row selection for highlighting."""
+        selected_rows = self.segment_table.selectionModel().selectedRows()
+        if selected_rows:
+            self.selected_segment_for_highlight = selected_rows[0].row()
+        else:
+            self.selected_segment_for_highlight = None
+        self.update_segment_visualization()
+    
+    def select_all_segments(self):
+        """Select all segments for fitting."""
+        for i in range(len(self.segments)):
+            checkbox = self.segment_table.cellWidget(i, 0)
+            if checkbox:
+                checkbox.setChecked(True)
+    
+    def deselect_all_segments(self):
+        """Deselect all segments from fitting."""
+        for i in range(len(self.segments)):
+            checkbox = self.segment_table.cellWidget(i, 0)
+            if checkbox:
+                checkbox.setChecked(False)
+    
+    def refit_with_selected_segments(self):
+        """Refit the curve using only selected segments."""
+        try:
+            # Get selected segments
+            selected_segments = [seg for i, seg in enumerate(self.segments) if self.segment_selection[i]]
+            
+            if not selected_segments:
+                QMessageBox.warning(self, "No Segments Selected", "Please select at least one segment for curve fitting.")
+                return
+            
+            # Store original segments and update with selected ones
+            original_segments = self.segments
+            self.segments = selected_segments
+            
+            # Prepare data with selected segments
+            self.prepare_segment_data()
+            
+            # Refit curve
+            self.auto_optimize()
+            
+            # Update both plots
+            self.update_plot()
+            self.update_segment_visualization()
+            
+            # Show info about selected segments
+            QMessageBox.information(self, "Curve Refitted", 
+                f"Curve has been refitted using {len(selected_segments)} out of {len(original_segments)} segments.\n\n"
+                f"Check the Curve Fitting tab to see the updated results.")
+            
+            # Switch to curve fitting tab to show results
+            self.tab_widget.setCurrentIndex(0)
+            
+        except Exception as e:
+            logger.error(f"Error refitting with selected segments: {e}")
+            QMessageBox.critical(self, "Fitting Error", f"Error refitting curve: {str(e)}")
+    
+    def update_segment_visualization(self):
+        """Update the segment visualization plot."""
+        try:
+            self.segment_figure.clear()
+            ax = self.segment_figure.add_subplot(111)
+            
+            if not self.segments:
+                ax.text(0.5, 0.5, "No segments to display", ha='center', va='center', transform=ax.transAxes)
+                self.segment_canvas.draw()
+                return
+            
+            # Plot all segments with different colors based on selection
+            for i, segment in enumerate(self.segments):
+                if 'data' in segment and segment['data'] is not None and len(segment['data']) > 0:
+                    seg_data = segment['data']
+                    
+                    # Determine color based on selection state
+                    if self.segment_selection[i]:
+                        if self.selected_segment_for_highlight == i:
+                            # Highlighted selected segment
+                            color = 'orange'
+                            linewidth = 3
+                            alpha = 0.9
+                            label = f'Segment {i+1} (Selected)'
+                        else:
+                            # Normal selected segment
+                            color = 'blue'
+                            linewidth = 2
+                            alpha = 0.7
+                            label = f'Segment {i+1}' if i == 0 else ""
+                    else:
+                        # Deselected segment
+                        color = 'lightgray'
+                        linewidth = 1
+                        alpha = 0.5
+                        label = f'Excluded' if i == 0 else ""
+                    
+                    ax.plot(seg_data['timestamp'], seg_data['water_level'], 
+                           color=color, linewidth=linewidth, alpha=alpha, label=label)
+            
+            ax.set_xlabel('Time')
+            ax.set_ylabel('Water Level (ft)')
+            ax.set_title('Recession Segments for Curve Fitting')
+            ax.grid(True, alpha=0.3)
+            ax.legend()
+            
+            # Format dates on x-axis
+            self.segment_figure.autofmt_xdate()
+            
+            self.segment_figure.tight_layout()
+            self.segment_canvas.draw()
+            
+        except Exception as e:
+            logger.error(f"Error updating segment visualization: {e}")
     
     def create_parameter_controls(self, layout):
         """Create parameter controls specific to curve type."""
