@@ -339,14 +339,37 @@ class AutoUpdateHandler:
             progress_dialog.setValue(100)
             progress_dialog.close()
             
-            # Show completion message
+            # Show completion message and check for Turso sync
             if processed_count > 0:
-                QMessageBox.information(
-                    self.parent, 
-                    "Sync Complete", 
-                    f"Successfully processed {processed_count} water level files.\n\n"
-                    f"Files imported from consolidated folder: {current_month}"
-                )
+                # Check if Turso auto-sync is enabled and this is a supported project
+                turso_auto_sync = self.settings_handler.get_setting("turso_auto_sync_enabled", False)
+                current_project = self.db_manager.cloud_project_name if self.db_manager.is_cloud_database else None
+                supported_projects = ["CAESER_GENERAL", "MEGASITE", "SANDY_CREEK"]
+                
+                if turso_auto_sync and current_project in supported_projects:
+                    # Ask user if they want to sync to Turso
+                    reply = QMessageBox.question(
+                        self.parent,
+                        "Sync to Turso",
+                        f"Successfully processed {processed_count} water level files.\n\n"
+                        f"Do you want to sync the updated {current_project} database to Turso?\n\n"
+                        f"This will create an optimized version and upload it to Turso.",
+                        QMessageBox.Yes | QMessageBox.No,
+                        QMessageBox.Yes
+                    )
+                    
+                    if reply == QMessageBox.Yes:
+                        # Use optimized handler that works on all platforms
+                        from .turso_handler_optimized import TursoHandlerOptimized
+                        turso_handler = TursoHandlerOptimized(self.db_manager, self.settings_handler)
+                        turso_handler.sync_to_turso(current_project, self.parent)
+                else:
+                    QMessageBox.information(
+                        self.parent, 
+                        "Sync Complete", 
+                        f"Successfully processed {processed_count} water level files.\n\n"
+                        f"Files imported from consolidated folder: {current_month}"
+                    )
                 
                 # Refresh water level tab if it exists
                 if hasattr(water_tab, 'refresh_data'):

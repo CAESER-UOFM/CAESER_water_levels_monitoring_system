@@ -2724,6 +2724,11 @@ class MainWindow(QMainWindow):
         water_level_correction_action = QAction("Water Level Meter Correction", self)
         water_level_correction_action.triggered.connect(self.open_water_level_correction)
         settings_menu.addAction(water_level_correction_action)
+        
+        # Add Turso Database settings
+        turso_settings_action = QAction("Turso Database Settings", self)
+        turso_settings_action.triggered.connect(self.open_turso_settings)
+        settings_menu.addAction(turso_settings_action)
 
         # Add Auto Sync menu
         auto_sync_menu = menu_bar.addMenu("Auto Sync")
@@ -2735,6 +2740,12 @@ class MainWindow(QMainWindow):
         sync_water_action = QAction("Sync Water Level Files", self)
         sync_water_action.triggered.connect(self.auto_sync_water_levels)
         auto_sync_menu.addAction(sync_water_action)
+        # Add separator
+        auto_sync_menu.addSeparator()
+        # Sync to Turso
+        sync_turso_action = QAction("Sync to Turso Database", self)
+        sync_turso_action.triggered.connect(self.sync_to_turso)
+        auto_sync_menu.addAction(sync_turso_action)
         
         # Add icon-only menu next to Settings
         icon_menu = menu_bar.addMenu("")  # Empty text for icon-only menu
@@ -2835,6 +2846,14 @@ class MainWindow(QMainWindow):
         from .dialogs.water_level_correction_dialog import WaterLevelCorrectionDialog
         dialog = WaterLevelCorrectionDialog(self)
         dialog.exec_()
+    
+    def open_turso_settings(self):
+        """Open the Turso database settings dialog"""
+        from .dialogs.turso_credentials_dialog import TursoCredentialsDialog
+        dialog = TursoCredentialsDialog(self.settings_handler, self)
+        if dialog.exec_() == QDialog.Accepted:
+            # Settings are saved by the dialog
+            pass
 
     def toggle_auto_sync(self):
         """Toggle auto sync functionality"""
@@ -2890,6 +2909,51 @@ class MainWindow(QMainWindow):
         
         # Delegate to the handler
         self.auto_update_handler.auto_sync_water_levels()
+    
+    def sync_to_turso(self):
+        """Manually sync the current database to Turso"""
+        # Check if we have a cloud database open
+        if not self.db_manager.is_cloud_database:
+            QMessageBox.warning(
+                self,
+                "Cloud Database Required",
+                "Turso sync is only available for cloud databases.\n\n"
+                "Please open a cloud database (CAESER_GENERAL, MEGASITE, or SANDY_CREEK) to use this feature."
+            )
+            return
+            
+        # Get current project name
+        project_name = self.db_manager.cloud_project_name
+        supported_projects = ["CAESER_GENERAL", "MEGASITE", "SANDY_CREEK"]
+        
+        if project_name not in supported_projects:
+            QMessageBox.warning(
+                self,
+                "Unsupported Project",
+                f"Project '{project_name}' is not supported for Turso sync.\n\n"
+                f"Supported projects: {', '.join(supported_projects)}"
+            )
+            return
+            
+        # Confirm sync
+        reply = QMessageBox.question(
+            self,
+            "Sync to Turso",
+            f"This will sync the {project_name} database to Turso.\n\n"
+            f"The process will:\n"
+            f"1. Create an optimized version of the database\n"
+            f"2. Upload it to Turso (replacing existing data)\n"
+            f"3. Log the operation\n\n"
+            f"Continue?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            # Use optimized handler that works on all platforms
+            from .handlers.turso_handler_optimized import TursoHandlerOptimized
+            turso_handler = TursoHandlerOptimized(self.db_manager, self.settings_handler)
+            turso_handler.sync_to_turso(project_name, self)
     
     def open_edit_tables_dialog(self):
         """Open the Edit Tables dialog"""
