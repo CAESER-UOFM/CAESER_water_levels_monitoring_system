@@ -7,8 +7,6 @@
 **Professional water level data processing and analysis**
 
 [![Download Latest](https://img.shields.io/badge/Download-Latest%20Version-success?style=for-the-badge&logo=download)](../../archive/refs/heads/main.zip)
-[![Documentation](https://img.shields.io/badge/Docs-Quick%20Start-blue?style=for-the-badge&logo=book)](docs/QUICK_START.md)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20|%20macOS%20|%20Linux-lightgrey?style=for-the-badge)](docs/QUICK_START.md#system-requirements)
 
 <!-- Navigation Menu -->
 <a id="navigation-menu"></a>
@@ -35,8 +33,6 @@
 **🎯 Most Common Actions:**
 
 [![📥 Download](https://img.shields.io/badge/📥-Download_Now-success?style=flat-square)](../../archive/refs/heads/main.zip) 
-[![🖥️ Windows Help](https://img.shields.io/badge/🖥️-Windows_Setup-blue?style=flat-square)](docs/QUICK_WINDOWS_SETUP.md)
-[![📚 Quick Start](https://img.shields.io/badge/📚-Quick_Start-orange?style=flat-square)](docs/QUICK_START.md)
 [![❓ Help](https://img.shields.io/badge/❓-Get_Help-red?style=flat-square)](#-support)
 
 ---
@@ -62,9 +58,9 @@
 - [💬 Support & Help](#-support)
 
 ### 📄 Additional Resources
-- [🖥️ Windows Setup Card](docs/QUICK_WINDOWS_SETUP.md)
-- [📖 Detailed Windows Guide](docs/WINDOWS_UNBLOCK_GUIDE.md)
-- [📚 Complete Quick Start](docs/QUICK_START.md)
+- All installation and setup instructions are included in this README
+- Scroll down for complete Windows, macOS, and Linux instructions
+- Use the navigation menu above for quick access to any section
 
 </details>
 
@@ -91,7 +87,7 @@ Desktop application for processing water level data from Solinst loggers with au
 *Click the badge above → ZIP file downloads automatically*
 
 > **🖥️ Windows Users:** You'll need to "unblock" the windows_installer.bat file before running it. 
-> [See detailed instructions below](#step-2-install) or check our [visual guide](docs/WINDOWS_UNBLOCK_GUIDE.md).
+> [See detailed instructions below](#step-2-install) for complete step-by-step guidance.
 
 </div>
 
@@ -112,7 +108,7 @@ git clone https://github.com/CAESER-UOFM/water-levels-monitoring.git
 > 2. Check **"Unblock"** ✅ → Click **"OK"**  
 > 3. **Then** double-click `setup.bat`
 >
-> **🎯 Need help?** → [**Visual Step-by-Step Guide**](docs/WINDOWS_UNBLOCK_GUIDE.md)
+> **🎯 Need help?** → Follow the detailed steps below
 >
 > ```
 > Right-click setup.bat → Properties → ✅ Unblock → OK → Double-click
@@ -137,7 +133,7 @@ chmod +x setup.sh && ./setup.sh
 
 **✅ No admin rights needed • ✅ Portable installation • ✅ Works on restricted networks**
 
-> **🖥️ Windows Users:** Need quick visual help? → [**Quick Setup Card**](docs/QUICK_WINDOWS_SETUP.md)
+> **🖥️ Windows Users:** All setup instructions are included above with detailed steps
 
 </details>
 
@@ -322,8 +318,7 @@ chmod +x setup.sh && ./setup.sh
 
 **Transform your water level monitoring workflow today**
 
-[![Download Now](https://img.shields.io/badge/📥_Download_Now-Get_Started-success?style=for-the-badge&logo=download)](../../releases/latest)
-[![View Documentation](https://img.shields.io/badge/📚_View_Docs-Learn_More-blue?style=for-the-badge&logo=book)](docs/QUICK_START.md)
+[![Download Now](https://img.shields.io/badge/📥_Download_Now-Get_Started-success?style=for-the-badge&logo=download)](../../archive/refs/heads/main.zip)
 
 ### **What happens next?**
 1. **Download** takes 30 seconds
@@ -348,15 +343,15 @@ chmod +x setup.sh && ./setup.sh
 </tr>
 <tr>
 <td align="center">
-<a href="../../releases/latest"><b>📥 Download</b></a><br>
+<a href="../../archive/refs/heads/main.zip"><b>📥 Download</b></a><br>
 <small>Get latest version</small>
 </td>
 <td align="center">
-<a href="docs/QUICK_WINDOWS_SETUP.md"><b>🖥️ Windows Setup</b></a><br>
-<small>Visual guide</small>
+<a href="#-quick-install"><b>🚀 Setup Guide</b></a><br>
+<small>Installation steps</small>
 </td>
 <td align="center">
-<a href="docs/QUICK_START.md"><b>📚 Quick Start</b></a><br>
+<a href="#-getting-started"><b>🎯 Getting Started</b></a><br>
 <small>First steps</small>
 </td>
 <td align="center">
