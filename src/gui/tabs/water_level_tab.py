@@ -1076,7 +1076,7 @@ class WaterLevelTab(QWidget):
             }
         """)
 
-        # Full Table button - opens the edit tables dialog directly to wells table
+        # Full Table button - opens the edit tables dialog directly to transducers table
         edit_tables_btn = QPushButton("📊 Full Table")
         edit_tables_btn.setFixedHeight(32)
         edit_tables_btn.setStyleSheet("""
@@ -1912,18 +1912,18 @@ class WaterLevelTab(QWidget):
                 QMessageBox.critical(self, "Error", message)
     
     def open_edit_tables_dialog(self):
-        """Open the edit tables dialog directly to the wells table"""
+        """Open the edit tables dialog directly to the transducers table"""
         try:
             dialog = EditTablesDialog(self.db_manager, self)
-            # Set the dialog to show the wells table by default
+            # Set the dialog to show the transducers table by default
             if hasattr(dialog, 'table_combo'):
-                # Find the wells option in the combo box and select it
-                wells_index = dialog.table_combo.findText("wells")
-                if wells_index >= 0:
-                    dialog.table_combo.setCurrentIndex(wells_index)
-                    # Trigger the table selection change to load the wells table
+                # Find the transducers option in the combo box and select it
+                transducers_index = dialog.table_combo.findText("transducers")
+                if transducers_index >= 0:
+                    dialog.table_combo.setCurrentIndex(transducers_index)
+                    # Trigger the table selection change to load the transducers table
                     if hasattr(dialog, 'on_table_changed'):
-                        dialog.on_table_changed("wells")
+                        dialog.on_table_changed("transducers")
             dialog.exec_()
         except Exception as e:
             logger.error(f"Error opening edit tables dialog: {e}")
