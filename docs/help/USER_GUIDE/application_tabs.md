@@ -42,7 +42,7 @@ Manage well locations, visualize monitoring networks, and configure database set
 ## 🌡️ Barologger Tab
 
 ### Purpose
-Import, process, and manage atmospheric pressure data for accurate water level calculations.
+Import, process, and manage atmospheric pressure data for accurate water level calculations. This tab handles the creation and management of **Master Barometric Data** - a foundational concept for consistent atmospheric pressure compensation across your entire monitoring network.
 
 ### Key Features
 
@@ -52,23 +52,59 @@ Import, process, and manage atmospheric pressure data for accurate water level c
 - **Automatic Quality Control**: Flag questionable readings and gaps
 - **Data Validation**: Verify pressure ranges and temporal consistency
 
+#### Master Barometric Data Concept
+The **Master Baro** is a core concept developed for the CAESER system that ensures consistent atmospheric pressure compensation across all water level calculations.
+
+**Key Principles:**
+- **Unified Compensation**: All water level compensations use the Master Baro, not individual barologgers
+- **Multi-Source Integration**: Combines data from multiple barologgers to create a single, high-quality atmospheric pressure record
+- **Automatic Averaging**: When multiple barologgers are available, the system calculates a weighted mean
+- **Single-Source Handling**: Even with only one barologger, the system creates a Master Baro for consistency
+- **Quality Optimization**: Prioritizes high-quality data sources and fills gaps intelligently
+
+**Configuration:**
+- **Edit Master Baro Dialog**: Define which barologgers contribute to the Master Baro
+- **Weighting System**: Assign priority to different barologger sources
+- **Quality Control**: Exclude poor-quality periods from Master Baro calculations
+- **Gap Management**: Intelligent interpolation for missing data periods
+
 #### Master Barometric Data Creation
-- **Multi-logger Synthesis**: Combine data from multiple atmospheric pressure loggers
+- **Multi-logger Synthesis**: Combine data from multiple atmospheric pressure loggers into a single Master Baro
 - **Gap Filling**: Intelligent interpolation for missing data periods
-- **Quality Weighting**: Prioritize high-quality data sources
+- **Quality Weighting**: Prioritize high-quality data sources in the averaging process
 - **Temporal Alignment**: Synchronize readings across different loggers
+- **Data Validation**: Ensure Master Baro quality meets compensation requirements
 
 #### Visualization and Analysis
-- **Pressure Plots**: Time series visualization of atmospheric pressure
-- **Temperature Correlation**: Understand environmental influences
-- **Data Coverage**: Identify periods with complete atmospheric correction
-- **Export Options**: Share barometric data with collaborators
+- **Master Baro Plots**: Time series visualization of the final Master Barometric record
+- **Individual Logger Comparison**: Compare contributing barologgers to the Master Baro
+- **Quality Indicators**: Visual feedback on data quality and coverage
+- **Temperature Correlation**: Understand environmental influences on atmospheric pressure
+- **Export Options**: Share Master Baro data with collaborators
+
+### Master Baro Workflow
+1. **Import Individual Barologgers**: Import XLE files from all available atmospheric pressure loggers
+2. **Quality Assessment**: Review individual barologger quality and coverage
+3. **Master Baro Configuration**: Use the Edit Master Baro dialog to define contributing loggers
+4. **Master Baro Generation**: System automatically creates the Master Barometric record
+5. **Quality Validation**: Review Master Baro quality and coverage
+6. **Water Level Compensation**: All water level calculations use the Master Baro for consistency
 
 ### Common Workflows
 1. **Initial Setup**: Import barologger data before processing water levels
 2. **Quality Control**: Review and validate atmospheric pressure readings
-3. **Master Creation**: Generate composite barometric record for site
-4. **Ongoing Maintenance**: Update barometric data as new files become available
+3. **Master Baro Creation**: Generate composite barometric record for site using Edit Master Baro dialog
+4. **Ongoing Maintenance**: Update Master Baro as new barologger files become available
+5. **Quality Assurance**: Regularly verify Master Baro quality and coverage
+
+### Future Enhancements
+*Note: The Master Baro concept is planned for enhancement in future versions to include:*
+- **Well-Specific Baro Assignment**: Allow individual wells to use specific barologgers
+- **Regional Baro Networks**: Support multiple Master Baros for different geographic regions
+- **Advanced Quality Weighting**: More sophisticated algorithms for barologger prioritization
+- **Automatic Baro Selection**: Intelligent selection of optimal barologger for each well
+
+*These enhancements will provide more flexibility while maintaining the consistency benefits of the Master Baro approach.*
 
 ---
 
@@ -210,6 +246,15 @@ Manage field monitoring campaigns and track data collection progress across mult
 - **Status Messages**: Receive feedback on operations and results
 - **Error Handling**: Clear messages and recovery options
 
+### System Feedback and Communication
+The CAESER system provides multiple ways to document your work and communicate with collaborators:
+- **User Flags**: Quality control flags in the Water Level tab
+- **Protocol Notes**: Processing decision documentation in Edit dialogs
+- **Well Notes**: Location-specific observations and context
+- **System Messages**: Real-time operation feedback
+
+For detailed information about all feedback mechanisms, see the [System Feedback Guide](system_feedback.md).
+
 ---
 
-**Next Steps**: Continue to [Data Workflows](data_workflows.md) to understand how data moves through the system and how to optimize your analysis procedures.
+**Next Steps**: Continue to [System Feedback](system_feedback.md) to learn about documentation and communication features, or proceed to [Data Workflows](data_workflows.md) to understand how data moves through the system.

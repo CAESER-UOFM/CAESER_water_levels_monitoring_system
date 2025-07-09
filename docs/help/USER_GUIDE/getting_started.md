@@ -113,6 +113,8 @@ The application is organized into five main tabs:
 
 ### Documentation
 - **User Guide**: Comprehensive feature documentation
+- **System Feedback**: Documentation and communication features
+- **Master Baro Concept**: Technical overview of atmospheric pressure compensation
 - **Technical Reference**: Database schema and API information
 - **Integration Guides**: External system connections
 - **Troubleshooting**: Common issues and solutions
