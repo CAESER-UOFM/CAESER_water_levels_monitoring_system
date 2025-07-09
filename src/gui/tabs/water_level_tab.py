@@ -1198,6 +1198,18 @@ class WaterLevelTab(QWidget):
             # Temporarily disable sorting while populating the table
             self.wells_table.setSortingEnabled(False)
             
+            # Block signals to prevent selection changes during refresh
+            self.wells_table.blockSignals(True)
+            
+            # Remember current selection by well numbers
+            current_selection = self.wells_table.selectedItems()
+            selected_well_numbers = set()
+            for item in current_selection:
+                row = item.row()
+                well_number_item = self.wells_table.item(row, 3)  # Well Number is in column 3
+                if well_number_item:
+                    selected_well_numbers.add(well_number_item.text())
+            
             # Get all well data directly from database to ensure we get all fields
             with sqlite3.connect(self.db_manager.current_db) as conn:
                 conn.row_factory = sqlite3.Row
@@ -1283,11 +1295,24 @@ class WaterLevelTab(QWidget):
             # Log the time for the loop
             logger.debug(f"Populated {len(wells)} table rows in {time.time() - loop_start_time:.4f} seconds")
             
+            # Restore selection for previously selected wells
+            if selected_well_numbers:
+                self.wells_table.clearSelection()
+                for row in range(len(wells)):
+                    well_number_item = self.wells_table.item(row, 3)  # Well Number is in column 3
+                    if well_number_item and well_number_item.text() in selected_well_numbers:
+                        self.wells_table.selectRow(row)
+            
+            # Unblock signals
+            self.wells_table.blockSignals(False)
+            
             # Re-enable sorting
             self.wells_table.setSortingEnabled(True)
             
         except Exception as e:
             logger.error(f"Error refreshing wells table: {e}", exc_info=True)
+            # Make sure signals are unblocked even if error occurs
+            self.wells_table.blockSignals(False)
 
     def create_user_flag_icon(self, status):
         """Create an icon for user flag status"""
