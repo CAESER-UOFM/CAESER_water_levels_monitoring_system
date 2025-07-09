@@ -1076,8 +1076,8 @@ class WaterLevelTab(QWidget):
             }
         """)
 
-        # Edit Tables button - opens the edit tables dialog directly to wells table
-        edit_tables_btn = QPushButton("📊 Edit Tables")
+        # Full Table button - opens the edit tables dialog directly to wells table
+        edit_tables_btn = QPushButton("📊 Full Table")
         edit_tables_btn.setFixedHeight(32)
         edit_tables_btn.setStyleSheet("""
             QPushButton {
@@ -1923,7 +1923,7 @@ class WaterLevelTab(QWidget):
                     dialog.table_combo.setCurrentIndex(wells_index)
                     # Trigger the table selection change to load the wells table
                     if hasattr(dialog, 'on_table_changed'):
-                        dialog.on_table_changed()
+                        dialog.on_table_changed("wells")
             dialog.exec_()
         except Exception as e:
             logger.error(f"Error opening edit tables dialog: {e}")
