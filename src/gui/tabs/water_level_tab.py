@@ -30,6 +30,7 @@ from ..handlers.fetch_monet import fetch_monet_data
 from ..dialogs.manual_reading_dialog import AddManualReadingDialog
 from ..dialogs.manual_readings_preview_dialog import ManualReadingsPreviewDialog
 from ..dialogs.well_flag_management_dialog import WellFlagManagementDialog
+from ..dialogs.edit_tables_dialog import EditTablesDialog
 from ..handlers.water_level_plot_handler import WaterLevelPlotHandler
 from ..handlers.well_data_handler import WellDataHandler
 from ..handlers.transducer_handler import TransducerHandler
@@ -1075,15 +1076,45 @@ class WaterLevelTab(QWidget):
             }
         """)
 
+        # Edit Tables button - opens the edit tables dialog directly to wells table
+        edit_tables_btn = QPushButton("📊 Edit Tables")
+        edit_tables_btn.setFixedHeight(32)
+        edit_tables_btn.setStyleSheet("""
+            QPushButton {
+                padding: 8px 16px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #fff3e0;
+                color: #f57c00;
+                font-weight: 500;
+                min-height: 24px;
+            }
+            QPushButton:hover {
+                background-color: #ffe0b2;
+                border-color: #ff9800;
+            }
+            QPushButton:pressed {
+                background-color: #ffcc02;
+                border-color: #f57c00;
+            }
+            QPushButton:disabled {
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
+            }
+        """)
+
         add_btn.clicked.connect(self.add_transducer)
         edit_btn.clicked.connect(self.edit_transducer) 
         # Removed location_btn.clicked.connect(self.update_transducer_location)
         delete_btn.clicked.connect(self.delete_transducer)
+        edit_tables_btn.clicked.connect(self.open_edit_tables_dialog)
 
         btn_layout.addWidget(add_btn)
         btn_layout.addWidget(edit_btn)
         # Rem        oved         btn_layout.addWidget(location_btn)
         btn_layout.addWidget(delete_btn)
+        btn_layout.addWidget(edit_tables_btn)
         btn_layout.addStretch()
     
         transducer_layout.addLayout(btn_layout)
@@ -1879,6 +1910,24 @@ class WaterLevelTab(QWidget):
                 self.refresh_transducers_table()
             else:
                 QMessageBox.critical(self, "Error", message)
+    
+    def open_edit_tables_dialog(self):
+        """Open the edit tables dialog directly to the wells table"""
+        try:
+            dialog = EditTablesDialog(self.db_manager, self)
+            # Set the dialog to show the wells table by default
+            if hasattr(dialog, 'table_combo'):
+                # Find the wells option in the combo box and select it
+                wells_index = dialog.table_combo.findText("wells")
+                if wells_index >= 0:
+                    dialog.table_combo.setCurrentIndex(wells_index)
+                    # Trigger the table selection change to load the wells table
+                    if hasattr(dialog, 'on_table_changed'):
+                        dialog.on_table_changed()
+            dialog.exec_()
+        except Exception as e:
+            logger.error(f"Error opening edit tables dialog: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to open edit tables dialog: {str(e)}")
     
     def update_monet_data(self):
         """Fetch and update Monet data, converting to UTC storage"""
