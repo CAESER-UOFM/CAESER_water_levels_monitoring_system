@@ -3229,7 +3229,7 @@ class MainWindow(QMainWindow):
             import webbrowser
             
             # URL for the new online visualizer
-            visualizer_url = "https://water-level-visualizer-mobile.netlify.app/"
+            visualizer_url = "https://caeser-water-level-visualizer.netlify.app/"
             
             # Show confirmation dialog with information
             reply = QMessageBox.question(
