@@ -2,9 +2,18 @@
 
 ## 💻 Installation Steps
 
-### 📁 Step 1: Navigate to Installation Folder
+### 📁 Step 1: Get the Installation Files
+
+#### 🏢 **Option A: Smoo Shared Drive** (Recommended)
 ```
 📂 Go to: S:\Water_Projects\CAESER\Water_Data_Series\Water_levels_monitoring_system
+```
+
+#### 🌐 **Option B: GitHub Download** (No Smoo Access)
+```
+🔗 Download from: https://github.com/CAESER-UOFM/CAESER_water_levels_monitoring_system
+📥 Click "Code" → "Download ZIP"
+📂 Extract to your preferred location
 ```
 
 ### 🖱️ Step 2: Run Windows Installer
@@ -164,6 +173,36 @@
 
 ---
 
+## 📚 Need More Help?
+
+### 🔍 **Built-in Help System**
+The app includes a comprehensive help system with detailed information:
+
+#### 🚀 **How to Access Help**
+1. 🖱️ **Click Help button** in any tab
+2. 🔍 **Search for topics** using the search box
+3. 📖 **Browse sections**:
+   - 🚀 **Quick Start** - Getting started tutorials
+   - ⚙️ **How It Works** - Technical details
+   - 📊 **Application Tabs** - Feature guides
+   - 🔧 **System Features** - Feedback systems, Master Baro concept
+   - 🔬 **Advanced Topics** - Recharge calculations, cloud collaboration
+   - 🔧 **Troubleshooting** - Common issues and solutions
+
+#### 🎯 **Featured Help Topics**
+- 💬 **System Feedback & Documentation** - Complete guide to all feedback mechanisms
+- 🌡️ **Master Baro Concept** - Understanding atmospheric pressure compensation
+- 🚩 **User Flag Comments** - Quality control workflow
+- 📋 **Protocol & Well Notes** - Documentation best practices
+
+#### 💡 **Pro Tips**
+- 🎯 **Context-sensitive help** available in most dialogs
+- 📖 **Hover tooltips** on buttons and fields
+- 🔍 **Search function** finds topics quickly
+- 📚 **Step-by-step guides** for complex workflows
+
+---
+
 **🚀 Ready to start monitoring groundwater? Have fun exploring the system!** 🌊📊
 
-*💡 **Pro Tip**: Start with downloading a cloud database and testing features before working with real data.*
+*💡 **Pro Tip**: Start with downloading a cloud database and testing features before working with real data. Use the built-in help system for detailed guidance on any feature!*
