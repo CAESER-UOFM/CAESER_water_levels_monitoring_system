@@ -190,10 +190,32 @@ class WaterLevelPlotHandler:
             # Set axis labels and title
             if self.show_temperature:
                 self.ax.set_ylabel('Temperature (°C)')
-                self.ax.set_title('Well Temperature Data')
+                title = 'Well Temperature Data'
             else:
                 self.ax.set_ylabel('Water Level (ft)')
-                self.ax.set_title('Well Water Level Data')
+                title = 'Well Water Level Data'
+            
+            # Create a more informative title with well numbers and CAE numbers
+            if well_numbers:
+                well_info_list = []
+                for well_number in well_numbers:
+                    well_info = self._get_well_info(well_number, db_path)
+                    if well_info:
+                        cae_number = well_info.get('cae_number', '')
+                        if cae_number:
+                            well_info_list.append(f"Well {well_number} (CAE: {cae_number})")
+                        else:
+                            well_info_list.append(f"Well {well_number}")
+                    else:
+                        well_info_list.append(f"Well {well_number}")
+                
+                if well_info_list:
+                    if len(well_info_list) == 1:
+                        title = well_info_list[0]
+                    else:
+                        title = ', '.join(well_info_list)
+            
+            self.ax.set_title(title, fontsize=12, fontweight='bold')
 
             self.ax.set_xlabel('Date/Time (UTC)')
             
