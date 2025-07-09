@@ -542,7 +542,7 @@ class WaterLevelEditDialog(QDialog):
         
         # User Notes button for data analysis notes
         self.user_notes_btn = QPushButton("📝 Notes")
-        self.user_notes_btn.setToolTip("Add notes about water level data analysis")
+        self.user_notes_btn.setToolTip("Add notes about water level data analysis\n\n💡 Tip: Select a time range by dragging on the plot first - the selection will be automatically used in the notes dialog!")
         self.user_notes_btn.clicked.connect(self.open_user_notes_dialog)
         self.user_notes_btn.setStyleSheet("""
             QPushButton {
@@ -3505,11 +3505,42 @@ class WaterLevelEditDialog(QDialog):
             
             from .user_notes_dialog import UserNotesDialog
             
+            # Get selected time range if available
+            selected_time_range = None
+            if hasattr(self, 'start_date') and hasattr(self, 'end_date'):
+                try:
+                    start_time = self.start_date.dateTime().toPyDateTime()
+                    end_time = self.end_date.dateTime().toPyDateTime()
+                    
+                    # Check if there's a meaningful selection by looking at the data
+                    if hasattr(self, 'selected_data') and self.selected_data is not None and not self.selected_data.empty:
+                        # Validate that the time range is reasonable (not the full dataset)
+                        if not self.plot_data.empty:
+                            full_start = self.plot_data['timestamp_utc'].min()
+                            full_end = self.plot_data['timestamp_utc'].max()
+                            
+                            # If the selected range is significantly smaller than the full range, it's a real selection
+                            selected_duration = (end_time - start_time).total_seconds()
+                            full_duration = (full_end - full_start).total_seconds()
+                            
+                            if selected_duration < full_duration * 0.95:  # Selection is less than 95% of full range
+                                selected_time_range = (start_time, end_time)
+                                logger.info(f"Passing selected time range to notes dialog: {start_time} to {end_time}")
+                            else:
+                                logger.debug("Selected range covers most of the data, not passing to notes dialog")
+                        else:
+                            # If no plot data, just use the selection
+                            selected_time_range = (start_time, end_time)
+                            logger.info(f"Passing time range to notes dialog: {start_time} to {end_time}")
+                except Exception as e:
+                    logger.warning(f"Could not determine selected time range: {e}")
+            
             dialog = UserNotesDialog(
                 db_manager=db_manager,
                 well_number=well_number,
                 user_name=self.user_name,
-                parent=self
+                parent=self,
+                selected_time_range=selected_time_range
             )
             
             dialog.exec_()

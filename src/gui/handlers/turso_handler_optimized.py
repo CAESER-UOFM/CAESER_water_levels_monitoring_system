@@ -150,6 +150,7 @@ class TursoUploadWorker(QThread):
                             # Send current batch
                             if not self._send_batch(api_url, headers, table_name, 
                                                    col_names, batch_values):
+                                self.finished.emit(False, f"Failed to upload batch for {table_name}")
                                 return False
                                 
                             uploaded_rows += len(batch_values)
@@ -169,6 +170,7 @@ class TursoUploadWorker(QThread):
                     if batch_values:
                         if not self._send_batch(api_url, headers, table_name, 
                                                col_names, batch_values):
+                            self.finished.emit(False, f"Failed to upload final batch for {table_name}")
                             return False
                         uploaded_rows += len(batch_values)
                         
@@ -194,24 +196,36 @@ class TursoUploadWorker(QThread):
             
             # Try up to 3 times with smaller batches if needed
             for attempt in range(3):
-                response = requests.post(api_url, json=request, headers=headers, timeout=30)
-                
-                if response.status_code == 200:
-                    return True
-                elif response.status_code == 413 or "too large" in response.text.lower():
-                    # Request too large, split batch
-                    if len(batch_values) > 100:
-                        mid = len(batch_values) // 2
-                        return (self._send_batch(api_url, headers, table_name, 
-                                               col_names, batch_values[:mid]) and
-                               self._send_batch(api_url, headers, table_name, 
-                                               col_names, batch_values[mid:]))
-                    else:
-                        logger.error(f"Batch too large even at minimum size: {response.text}")
-                        return False
-                else:
-                    logger.error(f"Batch upload failed (attempt {attempt + 1}): {response.text}")
+                try:
+                    logger.info(f"Sending batch of {len(batch_values)} rows to {table_name} (attempt {attempt + 1})")
+                    response = requests.post(api_url, json=request, headers=headers, timeout=120)
                     
+                    if response.status_code == 200:
+                        logger.info(f"Successfully uploaded batch of {len(batch_values)} rows to {table_name}")
+                        return True
+                    elif response.status_code == 413 or "too large" in response.text.lower():
+                        logger.warning(f"Batch too large ({len(batch_values)} rows), splitting...")
+                        # Request too large, split batch
+                        if len(batch_values) > 100:
+                            mid = len(batch_values) // 2
+                            return (self._send_batch(api_url, headers, table_name, 
+                                                   col_names, batch_values[:mid]) and
+                                   self._send_batch(api_url, headers, table_name, 
+                                                   col_names, batch_values[mid:]))
+                        else:
+                            logger.error(f"Batch too large even at minimum size: {response.text}")
+                            return False
+                    else:
+                        logger.error(f"Batch upload failed (attempt {attempt + 1}): Status {response.status_code} - {response.text}")
+                        
+                except requests.exceptions.Timeout:
+                    logger.error(f"Timeout on attempt {attempt + 1} for batch of {len(batch_values)} rows")
+                except requests.exceptions.ConnectionError as e:
+                    logger.error(f"Connection error on attempt {attempt + 1}: {e}")
+                except Exception as e:
+                    logger.error(f"Unexpected error on attempt {attempt + 1}: {e}")
+                    
+            logger.error(f"Failed to upload batch after 3 attempts")
             return False
             
         except Exception as e:

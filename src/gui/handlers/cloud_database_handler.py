@@ -321,8 +321,7 @@ class CloudDatabaseHandler:
                     progress_callback(100, "Using existing working database (up to date)")
                 
                 # No copying needed - just return the working file path
-                if working_db_path not in self.temp_files:
-                    self.temp_files.append(working_db_path)
+                # DO NOT add working database to temp_files - it should persist
                 logger.info(f"Using existing working database: {working_db_path}")
                 return working_db_path
             
@@ -414,9 +413,12 @@ class CloudDatabaseHandler:
             # Save cache metadata for version checking compatibility (but no physical cache file)
             self._save_cache_metadata(project_name, project_info)
             
-            # Track temp file for cleanup (only if not already tracked)
-            if temp_path not in self.temp_files:
-                self.temp_files.append(temp_path)
+            # Save working database metadata for version tracking
+            self._save_working_metadata(project_name, project_info)
+            
+            # DO NOT add working database to temp_files - it should persist as cache
+            # Only truly temporary files should be tracked for cleanup
+            logger.info(f"Working database preserved (not added to temp cleanup): {temp_path}")
             
             if progress_callback:
                 progress_callback(100, "Download completed, loading database...")
@@ -902,12 +904,70 @@ class CloudDatabaseHandler:
         except Exception as e:
             logger.error(f"Error preserving working database: {e}")
     
+    def ensure_working_database_preserved(self, project_name: str):
+        """
+        Ensure that a working database is removed from temp_files if it exists.
+        This is called when we want to make sure an unmodified database persists.
+        """
+        try:
+            working_db_path = os.path.join(self.cache_dir, f"wlm_{project_name}.db")
+            if working_db_path in self.temp_files:
+                self.temp_files.remove(working_db_path)
+                logger.info(f"Removed working database from temp cleanup: {working_db_path}")
+        except Exception as e:
+            logger.error(f"Error ensuring working database preservation: {e}")
+    
+    def restore_original_database(self, project_name: str) -> bool:
+        """
+        Restore the original downloaded database, discarding any changes.
+        This is used when user chooses to discard changes instead of drafting.
+        """
+        try:
+            original_path = self.get_session_backup_path(project_name, 'original')
+            working_db_path = os.path.join(self.cache_dir, f"wlm_{project_name}.db")
+            
+            if original_path and os.path.exists(original_path):
+                # Copy original over the working database
+                shutil.copy2(original_path, working_db_path)
+                
+                # Ensure it's not in temp_files (it should be preserved as cache)
+                if working_db_path in self.temp_files:
+                    self.temp_files.remove(working_db_path)
+                    
+                logger.info(f"Restored original database for {project_name}, discarding changes")
+                return True
+            else:
+                logger.error(f"Cannot restore original database for {project_name} - no original backup found")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error restoring original database for {project_name}: {e}")
+            return False
+    
     def cleanup_temp_files(self):
-        """Clean up any temporary files created"""
+        """Clean up any temporary files created - but preserve unmodified working databases"""
         files_to_remove = []
         for temp_file in self.temp_files:
             try:
                 if os.path.exists(temp_file):
+                    # Check if this is a working database that should be preserved
+                    filename = os.path.basename(temp_file)
+                    if filename.startswith("wlm_") and filename.endswith(".db"):
+                        # This is a working database - check if it's been modified
+                        project_name = filename[4:-3]  # Remove 'wlm_' prefix and '.db' suffix
+                        
+                        # Only clean up if it has been modified since download
+                        if self.has_session_changes_since_download(project_name, temp_file):
+                            logger.info(f"Working database {temp_file} has been modified - keeping for potential draft")
+                            # Don't clean up modified working databases - they might need to be drafted
+                            continue
+                        else:
+                            logger.info(f"Working database {temp_file} is unmodified - preserving as cache")
+                            # Remove from temp_files but don't delete - it's now a permanent cache
+                            files_to_remove.append(temp_file)
+                            continue
+                    
+                    # Regular temporary file - clean up as before
                     # Check if file is in use by checking if we can open it
                     try:
                         with open(temp_file, 'r+b'):

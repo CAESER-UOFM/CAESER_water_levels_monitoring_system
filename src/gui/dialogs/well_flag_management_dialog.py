@@ -263,6 +263,10 @@ class WellFlagManagementDialog(QDialog):
         self.history_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.history_table.verticalHeader().setVisible(False)
         
+        # Enable text wrapping and auto-resize for better comment display
+        self.history_table.setWordWrap(True)
+        self.history_table.setTextElideMode(Qt.ElideNone)
+        
         # Set column widths
         header = self.history_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Date/Time
@@ -272,7 +276,30 @@ class WellFlagManagementDialog(QDialog):
         header.setSectionResizeMode(4, QHeaderView.Stretch)           # Comment
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Resolved
         
+        # Enable automatic row height adjustment
+        self.history_table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        
+        # Connect double-click signal for detailed comment view
+        self.history_table.cellDoubleClicked.connect(self.on_cell_double_clicked)
+        
         layout.addWidget(self.history_table)
+        
+        # Add helpful tip for users
+        tip_label = QLabel("💡 Tip: Double-click on any comment to view it in full detail")
+        tip_label.setStyleSheet("""
+            QLabel {
+                color: #6c757d;
+                font-style: italic;
+                font-size: 11px;
+                margin-top: 5px;
+                margin-bottom: 10px;
+                padding: 5px;
+                background-color: #f8f9fa;
+                border-radius: 3px;
+                border: 1px solid #e0e0e0;
+            }
+        """)
+        layout.addWidget(tip_label)
         
         # Refresh button
         refresh_layout = QHBoxLayout()
@@ -369,7 +396,18 @@ class WellFlagManagementDialog(QDialog):
                         new_flag_item.setBackground(self.get_flag_color(new_flag))
                     self.history_table.setItem(row, 3, new_flag_item)
                     
-                    self.history_table.setItem(row, 4, QTableWidgetItem(comment or ""))
+                    # Create comment item with enhanced display
+                    comment_text = comment or ""
+                    comment_item = QTableWidgetItem(comment_text)
+                    
+                    # Set tooltip to show full comment
+                    if comment_text:
+                        comment_item.setToolTip(f"Full comment:\n{comment_text}")
+                    
+                    # Enable text wrapping for long comments
+                    comment_item.setTextAlignment(Qt.AlignTop | Qt.AlignLeft)
+                    
+                    self.history_table.setItem(row, 4, comment_item)
                     
                     # Add resolution checkbox
                     from PyQt5.QtWidgets import QCheckBox, QWidget, QHBoxLayout
@@ -394,10 +432,113 @@ class WellFlagManagementDialog(QDialog):
                     no_history_item.setTextAlignment(Qt.AlignCenter)
                     self.history_table.setItem(0, 0, no_history_item)
                     self.history_table.setSpan(0, 0, 1, 6)
+                else:
+                    # Resize all rows to fit content properly
+                    self.history_table.resizeRowsToContents()
                     
         except Exception as e:
             logger.error(f"Error loading flag history: {e}")
             QMessageBox.warning(self, "Error", f"Failed to load flag history: {str(e)}")
+    
+    def on_cell_double_clicked(self, row: int, column: int):
+        """Handle double-click on table cells, especially for comment column"""
+        try:
+            # Only show detailed view for comment column (column 4)
+            if column == 4:
+                item = self.history_table.item(row, column)
+                if item and item.text().strip():
+                    self.show_comment_detail(item.text(), row)
+        except Exception as e:
+            logger.error(f"Error handling cell double-click: {e}")
+    
+    def show_comment_detail(self, comment_text: str, row: int):
+        """Show detailed view of comment in a popup dialog"""
+        try:
+            from PyQt5.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QPushButton, QLabel
+            
+            # Get additional row information for context
+            timestamp_item = self.history_table.item(row, 0)
+            user_item = self.history_table.item(row, 1)
+            old_flag_item = self.history_table.item(row, 2)
+            new_flag_item = self.history_table.item(row, 3)
+            
+            timestamp = timestamp_item.text() if timestamp_item else "Unknown"
+            user = user_item.text() if user_item else "Unknown"
+            old_flag = old_flag_item.text() if old_flag_item else "—"
+            new_flag = new_flag_item.text() if new_flag_item else "—"
+            
+            # Create dialog
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Flag Change Comment Details")
+            dialog.setMinimumSize(500, 400)
+            dialog.setModal(True)
+            
+            layout = QVBoxLayout(dialog)
+            
+            # Context information
+            context_label = QLabel(f"""
+                <b>Flag Change Details:</b><br>
+                <b>Date/Time:</b> {timestamp}<br>
+                <b>User:</b> {user}<br>
+                <b>Change:</b> {old_flag} → {new_flag}
+            """)
+            context_label.setStyleSheet("""
+                QLabel {
+                    background-color: #f8f9fa;
+                    border: 1px solid #dee2e6;
+                    border-radius: 4px;
+                    padding: 10px;
+                    margin-bottom: 10px;
+                }
+            """)
+            layout.addWidget(context_label)
+            
+            # Comment label
+            comment_label = QLabel("<b>Full Comment:</b>")
+            layout.addWidget(comment_label)
+            
+            # Comment text area (read-only)
+            comment_display = QTextEdit()
+            comment_display.setPlainText(comment_text)
+            comment_display.setReadOnly(True)
+            comment_display.setStyleSheet("""
+                QTextEdit {
+                    border: 2px solid #dee2e6;
+                    border-radius: 4px;
+                    padding: 8px;
+                    font-size: 12px;
+                    background-color: white;
+                }
+            """)
+            layout.addWidget(comment_display)
+            
+            # Close button
+            close_button = QPushButton("Close")
+            close_button.clicked.connect(dialog.accept)
+            close_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #6c757d;
+                    color: white;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 4px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #5a6268;
+                }
+            """)
+            
+            button_layout = QHBoxLayout()
+            button_layout.addStretch()
+            button_layout.addWidget(close_button)
+            layout.addLayout(button_layout)
+            
+            dialog.exec_()
+            
+        except Exception as e:
+            logger.error(f"Error showing comment detail: {e}")
+            QMessageBox.warning(self, "Error", f"Could not show comment details:\n{str(e)}")
     
     def get_flag_color(self, flag_value: str):
         """Get QColor for flag value"""

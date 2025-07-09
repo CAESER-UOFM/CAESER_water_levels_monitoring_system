@@ -1325,6 +1325,9 @@ class MainWindow(QMainWindow):
                 project_name, cloud_version_time, temp_path, "download"
             )
             logger.info(f"Updated version tracking for downloaded database: {project_name}")
+            
+            # Ensure working database is preserved and not cleaned up
+            self.cloud_db_handler.ensure_working_database_preserved(project_name)
         
         # If we loaded a draft, mark it as modified since it has unsaved changes
         if prefer_draft and has_draft:

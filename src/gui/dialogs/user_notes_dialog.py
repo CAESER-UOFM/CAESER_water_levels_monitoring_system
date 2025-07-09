@@ -32,7 +32,7 @@ class UserNotesDialog(QDialog):
     
     note_added = pyqtSignal(str, str, str)  # well_number, note_text, time_range_info
     
-    def __init__(self, db_manager, well_number: str, user_name: str, parent=None):
+    def __init__(self, db_manager, well_number: str, user_name: str, parent=None, selected_time_range=None):
         """
         Initialize the user notes dialog.
         
@@ -41,12 +41,14 @@ class UserNotesDialog(QDialog):
             well_number: Number of the well to manage notes for
             user_name: Name of the current user
             parent: Parent widget
+            selected_time_range: Optional tuple of (start_datetime, end_datetime) for pre-populating time range
         """
         super().__init__(parent)
         self.db_manager = db_manager
         self.well_number = well_number
         self.user_name = user_name
         self.parent_widget = parent  # Store parent reference for accessing change tracker
+        self.selected_time_range = selected_time_range  # Store selected time range
         
         self.setup_ui()
         self.load_notes_history()
@@ -159,7 +161,14 @@ class UserNotesDialog(QDialog):
         
         date_range_layout.addWidget(QLabel("From:"))
         self.start_datetime = QDateTimeEdit()
-        self.start_datetime.setDateTime(QDateTime.currentDateTime().addDays(-30))
+        
+        # Set default or selected time range
+        if self.selected_time_range:
+            start_time, end_time = self.selected_time_range
+            self.start_datetime.setDateTime(start_time)
+        else:
+            self.start_datetime.setDateTime(QDateTime.currentDateTime().addDays(-30))
+        
         self.start_datetime.setCalendarPopup(True)
         self.start_datetime.setEnabled(False)
         self.start_datetime.setStyleSheet("""
@@ -181,7 +190,14 @@ class UserNotesDialog(QDialog):
         
         date_range_layout.addWidget(QLabel("To:"))
         self.end_datetime = QDateTimeEdit()
-        self.end_datetime.setDateTime(QDateTime.currentDateTime())
+        
+        # Set default or selected time range
+        if self.selected_time_range:
+            start_time, end_time = self.selected_time_range
+            self.end_datetime.setDateTime(end_time)
+        else:
+            self.end_datetime.setDateTime(QDateTime.currentDateTime())
+        
         self.end_datetime.setCalendarPopup(True)
         self.end_datetime.setEnabled(False)
         self.end_datetime.setStyleSheet(self.start_datetime.styleSheet())
@@ -195,6 +211,28 @@ class UserNotesDialog(QDialog):
         # Connect radio button signals
         self.full_range_radio.toggled.connect(self.on_time_range_changed)
         self.specific_range_radio.toggled.connect(self.on_time_range_changed)
+        
+        # Auto-select specific time range if provided
+        if self.selected_time_range:
+            self.specific_range_radio.setChecked(True)
+            self.on_time_range_changed()  # Enable the date fields
+            
+            # Add informational message about pre-populated time range
+            info_label = QLabel("📌 Time range pre-populated from your plot selection")
+            info_label.setStyleSheet("""
+                QLabel {
+                    color: #0084ff;
+                    font-style: italic;
+                    font-size: 11px;
+                    margin-top: 5px;
+                    margin-bottom: 5px;
+                    padding: 5px;
+                    background-color: #f0f8ff;
+                    border-radius: 3px;
+                    border: 1px solid #e0e0e0;
+                }
+            """)
+            time_range_layout.addWidget(info_label)
         
         # Note text section
         note_label = QLabel("Note:")
