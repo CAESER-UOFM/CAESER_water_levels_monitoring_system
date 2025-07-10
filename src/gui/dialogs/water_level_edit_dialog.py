@@ -1,6 +1,7 @@
 import logging
 import pandas as pd
 import matplotlib
+import matplotlib.pyplot as plt
 from matplotlib.widgets import Cursor, SpanSelector
 from datetime import datetime
 from PyQt5.QtWidgets import (
@@ -238,6 +239,9 @@ class WaterLevelEditDialog(QDialog):
             useblit=True, props=dict(alpha=0.2, facecolor='red'),
             interactive=True
         )
+        
+        # Connect to axis events to update formatting when zooming/panning
+        self.ax.callbacks.connect('xlim_changed', self._on_xlim_changed)
     
     def create_compact_controls_panel(self):
         """Create a compact horizontal control panel"""
@@ -837,6 +841,74 @@ class WaterLevelEditDialog(QDialog):
             
         except Exception as e:
             logger.error(f"Error in span selection: {e}")
+    
+    def _setup_date_axis_formatting(self):
+        """Setup intelligent date axis formatting based on data timespan"""
+        try:
+            # Get current time span
+            xlim = self.ax.get_xlim()
+            if len(xlim) < 2:
+                return
+                
+            start_date = matplotlib.dates.num2date(xlim[0])
+            end_date = matplotlib.dates.num2date(xlim[1])
+            total_days = (end_date - start_date).days
+            
+            # Choose format based on timespan
+            if total_days <= 7:
+                # Less than a week - show dates with abbreviated month
+                date_format = '%m/%d'
+                locator = mdates.DayLocator(interval=1)
+            elif total_days <= 31:
+                # Less than a month - show dates every few days
+                date_format = '%m/%d'
+                locator = mdates.DayLocator(interval=max(1, total_days // 8))
+            elif total_days <= 365:
+                # Less than a year - show months
+                date_format = '%m/%d\n%Y'
+                locator = mdates.MonthLocator()
+            else:
+                # More than a year - show years and months
+                date_format = '%m/%Y'
+                locator = mdates.MonthLocator(interval=max(1, total_days // 365))
+            
+            # Apply formatting
+            self.ax.xaxis.set_major_formatter(mdates.DateFormatter(date_format))
+            self.ax.xaxis.set_major_locator(locator)
+            
+            # Improve label spacing and rotation
+            self.ax.tick_params(axis='x', rotation=45, labelsize=9)
+            
+            # Add minor ticks for better granularity
+            if total_days <= 31:
+                minor_locator = mdates.DayLocator()
+                self.ax.xaxis.set_minor_locator(minor_locator)
+            
+            # Ensure labels don't overlap
+            plt.setp(self.ax.xaxis.get_majorticklabels(), ha='right')
+            
+            # Adjust layout to prevent label cutoff
+            self.figure.tight_layout()
+            
+        except Exception as e:
+            logger.warning(f"Error setting up date axis formatting: {e}")
+            # Fallback to simple format
+            self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%y'))
+            self.ax.tick_params(axis='x', rotation=45)
+    
+    def _on_xlim_changed(self, ax):
+        """Callback when x-axis limits change (zoom/pan) to update date formatting"""
+        try:
+            # Small delay to avoid excessive updates during interactive operations
+            if hasattr(self, '_format_timer'):
+                self._format_timer.stop()
+            
+            self._format_timer = QTimer()
+            self._format_timer.setSingleShot(True)
+            self._format_timer.timeout.connect(lambda: self._setup_date_axis_formatting())
+            self._format_timer.start(200)  # 200ms delay
+        except Exception as e:
+            logger.debug(f"Error in xlim changed callback: {e}")
 
     def zoom_to_selected_data(self):
         """Zoom the plot to the selected date range without affecting other settings"""
@@ -862,6 +934,9 @@ class WaterLevelEditDialog(QDialog):
                 self._plot_master_baro_data()
                 if hasattr(self, 'ax2') and self.ax2 is not None:
                     self.ax2.set_ylim(current_y2lim)  # Restore secondary y limits
+            
+            # Update date formatting for new zoom level
+            self._setup_date_axis_formatting()
                 
             self.canvas.draw()
             logger.debug(f"Zoomed to selected data range: {start} to {end}")
@@ -940,9 +1015,8 @@ class WaterLevelEditDialog(QDialog):
             self.ax.grid(True, linestyle='--', alpha=0.6)
             self.ax.legend(loc='upper right')
             
-            # Format date axis
-            self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))
-            self.ax.tick_params(axis='x', rotation=45)
+            # Format date axis with intelligent formatting
+            self._setup_date_axis_formatting()
             
             # Set initial view limits based on BOTH transducer AND manual data timespan
             min_time = None

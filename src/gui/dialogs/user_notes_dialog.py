@@ -423,16 +423,8 @@ class UserNotesDialog(QDialog):
             with sqlite3.connect(self.db_manager.current_db) as conn:
                 cursor = conn.cursor()
                 
-                # Check if table exists
-                cursor.execute("""
-                    SELECT name FROM sqlite_master 
-                    WHERE type='table' AND name='user_notes'
-                """)
-                
-                if not cursor.fetchone():
-                    # Table doesn't exist yet, show empty history
-                    self.notes_table.setRowCount(0)
-                    return
+                # Ensure user_notes table exists (for older databases)
+                self._ensure_user_notes_table_exists(cursor)
                 
                 # Get notes history
                 cursor.execute("""
@@ -574,6 +566,9 @@ class UserNotesDialog(QDialog):
             with sqlite3.connect(self.db_manager.current_db) as conn:
                 cursor = conn.cursor()
                 
+                # Ensure user_notes table exists (for older databases)
+                self._ensure_user_notes_table_exists(cursor)
+                
                 # Insert note record
                 cursor.execute("""
                     INSERT INTO user_notes 
@@ -597,3 +592,43 @@ class UserNotesDialog(QDialog):
         except Exception as e:
             logger.error(f"Error saving note to database: {e}")
             return False
+    
+    def _ensure_user_notes_table_exists(self, cursor: sqlite3.Cursor):
+        """Ensure the user_notes table exists, create it if it doesn't (for older databases)"""
+        try:
+            # Check if table exists
+            cursor.execute("""
+                SELECT name FROM sqlite_master 
+                WHERE type='table' AND name='user_notes'
+            """)
+            
+            if not cursor.fetchone():
+                logger.info("Creating user_notes table for older database")
+                
+                # Create the user_notes table with the same schema as in initializer.py
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS user_notes (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        well_number TEXT NOT NULL,
+                        user_name TEXT NOT NULL,
+                        note_text TEXT NOT NULL,
+                        time_range_type TEXT CHECK(time_range_type IN ('full', 'specific')) NOT NULL,
+                        time_range_start TIMESTAMP,
+                        time_range_end TIMESTAMP,
+                        timestamp_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (well_number) REFERENCES wells (well_number)
+                    )
+                ''')
+                
+                # Create index for efficient queries by well and creation time
+                cursor.execute('''
+                    CREATE INDEX IF NOT EXISTS idx_user_notes_well_time 
+                    ON user_notes (well_number, created_at DESC)
+                ''')
+                
+                logger.info("Successfully created user_notes table and index")
+                
+        except Exception as e:
+            logger.error(f"Error ensuring user_notes table exists: {e}")
+            raise

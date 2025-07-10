@@ -310,6 +310,13 @@ class DatabaseManager(QObject):
             # Set new database and create models
             self.current_db = path
             
+            # Run database migrations for backward compatibility
+            try:
+                from .migration_utils import migrate_database
+                migrate_database(str(path))
+            except Exception as e:
+                logger.warning(f"Database migration check failed: {e}")
+            
             # Clear loading flag before emitting signals
             self._loading_database = False
             

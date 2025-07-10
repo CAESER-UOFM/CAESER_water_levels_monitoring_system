@@ -730,8 +730,15 @@ class WellModel(BaseModel):
                 cursor.execute("SELECT COUNT(*) FROM user_flags WHERE well_number = ?", (well_number,))
                 user_flag_count = cursor.fetchone()[0]
                 
-                cursor.execute("SELECT COUNT(*) FROM user_notes WHERE well_number = ?", (well_number,))
-                user_note_count = cursor.fetchone()[0]
+                # Check if user_notes table exists before querying it (for older databases)
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='user_notes'")
+                user_notes_table_exists = cursor.fetchone() is not None
+                
+                if user_notes_table_exists:
+                    cursor.execute("SELECT COUNT(*) FROM user_notes WHERE well_number = ?", (well_number,))
+                    user_note_count = cursor.fetchone()[0]
+                else:
+                    user_note_count = 0
                 
                 # Delete all associated data in proper order (child tables first)
                 
@@ -748,8 +755,9 @@ class WellModel(BaseModel):
                 # Delete user flags
                 cursor.execute("DELETE FROM user_flags WHERE well_number = ?", (well_number,))
                 
-                # Delete user notes
-                cursor.execute("DELETE FROM user_notes WHERE well_number = ?", (well_number,))
+                # Delete user notes (only if table exists)
+                if user_notes_table_exists:
+                    cursor.execute("DELETE FROM user_notes WHERE well_number = ?", (well_number,))
                 
                 # Delete transducers (this will cascade to any transducer-specific data)
                 cursor.execute("DELETE FROM transducers WHERE well_number = ?", (well_number,))
