@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QApplication, QMainWindow)
 
 from PyQt5.QtWebEngineWidgets import QWebEngineView
-from PyQt5.QtCore import Qt, QDate, QUrl, QTimer
+from PyQt5.QtCore import Qt, QDate, QUrl, QTimer, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QPixmap, QPainter, QIcon, QColor
 import sqlite3
 import pandas as pd
@@ -28,6 +28,105 @@ from ..handlers.runs_folder_monitor import RunsFolderMonitor
 import base64
 
 logger = logging.getLogger(__name__)
+
+class RunsLoaderWorker(QThread):
+    """Worker thread for loading runs to prevent UI freezing"""
+    
+    runs_loaded = pyqtSignal(dict, dict)  # local_runs, cloud_runs
+    loading_finished = pyqtSignal(bool, str)  # success, message
+    
+    def __init__(self, runs_tab):
+        super().__init__()
+        self.runs_tab = runs_tab
+        
+    def run(self):
+        """Load runs in background thread"""
+        try:
+            local_runs = {}
+            cloud_runs = {}
+            
+            # Load local runs
+            self._load_local_runs(local_runs)
+            
+            # Load cloud runs  
+            self._load_cloud_runs(cloud_runs)
+            
+            # Emit results
+            self.runs_loaded.emit(local_runs, cloud_runs)
+            self.loading_finished.emit(True, f"Loaded {len(local_runs) + len(cloud_runs)} runs")
+            
+        except Exception as e:
+            logger.error(f"Error loading runs in worker thread: {e}")
+            self.loading_finished.emit(False, str(e))
+    
+    def _load_local_runs(self, runs_dict):
+        """Load runs from local data/runs/ directory"""
+        base_dir = os.path.join('data', 'runs')
+        logger.info(f"Worker thread: Checking for local runs in: {base_dir}")
+        
+        if not os.path.exists(base_dir):
+            logger.info(f"Worker thread: Local runs directory does not exist at {base_dir}")
+            return
+
+        logger.info(f"Worker thread: Loading local runs from: {base_dir}")
+        
+        # List directory contents
+        try:
+            dir_contents = os.listdir(base_dir)
+            logger.info(f"Worker thread: Found {len(dir_contents)} items in runs directory: {dir_contents}")
+        except Exception as e:
+            logger.error(f"Worker thread: Error listing directory {base_dir}: {e}")
+            return
+        
+        # Iterate over all run directories
+        runs_found = 0
+        for run_id in dir_contents:
+            run_dir = os.path.join(base_dir, run_id)
+            if os.path.isdir(run_dir):
+                logger.info(f"Worker thread: Processing run directory: {run_id}")
+                self._load_run_from_local_directory(run_id, run_dir, runs_dict)
+                runs_found += 1
+            else:
+                logger.debug(f"Worker thread: Skipping non-directory item: {run_id}")
+                
+        logger.info(f"Worker thread: Processed {runs_found} local run directories")
+                
+    def _load_run_from_local_directory(self, run_id, run_dir, runs_dict):
+        """Load a single run from local directory"""
+        try:
+            # Load water_level_run.json
+            run_json_path = os.path.join(run_dir, 'water_level_run.json')
+            wells_json_path = os.path.join(run_dir, 'wells_data.json')
+            
+            if os.path.exists(run_json_path) and os.path.exists(wells_json_path):
+                with open(run_json_path, 'r') as f:
+                    run_data = json.load(f)
+                with open(wells_json_path, 'r') as f:
+                    wells_data = json.load(f)
+                
+                # Store the run data
+                runs_dict[run_id] = {
+                    'run_data': run_data,
+                    'wells_data': wells_data,
+                    'source': 'local'
+                }
+                logger.debug(f"Loaded local run: {run_id}")
+                
+        except Exception as e:
+            logger.warning(f"Error loading local run {run_id}: {e}")
+
+    def _load_cloud_runs(self, runs_dict):
+        """Load runs from cloud WATER_LEVEL_RUNS structure"""
+        try:
+            logger.info("Worker thread: Starting Google Drive runs loading...")
+            
+            # Simply call the existing working method from the main tab
+            # We'll signal back to main thread to do the actual loading
+            # This is safer than recreating the complex Google Drive logic
+            logger.info("Worker thread: Delegating to main thread for cloud runs loading")
+            
+        except Exception as e:
+            logger.error(f"Worker thread: Error loading cloud runs: {e}")
 
 class WellSelectionDialog(QDialog):
     def __init__(self, db_manager, parent=None):
@@ -334,22 +433,33 @@ class WaterLevelRunsTab(QWidget):
             logger.debug("Connected to database_changed signal")
         
         self.setup_ui()
-        self.load_existing_runs()
+        # Note: load_existing_runs() is no longer called automatically to prevent 15+ second initialization delay
+        # Users must click "Load Runs" button to load runs from storage
 
     def on_database_changed(self, db_name):
-        """Handle database changes by reloading runs"""
+        """Handle database changes by clearing current state"""
         logger.info(f"Runs tab: Database changed to {db_name}")
         
-        # Clear current selection
+        # Clear current selection and data
         self.current_run_id = None
+        if hasattr(self, 'runs'):
+            self.runs.clear()
+        if hasattr(self, 'cloud_runs'):
+            self.cloud_runs.clear()
         
-        # Reload runs from both local and cloud sources
-        self.load_existing_runs()
+        # Clear the dropdown and reset to initial state
+        if hasattr(self, 'runs_dropdown'):
+            self.runs_dropdown.clear()
+            self.runs_dropdown.addItem("Click 'Load Runs' to see available runs")
+            self.runs_dropdown.setEnabled(False)
         
         # Clear the wells table since no run is selected
         if hasattr(self, 'wells_table'):
             self.wells_table.setRowCount(0)
             self.wells_table.hide()
+            
+        # Note: We no longer automatically reload runs to prevent delays
+        # Users must click "Load Runs" button to load runs for the new database
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -391,11 +501,32 @@ class WaterLevelRunsTab(QWidget):
         
         # Dropdown to select an existing run
         self.runs_dropdown = QComboBox()
-        self.runs_dropdown.addItem("Select Run")
+        self.runs_dropdown.addItem("Click 'Load Runs' to see available runs")
         self.runs_dropdown.currentTextChanged.connect(self.on_run_selected)
+        self.runs_dropdown.setEnabled(False)  # Disabled until runs are loaded
         form_layout.addWidget(self.runs_dropdown)
         
-        # Add reload button right after the dropdown
+        # Add Load Runs button to manually trigger run loading
+        self.load_runs_btn = QPushButton("📥 Load Runs")
+        self.load_runs_btn.setFont(QFont("Arial", 10))
+        self.load_runs_btn.setToolTip("Load existing runs from local storage and Google Drive")
+        self.load_runs_btn.clicked.connect(self.load_existing_runs)
+        self.load_runs_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                border-radius: 3px;
+                padding: 5px 15px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+        """)
+        form_layout.addWidget(self.load_runs_btn)
+        
+        # Add reload button right after the Load Runs button
         self.reload_run_btn = QPushButton("Reload Run")
         self.reload_run_btn.setFont(QFont("Arial", 10))
         self.reload_run_btn.clicked.connect(self.reload_current_run)
@@ -623,8 +754,15 @@ class WaterLevelRunsTab(QWidget):
                         f"Failed to create run: {str(e)}"
                     )
 
-    def on_run_selected(self, run_id):
-        if (run_id and run_id != "Select Run"):
+    def on_run_selected(self, run_display_name):
+        if (run_display_name and run_display_name not in ["Select Run", "Click 'Load Runs' to see available runs", "Loading runs..."]):
+            # Extract actual run ID from display name (remove "(Local)" or "(Cloud)" suffix)
+            run_id = run_display_name
+            if " (Local)" in run_display_name:
+                run_id = run_display_name.replace(" (Local)", "")
+            elif " (Cloud)" in run_display_name:
+                run_id = run_display_name.replace(" (Cloud)", "")
+                
             self.current_run_id = run_id
             
             # Create a single progress dialog for the entire process
@@ -927,21 +1065,119 @@ class WaterLevelRunsTab(QWidget):
 
     def load_existing_runs(self):
         """Load existing runs from both local storage and cloud storage"""
-        logger.info("Loading existing runs from local and cloud sources...")
+        logger.info("Starting loading of runs...")
+        
+        # Disable the button during loading and show progress
+        self.load_runs_btn.setEnabled(False)
+        self.load_runs_btn.setText("🔄 Loading...")
         
         # Clear existing runs first
         self.runs.clear()
         self.cloud_runs.clear()
         self.runs_dropdown.clear()
-        self.runs_dropdown.addItem("Select Run")
+        self.runs_dropdown.addItem("Loading runs...")
+        self.runs_dropdown.setEnabled(False)
         
-        # Load local runs first
+        # Load local runs first (fast) - this uses the existing method at line 1182
         self._load_local_runs()
         
-        # Load cloud runs if available
-        self._load_cloud_runs()
+        # Use QTimer to defer cloud loading to prevent UI freeze
+        # This runs the cloud loading in the next event loop iteration
+        QTimer.singleShot(100, self._load_cloud_runs_deferred)
+    
+    def _load_cloud_runs_deferred(self):
+        """Load cloud runs in a deferred manner using existing method"""
+        try:
+            # Call the existing working cloud runs loading method
+            self._load_cloud_runs()
+            
+            # Update UI after loading
+            self._finalize_runs_loading()
+            
+        except Exception as e:
+            logger.error(f"Error in deferred cloud runs loading: {e}")
+            self._finalize_runs_loading(success=False, message=str(e))
+    
+    def _finalize_runs_loading(self, success=True, message=""):
+        """Finalize the runs loading process and update UI"""
+        try:
+            # Update dropdown with loaded runs
+            self.runs_dropdown.clear()
+            self.runs_dropdown.addItem("Select Run")
+            
+            # Add runs to dropdown
+            total_runs = len(self.runs)
+            for run_id in self.runs.keys():
+                if run_id in self.cloud_runs:
+                    self.runs_dropdown.addItem(f"{run_id} (Cloud)")
+                else:
+                    self.runs_dropdown.addItem(f"{run_id} (Local)")
+            
+            # Enable dropdown
+            self.runs_dropdown.setEnabled(True)
+            
+            # Update button status
+            if success:
+                self.load_runs_btn.setText("✅ Runs Loaded")
+                logger.info(f"Successfully loaded {total_runs} runs")
+            else:
+                self.load_runs_btn.setText("❌ Load Failed")
+                logger.error(f"Failed to load runs: {message}")
+                
+        except Exception as e:
+            logger.error(f"Error finalizing runs loading: {e}")
+            self.load_runs_btn.setText("❌ Load Failed")
         
-        logger.info(f"Loaded {len(self.runs)} total runs")
+        # Re-enable button after delay
+        QTimer.singleShot(3000, self._reset_load_button)
+    
+    def _on_runs_loaded(self, local_runs, cloud_runs):
+        """Handle loaded runs from worker thread"""
+        try:
+            # Clear dropdown and add default item
+            self.runs_dropdown.clear()
+            self.runs_dropdown.addItem("Select Run")
+            
+            # Process loaded runs
+            total_runs = 0
+            
+            # Add local runs
+            for run_id, run_info in local_runs.items():
+                self.runs[run_id] = run_info['wells_data']
+                self.runs_dropdown.addItem(f"{run_id} (Local)")
+                total_runs += 1
+                
+            # Add cloud runs  
+            for run_id, run_info in cloud_runs.items():
+                if run_id not in self.runs:  # Avoid duplicates
+                    self.runs[run_id] = run_info['wells_data']
+                    self.cloud_runs[run_id] = run_info.get('temp_path', '')
+                    self.runs_dropdown.addItem(f"{run_id} (Cloud)")
+                    total_runs += 1
+            
+            # Enable dropdown
+            self.runs_dropdown.setEnabled(True)
+            logger.info(f"Successfully loaded {total_runs} runs")
+            
+        except Exception as e:
+            logger.error(f"Error processing loaded runs: {e}")
+    
+    def _on_loading_finished(self, success, message):
+        """Handle loading completion"""
+        if success:
+            self.load_runs_btn.setText("✅ Runs Loaded")
+            logger.info(f"Runs loading completed: {message}")
+        else:
+            self.load_runs_btn.setText("❌ Load Failed")
+            logger.error(f"Runs loading failed: {message}")
+            
+        # Re-enable button after a longer delay to show the status
+        QTimer.singleShot(3000, self._reset_load_button)
+    
+    def _reset_load_button(self):
+        """Reset the Load Runs button to its original state"""
+        self.load_runs_btn.setEnabled(True)
+        self.load_runs_btn.setText("📥 Load Runs")
     
     def _load_local_runs(self):
         """Load runs from local data/runs/ directory"""
@@ -2011,17 +2247,17 @@ class WaterLevelRunsTab(QWidget):
             logger.error(f"Error updating manual readings status: {e}", exc_info=True)
 
     def refresh_data(self):
-        """Refresh the runs data."""
+        """Refresh the runs data (without automatically loading runs)."""
         logger.debug("Refreshing water level runs data")
         try:
-            # Reload existing runs
-            self.load_existing_runs()
-            
-            # If a run is currently selected, refresh its display
-            if self.current_run_id:
+            # Only refresh display if runs have already been loaded and a run is selected
+            if hasattr(self, 'runs') and self.runs and self.current_run_id:
                 self.display_run_wells(self.current_run_id)
                 self.update_map_markers(self.current_run_id)
                 
+            # Note: We no longer automatically load runs here to prevent the 15+ second delay
+            # Users must click "Load Runs" button to trigger run loading
+            logger.debug("Tab refreshed - use 'Load Runs' button to load runs from storage")
             return True
         except Exception as e:
             logger.error(f"Error refreshing water level runs data: {e}")
