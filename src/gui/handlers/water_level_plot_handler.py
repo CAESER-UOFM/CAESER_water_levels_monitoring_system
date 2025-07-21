@@ -2,6 +2,7 @@
 Handler for water level plotting functionality.
 """
 
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
@@ -23,14 +24,21 @@ class WaterLevelPlotHandler:
         self.selected_point_annotation = None
         self.show_temperature = False
         self.gap_highlight_enabled = True  # Flag to enable/disable gap highlighting
-        self.gap_color = "#FFEBEE"  # Light red background for gaps
+        self.gap_color = "#ffcccb"  # Light red background for gaps - more visible
         self.gap_threshold = timedelta(minutes=20)  # Gap threshold (> 15 min sample interval)
-        self.gap_alpha = 0.6  # Increased opacity (reduced transparency) from 0.3 to 0.6
+        self.gap_alpha = 0.7  # Increased opacity (reduced transparency) from 0.3 to 0.7
+        
+        # Store plot data for click functionality
+        self.plot_data = {}  # well_number -> DataFrame
+        self.manual_data = {}  # well_number -> DataFrame
+        
         self.setup_plot_interaction()
 
     def setup_plot_interaction(self):
         """Set up interactive features for the plot"""
         self.canvas.mpl_connect('button_press_event', self.on_plot_click)
+        # Handle pick events if they occur (some matplotlib versions generate these)
+        self.canvas.mpl_connect('pick_event', self.on_pick_event)
     
     def clear_plot(self):
         """Clear the current plot."""
@@ -89,7 +97,13 @@ class WaterLevelPlotHandler:
         if not gaps or not self.gap_highlight_enabled:
             return
             
+        logger.debug(f"Highlighting {len(gaps)} data gaps")
+        
         for gap_start, gap_end in gaps:
+            # Calculate gap duration for logging
+            gap_duration = (gap_end - gap_start).total_seconds() / 60  # minutes
+            logger.debug(f"Gap from {gap_start} to {gap_end} (duration: {gap_duration:.1f} minutes)")
+            
             # Add a rectangle spanning the gap with a distinctive color
             rect = plt.Rectangle(
                 (mdates.date2num(gap_start), y_min),
@@ -100,6 +114,7 @@ class WaterLevelPlotHandler:
                 zorder=-100  # Place behind other plot elements
             )
             self.ax.add_patch(rect)
+            logger.debug(f"Added gap rectangle: x={mdates.date2num(gap_start):.2f}, width={mdates.date2num(gap_end) - mdates.date2num(gap_start):.2f}, y={y_min:.2f}, height={y_max - y_min:.2f}")
             
             # Removed the text label code for gap duration
 
@@ -112,6 +127,10 @@ class WaterLevelPlotHandler:
 
             self.clear_plot()
             self.add_axes()
+            
+            # Clear stored data for click functionality
+            self.plot_data = {}
+            self.manual_data = {}
 
             # Create color cycle for multiple wells
             colors = self.color_cycle()
@@ -142,9 +161,19 @@ class WaterLevelPlotHandler:
                 if df is not None and not df.empty:
                     df['timestamp_utc'] = pd.to_datetime(df['timestamp_utc'])
                     
+                    # Store data for click functionality
+                    self.plot_data[well_number] = df.copy()
+                    
                     # Identify gaps in this well's data
                     if not self.show_temperature:
                         gaps = self.identify_data_gaps(df)
+                        if gaps:
+                            logger.debug(f"Found {len(gaps)} gaps in well {well_number}")
+                            for gap_start, gap_end in gaps:
+                                gap_duration = (gap_end - gap_start).total_seconds() / 60
+                                logger.debug(f"  Gap: {gap_start} to {gap_end} ({gap_duration:.1f} minutes)")
+                        else:
+                            logger.debug(f"No gaps found in well {well_number}")
                         all_gaps.extend(gaps)
                     
                     if self.show_temperature:
@@ -171,6 +200,9 @@ class WaterLevelPlotHandler:
                 manual_df = self.get_manual_readings(well_number, db_path)
                 if manual_df is not None and not manual_df.empty and not self.show_temperature:
                     manual_df['measurement_date_utc'] = pd.to_datetime(manual_df['measurement_date_utc'])
+                    
+                    # Store manual data for click functionality
+                    self.manual_data[well_number] = manual_df.copy()
                     # collect for manual-only scaling
                     manual_times.extend(manual_df['measurement_date_utc'].tolist())
                     manual_levels.extend(manual_df['water_level'].tolist())
@@ -299,68 +331,142 @@ class WaterLevelPlotHandler:
             self.canvas.draw()
 
     def on_plot_click(self, event):
-        """Handle click events on plot"""
-        if event.inaxes is None or event.button != MouseButton.LEFT:
-            return
-            
-        if self.selected_point_annotation:
-            self.selected_point_annotation.remove()
-            self.selected_point_annotation = None
-            
-        ax = event.inaxes
-        min_dist = float('inf')
-        closest_point = None
-        closest_well = None
-        closest_line = None
-        
-        for line in ax.get_lines():
-            if not line.get_label().startswith('Well') and not line.get_label().startswith('Water Level'):
-                continue
+        """Handle click events on plot for point identification"""
+        try:
+            if event.inaxes is None or event.button != MouseButton.LEFT:
+                return
                 
-            xdata = line.get_xdata()
-            ydata = line.get_ydata()
-            
-            x_pixels = ax.transData.transform(list(zip(xdata, ydata)))[:, 0]
-            y_pixels = ax.transData.transform(list(zip(xdata, ydata)))[:, 1]
-            click_pixels = ax.transData.transform((event.xdata, event.ydata))
-            
-            distances = ((x_pixels - click_pixels[0])**2 + (y_pixels - click_pixels[1])**2)
-            
-            idx = distances.argmin()
-            dist = distances[idx]
-            
-            if dist < min_dist:
-                min_dist = dist
-                closest_point = (xdata[idx], ydata[idx])
-                closest_well = line.get_label()
-                closest_line = line
+            # Check if event has valid data coordinates
+            if event.xdata is None or event.ydata is None:
+                return
+                
+            # Clear any existing annotation
+            if self.selected_point_annotation:
+                self.selected_point_annotation.remove()
+                self.selected_point_annotation = None
+                
+            # Convert click position to datetime
+            click_datetime = matplotlib.dates.num2date(event.xdata).replace(tzinfo=None)
+            click_level = event.ydata
         
-        if closest_point and min_dist < 50:
-            temp_text = ""
-            if len(ax.get_lines()) <= 2 and self.show_temperature:  # Single well with possible temperature
-                for line in ax.get_lines():
-                    if line.get_label() == 'Temperature':
-                        temp_idx = (abs(line.get_xdata() - closest_point[0])).argmin()
-                        temp = line.get_ydata()[temp_idx]
-                        temp_text = f"\nTemperature: {temp:.2f}°C"
+            # Find the closest data point across all wells
+            closest_point = None
+            closest_well = None
+            closest_data_type = None
+            min_distance = float('inf')
             
-            # Get data source from label
-            data_source = closest_well.split('(')[-1].rstrip(')')
+            # Search through transducer data for all wells
+            for well_number, df in self.plot_data.items():
+                if df.empty:
+                    continue
+                    
+                # Find the closest point in this well's data by time
+                time_diffs = abs(df['timestamp_utc'] - click_datetime)
+                closest_idx = time_diffs.idxmin()
+                point_data = df.loc[closest_idx]
+                
+                # Calculate distance in both time and level dimensions
+                time_diff_seconds = time_diffs.loc[closest_idx].total_seconds()
+                
+                # Use appropriate y-axis data
+                if self.show_temperature:
+                    y_value = point_data.get('temperature', 0)
+                else:
+                    y_value = point_data.get('water_level', 0)
+                    
+                level_diff = abs(y_value - click_level)
+                
+                # Combined distance metric (adjust thresholds as needed)
+                if time_diff_seconds < 86400 and level_diff < 5.0:  # Within 1 day and 5 units
+                    distance = time_diff_seconds / 3600 + level_diff  # Normalize to hours + level units
+                    
+                    if distance < min_distance:
+                        min_distance = distance
+                        closest_point = point_data
+                        closest_well = well_number
+                        closest_data_type = 'Transducer'
             
-            text = (f"{closest_well}\n"
-                   f"Date: {closest_point[0].strftime('%Y-%m-%d %H:%M')} UTC\n"
-                   f"Level: {closest_point[1]:.2f} ft\n"
-                   f"Source: {data_source}{temp_text}")
+            # Search through manual data for all wells (only if not showing temperature)
+            if not self.show_temperature:
+                for well_number, manual_df in self.manual_data.items():
+                    if manual_df.empty:
+                        continue
+                        
+                    # Find the closest point in this well's manual data by time
+                    time_diffs = abs(manual_df['measurement_date_utc'] - click_datetime)
+                    closest_idx = time_diffs.idxmin()
+                    point_data = manual_df.loc[closest_idx]
+                    
+                    # Calculate distance in both time and level dimensions
+                    time_diff_seconds = time_diffs.loc[closest_idx].total_seconds()
+                    level_diff = abs(point_data['water_level'] - click_level)
+                    
+                    # Combined distance metric
+                    if time_diff_seconds < 86400 and level_diff < 5.0:  # Within 1 day and 5 units
+                        distance = time_diff_seconds / 3600 + level_diff  # Normalize to hours + level units
+                        
+                        if distance < min_distance:
+                            min_distance = distance
+                            closest_point = point_data
+                            closest_well = well_number
+                            closest_data_type = 'Manual'
             
-            self.selected_point_annotation = ax.annotate(
-                text,
-                xy=closest_point,
-                xytext=(10, 10), textcoords='offset points',
-                bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.5),
-                arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0')
-            )
+            # Display information about the closest point
+            if closest_point is not None:
+                # Format point information
+                if closest_data_type == 'Manual':
+                    time_str = closest_point['measurement_date_utc'].strftime('%Y-%m-%d %H:%M:%S')
+                    level_val = closest_point['water_level']
+                    display_time = closest_point['measurement_date_utc']
+                else:
+                    time_str = closest_point['timestamp_utc'].strftime('%Y-%m-%d %H:%M:%S')
+                    if self.show_temperature:
+                        level_val = closest_point.get('temperature', 0)
+                        display_time = closest_point['timestamp_utc']
+                    else:
+                        level_val = closest_point['water_level']
+                        display_time = closest_point['timestamp_utc']
+                
+                # Create annotation text
+                if self.show_temperature:
+                    text = f"Well: {closest_well}\nTime: {time_str}\nTemperature: {level_val:.2f}°C\nSource: {closest_data_type}"
+                else:
+                    text = f"Well: {closest_well}\nTime: {time_str}\nLevel: {level_val:.3f} ft\nSource: {closest_data_type}"
+                
+                # Add additional information if available
+                if closest_data_type == 'Transducer':
+                    if 'baro_flag' in closest_point:
+                        text += f"\nBaro Flag: {closest_point['baro_flag']}"
+                    if 'level_flag' in closest_point:
+                        text += f"\nLevel Flag: {closest_point['level_flag']}"
+                elif closest_data_type == 'Manual':
+                    if 'comments' in closest_point and pd.notna(closest_point['comments']):
+                        text += f"\nComments: {closest_point['comments']}"
+                
+                # Create annotation
+                self.selected_point_annotation = self.ax.annotate(
+                    text,
+                    xy=(matplotlib.dates.date2num(display_time), level_val),
+                    xytext=(10, 10),
+                    textcoords='offset points',
+                    bbox=dict(boxstyle="round,pad=0.5", facecolor="yellow", alpha=0.9, edgecolor='black'),
+                    arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0.2', color='black')
+                )
+                
+                self.canvas.draw()
             
-            self.canvas.draw()
+        except Exception as e:
+            logger.error(f"Error in plot click handler: {e}")
+            # Don't raise the error, just log it to avoid crashing the UI
+
+    def on_pick_event(self, event):
+        """Handle pick events (some matplotlib versions generate these)"""
+        try:
+            # For now, just log pick events - we handle clicks via button_press_event
+            logger.debug(f"Pick event received: {event}")
+        except Exception as e:
+            logger.error(f"Error in pick event handler: {e}")
+            # Don't raise the error, just log it to avoid crashing the UI
 
     def toggle_temperature(self, show: bool):
         """Toggle temperature display"""
@@ -393,7 +499,7 @@ class WaterLevelPlotHandler:
             
             # Determine appropriate tick spacing and format based on data range
             if date_range_days <= 7:  # Less than a week
-                # Daily ticks, show date only
+                # Daily ticks, show month/day
                 try:
                     self.ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
                 except TypeError:
@@ -405,7 +511,7 @@ class WaterLevelPlotHandler:
                 except TypeError:
                     self.ax.xaxis.set_minor_locator(mdates.HourLocator())
             elif date_range_days <= 30:  # Less than a month
-                # Every few days, show date only
+                # Every few days, show month/day
                 interval = max(1, int(date_range_days / 6))  # ~6 ticks maximum
                 try:
                     self.ax.xaxis.set_major_locator(mdates.DayLocator(interval=interval))
@@ -457,6 +563,28 @@ class WaterLevelPlotHandler:
         
         # Reduce bottom margin to reclaim plot space
         self.figure.subplots_adjust(bottom=0.12)
+        
+        # Set up coordinate navigation to show full date/time
+        self.setup_coordinate_navigation()
+    
+    def setup_coordinate_navigation(self):
+        """Set up coordinate navigation to show full date/time in toolbar coordinates"""
+        try:
+            # Create a custom format function for coordinates
+            def format_coord(x, y):
+                # Convert matplotlib date number to datetime
+                try:
+                    dt = matplotlib.dates.num2date(x)
+                    date_str = dt.strftime('%Y-%m-%d %H:%M:%S')
+                    return f'Date: {date_str}, Level: {y:.3f}'
+                except:
+                    return f'x={x:.3f}, y={y:.3f}'
+            
+            # Apply the custom format to the axis
+            self.ax.format_coord = format_coord
+            
+        except Exception as e:
+            logger.warning(f"Error setting up coordinate navigation: {e}")
 
     def _get_well_info(self, well_number: str, db_path: str) -> Dict:
         """Get well information from database"""

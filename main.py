@@ -6,6 +6,10 @@ os.environ['GOOGLE_DRIVE_NO_AUTO_AUTH'] = '1'
 os.environ['PYTHONUNBUFFERED'] = '1'
 os.environ["QTWEBENGINE_DISABLE_SANDBOX"] = "1"
 
+# Set matplotlib backend to avoid CORS font issues
+import matplotlib
+matplotlib.use('Qt5Agg')
+
 import sys
 from pathlib import Path
 import logging

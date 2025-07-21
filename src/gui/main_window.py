@@ -2801,6 +2801,11 @@ class MainWindow(QMainWindow):
         find_xle_by_serial_action.triggered.connect(self.open_find_xle_by_serial)
         tools_menu.addAction(find_xle_by_serial_action)
         
+        # Add Find Files by Date Range action
+        find_files_by_date_range_action = QAction("Find Files by Date Range", self)
+        find_files_by_date_range_action.triggered.connect(self.open_find_files_by_date_range)
+        tools_menu.addAction(find_files_by_date_range_action)
+        
         # Update menu
         update_menu = menu_bar.addMenu("Update")
         
@@ -3385,6 +3390,31 @@ class MainWindow(QMainWindow):
                 self,
                 "Error",
                 f"Failed to launch Find XLE by Serial Number tool: {str(e)}"
+            )
+
+    def open_find_files_by_date_range(self):
+        """Launch the Find Files by Date Range tool"""
+        try:
+            # Get the path to the tools directory relative to the current file
+            tools_dir = Path(__file__).parent.parent.parent / "tools"
+            find_date_range_path = tools_dir / "find_files_by_date_range.py"
+            
+            if not find_date_range_path.exists():
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"Could not find Find Files by Date Range tool at {find_date_range_path}"
+                )
+                return
+                
+            # Launch the script as a subprocess
+            subprocess.Popen([sys.executable, str(find_date_range_path)])
+            
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to launch Find Files by Date Range tool: {str(e)}"
             )
 
     def _reload_database(self):

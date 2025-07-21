@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Cursor, SpanSelector
-from datetime import datetime
+from datetime import datetime, timedelta
 from PyQt5.QtWidgets import (
     QDialog, QHBoxLayout, QVBoxLayout, QGroupBox, QCheckBox, QDateTimeEdit,
     QLabel, QPushButton, QMessageBox, QProgressBar, QSpinBox, QWidget, QApplication,
@@ -145,6 +145,12 @@ class WaterLevelEditDialog(QDialog):
         self.selection_mode = False
         self.selecting_for = None
         self.click_cid = None
+        
+        # Add gap detection attributes (from water_level_plot_handler)
+        self.gap_highlight_enabled = True
+        self.gap_color = "#ffcccb"  # Light red background for gaps - more visible
+        self.gap_alpha = 0.7
+        self.gap_threshold = timedelta(minutes=20)  # Gap threshold (> 15 min sample interval)
 
     def _calculate_groups(self):
         """Pre-calculate groups for both baro flags from separate baro data"""
@@ -211,6 +217,70 @@ class WaterLevelEditDialog(QDialog):
         except Exception as e:
             logger.error(f"Error pre-calculating groups: {e}")
 
+    def identify_data_gaps(self, df: pd.DataFrame) -> List:
+        """
+        Identify gaps in time series data where the interval between samples exceeds the threshold.
+        
+        Args:
+            df: DataFrame with a 'timestamp_utc' column
+            
+        Returns:
+            List of (start_time, end_time) tuples representing gaps
+        """
+        if df is None or df.empty or 'timestamp_utc' not in df.columns:
+            return []
+            
+        # Sort by timestamp to ensure chronological order
+        sorted_df = df.sort_values('timestamp_utc').reset_index(drop=True)
+        
+        # Calculate time differences between consecutive points
+        time_diffs = sorted_df['timestamp_utc'].diff()
+        
+        # Find indices where the time difference exceeds the threshold
+        gap_indices = time_diffs[time_diffs > self.gap_threshold].index.tolist()
+        
+        gaps = []
+        for idx in gap_indices:
+            gap_start = sorted_df.loc[idx-1, 'timestamp_utc']
+            gap_end = sorted_df.loc[idx, 'timestamp_utc']
+            gaps.append((gap_start, gap_end))
+            
+        return gaps
+    
+    def highlight_data_gaps(self, gaps: List, y_min: float, y_max: float):
+        """
+        Add background highlighting for data gaps.
+        
+        Args:
+            gaps: List of (start_time, end_time) tuples representing gaps
+            y_min: Minimum y value for the plot
+            y_max: Maximum y value for the plot
+        """
+        if not gaps or not self.gap_highlight_enabled:
+            return
+            
+        for gap_start, gap_end in gaps:
+            # Add a rectangle spanning the gap with a distinctive color
+            rect = plt.Rectangle(
+                (mdates.date2num(gap_start), y_min),
+                mdates.date2num(gap_end) - mdates.date2num(gap_start),
+                y_max - y_min,
+                color=self.gap_color,
+                alpha=self.gap_alpha,
+                zorder=-100  # Place behind other plot elements
+            )
+            self.ax.add_patch(rect)
+    
+    def toggle_gap_highlighting(self, enabled: bool):
+        """Enable or disable the gap highlighting feature"""
+        self.gap_highlight_enabled = enabled
+        self.update_plot()  # Refresh the plot
+    
+    def toggle_gap_highlighting_from_checkbox(self, state):
+        """Toggle gap highlighting from checkbox state"""
+        show_gaps = (state == 2)  # 2 = checked, 0 = unchecked
+        self.toggle_gap_highlighting(show_gaps)
+
     def setup_ui(self):
         """Setup the dialog UI"""
         self.setWindowTitle("Edit Water Level Data")
@@ -275,20 +345,27 @@ class WaterLevelEditDialog(QDialog):
         self.show_master_baro = QCheckBox("Master Baro")
         self.show_baro_flag = QCheckBox("Baro Flags")
         self.show_level_flag = QCheckBox("Level Flags")
+        self.show_gaps_cb = QCheckBox("Show Data Gaps")
         
         # Set checked by default
         self.show_master_baro.setChecked(False)
         self.show_baro_flag.setChecked(True)
         self.show_level_flag.setChecked(True)
+        self.show_gaps_cb.setChecked(True)  # Enabled by default
+        
+        # Add tooltips
+        self.show_gaps_cb.setToolTip("Show colored background for data gaps")
         
         # Connect checkbox signals
         self.show_master_baro.stateChanged.connect(self.update_plot)
         self.show_baro_flag.stateChanged.connect(self.update_plot)
         self.show_level_flag.stateChanged.connect(self.update_plot)
+        self.show_gaps_cb.stateChanged.connect(self.toggle_gap_highlighting_from_checkbox)
         
         filters_layout.addWidget(self.show_master_baro)
         filters_layout.addWidget(self.show_baro_flag)
         filters_layout.addWidget(self.show_level_flag)
+        filters_layout.addWidget(self.show_gaps_cb)
         
         # Edit Tools section (compact)
         edit_group = QGroupBox("Edit Tools")
@@ -854,22 +931,22 @@ class WaterLevelEditDialog(QDialog):
             end_date = matplotlib.dates.num2date(xlim[1])
             total_days = (end_date - start_date).days
             
-            # Choose format based on timespan
+            # Choose format based on timespan - intelligent formatting
             if total_days <= 7:
-                # Less than a week - show dates with abbreviated month
+                # Less than a week - show month/day
                 date_format = '%m/%d'
                 locator = mdates.DayLocator(interval=1)
             elif total_days <= 31:
-                # Less than a month - show dates every few days
+                # Less than a month - show month/day
                 date_format = '%m/%d'
                 locator = mdates.DayLocator(interval=max(1, total_days // 8))
             elif total_days <= 365:
-                # Less than a year - show months
-                date_format = '%m/%d\n%Y'
+                # Less than a year - show month/year
+                date_format = '%m/%y'
                 locator = mdates.MonthLocator()
             else:
-                # More than a year - show years and months
-                date_format = '%m/%Y'
+                # More than a year - show year only
+                date_format = '%Y'
                 locator = mdates.MonthLocator(interval=max(1, total_days // 365))
             
             # Apply formatting
@@ -890,10 +967,13 @@ class WaterLevelEditDialog(QDialog):
             # Adjust layout to prevent label cutoff
             self.figure.tight_layout()
             
+            # Set up coordinate navigation to show full date/time
+            self.setup_coordinate_navigation()
+            
         except Exception as e:
             logger.warning(f"Error setting up date axis formatting: {e}")
             # Fallback to simple format
-            self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%y'))
+            self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
             self.ax.tick_params(axis='x', rotation=45)
     
     def _on_xlim_changed(self, ax):
@@ -909,6 +989,25 @@ class WaterLevelEditDialog(QDialog):
             self._format_timer.start(200)  # 200ms delay
         except Exception as e:
             logger.debug(f"Error in xlim changed callback: {e}")
+    
+    def setup_coordinate_navigation(self):
+        """Set up coordinate navigation to show full date/time in toolbar coordinates"""
+        try:
+            # Create a custom format function for coordinates
+            def format_coord(x, y):
+                # Convert matplotlib date number to datetime
+                try:
+                    dt = matplotlib.dates.num2date(x)
+                    date_str = dt.strftime('%Y-%m-%d %H:%M:%S')
+                    return f'Date: {date_str}, Level: {y:.3f}'
+                except:
+                    return f'x={x:.3f}, y={y:.3f}'
+            
+            # Apply the custom format to the axis
+            self.ax.format_coord = format_coord
+            
+        except Exception as e:
+            logger.warning(f"Error setting up coordinate navigation: {e}")
 
     def zoom_to_selected_data(self):
         """Zoom the plot to the selected date range without affecting other settings"""
@@ -1041,6 +1140,17 @@ class WaterLevelEditDialog(QDialog):
             # Set the plot limits if we have valid times
             if min_time is not None and max_time is not None:
                 self.ax.set_xlim(min_time, max_time)
+                
+            # Add gap highlighting if enabled
+            if hasattr(self, 'gap_highlight_enabled') and self.gap_highlight_enabled and not self.transducer_data.empty:
+                # Identify gaps in the data
+                gaps = self.identify_data_gaps(self.transducer_data)
+                
+                # Get y-axis limits for highlighting
+                y_min, y_max = self.ax.get_ylim()
+                
+                # Add gap highlighting
+                self.highlight_data_gaps(gaps, y_min, y_max)
                 
             # Set the title using well_number and cae information
             if 'well_number' in self.transducer_data.columns:
