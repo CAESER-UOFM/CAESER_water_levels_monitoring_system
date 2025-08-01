@@ -2106,6 +2106,15 @@ class WaterLevelEditDialog(QDialog):
                 self.apply_instance_edits(self.spike_helper.instance_id, 'spike_fix', changes)
                 
             self.ax.legend(loc='upper right')
+            # Update the entire plot to show changes with updated data
+            self.update_plot()
+            # Re-add preview lines
+            for i, preview_line in enumerate(self.spike_lines):
+                if preview_line:
+                    x_data = preview_line.get_xdata()
+                    y_data = preview_line.get_ydata()
+                    new_line, = self.ax.plot(x_data, y_data, "g-", linewidth=2, alpha=0.8)
+                    self.spike_lines[i] = new_line
             self.canvas.draw()
             QApplication.restoreOverrideCursor()
             # Create message box with proper parent and modal settings
