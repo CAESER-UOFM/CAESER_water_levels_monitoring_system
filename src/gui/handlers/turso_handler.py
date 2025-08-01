@@ -96,13 +96,15 @@ class TursoHandler:
                     'reduced_size': int(stats.get('target_size_mb', 0) * 1024 * 1024),
                     'total_records': (stats.get('target_water_level_count', 0) + 
                                     stats.get('target_manual_count', 0) + 
-                                    stats.get('target_telemetry_count', 0)),
+                                    stats.get('target_telemetry_count', 0) +
+                                    stats.get('target_master_baro_count', 0)),
                     'tables': {
                         'water_level_readings': stats.get('target_water_level_count', 0),
                         'manual_level_readings': stats.get('target_manual_count', 0),
                         'telemetry_level_readings': stats.get('target_telemetry_count', 0),
                         'rise_calculations': stats.get('target_rise_calculations_count', 0),
-                        'wells': stats.get('target_wells_count', 0)
+                        'wells': stats.get('target_wells_count', 0),
+                        'master_baro_readings': stats.get('target_master_baro_count', 0)
                     }
                 }
                 

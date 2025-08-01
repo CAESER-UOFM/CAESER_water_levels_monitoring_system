@@ -1,7 +1,7 @@
 {
-  "version": "1.0.0-dev",
-  "release_date": "2025-07-03T10:57:13.441974",
-  "description": "Development version",
+  "version": "1.1.0-dev",
+  "release_date": "2025-08-01T12:00:00.000000",
+  "description": "Added master baro table support for Turso uploads",
   "github_repo": "benjaled/water_levels_monitoring_-for_external_edits-",
   "auto_update": {
     "enabled": false,

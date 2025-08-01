@@ -41,6 +41,7 @@ class MobileDatabaseReducer:
                 self._create_reduced_telemetry_level_readings_table(target_cursor)
                 self._create_reduced_well_statistics_table(target_cursor)
                 self._create_reduced_rise_calculations_table(target_cursor)
+                self._create_reduced_master_baro_table(target_cursor)
                 
                 # Copy essential data
                 self._copy_wells_data(source_conn, target_conn, well_number)
@@ -49,6 +50,7 @@ class MobileDatabaseReducer:
                 self._copy_telemetry_level_data(source_conn, target_conn, well_number)
                 self._calculate_and_copy_well_statistics(source_conn, target_conn, well_number)
                 self._copy_rise_calculations_data(source_conn, target_conn, well_number)
+                self._copy_master_baro_data(source_conn, target_conn, well_number)
                 
                 target_conn.commit()
                 
@@ -147,6 +149,26 @@ class MobileDatabaseReducer:
                 annual_rate REAL,
                 notes TEXT
             )
+        ''')
+    
+    def _create_reduced_master_baro_table(self, cursor: sqlite3.Cursor):
+        """Create master baro readings table matching Turso schema for plotting"""
+        cursor.execute('''
+            CREATE TABLE master_baro_readings (
+                timestamp_utc TEXT,
+                julian_timestamp REAL,
+                pressure REAL,
+                temperature REAL,
+                source_barologgers TEXT,
+                processing_date TEXT,
+                notes TEXT
+            )
+        ''')
+        
+        # Create optimized index for timestamp queries
+        cursor.execute('''
+            CREATE INDEX idx_master_baro_timestamp 
+            ON master_baro_readings (timestamp_utc)
         ''')
     
     def _copy_wells_data(self, source_conn: sqlite3.Connection, target_conn: sqlite3.Connection, well_number: Optional[str]):
@@ -436,6 +458,77 @@ class MobileDatabaseReducer:
         else:
             logger.info("No RISE calculation data to copy")
     
+    def _copy_master_baro_data(self, source_conn: sqlite3.Connection, target_conn: sqlite3.Connection, well_number: Optional[str]):
+        """Copy master barometric readings for plotting support"""
+        source_cursor = source_conn.cursor()
+        target_cursor = target_conn.cursor()
+        
+        # Check if master_baro_readings table exists
+        source_cursor.execute("""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name='master_baro_readings'
+        """)
+        if not source_cursor.fetchone():
+            logger.info("No master_baro_readings table found in source database")
+            return
+        
+        # If well_number is specified, we need to get the time range from water level data
+        if well_number:
+            # Get time range for the specific well
+            source_cursor.execute("""
+                SELECT MIN(timestamp_utc), MAX(timestamp_utc)
+                FROM water_level_readings
+                WHERE well_number = ?
+            """, (well_number,))
+            time_range = source_cursor.fetchone()
+            
+            if not time_range or not time_range[0]:
+                logger.info(f"No water level data found for well {well_number}")
+                return
+            
+            min_time, max_time = time_range
+            
+            # Copy master baro data for this time range
+            query = '''
+                SELECT timestamp_utc, julian_timestamp, pressure, temperature,
+                       source_barologgers, processing_date, notes
+                FROM master_baro_readings
+                WHERE timestamp_utc BETWEEN ? AND ?
+                ORDER BY julian_timestamp
+            '''
+            params = (min_time, max_time)
+        else:
+            # Copy all master baro data
+            query = '''
+                SELECT timestamp_utc, julian_timestamp, pressure, temperature,
+                       source_barologgers, processing_date, notes
+                FROM master_baro_readings
+                ORDER BY julian_timestamp
+            '''
+            params = []
+        
+        source_cursor.execute(query, params)
+        
+        # Process in batches to manage memory
+        batch_size = 10000
+        total_copied = 0
+        
+        while True:
+            batch = source_cursor.fetchmany(batch_size)
+            if not batch:
+                break
+            
+            target_cursor.executemany('''
+                INSERT INTO master_baro_readings (timestamp_utc, julian_timestamp, pressure, temperature,
+                                                source_barologgers, processing_date, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', batch)
+            
+            total_copied += len(batch)
+            logger.info(f"Copied {total_copied} master baro readings...")
+        
+        logger.info(f"Total master baro readings copied: {total_copied}")
+    
     def get_database_size_info(self) -> dict:
         """Get size information about source and target databases"""
         info = {}
@@ -481,6 +574,17 @@ class MobileDatabaseReducer:
                     info['source_rise_calculations_count'] = cursor.fetchone()[0]
                 else:
                     info['source_rise_calculations_count'] = 0
+                
+                # Check for master baro data
+                cursor.execute("""
+                    SELECT name FROM sqlite_master 
+                    WHERE type='table' AND name='master_baro_readings'
+                """)
+                if cursor.fetchone():
+                    cursor.execute("SELECT COUNT(*) FROM master_baro_readings")
+                    info['source_master_baro_count'] = cursor.fetchone()[0]
+                else:
+                    info['source_master_baro_count'] = 0
         
         # Target database info
         if self.target_db_path.exists():
@@ -518,6 +622,12 @@ class MobileDatabaseReducer:
                     info['target_wells_count'] = cursor.fetchone()[0]
                 except:
                     info['target_wells_count'] = 0
+                
+                try:
+                    cursor.execute("SELECT COUNT(*) FROM master_baro_readings")
+                    info['target_master_baro_count'] = cursor.fetchone()[0]
+                except:
+                    info['target_master_baro_count'] = 0
         
         return info
 
