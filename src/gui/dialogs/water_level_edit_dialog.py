@@ -2047,10 +2047,13 @@ class WaterLevelEditDialog(QDialog):
                 data_type_label = 'water level'
             
             # For each pair, interpolate and update data
-            for i, ((start_time, start_level), (end_time, end_level)) in enumerate(pairs):
+            for i, ((start_time, start_value), (end_time, end_value)) in enumerate(pairs):
+                # Log the values for debugging
+                logger.info(f"Processing pair {i+1}: {data_type_label} interpolation from {start_value:.2f} to {end_value:.2f}")
+                
                 if start_time > end_time:
                     start_time, end_time = end_time, start_time
-                    start_level, end_level = end_level, start_level
+                    start_value, end_value = end_value, start_value
                 between_mask = (self.transducer_data['timestamp_utc'] > start_time) & \
                                (self.transducer_data['timestamp_utc'] < end_time)
                 start_point_mask = self.transducer_data['timestamp_utc'] == start_time
@@ -2066,9 +2069,9 @@ class WaterLevelEditDialog(QDialog):
                 for j in range(num_intervals + 1):
                     t = j / num_intervals
                     interp_time = start_time + pd.Timedelta(seconds=t * time_diff)
-                    interp_level = start_level + t * (end_level - start_level)
+                    interp_value = start_value + t * (end_value - start_value)
                     time_values.append(interp_time)
-                    level_values.append(interp_level)
+                    level_values.append(interp_value)
                 interp_df = pd.DataFrame({
                     'timestamp_utc': time_values,
                     corrected_column: level_values
@@ -2085,6 +2088,8 @@ class WaterLevelEditDialog(QDialog):
                         corrected_column: level_values[closest_idx],
                         flag_column: 'spike_corrected'
                     }
+                    # Debug logging
+                    logger.debug(f"Setting {corrected_column} at index {idx} to {level_values[closest_idx]:.3f}")
                     all_affected_indices.append(idx)
                 
                 # Draw a preview line for this pair
