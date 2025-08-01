@@ -14,10 +14,9 @@ from PyQt5.QtWidgets import (
     QAction, QDialog, QProgressDialog, QMainWindow, QInputDialog, QTabWidget, 
     QWidget, QVBoxLayout, QLabel, QHBoxLayout, QComboBox, 
     QPushButton, QFileDialog, QMessageBox, QSizePolicy, QMenu,
-    QFrame  # Added QFrame to the imports
+    QFrame, QApplication  # Added QFrame and QApplication to the imports
 )
 from PyQt5.QtCore import QTimer, Qt, QUrl, QEvent
-from PyQt5.QtWidgets import QApplication
 import json
 from googleapiclient.http import MediaIoBaseDownload
 from .handlers.auto_update_handler import AutoUpdateHandler
@@ -48,8 +47,10 @@ from .handlers.progress_dialog_handler import progress_dialog
 from .handlers.style_handler import StyleHandler  # Import the style handler
 from .dialogs.application_help_system import ApplicationHelpSystem
 from .handlers.auto_updater import AutoUpdater
+from .handlers.shared_drive_updater import SharedDriveUpdater
 from .dialogs.feedback_dialog import FeedbackDialog
 from .handlers.version_checker import VersionChecker
+from .dialogs.shared_drive_settings_dialog import SharedDriveSettingsDialog
 from .dialogs.unified_credentials_dialog import UnifiedCredentialsDialog
 from .dialogs.draft_selection_dialog import DraftSelectionDialog
 
@@ -130,6 +131,10 @@ class MainWindow(QMainWindow):
         self.auto_updater = None
         self._setup_auto_updater()
         
+        # Initialize shared drive updater system
+        self.shared_drive_updater = None
+        self._setup_shared_drive_updater()
+        
         # Apply application-wide styling
         self.apply_application_styling()
         
@@ -173,15 +178,55 @@ class MainWindow(QMainWindow):
         
         # Initialize Google Drive with service account (no user login needed)
         self.progress_dialog.setValue(20)
-        self.progress_dialog.setLabelText("Initializing Google Drive...")
-        # Pass force=True to ensure authentication happens
-        QTimer.singleShot(100, lambda: self.authenticate_google_drive(force=True))
+        self.progress_dialog.setLabelText("Checking Google Drive connection...")
+        # Check for existing authentication without forcing browser popup
+        QTimer.singleShot(100, self._check_drive_and_continue_init)
         
         self.progress_dialog.setValue(40)
         self.progress_dialog.setLabelText("Setting up application menu...")
+    
+    def _check_drive_and_continue_init(self):
+        """Check Google Drive connection and show dialog if needed"""
+        # Try to authenticate with Google Drive (non-interactively)
+        drive_authenticated = self.authenticate_google_drive(interactive=False)
         
-        # Schedule the progress dialog to close and load database
-        QTimer.singleShot(500, self._finish_initialization)
+        if not drive_authenticated:
+            # Close progress dialog first
+            if hasattr(self, 'progress_dialog') and self.progress_dialog:
+                self.progress_dialog.close()
+            
+            # Show the connection choice dialog  
+            reply = QMessageBox.question(
+                self,
+                "Google Drive Connection",
+                "Google Drive is not connected. You can:\n\n"
+                "• Connect to Google Drive for cloud features\n"
+                "• Continue in offline mode (local features only)\n\n"
+                "Would you like to connect to Google Drive now?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            
+            if reply == QMessageBox.Yes:
+                # User wants to connect - show authentication flow
+                if self.authenticate_google_drive(interactive=True):
+                    # Authentication successful - show success message
+                    QMessageBox.information(
+                        self,
+                        "Connected Successfully",
+                        f"Successfully connected to Google Drive as:\n{self.drive_service.get_user_email()}\n\n"
+                        "You now have access to cloud features."
+                    )
+                else:
+                    QMessageBox.information(
+                        self,
+                        "Offline Mode",
+                        "Authentication was not completed. The application will run in offline mode.\n\n"
+                        "You can connect to Google Drive later through Settings > Google Drive Settings."
+                    )
+        
+        # Continue with initialization regardless of Google Drive status
+        QTimer.singleShot(100, self._finish_initialization)
     
     def show_login_dialog(self):
         """Show the login dialog and handle authentication"""
@@ -268,23 +313,39 @@ class MainWindow(QMainWindow):
                 )
                 return False
         
-        # Authenticate with Google Drive
-        if not self.authenticate_google_drive():
+        # Try to authenticate with Google Drive (non-interactively)
+        drive_authenticated = self.authenticate_google_drive(interactive=False)
+        
+        if not drive_authenticated:
+            # Show a more user-friendly dialog offering to connect or work offline
             reply = QMessageBox.question(
                 self,
-                "Authentication Error",
-                "Failed to authenticate with Google Drive. This may be due to network issues or invalid credentials.\n\n"
-                "The application requires proper authentication to continue.",
-                QMessageBox.Retry | QMessageBox.Cancel,
-                QMessageBox.Retry
+                "Google Drive Connection",
+                "Google Drive is not connected. You can:\n\n"
+                "• Connect to Google Drive for cloud features\n"
+                "• Continue in offline mode (local features only)\n\n"
+                "Would you like to connect to Google Drive now?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
             )
             
-            if reply == QMessageBox.Retry:
-                return self.handle_drive_login()  # Retry the login process
+            if reply == QMessageBox.Yes:
+                # User wants to connect - show authentication flow
+                if not self.authenticate_google_drive(interactive=True):
+                    QMessageBox.information(
+                        self,
+                        "Offline Mode",
+                        "Authentication was not completed. The application will run in offline mode.\n\n"
+                        "You can connect to Google Drive later through Settings > Google Drive Settings."
+                    )
+                    drive_authenticated = False
+                else:
+                    drive_authenticated = True
             else:
-                return False
+                # User chose to work offline
+                drive_authenticated = False
         
-        # Successfully authenticated with Google Drive, now log in as admin
+        # Log in as admin (works whether Google Drive is connected or not)
         success, message = self.user_auth_service.login("admin", "admin")
         
         if success:
@@ -292,15 +353,21 @@ class MainWindow(QMainWindow):
             self.user_auth_service.is_guest = False
             # Update status bar with actual username
             self.update_user_status()
-            QMessageBox.information(self, "Login Successful", 
-                                  "Successfully connected to CAESER Google Drive. You now have full access to the application.")
+            
+            if drive_authenticated:
+                QMessageBox.information(self, "Login Successful", 
+                                      "Successfully connected to CAESER Google Drive. You now have full access to the application.")
+            else:
+                QMessageBox.information(self, "Login Successful", 
+                                      "Logged in successfully. Running in offline mode - local features only.\n\n"
+                                      "Connect to Google Drive through Settings > Google Drive Settings for cloud features.")
             return True
         else:
             # This should not happen if the default admin user exists
             QMessageBox.warning(self, "Login Error", 
                               "Failed to log in as administrator. " + message)
             
-            # Authentication required - no guest mode
+            # Authentication required - no guest mode  
             QMessageBox.critical(
                 self,
                 "Authentication Required",
@@ -309,11 +376,11 @@ class MainWindow(QMainWindow):
             )
             return False
     
-    def authenticate_google_drive(self, force=False):
+    def authenticate_google_drive(self, force=False, interactive=True):
         """Authenticate with Google Drive and set up database handler"""
         try:
-            # Authenticate with Google Drive (pass the force parameter to override environment variable)
-            if self.drive_service.authenticate(force=force):
+            # Authenticate with Google Drive
+            if self.drive_service.authenticate(force=force, interactive=interactive):
                 # Get folder ID from settings
                 folder_id = self.settings_handler.get_setting("google_drive_folder_id", "")
                 if not folder_id:
@@ -2819,6 +2886,19 @@ class MainWindow(QMainWindow):
         show_version_action.triggered.connect(self.show_version_info)
         update_menu.addAction(show_version_action)
         
+        # Add separator for shared drive updates
+        update_menu.addSeparator()
+        
+        # Check for shared drive updates action
+        check_shared_updates_action = QAction("Check Shared Drive Updates", self)
+        check_shared_updates_action.triggered.connect(self.check_for_shared_updates)
+        update_menu.addAction(check_shared_updates_action)
+        
+        # Shared drive settings action
+        shared_drive_settings_action = QAction("Shared Drive Settings", self)
+        shared_drive_settings_action.triggered.connect(self.open_shared_drive_settings)
+        update_menu.addAction(shared_drive_settings_action)
+        
         # Add separator and credentials setup
         update_menu.addSeparator()
         
@@ -3924,6 +4004,23 @@ class MainWindow(QMainWindow):
                     
         except Exception as e:
             logger.error(f"Failed to setup auto-updater: {e}")
+    
+    def _setup_shared_drive_updater(self):
+        """Setup the shared drive updater system"""
+        try:
+            # Determine app root directory
+            app_root = Path(__file__).parent.parent.parent
+            
+            # Get shared drive path from settings
+            shared_drive_path = self.settings_handler.get_setting("shared_drive_path", "")
+            
+            # Initialize shared drive updater
+            self.shared_drive_updater = SharedDriveUpdater(app_root, shared_drive_path)
+            
+            logger.info("Shared drive updater initialized successfully")
+            
+        except Exception as e:
+            logger.error(f"Failed to setup shared drive updater: {e}")
             
     def check_for_updates(self):
         """Check for application updates"""
@@ -3986,75 +4083,62 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
         except Exception as e:
             logger.error(f"Error showing version info: {e}")
             QMessageBox.critical(self, "Error", f"Failed to show version info: {str(e)}")
+    
+    def check_for_shared_updates(self):
+        """Check for application updates from shared drive"""
+        if not self.shared_drive_updater:
+            QMessageBox.warning(self, "Shared Drive Updates", 
+                              "Shared drive updater not initialized.\n\n"
+                              "Please configure the shared drive path in Settings.")
+            return
+            
+        try:
+            # Check for updates
+            update_info = self.shared_drive_updater.check_for_updates()
+            
+            if update_info:
+                # Update available - show prompt
+                if self.shared_drive_updater.prompt_for_update(update_info, self):
+                    success = self.shared_drive_updater.apply_update(update_info, self)
+                    if success:
+                        # Update process started - app will close
+                        QApplication.quit()
+            else:
+                # No updates available or shared drive not accessible
+                status_message = self.shared_drive_updater.get_update_status_message()
+                QMessageBox.information(self, "No Updates Available", 
+                                      f"No updates found.\n\n{status_message}")
+                
+        except Exception as e:
+            logger.error(f"Shared drive update check failed: {e}")
+            QMessageBox.critical(self, "Update Error", 
+                               f"Error checking for shared drive updates:\n{str(e)}")
+    
+    def open_shared_drive_settings(self):
+        """Open shared drive settings dialog"""
+        try:
+            dialog = SharedDriveSettingsDialog(
+                self.settings_handler, 
+                self.shared_drive_updater, 
+                self
+            )
+            
+            if dialog.exec_() == QDialog.Accepted:
+                # Settings were saved, reinitialize the shared drive updater
+                self._setup_shared_drive_updater()
+                logger.info("Shared drive settings updated")
+                
+        except Exception as e:
+            logger.error(f"Error opening shared drive settings: {e}")
+            QMessageBox.critical(self, "Error", 
+                               f"Error opening shared drive settings:\n{str(e)}")
             
     def _check_credentials_on_startup(self):
         """Check for Google Drive credentials on startup"""
         try:
-            if not UnifiedCredentialsDialog.check_credentials_configured(self.settings_handler):
-                logger.info("Google Drive credentials not configured, showing setup dialog")
-                
-                # Show info message first
-                reply = QMessageBox.question(self, "Google Drive Setup", 
-                                           "Google Drive setup is required for cloud features.\n\n" +
-                                           "Would you like to configure it now?\n\n" +
-                                           "• Yes: Open setup dialog\n" +
-                                           "• No: Continue with limited functionality",
-                                           QMessageBox.Yes | QMessageBox.No,
-                                           QMessageBox.Yes)
-                
-                if reply == QMessageBox.Yes:
-                    dialog = UnifiedCredentialsDialog(self.settings_handler, self)
-                    result = dialog.exec_()
-                    
-                    if result == QDialog.Accepted:
-                        # Settings were updated, reload Google Drive components
-                        try:
-                            # Reinitialize Google Drive service
-                            if hasattr(self, 'drive_service'):
-                                logger.info("Force re-authenticating Google Drive service")
-                                auth_result = self.drive_service.authenticate(force=True)
-                                logger.info(f"Google Drive authentication result: {auth_result}")
-                                logger.info(f"Google Drive service authenticated: {self.drive_service.authenticated}")
-                            
-                            # Reinitialize cloud database handler with new settings
-                            if self.drive_service.authenticated:
-                                logger.info("Reinitializing Google Drive components after credential setup")
-                                
-                                # Initialize Cloud database handler
-                                self.cloud_db_handler = CloudDatabaseHandler(self.drive_service, self.settings_handler)
-                                # Set database manager for XLE file operations
-                                self.cloud_db_handler.set_database_manager(self.db_manager)
-                                
-                                # Initialize Google Drive database handler
-                                if not hasattr(self, 'drive_db_handler') or self.drive_db_handler is None:
-                                    self.drive_db_handler = GoogleDriveDatabaseHandler(self.settings_handler)
-                                self.drive_db_handler.authenticate()
-                                
-                                # Set Google Drive handler for database manager
-                                self.db_manager.set_google_drive_handler(self.drive_db_handler)
-                                
-                                logger.info("Google Drive components reinitialized successfully")
-                                
-                                # Reload databases after successful component initialization
-                                logger.info("Reloading databases after credential setup")
-                                QTimer.singleShot(100, self._load_databases)
-                                
-                                # Update feedback button visibility
-                                self._update_feedback_button_visibility()
-                            else:
-                                logger.warning("Google Drive service not authenticated after credential setup")
-                                # Still reload databases to show local ones
-                                logger.info("Reloading local databases only")
-                                QTimer.singleShot(100, self._load_databases)
-                                
-                        except Exception as e:
-                            logger.error(f"Error reinitializing Google Drive components: {e}")
-                else:
-                    logger.info("User chose to skip credential setup")
-            else:
-                logger.info("Google Drive credentials configured")
-                # Update feedback button visibility since credentials are already configured
-                self._update_feedback_button_visibility()
+            # Skip this check since we now handle OAuth authentication properly in the main startup flow
+            logger.info("Credential check skipped - OAuth authentication handled in main startup flow")
+            return
                 
         except Exception as e:
             logger.error(f"Error checking credentials: {e}")
@@ -4071,10 +4155,11 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
                     # Reinitialize Google Drive service completely
                     if hasattr(self, 'drive_service'):
                         logger.info("Reinitializing Google Drive service with new credentials")
-                        # Create a fresh Google Drive service instance with updated settings
+                        # Reset and recreate the singleton instance
                         from src.gui.handlers.google_drive_service import GoogleDriveService
-                        self.drive_service = GoogleDriveService(self.settings_handler)
-                        auth_result = self.drive_service.authenticate(force=True)
+                        GoogleDriveService.reset_instance()
+                        self.drive_service = GoogleDriveService.get_instance(self.settings_handler)
+                        auth_result = self.drive_service.authenticate(force=True, interactive=True)
                         logger.info(f"Google Drive authentication result: {auth_result}")
                         logger.info(f"Google Drive service authenticated: {self.drive_service.authenticated}")
                     

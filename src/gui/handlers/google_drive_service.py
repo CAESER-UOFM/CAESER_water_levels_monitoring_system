@@ -2,15 +2,17 @@ import os
 import logging
 import json
 from pathlib import Path
-from google.oauth2 import service_account
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 logger = logging.getLogger(__name__)
 
 class GoogleDriveService:
     """
-    Centralized service for Google Drive authentication and operations using Service Account.
-    Provides automatic authentication without user interaction.
+    Centralized service for Google Drive authentication and operations using OAuth2.
+    Provides user-based authentication with automatic token refresh.
     """
     
     SCOPES = ['https://www.googleapis.com/auth/drive']
@@ -24,6 +26,11 @@ class GoogleDriveService:
             cls._instance = cls(settings_handler)
         return cls._instance
     
+    @classmethod
+    def reset_instance(cls):
+        """Reset the singleton instance (useful for re-initialization)"""
+        cls._instance = None
+    
     def __init__(self, settings_handler):
         """Initialize the Google Drive service."""
         if GoogleDriveService._instance is not None:
@@ -33,97 +40,136 @@ class GoogleDriveService:
         self.credentials = None
         self.service = None
         self.authenticated = False
-        self.service_account_email = None
+        self.user_email = None
         
-    def authenticate(self, force=False):
-        """Authenticate with Google Drive using Service Account credentials."""
+    def authenticate(self, force=False, interactive=True):
+        """
+        Authenticate with Google Drive using OAuth2 credentials.
+        
+        Args:
+            force: Force re-authentication even if already authenticated
+            interactive: If False, won't open browser - just checks for existing valid token
+        """
         # Only proceed with authentication if explicitly forced or not already authenticated
         if self.authenticated and not force:
             return True
             
         try:
-            # Get the service account key file path from settings
-            service_account_path = self.settings_handler.get_setting("service_account_key_path", "")
-            logger.debug(f"DEBUG: service_account_key_path from settings: '{service_account_path}'")
+            # Get paths for OAuth files
+            app_dir = Path(__file__).parent.parent.parent.parent
+            config_dir = app_dir / "config"
             
-            # If not set in settings, try to find the file in config directory
-            if not service_account_path or not os.path.exists(service_account_path):
-                logger.warning("DEBUG: Service account key not found in settings, searching config directory")
-                # Use app directory instead of current working directory
-                app_dir = Path(__file__).parent.parent.parent.parent
-                config_dir = app_dir / "config"
-                logger.warning(f"DEBUG: Checking config directory: {config_dir}")
-                logger.warning(f"DEBUG: Config directory exists: {config_dir.exists()}")
-                
-                if config_dir.exists():
-                    # List all files in config directory for debugging
-                    all_files = list(config_dir.glob("*"))
-                    logger.warning(f"DEBUG: All files in config directory: {[f.name for f in all_files]}")
-                    
-                    # Look for service account JSON files (exclude client_secret files)
-                    service_account_files = [
-                        f for f in config_dir.glob("*.json") 
-                        if not f.name.startswith("client_secret") and "service_account" in f.name.lower()
-                    ]
-                    logger.warning(f"DEBUG: Found explicit service account files: {[f.name for f in service_account_files]}")
-                    
-                    # If no explicit service account files, look for any JSON files that might be service accounts
-                    if not service_account_files:
-                        potential_files = [
-                            f for f in config_dir.glob("*.json")
-                            if not f.name.startswith("client_secret")
-                        ]
-                        logger.warning(f"DEBUG: Checking potential service account files: {[f.name for f in potential_files]}")
-                        
-                        # Check if any of these are service account files by looking at content
-                        for file_path in potential_files:
-                            try:
-                                with open(file_path, 'r') as f:
-                                    data = json.load(f)
-                                    if data.get('type') == 'service_account':
-                                        service_account_files.append(file_path)
-                                        logger.warning(f"DEBUG: Found service account file by content: {file_path.name}")
-                            except Exception as e:
-                                logger.warning(f"DEBUG: Error checking file {file_path.name}: {e}")
-                                continue
-                    
-                    if service_account_files:
-                        service_account_path = str(service_account_files[0])
-                        logger.warning(f"DEBUG: Using service account file: {service_account_path}")
-                        # Update the setting for future use
-                        self.settings_handler.set_setting("service_account_key_path", service_account_path)
+            # Token file stores the user's access and refresh tokens
+            token_path = config_dir / 'token_oauth.json'
+            
+            # Get the OAuth client secret file path from settings or use default
+            client_secret_path = self.settings_handler.get_setting("oauth_client_secret_path", "")
+            if not client_secret_path or not os.path.exists(client_secret_path):
+                # Try to find OAuth client secret file in config directory
+                client_secret_path = config_dir / 'client_secret_oauth.json'
+                if not client_secret_path.exists():
+                    # Look for any client_secret file
+                    client_secret_files = list(config_dir.glob("client_secret*.json"))
+                    if client_secret_files:
+                        # Exclude old service account files
+                        oauth_files = [f for f in client_secret_files if not self._is_service_account_file(f)]
+                        if oauth_files:
+                            client_secret_path = oauth_files[0]
+                            logger.info(f"Found OAuth client secret file: {client_secret_path.name}")
+                        else:
+                            logger.error("No OAuth client secret file found in config directory")
+                            self.authenticated = False
+                            return False
                     else:
-                        logger.warning("DEBUG: No service account files found in config directory")
+                        logger.error("No client secret files found in config directory")
+                        self.authenticated = False
+                        return False
             else:
-                logger.warning(f"DEBUG: Using service account path from settings: {service_account_path}")
+                client_secret_path = Path(client_secret_path)
             
-            # If we still don't have a valid service account file
-            if not service_account_path or not os.path.exists(service_account_path):
-                logger.error("DEBUG: Service account key file not found - authentication should fail")
-                self.authenticated = False
-                return False
+            # Update the setting for future use
+            self.settings_handler.set_setting("oauth_client_secret_path", str(client_secret_path))
             
-            # Load service account credentials
-            self.credentials = service_account.Credentials.from_service_account_file(
-                service_account_path,
-                scopes=self.SCOPES
-            )
+            # Check if token already exists
+            if token_path.exists():
+                self.credentials = Credentials.from_authorized_user_file(str(token_path), self.SCOPES)
+                logger.debug("Found existing OAuth token")
             
-            # Get service account email for logging
-            with open(service_account_path, 'r') as f:
-                service_account_info = json.load(f)
-                self.service_account_email = service_account_info.get('client_email')
+            # If there are no (valid) credentials available
+            if not self.credentials or not self.credentials.valid:
+                if self.credentials and self.credentials.expired and self.credentials.refresh_token:
+                    logger.info("OAuth token expired, refreshing...")
+                    try:
+                        self.credentials.refresh(Request())
+                        # Save the refreshed token
+                        with open(token_path, 'w') as token:
+                            token.write(self.credentials.to_json())
+                        logger.info("OAuth token refreshed successfully")
+                    except Exception as e:
+                        logger.warning(f"Token refresh failed: {e}")
+                        # If refresh fails and we're not interactive, return False
+                        if not interactive:
+                            self.authenticated = False
+                            return False
+                        # If interactive, we'll fall through to the OAuth flow below
+                        self.credentials = None
+                else:
+                    # No valid token - need to authenticate
+                    if not interactive:
+                        logger.info("No valid OAuth token found and interactive=False")
+                        self.authenticated = False
+                        return False
+                    
+                    logger.info("No valid OAuth token found, starting authentication flow...")
+                    
+                    flow = InstalledAppFlow.from_client_secrets_file(
+                        str(client_secret_path), self.SCOPES)
+                    
+                    # Run the OAuth flow - this will open a browser
+                    logger.info("Opening browser for Google authentication...")
+                    try:
+                        self.credentials = flow.run_local_server(
+                            port=0,
+                            success_message='Authentication successful! You can close this window and return to the application.'
+                        )
+                    except Exception as e:
+                        logger.error(f"OAuth flow error: {e}")
+                        logger.error("Please ensure you have a web browser available and try again.")
+                        self.authenticated = False
+                        return False
+                    
+                    # Save the credentials for next run
+                    with open(token_path, 'w') as token:
+                        token.write(self.credentials.to_json())
+                    logger.info(f"OAuth token saved to {token_path}")
             
             # Build the Drive service
             self.service = build('drive', 'v3', credentials=self.credentials)
             self.authenticated = True
             
-            logger.info(f"Successfully authenticated with Google Drive using service account: {self.service_account_email}")
+            # Get user info
+            try:
+                about = self.service.about().get(fields="user").execute()
+                self.user_email = about.get('user', {}).get('emailAddress', 'Unknown')
+                logger.info(f"Successfully authenticated with Google Drive as: {self.user_email}")
+            except Exception as e:
+                logger.warning(f"Could not retrieve user email: {e}")
+                self.user_email = "Authenticated User"
+            
             return True
             
         except Exception as e:
-            logger.error(f"Service account authentication error: {e}")
+            logger.error(f"OAuth authentication error: {e}")
             self.authenticated = False
+            return False
+    
+    def _is_service_account_file(self, file_path):
+        """Check if a JSON file is a service account file"""
+        try:
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+                return data.get('type') == 'service_account'
+        except:
             return False
     
     def get_service(self):
@@ -138,6 +184,34 @@ class GoogleDriveService:
                 return None
         return self.service
         
+    def get_user_email(self):
+        """Get the authenticated user's email address"""
+        return self.user_email
+    
     def get_service_account_email(self):
-        """Get the service account email address"""
-        return self.service_account_email
+        """Legacy method for compatibility - returns user email instead"""
+        return self.get_user_email()
+    
+    def revoke_authentication(self):
+        """Revoke the stored OAuth token"""
+        try:
+            # Get token path
+            app_dir = Path(__file__).parent.parent.parent.parent
+            token_path = app_dir / "config" / 'token_oauth.json'
+            
+            # Delete token file if it exists
+            if token_path.exists():
+                token_path.unlink()
+                logger.info("OAuth token revoked successfully")
+            
+            # Reset authentication state
+            self.credentials = None
+            self.service = None
+            self.authenticated = False
+            self.user_email = None
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error revoking OAuth token: {e}")
+            return False

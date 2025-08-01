@@ -92,7 +92,8 @@ class SettingsHandler:
             "google_drive_xle_folder_id": "1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW",  # Default folder ID for XLE files
             "google_drive_projects_folder_id": "1JjiXRblLAf6rdhiOzrAaYik8bjNpBc9s",  # Default Projects folder ID
             "google_drive_secret_path": default_secret_path,  # Default client secret path (legacy OAuth)
-            "service_account_key_path": default_service_account_path,  # Service account key path
+            "oauth_client_secret_path": str(app_dir / "config" / "client_secret_oauth.json"),  # OAuth client secret path
+            "service_account_key_path": default_service_account_path,  # Service account key path (deprecated)
             "transducer_watch_folder": str(app_dir),  # Add transducer watch folder default
             "barologger_watch_folder": str(app_dir),  # Add barologger watch folder default
             "water_level_watch_folder": str(app_dir),  # Add water level watch folder default

@@ -93,7 +93,7 @@ class AutoUpdateHandler:
             consolidation_success = consolidator.consolidate_field_data(consolidation_progress)
             
             if consolidation_success:
-                logger.info("AUTO_SYNC_DEBUG: Field data consolidation completed - new files organized by month")
+                logger.info("AUTO_SYNC_DEBUG: Field data consolidation completed - metadata updated in real-time")
             else:
                 logger.warning("AUTO_SYNC_DEBUG: Field data consolidation had issues, continuing with existing data")
             
@@ -256,7 +256,7 @@ class AutoUpdateHandler:
             consolidation_success = consolidator.consolidate_field_data(consolidation_progress)
             
             if consolidation_success:
-                logger.info("Field data consolidation completed - new files organized by month")
+                logger.info("Field data consolidation completed - metadata updated in real-time")
             else:
                 logger.warning("Field data consolidation had issues, continuing with existing data")
             
@@ -1198,8 +1198,8 @@ class AutoUpdateHandler:
         """
         try:
             # Get cloud database handler and XLE manager
-            if hasattr(self, 'main_window') and hasattr(self.main_window, 'cloud_db_handler'):
-                cloud_handler = self.main_window.cloud_db_handler
+            if hasattr(self.parent, 'cloud_db_handler'):
+                cloud_handler = self.parent.cloud_db_handler
                 if cloud_handler and cloud_handler.xle_manager:
                     # Get project name
                     project_name = None

@@ -7,6 +7,12 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QKeySequence
 import sqlite3
+from datetime import datetime
+try:
+    import pytz
+    PYTZ_AVAILABLE = True
+except ImportError:
+    PYTZ_AVAILABLE = False
 from ...database.manager import DatabaseManager
 from ..handlers.style_handler import StyleHandler  # Import the style handler
 
@@ -23,6 +29,10 @@ class EditTablesDialog(QDialog):
         self.current_table = ""  # Current table name
         self.current_well = ""  # Current well number (for water_level_readings)
         self.column_names = []  # Column names for the current table
+        self.display_column_names = []  # Display column names including calculated Memphis time columns
+        self.datetime_column_indices = {}  # Maps original datetime column indices to Memphis time column indices
+        self.well_number_column_indices = {}  # Maps original well_number column indices to CAE number column indices
+        self._cae_number_cache = {}  # Cache for well_number -> cae_number mappings
         
         self.setup_ui()
         
@@ -282,12 +292,159 @@ class EditTablesDialog(QDialog):
                 cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
                 self.total_records = cursor.fetchone()[0]
                 
+                # Create display column names with Memphis time columns and CAE numbers
+                self.display_column_names, self.datetime_column_indices, self.well_number_column_indices = self._create_display_columns(table_name, self.column_names)
+                
                 # Set up table structure
-                self.table_widget.setColumnCount(len(self.column_names))
-                self.table_widget.setHorizontalHeaderLabels(self.column_names)
+                self.table_widget.setColumnCount(len(self.display_column_names))
+                self.table_widget.setHorizontalHeaderLabels(self.display_column_names)
+                
+                # Style calculated column headers (Memphis time and CAE numbers)
+                self._style_calculated_headers()
                 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error getting table structure: {str(e)}")
+    
+    def _create_display_columns(self, table_name, original_columns):
+        """Create display column names including Memphis time columns and CAE number columns"""
+        # Define tables and their datetime columns that should get Memphis time equivalents
+        datetime_tables = {
+            'manual_level_readings': ['measurement_date_utc'],
+            'water_level_readings': ['timestamp_utc'],
+            'barometric_readings': ['timestamp_utc'],
+            'master_baro_readings': ['timestamp_utc', 'processing_date'],
+            'telemetry_level_readings': ['timestamp_utc'],
+            'transducers': ['installation_date', 'end_date'],
+            'barologgers': ['installation_date'],
+            'users': ['created_at', 'updated_at', 'last_login'],
+            'rise_calculations': ['calculation_date'],
+            'mrc_calculations': ['calculation_date'],
+            'erc_calculations': ['calculation_date']
+        }
+        
+        # Define tables that have well_number columns and should get CAE number columns
+        well_number_tables = {
+            'water_level_readings',
+            'transducers', 
+            'manual_level_readings',
+            'telemetry_level_readings',
+            'rise_calculations',
+            'mrc_calculations',
+            'erc_calculations'
+        }
+        
+        display_columns = []
+        datetime_indices = {}
+        well_number_indices = {}
+        
+        # Get datetime columns for this table if it exists
+        datetime_cols = datetime_tables.get(table_name, [])
+        
+        for i, col in enumerate(original_columns):
+            display_columns.append(col)
+            
+            # If this is a datetime column, add Memphis time column after it (only if pytz available)
+            if PYTZ_AVAILABLE and col in datetime_cols:
+                memphis_col_name = self._get_memphis_column_name(col)
+                display_columns.append(memphis_col_name)
+                datetime_indices[i] = len(display_columns) - 1  # Map original index to Memphis column index
+            
+            # If this is a well_number column, add CAE number column after it
+            if col == 'well_number' and table_name in well_number_tables:
+                display_columns.append('cae_number')
+                well_number_indices[i] = len(display_columns) - 1  # Map original index to CAE column index
+        
+        return display_columns, datetime_indices, well_number_indices
+    
+    def _get_memphis_column_name(self, utc_column_name):
+        """Generate Memphis time column name from UTC column name"""
+        if utc_column_name.endswith('_utc'):
+            return utc_column_name.replace('_utc', '_memphis')
+        else:
+            return f"{utc_column_name}_memphis"
+    
+    def _style_calculated_headers(self):
+        """Apply special styling to calculated column headers (Memphis time and CAE number)"""
+        for col in range(self.table_widget.columnCount()):
+            header_item = self.table_widget.horizontalHeaderItem(col)
+            if header_item:
+                if header_item.text().endswith('_memphis'):
+                    # Style Memphis time columns
+                    header_item.setToolTip("Calculated Memphis Local Time (Central Time Zone)")
+                elif header_item.text() == 'cae_number' and col > 0:
+                    # Check if this is a calculated CAE column (not the original from wells table)
+                    prev_header = self.table_widget.horizontalHeaderItem(col - 1)
+                    if prev_header and prev_header.text() == 'well_number':
+                        header_item.setToolTip("CAE Number (looked up from wells table)")
+    
+    def _convert_utc_to_memphis(self, utc_timestamp_str):
+        """Convert UTC timestamp string to Memphis local time"""
+        if not PYTZ_AVAILABLE:
+            return "[pytz not available]"
+            
+        if not utc_timestamp_str or utc_timestamp_str == "" or utc_timestamp_str is None:
+            return ""
+        
+        try:
+            # Handle different timestamp formats
+            utc_timestamp_str = str(utc_timestamp_str).strip()
+            
+            # Parse the UTC timestamp
+            if 'T' in utc_timestamp_str:
+                # ISO format: 2023-12-01T14:30:00 or 2023-12-01T14:30:00.000000
+                utc_dt = datetime.fromisoformat(utc_timestamp_str.replace('Z', '+00:00'))
+            else:
+                # Standard format: 2023-12-01 14:30:00
+                try:
+                    utc_dt = datetime.strptime(utc_timestamp_str, '%Y-%m-%d %H:%M:%S')
+                except ValueError:
+                    # Try with microseconds
+                    utc_dt = datetime.strptime(utc_timestamp_str, '%Y-%m-%d %H:%M:%S.%f')
+                
+                # Make it timezone-aware (UTC)
+                utc_dt = pytz.utc.localize(utc_dt)
+            
+            # Convert to Memphis timezone (Central Time)
+            memphis_tz = pytz.timezone('America/Chicago')
+            memphis_dt = utc_dt.astimezone(memphis_tz)
+            
+            # Format for display with timezone abbreviation
+            return memphis_dt.strftime('%Y-%m-%d %H:%M:%S %Z')
+            
+        except Exception as e:
+            # If conversion fails, return a note instead of the original
+            return f"[Conversion Error: {utc_timestamp_str}]"
+    
+    def _load_cae_number_cache(self):
+        """Load well_number -> cae_number mappings from wells table into cache"""
+        try:
+            if not self.db_manager.current_db:
+                return
+                
+            with sqlite3.connect(str(self.db_manager.current_db)) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT well_number, cae_number FROM wells")
+                results = cursor.fetchall()
+                
+                # Build cache dictionary
+                self._cae_number_cache = {}
+                for well_number, cae_number in results:
+                    self._cae_number_cache[well_number] = cae_number if cae_number else ""
+                    
+        except Exception as e:
+            # If loading fails, use empty cache
+            self._cae_number_cache = {}
+    
+    def _get_cae_number(self, well_number):
+        """Get CAE number for a given well number from cache"""
+        if not well_number or well_number == "":
+            return ""
+            
+        # Load cache if it's empty
+        if not self._cae_number_cache:
+            self._load_cae_number_cache()
+        
+        return self._cae_number_cache.get(well_number, "[Not Found]")
     
     def load_wells_list(self):
         """Load list of wells into well combo box"""
@@ -342,9 +499,15 @@ class EditTablesDialog(QDialog):
                              (well_number,))
                 self.total_records = cursor.fetchone()[0]
             
+            # Create display column names with Memphis time columns and CAE numbers
+            self.display_column_names, self.datetime_column_indices, self.well_number_column_indices = self._create_display_columns(self.current_table, self.column_names)
+            
             # Set up the table structure
-            self.table_widget.setColumnCount(len(self.column_names))
-            self.table_widget.setHorizontalHeaderLabels(self.column_names)
+            self.table_widget.setColumnCount(len(self.display_column_names))
+            self.table_widget.setHorizontalHeaderLabels(self.display_column_names)
+            
+            # Style calculated column headers (Memphis time and CAE numbers)
+            self._style_calculated_headers()
             
             # Update window title to include well info
             self.setWindowTitle(f"Edit Tables - {self.current_table} for {well_number}")
@@ -405,13 +568,49 @@ class EditTablesDialog(QDialog):
                 # Fill data
                 for i, row_data in enumerate(data):
                     row_index = row_offset + i
+                    display_col_index = 0
+                    
                     for col, value in enumerate(row_data):
+                        # Set the original column data
                         item = QTableWidgetItem(str(value) if value is not None else "")
                         # Added styling for cells with NULL values
                         if value is None:
                             item.setBackground(Qt.lightGray)
                             item.setForeground(Qt.darkGray)
-                        self.table_widget.setItem(row_index, col, item)
+                        self.table_widget.setItem(row_index, display_col_index, item)
+                        display_col_index += 1
+                        
+                        # If this column has a corresponding Memphis time column, add it
+                        if col in self.datetime_column_indices:
+                            memphis_time = self._convert_utc_to_memphis(value)
+                            memphis_item = QTableWidgetItem(memphis_time)
+                            
+                            # Style Memphis time columns with light blue background
+                            from PyQt5.QtGui import QColor
+                            memphis_item.setBackground(QColor(240, 248, 255))  # Light blue background
+                            memphis_item.setToolTip("Calculated Memphis Local Time")
+                            
+                            # Make Memphis time columns read-only
+                            memphis_item.setFlags(memphis_item.flags() & ~Qt.ItemIsEditable)
+                            
+                            self.table_widget.setItem(row_index, display_col_index, memphis_item)
+                            display_col_index += 1
+                        
+                        # If this column has a corresponding CAE number column, add it
+                        if col in self.well_number_column_indices:
+                            cae_number = self._get_cae_number(value)
+                            cae_item = QTableWidgetItem(cae_number)
+                            
+                            # Style CAE number columns with light green background
+                            from PyQt5.QtGui import QColor
+                            cae_item.setBackground(QColor(240, 255, 240))  # Light green background
+                            cae_item.setToolTip("CAE Number (from wells table)")
+                            
+                            # Make CAE number columns read-only
+                            cae_item.setFlags(cae_item.flags() & ~Qt.ItemIsEditable)
+                            
+                            self.table_widget.setItem(row_index, display_col_index, cae_item)
+                            display_col_index += 1
                 
                 # Adjust column widths only on first load
                 if self.current_offset == 0:
@@ -494,18 +693,27 @@ class EditTablesDialog(QDialog):
                 with sqlite3.connect(str(self.db_manager.current_db)) as conn:
                     cursor = conn.cursor()
                     
-                    # Get column names
-                    columns = []
-                    for col in range(self.table_widget.columnCount()):
-                        columns.append(self.table_widget.horizontalHeaderItem(col).text())
+                    # Get original database column names (excluding Memphis time columns)
+                    columns = self.column_names
                     
-                    # Prepare data for update
+                    # Prepare data for update (only original columns, skip Memphis time columns)
                     for row in range(self.table_widget.rowCount()):
                         row_data = []
-                        for col in range(self.table_widget.columnCount()):
-                            item = self.table_widget.item(row, col)
+                        display_col_index = 0
+                        
+                        for col_index in range(len(self.column_names)):
+                            item = self.table_widget.item(row, display_col_index)
                             value = item.text() if item else None
                             row_data.append(value)
+                            display_col_index += 1
+                            
+                            # Skip Memphis time column if it exists for this database column
+                            if col_index in self.datetime_column_indices:
+                                display_col_index += 1  # Skip the Memphis time column
+                            
+                            # Skip CAE number column if it exists for this database column
+                            if col_index in self.well_number_column_indices:
+                                display_col_index += 1  # Skip the CAE number column
                         
                         # Update database
                         update_query = f"UPDATE {table_name} SET "

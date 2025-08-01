@@ -1,7 +1,7 @@
 """
-Unified Google Drive Credentials Setup Dialog
+Unified Google Drive OAuth Setup Dialog
 Consolidates all Google Drive authentication and folder configuration in one place.
-Only requires service account authentication (OAuth client secrets are not used).
+Uses OAuth2 authentication instead of service accounts.
 """
 
 import os
@@ -15,15 +15,17 @@ from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 import logging
+from ..handlers.google_drive_service import GoogleDriveService
 
 logger = logging.getLogger(__name__)
 
 class UnifiedCredentialsDialog(QDialog):
-    """Unified dialog for Google Drive credentials and folder setup"""
+    """Unified dialog for Google Drive OAuth authentication and folder setup"""
     
     def __init__(self, settings_handler, parent=None):
         super().__init__(parent)
         self.settings_handler = settings_handler
+        self.drive_service = GoogleDriveService.get_instance(settings_handler)
         self.setWindowTitle("Google Drive Setup")
         self.setMinimumSize(700, 600)
         self.setModal(True)
@@ -34,6 +36,7 @@ class UnifiedCredentialsDialog(QDialog):
         
         self.setup_ui()
         self.load_current_settings()
+        self.update_auth_status()
         
     def setup_ui(self):
         """Setup the user interface"""
@@ -49,7 +52,7 @@ class UnifiedCredentialsDialog(QDialog):
         # Info text
         info_text = QLabel("""
 This dialog configures Google Drive integration for the Water Level Monitoring System.
-Only a service account JSON file is required - no OAuth client secrets needed.
+OAuth authentication is used to securely connect to your Google Drive account.
         """)
         info_text.setWordWrap(True)
         info_text.setAlignment(Qt.AlignCenter)
@@ -59,9 +62,9 @@ Only a service account JSON file is required - no OAuth client secrets needed.
         # Create tabs
         tab_widget = QTabWidget()
         
-        # Tab 1: Service Account Setup
-        service_account_tab = self.create_service_account_tab()
-        tab_widget.addTab(service_account_tab, "🔐 Service Account")
+        # Tab 1: OAuth Authentication
+        oauth_tab = self.create_oauth_tab()
+        tab_widget.addTab(oauth_tab, "🔐 OAuth Authentication")
         
         # Tab 2: Folder Configuration
         folder_config_tab = self.create_folder_config_tab()
@@ -93,70 +96,73 @@ Only a service account JSON file is required - no OAuth client secrets needed.
         
         layout.addLayout(button_layout)
         
-    def create_service_account_tab(self):
-        """Create service account setup tab"""
+    def create_oauth_tab(self):
+        """Create OAuth authentication tab"""
         widget = QWidget()
         layout = QVBoxLayout(widget)
         
-        # Service Account Group
-        service_group = QGroupBox("Service Account Authentication")
-        service_layout = QVBoxLayout(service_group)
+        # Authentication Status Group
+        auth_group = QGroupBox("Authentication Status")
+        auth_layout = QVBoxLayout(auth_group)
         
-        # Info
-        service_info = QLabel("""
-<b>Service Account File Required</b><br>
-This is the only credential file needed. OAuth client secrets are not used by this application.
+        # Status display
+        status_layout = QHBoxLayout()
+        status_label = QLabel("Status:")
+        self.status_display = QLabel("Checking...")
+        self.status_display.setStyleSheet("font-weight: bold;")
+        status_layout.addWidget(status_label)
+        status_layout.addWidget(self.status_display)
+        status_layout.addStretch()
+        auth_layout.addLayout(status_layout)
+        
+        # User display (if authenticated)
+        user_layout = QHBoxLayout()
+        user_label = QLabel("Account:")
+        self.user_display = QLabel("Not connected")
+        user_layout.addWidget(user_label)
+        user_layout.addWidget(self.user_display)
+        user_layout.addStretch()
+        auth_layout.addLayout(user_layout)
+        
+        # Connection buttons
+        button_layout = QHBoxLayout()
+        self.connect_btn = QPushButton("Connect to Google Drive")
+        self.connect_btn.clicked.connect(self.connect_to_drive)
+        
+        self.disconnect_btn = QPushButton("Disconnect")
+        self.disconnect_btn.clicked.connect(self.disconnect_from_drive)
+        
+        button_layout.addWidget(self.connect_btn)
+        button_layout.addWidget(self.disconnect_btn)
+        button_layout.addStretch()
+        auth_layout.addLayout(button_layout)
+        
+        layout.addWidget(auth_group)
+        
+        # OAuth Help
+        help_group = QGroupBox("How OAuth Works")
+        help_layout = QVBoxLayout(help_group)
+        
+        help_text = QLabel("""
+<b>OAuth Authentication Process:</b><br>
+1. Click "Connect to Google Drive" below<br>
+2. Your web browser will open automatically<br>
+3. Log in with your Google account<br>
+4. Grant permission to access Google Drive<br>
+5. Return to this application - you're connected!<br><br>
+
+<b>Benefits:</b><br>
+• Uses your own Google Drive storage<br>
+• Secure authentication (no passwords stored)<br>
+• Easy to revoke access if needed<br>
+• No complex file management
         """)
-        service_info.setWordWrap(True)
-        service_layout.addWidget(service_info)
+        help_text.setWordWrap(True)
+        help_text.setStyleSheet("color: #555;")
+        help_layout.addWidget(help_text)
         
-        # File selection
-        file_layout = QHBoxLayout()
-        file_label = QLabel("Service Account JSON:")
-        self.service_account_path = QLineEdit()
-        self.service_account_path.setPlaceholderText("Path to service account .json file")
-        browse_btn = QPushButton("Browse...")
-        browse_btn.clicked.connect(self.browse_service_account)
+        layout.addWidget(help_group)
         
-        file_layout.addWidget(file_label)
-        file_layout.addWidget(self.service_account_path, 1)
-        file_layout.addWidget(browse_btn)
-        service_layout.addLayout(file_layout)
-        
-        # File info
-        file_info = QLabel("File should be named like: your-project-name-123456.json")
-        file_info.setStyleSheet("color: #666; font-style: italic; margin: 5px;")
-        service_layout.addWidget(file_info)
-        
-        # Download from Google Drive option
-        download_group = QGroupBox("Download from Google Drive (Authorized Users)")
-        download_layout = QVBoxLayout(download_group)
-        
-        download_info = QLabel("""
-If you have access to the credentials repository, you can download the service account file directly:
-        """)
-        download_info.setWordWrap(True)
-        download_layout.addWidget(download_info)
-        
-        download_btn_layout = QHBoxLayout()
-        download_link = QLabel('<a href="https://drive.google.com/file/d/1Qn4jAPXTrT7GBzU6JdG6W-KogT4yZBlR/view?usp=drive_link">Access Credentials Folder</a>')
-        download_link.setOpenExternalLinks(True)
-        download_btn_layout.addWidget(download_link)
-        
-        auto_download_btn = QPushButton("Select Downloaded File")
-        auto_download_btn.clicked.connect(self.select_downloaded_service_account)
-        download_btn_layout.addWidget(auto_download_btn)
-        download_btn_layout.addStretch()
-        
-        download_layout.addLayout(download_btn_layout)
-        service_layout.addWidget(download_group)
-        
-        # Status
-        self.service_status = QLabel("")
-        self.service_status.setWordWrap(True)
-        service_layout.addWidget(self.service_status)
-        
-        layout.addWidget(service_group)
         layout.addStretch()
         return widget
         
@@ -166,84 +172,72 @@ If you have access to the credentials repository, you can download the service a
         layout = QVBoxLayout(widget)
         
         # Folder Configuration Group
-        folder_group = QGroupBox("Google Drive Folder Configuration")
+        folder_group = QGroupBox("Google Drive Folders")
         folder_layout = QVBoxLayout(folder_group)
         
-        # Info
-        folder_info = QLabel("""
-Configure the Google Drive folders used by the application. 
-You can find folder IDs in the URL of your Google Drive folders.
-        """)
-        folder_info.setWordWrap(True)
-        folder_layout.addWidget(folder_info)
+        # Main Folder ID
+        main_folder_layout = QHBoxLayout()
+        main_folder_label = QLabel("Main Folder ID:")
+        self.folder_id = QLineEdit()
+        self.folder_id.setPlaceholderText("Google Drive Folder ID for Data")
+        main_folder_layout.addWidget(main_folder_label)
+        main_folder_layout.addWidget(self.folder_id, 1)
+        folder_layout.addLayout(main_folder_layout)
         
-        # Main database folder
-        main_layout = QHBoxLayout()
-        main_label = QLabel("Main Database Folder:")
-        self.main_folder_id = QLineEdit()
-        self.main_folder_id.setPlaceholderText("Folder ID for main databases (water_levels_monitoring)")
-        main_layout.addWidget(main_label)
-        main_layout.addWidget(self.main_folder_id, 1)
-        folder_layout.addLayout(main_layout)
-        
-        main_help = QLabel("Default: CAESER shared folder for databases")
-        main_help.setStyleSheet("color: #666; font-style: italic; margin-left: 20px;")
+        # Main Folder help
+        main_help = QLabel("The main folder where databases and project files are stored.")
+        main_help.setStyleSheet("color: #666; font-style: italic; font-size: 10px;")
         folder_layout.addWidget(main_help)
         
-        # XLE files folder
-        xle_layout = QHBoxLayout()
-        xle_label = QLabel("XLE Files Folder:")
+        # XLE Files Folder ID
+        xle_folder_layout = QHBoxLayout()
+        xle_folder_label = QLabel("XLE Files Folder ID:")
         self.xle_folder_id = QLineEdit()
-        self.xle_folder_id.setPlaceholderText("Folder ID for XLE files monitoring")
-        xle_layout.addWidget(xle_label)
-        xle_layout.addWidget(self.xle_folder_id, 1)
-        folder_layout.addLayout(xle_layout)
+        self.xle_folder_id.setPlaceholderText("Google Drive Folder ID for XLE Files")
+        xle_folder_layout.addWidget(xle_folder_label)
+        xle_folder_layout.addWidget(self.xle_folder_id, 1)
+        folder_layout.addLayout(xle_folder_layout)
         
-        xle_help = QLabel("Default: Solinst folder for field laptop XLE files")
-        xle_help.setStyleSheet("color: #666; font-style: italic; margin-left: 20px;")
+        # XLE help
+        xle_help = QLabel("The folder where XLE data files from sensors are uploaded.")
+        xle_help.setStyleSheet("color: #666; font-style: italic; font-size: 10px;")
         folder_layout.addWidget(xle_help)
         
-        # Field data folders
-        field_layout = QHBoxLayout()
-        field_label = QLabel("Field Data Folders:")
-        self.field_folders = QLineEdit()
-        self.field_folders.setPlaceholderText("Comma-separated folder IDs for field data")
-        field_layout.addWidget(field_label)
-        field_layout.addWidget(self.field_folders, 1)
-        folder_layout.addLayout(field_layout)
-        
-        field_help = QLabel("Multiple folder IDs separated by commas (for field laptops)")
-        field_help.setStyleSheet("color: #666; font-style: italic; margin-left: 20px;")
-        folder_layout.addWidget(field_help)
-        
-        # Projects folder
-        projects_layout = QHBoxLayout()
-        projects_label = QLabel("Projects Folder:")
+        # Projects Folder ID
+        projects_folder_layout = QHBoxLayout()
+        projects_folder_label = QLabel("Projects Folder ID:")
         self.projects_folder_id = QLineEdit()
-        self.projects_folder_id.setPlaceholderText("Folder ID for projects (optional)")
-        projects_layout.addWidget(projects_label)
-        projects_layout.addWidget(self.projects_folder_id, 1)
-        folder_layout.addLayout(projects_layout)
+        self.projects_folder_id.setPlaceholderText("Google Drive Folder ID for Projects")
+        projects_folder_layout.addWidget(projects_folder_label)
+        projects_folder_layout.addWidget(self.projects_folder_id, 1)
+        folder_layout.addLayout(projects_folder_layout)
         
-        projects_help = QLabel("Default: CAESER Projects folder for collaborative project databases")
-        projects_help.setStyleSheet("color: #666; font-style: italic; margin-left: 20px;")
+        # Projects help
+        projects_help = QLabel("The folder where project databases and files are organized.")
+        projects_help.setStyleSheet("color: #666; font-style: italic; font-size: 10px;")
         folder_layout.addWidget(projects_help)
         
         layout.addWidget(folder_group)
         
-        # Auto-check settings
-        auto_group = QGroupBox("Automatic Features")
-        auto_layout = QVBoxLayout(auto_group)
+        # Folder ID Help
+        help_group = QGroupBox("How to Find Folder IDs")
+        help_layout = QVBoxLayout(help_group)
         
-        self.auto_check_startup = QCheckBox("Auto-check Google Drive on startup")
-        auto_layout.addWidget(self.auto_check_startup)
+        help_text = QLabel("""
+<b>To find a Google Drive folder ID:</b><br>
+1. Open the folder in Google Drive (in your web browser)<br>
+2. Look at the URL in the address bar<br>
+3. The folder ID is the long string after "folders/"<br><br>
+
+<b>Example:</b><br>
+URL: https://drive.google.com/drive/folders/<b>1vGoxkS-HQ0n0u0ToNcYL_wJGZ02RDhAK</b><br>
+Folder ID: <b>1vGoxkS-HQ0n0u0ToNcYL_wJGZ02RDhAK</b>
+        """)
+        help_text.setWordWrap(True)
+        help_text.setStyleSheet("color: #555;")
+        help_layout.addWidget(help_text)
         
-        layout.addWidget(auto_group)
-        
-        # Folder status
-        self.folder_status = QLabel("")
-        self.folder_status.setWordWrap(True)
-        layout.addWidget(self.folder_status)
+        layout.addWidget(help_group)
         
         layout.addStretch()
         return widget
@@ -253,298 +247,248 @@ You can find folder IDs in the URL of your Google Drive folders.
         widget = QWidget()
         layout = QVBoxLayout(widget)
         
+        # Create a scroll area for the instructions
         scroll = QScrollArea()
-        scroll_widget = QWidget()
-        scroll_layout = QVBoxLayout(scroll_widget)
-        
-        instructions_html = """
-<h3>Google Drive Setup Instructions</h3>
-
-<h4>Service Account Setup</h4>
-<p><b>Option 1: For Authorized Users</b></p>
-<ol>
-<li>Access the <a href="https://drive.google.com/file/d/1Qn4jAPXTrT7GBzU6JdG6W-KogT4yZBlR/view?usp=drive_link">credentials repository</a></li>
-<li>Download the service account JSON file</li>
-<li>Use "Select Downloaded File" to import it</li>
-</ol>
-
-<p><b>Option 2: Create Your Own Service Account</b></p>
-<ol>
-<li>Go to <a href="https://console.cloud.google.com">Google Cloud Console</a></li>
-<li>Create or select a project</li>
-<li>Enable Google Drive API</li>
-<li>Go to "IAM & Admin" → "Service Accounts"</li>
-<li>Create a service account with a descriptive name</li>
-<li>Download the JSON key file</li>
-<li>Share your Google Drive folders with the service account email</li>
-</ol>
-
-<h4>Finding Folder IDs</h4>
-<p>Google Drive folder IDs can be found in the URL when viewing a folder:</p>
-<p><code>https://drive.google.com/drive/folders/FOLDER_ID_HERE</code></p>
-
-<h4>Required Folder Permissions</h4>
-<p>Make sure to share these folders with your service account email:</p>
-<ul>
-<li><b>Main Database Folder:</b> Read/Write access for database storage</li>
-<li><b>XLE Files Folder:</b> Read access for monitoring new files</li>
-<li><b>Field Data Folders:</b> Read access for field laptop integration</li>
-</ul>
-
-<h4>Default Folder IDs</h4>
-<ul>
-<li><b>Main Database:</b> 1vGoxkS-HQ0n0u0ToNcYL_wJGZ02RDhAK (CAESER shared folder)</li>
-<li><b>XLE Files:</b> 1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW (Solinst folder)</li>
-<li><b>Field Data:</b> 1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW (Same as XLE for field laptops)</li>
-<li><b>Projects:</b> 1JjiXRblLAf6rdhiOzrAaYik8bjNpBc9s (CAESER Projects folder)</li>
-</ul>
-
-<h4>Note About OAuth Client Secrets</h4>
-<p><b>OAuth client secrets are NOT required.</b> This application uses service account authentication only.</p>
-        """
-        
-        instructions_label = QLabel(instructions_html)
-        instructions_label.setWordWrap(True)
-        instructions_label.setOpenExternalLinks(True)
-        scroll_layout.addWidget(instructions_label)
-        
-        scroll_layout.addStretch()
-        scroll.setWidget(scroll_widget)
         scroll.setWidgetResizable(True)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        
+        instructions_widget = QWidget()
+        instructions_layout = QVBoxLayout(instructions_widget)
+        
+        instructions_text = QLabel("""
+<h2>Setting up Google Drive Integration</h2>
+
+<h3>Step 1: Connect to Google Drive</h3>
+<ol>
+<li>Go to the "OAuth Authentication" tab</li>
+<li>Click "Connect to Google Drive"</li>
+<li>Your web browser will open automatically</li>
+<li>Log in with your Google account if prompted</li>
+<li>Click "Allow" to grant permissions</li>
+<li>Return to this application</li>
+</ol>
+
+<h3>Step 2: Configure Folders (Optional)</h3>
+<p>The default folder IDs are already configured for the CAESER project. You only need to change these if you want to use different folders:</p>
+<ul>
+<li><b>Main Folder:</b> Where databases and main files are stored</li>
+<li><b>XLE Files Folder:</b> Where sensor data files are uploaded</li>
+<li><b>Projects Folder:</b> Where project-specific data is organized</li>
+</ul>
+
+<h3>Step 3: Test and Save</h3>
+<ol>
+<li>Click "Test Connection" to verify everything works</li>
+<li>Click "Save & Apply" to save your settings</li>
+</ol>
+
+<h3>Troubleshooting</h3>
+<p><b>Browser doesn't open:</b> Make sure you have a default web browser set.</p>
+<p><b>Permission denied:</b> Check that you granted all requested permissions in the browser.</p>
+<p><b>Connection test fails:</b> Verify your internet connection and try reconnecting.</p>
+
+<h3>Security Notes</h3>
+<ul>
+<li>Your Google account credentials are never stored by this application</li>
+<li>You can revoke access anytime through your Google Account settings</li>
+<li>Only the permissions you grant are used (Google Drive access)</li>
+</ul>
+        """)
+        instructions_text.setWordWrap(True)
+        instructions_text.setOpenExternalLinks(True)
+        instructions_layout.addWidget(instructions_text)
+        instructions_layout.addStretch()
+        
+        scroll.setWidget(instructions_widget)
         layout.addWidget(scroll)
         
         return widget
-        
-    def browse_service_account(self):
-        """Browse for service account file"""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, "Select Service Account JSON File", "", "JSON Files (*.json)")
-        if file_path:
-            self.service_account_path.setText(file_path)
-            self.validate_service_account_file(file_path)
+    
+    def update_auth_status(self):
+        """Update the authentication status display"""
+        if self.drive_service and self.drive_service.authenticated:
+            self.status_display.setText("✓ Connected")
+            self.status_display.setStyleSheet("color: green; font-weight: bold;")
             
-    def select_downloaded_service_account(self):
-        """Select a downloaded service account file"""
-        files, _ = QFileDialog.getOpenFileNames(
-            self, "Select Downloaded Service Account File", "", "JSON Files (*.json)")
-        
-        if files:
-            service_account_file = None
+            user_email = self.drive_service.get_user_email()
+            self.user_display.setText(user_email or "Authenticated User")
             
-            # Look for service account file
-            for file_path in files:
-                if self.is_service_account_file(file_path):
-                    service_account_file = file_path
-                    break
-            
-            if service_account_file:
-                # Copy to config directory
-                dest_path = self.config_dir / Path(service_account_file).name
-                try:
-                    shutil.copy2(service_account_file, dest_path)
-                    self.service_account_path.setText(str(dest_path))
-                    self.service_status.setText(f"✅ Service account file copied to: {dest_path.name}")
-                    self.service_status.setStyleSheet("color: green;")
-                except Exception as e:
-                    self.service_status.setText(f"❌ Error copying file: {str(e)}")
-                    self.service_status.setStyleSheet("color: red;")
-            else:
-                self.service_status.setText("❌ No valid service account file found in selection.")
-                self.service_status.setStyleSheet("color: red;")
-                
-    def is_service_account_file(self, file_path):
-        """Check if a file is a service account JSON file"""
-        try:
-            with open(file_path, 'r') as f:
-                data = json.load(f)
-                return data.get('type') == 'service_account'
-        except:
-            return False
-            
-    def validate_service_account_file(self, file_path):
-        """Validate service account file"""
-        try:
-            if not os.path.exists(file_path):
-                self.service_status.setText("❌ File does not exist")
-                self.service_status.setStyleSheet("color: red;")
-                return False
-                
-            with open(file_path, 'r') as f:
-                data = json.load(f)
-                
-            if data.get('type') != 'service_account':
-                self.service_status.setText("❌ Not a valid service account file")
-                self.service_status.setStyleSheet("color: red;")
-                return False
-                
-            email = data.get('client_email', 'Unknown')
-            self.service_status.setText(f"✅ Valid service account: {email}")
-            self.service_status.setStyleSheet("color: green;")
-            return True
-            
-        except json.JSONDecodeError:
-            self.service_status.setText("❌ Invalid JSON file")
-            self.service_status.setStyleSheet("color: red;")
-            return False
-        except Exception as e:
-            self.service_status.setText(f"❌ Error validating file: {str(e)}")
-            self.service_status.setStyleSheet("color: red;")
-            return False
-            
-    def load_current_settings(self):
-        """Load current settings into the dialog"""
-        # Service account path
-        service_path = self.settings_handler.get_setting("service_account_key_path", "")
-        self.service_account_path.setText(service_path)
-        if service_path:
-            self.validate_service_account_file(service_path)
-            
-        # Folder IDs
-        self.main_folder_id.setText(
-            self.settings_handler.get_setting("google_drive_folder_id", "1vGoxkS-HQ0n0u0ToNcYL_wJGZ02RDhAK"))
-        self.xle_folder_id.setText(
-            self.settings_handler.get_setting("google_drive_xle_folder_id", "1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW"))
-        projects_folder_value = self.settings_handler.get_setting("google_drive_projects_folder_id", "1JjiXRblLAf6rdhiOzrAaYik8bjNpBc9s")
-        logger.info(f"Loading projects folder ID: '{projects_folder_value}'")
-        self.projects_folder_id.setText(projects_folder_value)
-            
-        # Field data folders (convert list to comma-separated string)
-        field_folders = self.settings_handler.get_setting("field_data_folders", ["1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW"])
-        if isinstance(field_folders, list):
-            self.field_folders.setText(", ".join(field_folders))
+            self.connect_btn.setText("Reconnect")
+            self.disconnect_btn.setEnabled(True)
+            self.test_btn.setEnabled(True)
         else:
-            self.field_folders.setText(str(field_folders))
+            self.status_display.setText("✗ Not Connected")
+            self.status_display.setStyleSheet("color: red; font-weight: bold;")
             
-        # Auto-check setting
-        self.auto_check_startup.setChecked(
-            self.settings_handler.get_setting("google_drive_auto_check", False))
+            self.user_display.setText("Not connected")
             
-    def test_connection(self):
-        """Test Google Drive connection"""
-        if not self.service_account_path.text():
-            QMessageBox.warning(self, "Missing Service Account", 
-                              "Please select a service account file first.")
-            return
-            
-        if not self.validate_service_account_file(self.service_account_path.text()):
-            QMessageBox.warning(self, "Invalid Service Account", 
-                              "Please select a valid service account file.")
-            return
-            
-        progress = QProgressDialog("Testing Google Drive connection...", "Cancel", 0, 100, self)
-        progress.setWindowTitle("Connection Test")
-        progress.setWindowModality(Qt.WindowModal)
-        progress.show()
-        
+            self.connect_btn.setText("Connect to Google Drive")
+            self.disconnect_btn.setEnabled(False)
+            self.test_btn.setEnabled(False)
+    
+    def connect_to_drive(self):
+        """Connect to Google Drive using OAuth"""
         try:
-            # Test service account authentication
-            progress.setValue(25)
-            progress.setLabelText("Authenticating with service account...")
+            # Show progress
+            progress = QProgressDialog("Connecting to Google Drive...", None, 0, 0, self)
+            progress.setWindowModality(Qt.WindowModal)
+            progress.show()
             
-            from google.oauth2 import service_account
-            from googleapiclient.discovery import build
+            # Attempt authentication with browser interaction
+            success = self.drive_service.authenticate(force=True, interactive=True)
             
-            credentials = service_account.Credentials.from_service_account_file(
-                self.service_account_path.text(),
-                scopes=['https://www.googleapis.com/auth/drive']
-            )
+            progress.close()
             
-            progress.setValue(50)
-            progress.setLabelText("Building Drive service...")
-            
-            service = build('drive', 'v3', credentials=credentials)
-            
-            progress.setValue(75)
-            progress.setLabelText("Testing folder access...")
-            
-            # Test access to main folder
-            folder_id = self.main_folder_id.text()
-            if folder_id:
-                try:
-                    service.files().get(fileId=folder_id).execute()
-                    folder_access = "✅ Main folder accessible"
-                except:
-                    folder_access = "⚠️ Main folder not accessible"
+            if success:
+                QMessageBox.information(
+                    self, 
+                    "Connection Successful", 
+                    f"Successfully connected to Google Drive as:\n{self.drive_service.get_user_email()}"
+                )
+                self.update_auth_status()
             else:
-                folder_access = "⚠️ No main folder ID specified"
+                QMessageBox.warning(
+                    self, 
+                    "Connection Failed", 
+                    "Failed to connect to Google Drive. Please check your internet connection and try again."
+                )
                 
-            progress.setValue(100)
-            progress.close()
-            
-            QMessageBox.information(self, "Connection Test Results", 
-                                  f"✅ Service account authentication successful\n" +
-                                  f"{folder_access}\n\n" +
-                                  f"Service account: {credentials.service_account_email}")
-            
         except Exception as e:
-            progress.close()
-            QMessageBox.critical(self, "Connection Test Failed", 
-                               f"Failed to connect to Google Drive:\n{str(e)}")
+            if 'progress' in locals():
+                progress.close()
+            QMessageBox.critical(
+                self, 
+                "Connection Error", 
+                f"An error occurred while connecting to Google Drive:\n\n{str(e)}"
+            )
+    
+    def disconnect_from_drive(self):
+        """Disconnect from Google Drive"""
+        reply = QMessageBox.question(
+            self,
+            "Disconnect from Google Drive",
+            "Are you sure you want to disconnect from Google Drive?\n\n"
+            "This will disable cloud features until you reconnect.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            if self.drive_service.revoke_authentication():
+                QMessageBox.information(
+                    self,
+                    "Disconnected",
+                    "Successfully disconnected from Google Drive."
+                )
+                self.update_auth_status()
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Disconnect Failed",
+                    "Failed to disconnect from Google Drive."
+                )
+    
+    def test_connection(self):
+        """Test the Google Drive connection"""
+        if not self.drive_service or not self.drive_service.authenticated:
+            QMessageBox.warning(self, "Not Connected", "Please connect to Google Drive first.")
+            return
             
-    def save_and_apply(self):
-        """Save settings and apply configuration"""
         try:
-            logger.info("DEBUG: Starting save_and_apply process")
+            progress = QProgressDialog("Testing connection...", None, 0, 0, self)
+            progress.setWindowModality(Qt.WindowModal)
+            progress.show()
             
-            # Validate service account
-            service_account_path = self.service_account_path.text()
-            logger.info(f"DEBUG: Service account path: '{service_account_path}'")
-            
-            if not service_account_path:
-                logger.warning("DEBUG: Service account path is empty - showing missing file dialog")
-                QMessageBox.warning(self, "Missing Service Account", 
-                                  "Please select a service account file.")
-                return
+            # Test the connection by getting drive info
+            service = self.drive_service.get_service()
+            if service:
+                about = service.about().get(fields="storageQuota,user").execute()
+                user_email = about.get('user', {}).get('emailAddress', 'Unknown')
+                quota = about.get('storageQuota', {})
+                usage_gb = int(quota.get('usage', 0)) / (1024**3)
+                limit_gb = int(quota.get('limit', 0)) / (1024**3)
                 
-            logger.info(f"DEBUG: Validating service account file: {service_account_path}")
-            validation_result = self.validate_service_account_file(service_account_path)
-            logger.info(f"DEBUG: Service account validation result: {validation_result}")
-            
-            if not validation_result:
-                logger.warning("DEBUG: Service account validation failed - showing invalid file dialog")
-                QMessageBox.warning(self, "Invalid Service Account", 
-                                  "Please select a valid service account file.")
-                return
+                progress.close()
                 
-            # Save settings
-            self.settings_handler.set_setting("service_account_key_path", self.service_account_path.text())
-            self.settings_handler.set_setting("google_drive_folder_id", self.main_folder_id.text())
-            self.settings_handler.set_setting("google_drive_xle_folder_id", self.xle_folder_id.text())
-            self.settings_handler.set_setting("google_drive_projects_folder_id", self.projects_folder_id.text())
-            self.settings_handler.set_setting("google_drive_auto_check", self.auto_check_startup.isChecked())
+                QMessageBox.information(
+                    self,
+                    "Connection Test Successful",
+                    f"Connected as: {user_email}\n"
+                    f"Storage: {usage_gb:.2f} GB / {limit_gb:.2f} GB used"
+                )
+            else:
+                progress.close()
+                QMessageBox.warning(self, "Test Failed", "Failed to get Google Drive service.")
+                
+        except Exception as e:
+            if 'progress' in locals():
+                progress.close()
+            QMessageBox.critical(
+                self,
+                "Connection Test Failed", 
+                f"Failed to test connection:\n\n{str(e)}"
+            )
+    
+    def load_current_settings(self):
+        """Load current settings into the form"""
+        # Load folder IDs
+        self.folder_id.setText(
+            self.settings_handler.get_setting("google_drive_folder_id", "1vGoxkS-HQ0n0u0ToNcYL_wJGZ02RDhAK")
+        )
+        self.xle_folder_id.setText(
+            self.settings_handler.get_setting("google_drive_xle_folder_id", "1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW")
+        )
+        self.projects_folder_id.setText(
+            self.settings_handler.get_setting("google_drive_projects_folder_id", "1JjiXRblLAf6rdhiOzrAaYik8bjNpBc9s")
+        )
+    
+    def save_and_apply(self):
+        """Save settings and apply changes"""
+        try:
+            # Save folder IDs
+            self.settings_handler.set_setting("google_drive_folder_id", self.folder_id.text().strip())
+            self.settings_handler.set_setting("google_drive_xle_folder_id", self.xle_folder_id.text().strip())
+            self.settings_handler.set_setting("google_drive_projects_folder_id", self.projects_folder_id.text().strip())
             
-            # Parse field folders
-            field_folders_text = self.field_folders.text().strip()
-            if field_folders_text:
-                field_folders_list = [f.strip() for f in field_folders_text.split(",") if f.strip()]
-                self.settings_handler.set_setting("field_data_folders", field_folders_list)
-            
-            # Remove obsolete OAuth client secret setting
-            self.settings_handler.set_setting("google_drive_secret_path", "")
-            
-            logger.info("DEBUG: All settings saved successfully")
-            QMessageBox.information(self, "Settings Saved", 
-                                  "Google Drive configuration saved successfully!\n\n" +
-                                  "The application will now use the new settings.")
-            
-            logger.info("DEBUG: Calling self.accept() - dialog should return QDialog.Accepted")
+            QMessageBox.information(self, "Settings Saved", "Google Drive settings have been saved successfully.")
             self.accept()
             
         except Exception as e:
-            logger.error(f"Error saving settings: {e}")
-            QMessageBox.critical(self, "Save Error", f"Failed to save settings: {str(e)}")
-            
+            QMessageBox.critical(self, "Save Error", f"Failed to save settings:\n\n{str(e)}")
+    
+    def browse_service_account_file(self):
+        """Legacy method - no longer used for OAuth"""
+        QMessageBox.information(
+            self,
+            "OAuth Authentication", 
+            "This application now uses OAuth authentication. "
+            "Please use the 'Connect to Google Drive' button to authenticate."
+        )
+    
     @staticmethod
-    def check_credentials_configured(settings_handler):
-        """Check if Google Drive credentials are properly configured"""
-        service_account_path = settings_handler.get_setting("service_account_key_path", "")
-        
-        if not service_account_path or not os.path.exists(service_account_path):
-            return False
-            
+    def check_credentials_configured():
+        """Check if OAuth credentials are configured (static method for compatibility)"""
         try:
-            with open(service_account_path, 'r') as f:
-                data = json.load(f)
-                return data.get('type') == 'service_account'
-        except:
+            # Check if OAuth client secret file exists
+            app_dir = Path(__file__).parent.parent.parent.parent
+            config_dir = app_dir / "config"
+            
+            # Look for OAuth client secret file
+            oauth_files = list(config_dir.glob("client_secret*.json"))
+            if not oauth_files:
+                return False
+                
+            # Filter out service account files
+            for file_path in oauth_files:
+                try:
+                    with open(file_path, 'r') as f:
+                        data = json.load(f)
+                        # If it's not a service account file, it's likely OAuth
+                        if data.get('type') != 'service_account':
+                            return True
+                except:
+                    continue
+                    
+            return False
+        except Exception:
             return False

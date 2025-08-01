@@ -458,7 +458,7 @@ class WaterLevelFolderProcessor:
             return {}
 
     def _match_well_location(self, location: str, well_mapping: Dict[str, str]) -> Optional[str]:
-        """Match location to well number using CAE mapping"""
+        """Match location to well number using CAE mapping with flexible matching"""
         try:
             # Try exact match first
             if location in well_mapping:
@@ -468,6 +468,24 @@ class WaterLevelFolderProcessor:
             location_no_zeros = location.lstrip('0')
             for cae, well in well_mapping.items():
                 if cae.lstrip('0') == location_no_zeros:
+                    return well
+            
+            # Try flexible matching for common format variations
+            # Handle cases like "HAA-012" vs "HA:A-012"
+            location_normalized = location.replace(':', '').replace('-', '').upper()
+            for cae, well in well_mapping.items():
+                cae_normalized = cae.replace(':', '').replace('-', '').upper()
+                if cae_normalized == location_normalized:
+                    logger.info(f"Matched location '{location}' to CAE '{cae}' using normalized matching")
+                    return well
+            
+            # Try partial matching for cases like "HAA012" vs "HA:A-012"
+            for cae, well in well_mapping.items():
+                # Remove all non-alphanumeric characters for comparison
+                location_clean = ''.join(c for c in location.upper() if c.isalnum())
+                cae_clean = ''.join(c for c in cae.upper() if c.isalnum())
+                if location_clean == cae_clean:
+                    logger.info(f"Matched location '{location}' to CAE '{cae}' using alphanumeric matching")
                     return well
             
             return None

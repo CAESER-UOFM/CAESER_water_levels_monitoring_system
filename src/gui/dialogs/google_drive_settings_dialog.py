@@ -16,71 +16,100 @@ class GoogleDriveSettingsDialog(QDialog):
         self.drive_service = GoogleDriveService.get_instance(settings_handler)
         self.setup_ui()
         self.load_settings()
+        self.update_auth_status()
         
     def setup_ui(self):
         """Setup the dialog UI"""
         self.setWindowTitle("Google Drive Settings")
-        self.resize(600, 350)  # Increased height for additional help text
+        self.resize(600, 400)
         layout = QVBoxLayout(self)
         
         # Help text at the top
         help_text = QLabel(
-            "These settings are required for Google Drive integration. "
-            "The client secret file is needed for authentication, and the folder IDs "
-            "specify where your files will be stored in Google Drive."
+            "Configure Google Drive integration for cloud features. "
+            "Authentication is required to access Google Drive for uploading data, "
+            "downloading databases, and synchronizing files."
         )
         help_text.setWordWrap(True)
         help_text.setStyleSheet("color: #555; font-style: italic;")
         layout.addWidget(help_text)
         
-        # Google Drive Authentication Group
-        auth_group = QGroupBox("Google Drive Authentication")
+        # Authentication Status Group
+        auth_group = QGroupBox("Authentication Status")
         auth_layout = QVBoxLayout(auth_group)
         
-        # Client secret file
-        secret_layout = QHBoxLayout()
-        secret_label = QLabel("Client Secret File:")
-        self.secret_path = QLineEdit()
-        self.secret_path.setPlaceholderText("Path to client_secret.json")
-        browse_btn = QPushButton("Browse...")
-        browse_btn.clicked.connect(self.browse_client_secret)
+        # Status display
+        status_layout = QHBoxLayout()
+        status_label = QLabel("Status:")
+        self.status_display = QLabel("Checking...")
+        self.status_display.setStyleSheet("font-weight: bold;")
+        status_layout.addWidget(status_label)
+        status_layout.addWidget(self.status_display)
+        status_layout.addStretch()
+        auth_layout.addLayout(status_layout)
         
-        secret_layout.addWidget(secret_label)
-        secret_layout.addWidget(self.secret_path, 1)
-        secret_layout.addWidget(browse_btn)
-        auth_layout.addLayout(secret_layout)
+        # User display (if authenticated)
+        user_layout = QHBoxLayout()
+        user_label = QLabel("Account:")
+        self.user_display = QLabel("Not connected")
+        user_layout.addWidget(user_label)
+        user_layout.addWidget(self.user_display)
+        user_layout.addStretch()
+        auth_layout.addLayout(user_layout)
         
-        # Client secret help text
-        secret_help = QLabel(
-            "The client_secret.json file is included with the application and should be automatically detected. "
-            "If you need to use a different file, please contact your administrator."
+        # Connection buttons
+        button_layout = QHBoxLayout()
+        self.connect_btn = QPushButton("Connect to Google Drive")
+        self.connect_btn.clicked.connect(self.connect_to_drive)
+        
+        self.disconnect_btn = QPushButton("Disconnect")
+        self.disconnect_btn.clicked.connect(self.disconnect_from_drive)
+        
+        self.test_btn = QPushButton("Test Connection")
+        self.test_btn.clicked.connect(self.test_connection)
+        
+        button_layout.addWidget(self.connect_btn)
+        button_layout.addWidget(self.disconnect_btn)
+        button_layout.addWidget(self.test_btn)
+        button_layout.addStretch()
+        auth_layout.addLayout(button_layout)
+        
+        # Authentication help
+        auth_help = QLabel(
+            "Click 'Connect to Google Drive' to authenticate with your Google account. "
+            "This will open a web browser where you can grant permission to access your Google Drive."
         )
-        secret_help.setWordWrap(True)
-        secret_help.setStyleSheet("color: #555; font-style: italic; font-size: 10px;")
-        auth_layout.addWidget(secret_help)
+        auth_help.setWordWrap(True)
+        auth_help.setStyleSheet("color: #555; font-style: italic; font-size: 10px;")
+        auth_layout.addWidget(auth_help)
         
-        # Folder ID
-        folder_layout = QHBoxLayout()
-        folder_label = QLabel("Main Folder ID:")
+        layout.addWidget(auth_group)
+        
+        # Folder Configuration Group
+        folder_group = QGroupBox("Folder Configuration")
+        folder_layout = QVBoxLayout(folder_group)
+        
+        # Main Folder ID
+        main_folder_layout = QHBoxLayout()
+        main_folder_label = QLabel("Main Folder ID:")
         self.folder_id = QLineEdit()
         self.folder_id.setPlaceholderText("Google Drive Folder ID for Data")
         folder_help = QLabel("(ID from the shared folder URL)")
         folder_help.setStyleSheet("color: gray; font-style: italic;")
         
-        folder_layout.addWidget(folder_label)
-        folder_layout.addWidget(self.folder_id, 1)
-        folder_layout.addWidget(folder_help)
-        auth_layout.addLayout(folder_layout)
+        main_folder_layout.addWidget(main_folder_label)
+        main_folder_layout.addWidget(self.folder_id, 1)
+        main_folder_layout.addWidget(folder_help)
+        folder_layout.addLayout(main_folder_layout)
         
-        # Folder ID help text
-        folder_id_help = QLabel(
-            "The default folder ID is set to the CAESER shared folder. "
-            "You can find the folder ID in the URL of your Google Drive folder: "
-            "https://drive.google.com/drive/folders/FOLDER_ID"
+        # Main Folder help text
+        main_folder_help = QLabel(
+            "The main folder where databases and project files are stored. "
+            "Find the folder ID in the URL: https://drive.google.com/drive/folders/FOLDER_ID"
         )
-        folder_id_help.setWordWrap(True)
-        folder_id_help.setStyleSheet("color: #555; font-style: italic; font-size: 10px;")
-        auth_layout.addWidget(folder_id_help)
+        main_folder_help.setWordWrap(True)
+        main_folder_help.setStyleSheet("color: #555; font-style: italic; font-size: 10px;")
+        folder_layout.addWidget(main_folder_help)
         
         # XLE Files Folder ID
         xle_folder_layout = QHBoxLayout()
@@ -93,247 +122,203 @@ class GoogleDriveSettingsDialog(QDialog):
         xle_folder_layout.addWidget(xle_folder_label)
         xle_folder_layout.addWidget(self.xle_folder_id, 1)
         xle_folder_layout.addWidget(xle_folder_help)
-        auth_layout.addLayout(xle_folder_layout)
+        folder_layout.addLayout(xle_folder_layout)
         
-        # XLE Folder ID help text
-        xle_folder_id_help = QLabel(
-            "This folder ID is for the folder containing XLE files. "
-            "This is used for monitoring and auto-syncing XLE files from Google Drive."
+        # XLE Folder help text
+        xle_folder_help = QLabel(
+            "The folder where XLE data files from sensors are uploaded."
         )
-        xle_folder_id_help.setWordWrap(True)
-        xle_folder_id_help.setStyleSheet("color: #555; font-style: italic; font-size: 10px;")
-        auth_layout.addWidget(xle_folder_id_help)
+        xle_folder_help.setWordWrap(True)
+        xle_folder_help.setStyleSheet("color: #555; font-style: italic; font-size: 10px;")
+        folder_layout.addWidget(xle_folder_help)
         
-        # Authentication status
-        status_layout = QHBoxLayout()
-        status_label = QLabel("Authentication Status:")
-        self.status_value = QLabel("Not authenticated")
-        self.status_value.setStyleSheet("font-weight: bold;")
-        self.auth_btn = QPushButton("Authenticate")
-        self.auth_btn.clicked.connect(self.authenticate)
+        # Projects Folder ID
+        projects_folder_layout = QHBoxLayout()
+        projects_folder_label = QLabel("Projects Folder ID:")
+        self.projects_folder_id = QLineEdit()
+        self.projects_folder_id.setPlaceholderText("Google Drive Folder ID for Projects")
+        projects_folder_help = QLabel("(ID from the projects folder URL)")
+        projects_folder_help.setStyleSheet("color: gray; font-style: italic;")
         
-        status_layout.addWidget(status_label)
-        status_layout.addWidget(self.status_value, 1)
-        status_layout.addWidget(self.auth_btn)
-        auth_layout.addLayout(status_layout)
+        projects_folder_layout.addWidget(projects_folder_label)
+        projects_folder_layout.addWidget(self.projects_folder_id, 1)
+        projects_folder_layout.addWidget(projects_folder_help)
+        folder_layout.addLayout(projects_folder_layout)
         
-        # Auto-check on startup
-        auto_layout = QHBoxLayout()
-        auto_label = QLabel("Auto-check on startup:")
-        self.auto_check = QCheckBox()
+        layout.addWidget(folder_group)
         
-        auto_layout.addWidget(auto_label)
-        auto_layout.addWidget(self.auto_check)
-        auto_layout.addStretch()
-        auth_layout.addLayout(auto_layout)
+        # Dialog buttons
+        dialog_button_layout = QHBoxLayout()
+        dialog_button_layout.addStretch()
         
-        layout.addWidget(auth_group)
+        self.save_btn = QPushButton("Save")
+        self.save_btn.clicked.connect(self.save_settings)
         
-        # Buttons
-        button_layout = QHBoxLayout()
-        save_btn = QPushButton("Save")
-        save_btn.clicked.connect(self.save_settings)
-        cancel_btn = QPushButton("Cancel")
-        cancel_btn.clicked.connect(self.reject)
+        self.cancel_btn = QPushButton("Cancel")
+        self.cancel_btn.clicked.connect(self.reject)
         
-        button_layout.addStretch()
-        button_layout.addWidget(save_btn)
-        button_layout.addWidget(cancel_btn)
-        layout.addLayout(button_layout)
+        dialog_button_layout.addWidget(self.save_btn)
+        dialog_button_layout.addWidget(self.cancel_btn)
         
-        # Update authentication status
-        self.update_auth_status()
+        layout.addLayout(dialog_button_layout)
         
-    def browse_client_secret(self):
-        """Browse for client secret file"""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Select Client Secret JSON File",
-            "",
-            "JSON files (*.json)"
-        )
-        
-        if file_path:
-            self.secret_path.setText(file_path)
-    
-    def authenticate(self):
-        """Authenticate with Google Drive and perform complete initialization"""
-        # Create progress dialog
-        progress = QProgressDialog("Authenticating with Google Drive...", "Cancel", 0, 100, self)
-        progress.setWindowTitle("Google Drive Setup")
-        progress.setWindowModality(Qt.WindowModal)
-        progress.setMinimumDuration(0)
-        progress.show()
-        progress.setValue(10)
-        
-        try:
-            # Save current settings first
-            self.settings_handler.set_setting("google_drive_secret_path", self.secret_path.text())
-            self.settings_handler.set_setting("google_drive_folder_id", self.folder_id.text())
-            self.settings_handler.set_setting("google_drive_xle_folder_id", self.xle_folder_id.text())
-            
-            # Update progress
-            progress.setValue(20)
-            progress.setLabelText("Authenticating with Google Drive...")
-            
-            # Try to authenticate
-            if self.drive_service.authenticate(force=True):
-                # Get main window reference
-                main_window = self.parent()
-                
-                # Update progress
-                progress.setValue(40)
-                progress.setLabelText("Setting up Google Drive components...")
-                
-                # Initialize or update Google Drive database handler
-                if not hasattr(main_window, 'drive_db_handler') or main_window.drive_db_handler is None:
-                    from ..handlers.google_drive_db_handler import GoogleDriveDatabaseHandler
-                    main_window.drive_db_handler = GoogleDriveDatabaseHandler(self.settings_handler)
-                
-                # Initialize the database handler with the authenticated service
-                main_window.drive_db_handler.drive_service = self.drive_service
-                main_window.drive_db_handler.folder_id = self.folder_id.text()
-                
-                # Update progress
-                progress.setValue(50)
-                progress.setLabelText("Setting up Google Drive data handler...")
-                
-                # Initialize or update Google Drive data handler
-                if not hasattr(main_window, 'drive_data_handler') or main_window.drive_data_handler is None:
-                    from ..handlers.google_drive_data_handler import GoogleDriveDataHandler
-                    main_window.drive_data_handler = GoogleDriveDataHandler(self.settings_handler)
-                
-                # Initialize the data handler with the authenticated service
-                main_window.drive_data_handler.drive_service = self.drive_service
-                main_window.drive_data_handler.folder_id = self.folder_id.text()
-                
-                # Update progress
-                progress.setValue(60)
-                progress.setLabelText("Setting up Google Drive monitor...")
-                
-                # Initialize or update Google Drive monitor
-                xle_folder_id = self.xle_folder_id.text()
-                if not hasattr(main_window, 'drive_monitor') or main_window.drive_monitor is None:
-                    from ..handlers.google_drive_monitor import GoogleDriveMonitor
-                    main_window.drive_monitor = GoogleDriveMonitor(xle_folder_id, self.settings_handler)
-                else:
-                    main_window.drive_monitor.set_folder_id(xle_folder_id)
-                
-                # Initialize the monitor with the authenticated service
-                main_window.drive_monitor.drive_service = self.drive_service
-                
-                # Update progress
-                progress.setValue(70)
-                progress.setLabelText("Downloading data folders from Google Drive...")
-                
-                # Download data folders
-                self.download_data_folders(main_window, progress)
-                
-                # Update progress
-                progress.setValue(90)
-                progress.setLabelText("Checking for XLE files in Google Drive...")
-                
-                # Initialize folders in the monitor
-                main_window.drive_monitor.initialize_folders()
-                
-                # Check for new files (file organization)
-                main_window.drive_monitor.check_for_new_files()
-                
-                # Update progress
-                progress.setValue(100)
-                progress.setLabelText("Setup completed successfully!")
-                
-                # Show success message
-                QMessageBox.information(self, "Setup Successful", 
-                                      "Successfully set up Google Drive integration.")
-                                    
-                # Notify any Water Level Runs tabs that we're connected
-                if hasattr(main_window, '_tabs') and 'water_level_runs' in main_window._tabs:
-                    runs_tab = main_window._tabs['water_level_runs']
-                    if hasattr(runs_tab, 'load_existing_runs'):
-                        runs_tab.load_existing_runs()
-            else:
-                QMessageBox.warning(self, "Authentication Failed", 
-                                 "Failed to authenticate with Google Drive. Please check your settings.")
-            
-            # Update status
-            self.update_auth_status()
-            
-        except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error during Google Drive setup: {e}", exc_info=True)
-            QMessageBox.critical(self, "Error", f"Error during Google Drive setup: {str(e)}")
-        finally:
-            # Close progress dialog
-            if progress.isVisible():
-                progress.close()
-    
-    def download_data_folders(self, main_window, progress=None):
-        """Download data folders from Google Drive"""
-        try:
-            if progress:
-                progress.setLabelText("Downloading data folder from Google Drive...")
-            
-            # Download data folder
-            result = main_window.drive_data_handler.download_data_folder()
-            
-            if not result:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.warning("Failed to download data folder from Google Drive")
-            
-            if progress:
-                progress.setValue(progress.value() + 10)
-            
-            return result
-        except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error downloading data folders: {e}", exc_info=True)
-            return False
-    
     def update_auth_status(self):
         """Update the authentication status display"""
-        if self.drive_service.authenticated:
-            self.status_value.setText("Authenticated")
-            self.status_value.setStyleSheet("color: green; font-weight: bold;")
-            self.auth_btn.setText("Re-authenticate")
-        else:
-            self.status_value.setText("Not authenticated")
-            self.status_value.setStyleSheet("color: red; font-weight: bold;")
-            self.auth_btn.setText("Authenticate")
+        if self.drive_service and self.drive_service.authenticated:
+            self.status_display.setText("✓ Connected")
+            self.status_display.setStyleSheet("color: green; font-weight: bold;")
             
+            user_email = self.drive_service.get_user_email()
+            self.user_display.setText(user_email or "Authenticated User")
+            
+            self.connect_btn.setText("Reconnect")
+            self.disconnect_btn.setEnabled(True)
+            self.test_btn.setEnabled(True)
+        else:
+            self.status_display.setText("✗ Not Connected")
+            self.status_display.setStyleSheet("color: red; font-weight: bold;")
+            
+            self.user_display.setText("Not connected")
+            
+            self.connect_btn.setText("Connect to Google Drive")
+            self.disconnect_btn.setEnabled(False)
+            self.test_btn.setEnabled(False)
+    
+    def connect_to_drive(self):
+        """Connect to Google Drive using OAuth"""
+        try:
+            # Show progress
+            progress = QProgressDialog("Connecting to Google Drive...", None, 0, 0, self)
+            progress.setWindowModality(Qt.WindowModal)
+            progress.show()
+            
+            # Attempt authentication with browser interaction
+            success = self.drive_service.authenticate(force=True, interactive=True)
+            
+            progress.close()
+            
+            if success:
+                QMessageBox.information(
+                    self, 
+                    "Connection Successful", 
+                    f"Successfully connected to Google Drive as:\n{self.drive_service.get_user_email()}"
+                )
+                self.update_auth_status()
+            else:
+                QMessageBox.warning(
+                    self, 
+                    "Connection Failed", 
+                    "Failed to connect to Google Drive. Please check your internet connection and try again."
+                )
+                
+        except Exception as e:
+            if 'progress' in locals():
+                progress.close()
+            QMessageBox.critical(
+                self, 
+                "Connection Error", 
+                f"An error occurred while connecting to Google Drive:\n\n{str(e)}"
+            )
+    
+    def disconnect_from_drive(self):
+        """Disconnect from Google Drive"""
+        reply = QMessageBox.question(
+            self,
+            "Disconnect from Google Drive",
+            "Are you sure you want to disconnect from Google Drive?\n\n"
+            "This will disable cloud features until you reconnect.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            if self.drive_service.revoke_authentication():
+                QMessageBox.information(
+                    self,
+                    "Disconnected",
+                    "Successfully disconnected from Google Drive."
+                )
+                self.update_auth_status()
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Disconnect Failed",
+                    "Failed to disconnect from Google Drive."
+                )
+    
+    def test_connection(self):
+        """Test the Google Drive connection"""
+        if not self.drive_service or not self.drive_service.authenticated:
+            QMessageBox.warning(self, "Not Connected", "Please connect to Google Drive first.")
+            return
+            
+        try:
+            progress = QProgressDialog("Testing connection...", None, 0, 0, self)
+            progress.setWindowModality(Qt.WindowModal)
+            progress.show()
+            
+            # Test the connection by getting drive info
+            service = self.drive_service.get_service()
+            if service:
+                about = service.about().get(fields="storageQuota,user").execute()
+                user_email = about.get('user', {}).get('emailAddress', 'Unknown')
+                quota = about.get('storageQuota', {})
+                usage_gb = int(quota.get('usage', 0)) / (1024**3)
+                limit_gb = int(quota.get('limit', 0)) / (1024**3)
+                
+                progress.close()
+                
+                QMessageBox.information(
+                    self,
+                    "Connection Test Successful",
+                    f"Connected as: {user_email}\n"
+                    f"Storage: {usage_gb:.2f} GB / {limit_gb:.2f} GB used"
+                )
+            else:
+                progress.close()
+                QMessageBox.warning(self, "Test Failed", "Failed to get Google Drive service.")
+                
+        except Exception as e:
+            if 'progress' in locals():
+                progress.close()
+            QMessageBox.critical(
+                self,
+                "Connection Test Failed", 
+                f"Failed to test connection:\n\n{str(e)}"
+            )
+    
     def load_settings(self):
-        """Load settings from settings handler"""
-        # Get client secret path from settings
-        client_secret_path = self.settings_handler.get_setting("google_drive_secret_path", "")
-        
-        # If the path is not set or the file doesn't exist, try to find a default one
-        if not client_secret_path or not os.path.exists(client_secret_path):
-            config_dir = Path.cwd() / "config"
-            if config_dir.exists():
-                # Look for client_secret*.json files
-                secret_files = list(config_dir.glob("client_secret*.json"))
-                if secret_files:
-                    client_secret_path = str(secret_files[0])
-        
-        self.secret_path.setText(client_secret_path)
-        
-        # Get folder IDs from settings
-        self.folder_id.setText(self.settings_handler.get_setting("google_drive_folder_id", "1vGoxkS-HQ0n0u0ToNcYL_wJGZ02RDhAK"))
-        self.xle_folder_id.setText(self.settings_handler.get_setting("google_drive_xle_folder_id", "1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW"))
-        
-        # Get auto-check setting
-        self.auto_check.setChecked(self.settings_handler.get_setting("google_drive_auto_check", False))
-        
+        """Load current settings"""
+        # Load folder IDs
+        self.folder_id.setText(
+            self.settings_handler.get_setting("google_drive_folder_id", "1vGoxkS-HQ0n0u0ToNcYL_wJGZ02RDhAK")
+        )
+        self.xle_folder_id.setText(
+            self.settings_handler.get_setting("google_drive_xle_folder_id", "1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW")
+        )
+        self.projects_folder_id.setText(
+            self.settings_handler.get_setting("google_drive_projects_folder_id", "1JjiXRblLAf6rdhiOzrAaYik8bjNpBc9s")  
+        )
+    
     def save_settings(self):
-        """Save settings to settings handler"""
-        # Save Google Drive settings
-        self.settings_handler.set_setting("google_drive_secret_path", self.secret_path.text())
-        self.settings_handler.set_setting("google_drive_folder_id", self.folder_id.text())
-        self.settings_handler.set_setting("google_drive_xle_folder_id", self.xle_folder_id.text())
-        self.settings_handler.set_setting("google_drive_auto_check", self.auto_check.isChecked())
-        
-        # Close the dialog
-        self.accept() 
+        """Save settings"""
+        try:
+            # Save folder IDs
+            self.settings_handler.set_setting("google_drive_folder_id", self.folder_id.text().strip())
+            self.settings_handler.set_setting("google_drive_xle_folder_id", self.xle_folder_id.text().strip())
+            self.settings_handler.set_setting("google_drive_projects_folder_id", self.projects_folder_id.text().strip())
+            
+            QMessageBox.information(self, "Settings Saved", "Google Drive settings have been saved successfully.")
+            self.accept()
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Save Error", f"Failed to save settings:\n\n{str(e)}")
+    
+    def browse_client_secret(self):
+        """Legacy method - no longer used for OAuth"""
+        QMessageBox.information(
+            self,
+            "OAuth Authentication", 
+            "This application now uses OAuth authentication. "
+            "Please use the 'Connect to Google Drive' button to authenticate."
+        )

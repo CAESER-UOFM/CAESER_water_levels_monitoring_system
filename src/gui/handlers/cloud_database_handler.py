@@ -691,11 +691,50 @@ class CloudDatabaseHandler:
             )
             
             if files:
-                # Update existing
-                service.files().update(
-                    fileId=files[0]['id'],
-                    media_body=media
-                ).execute()
+                # Check if existing file is owned by service account
+                file_id = files[0]['id']
+                try:
+                    # Get file info to check ownership
+                    file_info = service.files().get(
+                        fileId=file_id,
+                        fields="owners"
+                    ).execute()
+                    
+                    owners = file_info.get('owners', [])
+                    is_service_account_owned = any(
+                        owner.get('emailAddress', '').endswith('.iam.gserviceaccount.com')
+                        for owner in owners
+                    )
+                    
+                    if is_service_account_owned:
+                        logger.info("changes.json is owned by service account, recreating with OAuth user ownership")
+                        # Delete the old service account file
+                        service.files().delete(fileId=file_id).execute()
+                        # Create new file owned by OAuth user
+                        file_metadata = {
+                            'name': 'changes.json',
+                            'parents': [project_info['db_folder_id']]
+                        }
+                        service.files().create(
+                            body=file_metadata,
+                            media_body=media,
+                            fields='id'
+                        ).execute()
+                        logger.info("Successfully recreated changes.json with OAuth user ownership")
+                    else:
+                        # Update existing file (OAuth user owned)
+                        service.files().update(
+                            fileId=file_id,
+                            media_body=media
+                        ).execute()
+                        
+                except Exception as ownership_error:
+                    logger.warning(f"Could not check file ownership, attempting update anyway: {ownership_error}")
+                    # Fallback to trying update
+                    service.files().update(
+                        fileId=file_id,
+                        media_body=media
+                    ).execute()
             else:
                 # Create new
                 file_metadata = {
@@ -732,8 +771,29 @@ class CloudDatabaseHandler:
             # Keep only 2 most recent
             if len(backups) > 2:
                 for backup in backups[2:]:
-                    service.files().delete(fileId=backup['id']).execute()
-                    logger.info(f"Deleted old backup: {backup['name']}")
+                    try:
+                        # Check ownership before deleting
+                        file_info = service.files().get(
+                            fileId=backup['id'],
+                            fields="owners"
+                        ).execute()
+                        
+                        owners = file_info.get('owners', [])
+                        is_service_account_owned = any(
+                            owner.get('emailAddress', '').endswith('.iam.gserviceaccount.com')
+                            for owner in owners
+                        )
+                        
+                        if is_service_account_owned:
+                            logger.warning(f"Backup {backup['name']} is owned by service account, skipping deletion")
+                            continue
+                        
+                        # Delete if owned by OAuth user
+                        service.files().delete(fileId=backup['id']).execute()
+                        logger.info(f"Deleted old backup: {backup['name']}")
+                        
+                    except Exception as delete_error:
+                        logger.warning(f"Could not delete backup {backup['name']}: {delete_error}")
                     
         except Exception as e:
             logger.error(f"Error cleaning backups: {e}")

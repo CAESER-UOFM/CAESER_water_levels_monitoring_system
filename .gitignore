@@ -54,6 +54,7 @@ debug_launcher.*
 
 # User data and configuration (keep local)
 config/token.pickle
+config/token_oauth.json
 config/credentials.json
 config/client_secret_*.json
 config/water-levels-monitoring-*.json
@@ -105,6 +106,8 @@ test_*/
 *test*.py
 *test*.json
 *test*.md
+test_scripts/
+**/test_scripts/
 
 # Development and debugging files
 debug_*.py

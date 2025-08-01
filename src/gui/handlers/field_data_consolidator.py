@@ -89,6 +89,164 @@ class FieldDataConsolidator:
             logger.error(f"Error getting/creating monthly folder {year_month}: {e}")
             return None
     
+    def update_folder_metadata(self, folder_id, year_month, copied_file_id):
+        """Update or create metadata.json in the specified folder after adding a file"""
+        try:
+            import json
+            import io
+            from datetime import datetime
+            from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
+            
+            # Step 1: Get file info for the copied file
+            file_info = self.drive_service.files().get(
+                fileId=copied_file_id,
+                fields="id, name, size, modifiedTime"
+            ).execute()
+            
+            # Step 2: Read the file content to get actual data info
+            file_metadata = self.get_file_metadata_from_drive(copied_file_id, file_info['name'])
+            if not file_metadata:
+                logger.warning(f"Could not extract metadata from {file_info['name']}")
+                return
+            
+            # Step 3: Check if metadata.json exists in folder
+            query = f"'{folder_id}' in parents and name='metadata.json' and trashed=false"
+            results = self.drive_service.files().list(q=query, fields="files(id)").execute()
+            metadata_files = results.get('files', [])
+            
+            # Step 4: Load existing metadata or create new
+            if metadata_files:
+                # Download existing metadata
+                metadata_file_id = metadata_files[0]['id']
+                request = self.drive_service.files().get_media(fileId=metadata_file_id)
+                content = io.BytesIO()
+                downloader = MediaIoBaseDownload(content, request)
+                done = False
+                while not done:
+                    _, done = downloader.next_chunk()
+                
+                content.seek(0)
+                metadata = json.loads(content.read().decode('utf-8'))
+            else:
+                # Create new metadata structure
+                metadata = {
+                    'folder': year_month,
+                    'generated_date': datetime.now().isoformat(),
+                    'files': []
+                }
+                metadata_file_id = None
+            
+            # Step 5: Update file list (replace if exists, add if new)
+            file_entry = {
+                'filename': file_info['name'],
+                'google_drive_file_id': copied_file_id,
+                'serial_number': file_metadata.get('serial_number', 'unknown'),
+                'cae_number': file_metadata.get('cae_number', 'unknown'),
+                'location': file_metadata.get('location', 'unknown'),
+                'device_type': file_metadata.get('device_type', 'unknown'),
+                'actual_start_date': file_metadata.get('actual_start_date', ''),
+                'actual_end_date': file_metadata.get('actual_end_date', ''),
+                'file_size': int(file_info.get('size', 0)),
+                'drive_modified_time': file_info.get('modifiedTime', ''),
+                'processed_date': datetime.now().isoformat()
+            }
+            
+            # Remove any existing entry with same filename or file_id
+            metadata['files'] = [
+                f for f in metadata['files'] 
+                if f.get('filename') != file_info['name'] and f.get('google_drive_file_id') != copied_file_id
+            ]
+            
+            # Add the new/updated entry
+            metadata['files'].append(file_entry)
+            
+            # Update generation date
+            metadata['generated_date'] = datetime.now().isoformat()
+            
+            # Step 6: Upload updated metadata.json
+            json_content = json.dumps(metadata, indent=2)
+            media = MediaIoBaseUpload(
+                io.BytesIO(json_content.encode()),
+                mimetype='application/json',
+                resumable=True
+            )
+            
+            if metadata_file_id:
+                # Update existing file
+                self.drive_service.files().update(
+                    fileId=metadata_file_id,
+                    media_body=media
+                ).execute()
+                logger.debug(f"Updated existing metadata.json in {year_month} folder")
+            else:
+                # Create new file
+                file_metadata_obj = {
+                    'name': 'metadata.json', 
+                    'parents': [folder_id]
+                }
+                self.drive_service.files().create(
+                    body=file_metadata_obj,
+                    media_body=media,
+                    fields='id'
+                ).execute()
+                logger.debug(f"Created new metadata.json in {year_month} folder")
+                
+        except Exception as e:
+            logger.error(f"Error updating folder metadata: {e}")
+            raise
+            
+    def get_file_metadata_from_drive(self, file_id, filename):
+        """Get metadata by downloading and reading the file from Drive"""
+        try:
+            import tempfile
+            import io
+            from ..handlers.solinst_reader import SolinstReader
+            from pathlib import Path
+            from googleapiclient.http import MediaIoBaseDownload
+            
+            # Download file content
+            request = self.drive_service.files().get_media(fileId=file_id)
+            file_content = io.BytesIO()
+            downloader = MediaIoBaseDownload(file_content, request)
+            done = False
+            while not done:
+                _, done = downloader.next_chunk()
+            
+            # Write to temporary file
+            with tempfile.NamedTemporaryFile(suffix='.xle', delete=False) as tmp_file:
+                file_content.seek(0)
+                tmp_file.write(file_content.read())
+                tmp_path = tmp_file.name
+            
+            try:
+                # Read XLE file
+                reader = SolinstReader()
+                df, metadata = reader.read_xle(Path(tmp_path))
+                
+                if not df.empty and 'timestamp' in df.columns:
+                    first_date = df['timestamp'].min()
+                    last_date = df['timestamp'].max()
+                    
+                    return {
+                        'serial_number': str(metadata.serial_number) if metadata.serial_number else 'unknown',
+                        'cae_number': metadata.location.replace(':', '') if metadata.location else 'unknown',
+                        'location': metadata.location if metadata.location else 'unknown',
+                        'device_type': 'barologger' if 'baro' in filename.lower() else 'water_level',
+                        'actual_start_date': first_date.isoformat(),
+                        'actual_end_date': last_date.isoformat()
+                    }
+                
+            finally:
+                # Clean up temp file
+                import os
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+                    
+        except Exception as e:
+            logger.error(f"Error reading file metadata from {filename}: {e}")
+            
+        return None
+    
     def extract_date_from_filename(self, filename):
         """Extract date information from XLE filename"""
         try:
@@ -99,47 +257,130 @@ class FieldDataConsolidator:
             # - 2181050_HA:A-013_2025_04_28_To_05_22.xle
             
             # Updated patterns to handle various filename formats with flexible digit counts and suffixes
-            # Pattern 1: Full dates with times - Location_YYYY_MM_DD_HHMMSS_YYYY_MM_DD_HHMMSS[_suffix].xle
-            pattern_full_time = r'(.+?)_(\d{4})_(\d{1,2})_(\d{1,2})_(\d{6})_(\d{4})_(\d{1,2})_(\d{1,2})_(\d{6})(?:_[^.]*)?\.xle'
-            match = re.match(pattern_full_time, filename, re.IGNORECASE)
+            # Pattern 1: Files starting with underscore (missing location) - _YYYY_MM_DD_To_YYYY_MM_DD.xle
+            pattern_no_location = r'^_(\d{4})_(\d{1,2})_(\d{1,2})_To_(\d{4})_(\d{1,2})_(\d{1,2})(?:_[^.]*)?\.xle'
+            match = re.match(pattern_no_location, filename, re.IGNORECASE)
             
             if match:
-                cae, start_year, start_month, start_day, start_time, end_year, end_month, end_day, end_time = match.groups()
+                start_year, start_month, start_day, end_year, end_month, end_day = match.groups()
                 year_month = f"{end_year}-{end_month.zfill(2)}"
-                logger.debug(f"Matched full pattern with time for {filename}")
+                cae = "UNKNOWN"  # No location in filename
+                logger.debug(f"Matched no-location pattern for {filename}")
             else:
-                # Pattern 2: Full dates without times with flexible digits and suffixes
-                pattern_full = r'(.+?)_(\d{4})_(\d{1,2})_(\d{1,2})_To_(\d{4})_(\d{1,2})_(\d{1,2})(?:_[^.]*)?\.xle'
-                match = re.match(pattern_full, filename, re.IGNORECASE)
+                # Pattern 2: Non-standard date format - Location_M_D_To_M_D_suffix.xle (e.g., PS-PT_6_25_To_7_26_NC_DST.xle)
+                pattern_short_date = r'(.+?)_(\d{1,2})_(\d{1,2})_To_(\d{1,2})_(\d{1,2})_(.+)?\.xle'
+                match = re.match(pattern_short_date, filename, re.IGNORECASE)
                 
                 if match:
-                    cae, start_year, start_month, start_day, end_year, end_month, end_day = match.groups()
-                    year_month = f"{end_year}-{end_month.zfill(2)}"
-                    logger.debug(f"Matched full pattern for {filename}")
+                    cae = match.group(1)
+                    # For short dates without year, use current year as fallback
+                    import datetime
+                    current_year = datetime.datetime.now().year
+                    year_month = f"{current_year}-{match.group(4).zfill(2)}"  # Use end month
+                    logger.debug(f"Matched short date pattern for {filename}, using current year {current_year}")
                 else:
-                    # Pattern 3: Abbreviated dates (without year in end date) with flexible digits and suffixes
-                    pattern_abbrev = r'(.+?)_(\d{4})_(\d{1,2})_(\d{1,2})_To_(\d{1,2})_(\d{1,2})(?:_[^.]*)?\.xle'
-                    match = re.match(pattern_abbrev, filename, re.IGNORECASE)
+                    # Pattern 3: Full dates with times - Location_YYYY_MM_DD_HHMMSS_YYYY_MM_DD_HHMMSS[_suffix].xle
+                    pattern_full_time = r'(.+?)_(\d{4})_(\d{1,2})_(\d{1,2})_(\d{6})_(\d{4})_(\d{1,2})_(\d{1,2})_(\d{6})(?:_[^.]*)?\.xle'
+                    match = re.match(pattern_full_time, filename, re.IGNORECASE)
                     
                     if match:
-                        cae, start_year, start_month, start_day, end_month, end_day = match.groups()
-                        end_year = start_year
+                        cae, start_year, start_month, start_day, start_time, end_year, end_month, end_day, end_time = match.groups()
                         year_month = f"{end_year}-{end_month.zfill(2)}"
-                        logger.debug(f"Matched abbreviated pattern for {filename}")
+                        logger.debug(f"Matched full pattern with time for {filename}")
                     else:
-                        logger.warning(f"Could not parse date from filename: {filename}")
-                        return None
+                        # Pattern 4: Full dates without times with flexible digits and suffixes
+                        pattern_full = r'(.+?)_(\d{4})_(\d{1,2})_(\d{1,2})_To_(\d{4})_(\d{1,2})_(\d{1,2})(?:_[^.]*)?\.xle'
+                        match = re.match(pattern_full, filename, re.IGNORECASE)
+                        
+                        if match:
+                            cae, start_year, start_month, start_day, end_year, end_month, end_day = match.groups()
+                            year_month = f"{end_year}-{end_month.zfill(2)}"
+                            logger.debug(f"Matched full pattern for {filename}")
+                        else:
+                            # Pattern 5: Abbreviated dates (without year in end date) with flexible digits and suffixes
+                            pattern_abbrev = r'(.+?)_(\d{4})_(\d{1,2})_(\d{1,2})_To_(\d{1,2})_(\d{1,2})(?:_[^.]*)?\.xle'
+                            match = re.match(pattern_abbrev, filename, re.IGNORECASE)
+                            
+                            if match:
+                                cae, start_year, start_month, start_day, end_month, end_day = match.groups()
+                                end_year = start_year
+                                year_month = f"{end_year}-{end_month.zfill(2)}"
+                                logger.debug(f"Matched abbreviated pattern for {filename}")
+                            else:
+                                logger.warning(f"Could not parse date from filename: {filename}")
+                                return None
             
-            return {
-                'cae': cae.strip(),
-                'start_date': f"{start_year}-{start_month.zfill(2)}-{start_day.zfill(2)}",
-                'end_date': f"{end_year}-{end_month.zfill(2)}-{end_day.zfill(2)}",
+            # Build return dict with available data
+            result = {
+                'cae': cae.strip() if 'cae' in locals() else 'UNKNOWN',
                 'year_month': year_month
             }
+            
+            # Add dates if we have complete date info
+            if 'start_year' in locals() and 'start_month' in locals() and 'start_day' in locals():
+                result['start_date'] = f"{start_year}-{start_month.zfill(2)}-{start_day.zfill(2)}"
+            
+            if 'end_year' in locals() and 'end_month' in locals() and 'end_day' in locals():
+                result['end_date'] = f"{end_year}-{end_month.zfill(2)}-{end_day.zfill(2)}"
+            
+            return result
                 
         except Exception as e:
             logger.error(f"Error extracting date from filename {filename}: {e}")
             return None
+    
+    def get_actual_year_month_from_xle(self, file_info):
+        """Read XLE file to determine the correct year-month folder based on actual data"""
+        try:
+            import tempfile
+            import io
+            from ..handlers.solinst_reader import SolinstReader
+            
+            # Download file to memory
+            logger.debug(f"Reading {file_info['name']} to determine correct month folder...")
+            request = self.drive_service.files().get_media(fileId=file_info['id'])
+            file_content = io.BytesIO()
+            
+            # Use the media download functionality
+            from googleapiclient.http import MediaIoBaseDownload
+            downloader = MediaIoBaseDownload(file_content, request)
+            done = False
+            while not done:
+                status, done = downloader.next_chunk()
+            
+            file_content.seek(0)
+            
+            # Write to temporary file
+            with tempfile.NamedTemporaryFile(suffix='.xle', delete=False) as tmp_file:
+                tmp_file.write(file_content.read())
+                tmp_path = tmp_file.name
+            
+            try:
+                # Read XLE file to get actual data
+                reader = SolinstReader()
+                df, metadata = reader.read_xle(Path(tmp_path))
+                
+                # Get actual last date from data to determine folder
+                if not df.empty and 'timestamp' in df.columns:
+                    last_date = df['timestamp'].max()
+                    # Use the last date to determine which month folder
+                    year_month = last_date.strftime('%Y-%m')
+                    logger.info(f"File {file_info['name']} belongs in {year_month} folder based on actual data")
+                    return year_month
+                else:
+                    logger.warning(f"No data found in {file_info['name']}, falling back to filename parsing")
+                    return file_info.get('year_month')
+                    
+            finally:
+                # Clean up temp file
+                import os
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+                    
+        except Exception as e:
+            logger.error(f"Error reading actual dates from {file_info['name']}: {e}")
+            # If anything fails, fall back to the parsed year_month
+            return file_info.get('year_month')
     
     def generate_corrected_filename(self, file_info):
         """Generate corrected filename by reading actual XLE data"""
@@ -404,14 +645,21 @@ class FieldDataConsolidator:
                     progress = 30 + int((processed_files / total_files) * 60)
                     progress_callback(f"Processing file {file_num}/{total_files}: {file_info['name']}", progress)
                 
-                # Get or create monthly folder
-                year_month = file_info['year_month']
-                if year_month not in monthly_folders:
-                    if progress_callback:
-                        progress_callback(f"Creating folder for {year_month}...", progress)
-                    monthly_folders[year_month] = self.get_or_create_monthly_folder(year_month)
+                # CRITICAL FIX: Get actual year-month from XLE data instead of filename
+                # This ensures files go into the correct month folder based on their actual data
+                actual_year_month = self.get_actual_year_month_from_xle(file_info)
+                if not actual_year_month:
+                    logger.warning(f"Could not determine year-month for {file_info['name']}, skipping")
+                    processed_files += 1
+                    continue
                 
-                target_folder_id = monthly_folders[year_month]
+                # Get or create monthly folder using the actual year-month
+                if actual_year_month not in monthly_folders:
+                    if progress_callback:
+                        progress_callback(f"Creating folder for {actual_year_month}...", progress)
+                    monthly_folders[actual_year_month] = self.get_or_create_monthly_folder(actual_year_month)
+                
+                target_folder_id = monthly_folders[actual_year_month]
                 if target_folder_id:
                     # Copy file to consolidated folder
                     if progress_callback:
@@ -420,6 +668,16 @@ class FieldDataConsolidator:
                     copied_file_id = self.copy_file_to_consolidated(file_info, target_folder_id)
                     
                     if copied_file_id:
+                        # CRITICAL FIX: Update metadata.json in the target folder after successful copy
+                        if progress_callback:
+                            progress_callback(f"Updating metadata for {actual_year_month} folder...", progress)
+                        
+                        try:
+                            self.update_folder_metadata(target_folder_id, actual_year_month, copied_file_id)
+                            logger.debug(f"Updated metadata.json in {actual_year_month} folder for new file")
+                        except Exception as e:
+                            logger.error(f"Failed to update metadata for {actual_year_month}: {e}")
+                        
                         if progress_callback:
                             progress_callback(f"Moving {file_info['name']} to archived folder...", progress)
                         
