@@ -2103,11 +2103,23 @@ class WaterLevelEditDialog(QDialog):
             
             # Apply changes using the new tracking system
             if changes:
+                logger.info(f"SPIKE FIX DEBUG: Applying {len(changes)} changes to data")
+                for idx, change_data in list(changes.items())[:3]:  # Log first 3 changes
+                    logger.info(f"  Change at index {idx}: {change_data}")
                 self.apply_instance_edits(self.spike_helper.instance_id, 'spike_fix', changes)
+                logger.info("SPIKE FIX DEBUG: Changes applied to transducer_data and plot_data")
                 
             self.ax.legend(loc='upper right')
             # Update the entire plot to show changes with updated data
+            logger.info(f"SPIKE FIX DEBUG: About to call update_plot(), data_type = {self.data_type}")
+            if hasattr(self, 'transducer_data') and not self.transducer_data.empty:
+                temp_cols = [col for col in self.transducer_data.columns if 'temp' in col.lower()]
+                logger.info(f"SPIKE FIX DEBUG: Temperature columns in transducer_data: {temp_cols}")
+                if 'temperature_spike_corrected' in self.transducer_data.columns:
+                    temp_range = self.transducer_data['temperature_spike_corrected'].describe()
+                    logger.info(f"SPIKE FIX DEBUG: temperature_spike_corrected range: {temp_range.to_dict()}")
             self.update_plot()
+            logger.info("SPIKE FIX DEBUG: update_plot() completed")
             # Re-add preview lines
             for i, preview_line in enumerate(self.spike_lines):
                 if preview_line:
