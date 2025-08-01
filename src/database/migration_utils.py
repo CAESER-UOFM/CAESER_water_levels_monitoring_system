@@ -35,6 +35,7 @@ class DatabaseMigration:
                 # List of migrations to check and apply
                 migrations = [
                     self._migrate_user_notes_table,
+                    self._migrate_temperature_spike_flag,
                     # Add more migrations here as needed
                 ]
                 
@@ -100,6 +101,34 @@ class DatabaseMigration:
             
         except Exception as e:
             logger.error(f"Error creating user_notes table: {e}")
+            raise
+    
+    def _migrate_temperature_spike_flag(self, cursor: sqlite3.Cursor) -> bool:
+        """
+        Add temperature_spike_flag column to water_level_readings table if it doesn't exist.
+        
+        Returns:
+            True if column was added, False if already exists
+        """
+        try:
+            # Check if the column already exists
+            cursor.execute("PRAGMA table_info(water_level_readings)")
+            columns = [row[1] for row in cursor.fetchall()]
+            
+            if 'temperature_spike_flag' in columns:
+                return False  # Column already exists
+            
+            # Add the column
+            cursor.execute('''
+                ALTER TABLE water_level_readings 
+                ADD COLUMN temperature_spike_flag TEXT DEFAULT 'none'
+            ''')
+            
+            logger.info("Added temperature_spike_flag column to water_level_readings table")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error adding temperature_spike_flag column: {e}")
             raise
     
     def get_missing_tables(self) -> List[str]:

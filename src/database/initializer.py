@@ -226,6 +226,7 @@ class DatabaseInitializer:
                 serial_number TEXT,
                 baro_flag TEXT,
                 level_flag TEXT,
+                temperature_spike_flag TEXT DEFAULT 'none',
                 processing_date_utc TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 imported_time_range TEXT,
                 source_xle_file TEXT,
