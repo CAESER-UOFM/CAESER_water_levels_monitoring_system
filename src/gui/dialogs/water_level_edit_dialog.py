@@ -1964,6 +1964,12 @@ class WaterLevelEditDialog(QDialog):
         try:
             x_coord = event.xdata
             y_coord = event.ydata
+            
+            # Check if coordinates are valid
+            if x_coord is None or y_coord is None:
+                QApplication.restoreOverrideCursor()
+                return
+                
             clicked_time = matplotlib.dates.num2date(x_coord).replace(tzinfo=None)
             # Find the closest transducer data point using efficient vectorized operations
             closest_point = self.find_closest_data_point(clicked_time, y_coord)
@@ -2758,11 +2764,13 @@ class WaterLevelEditDialog(QDialog):
                            f'Date: {point_data["timestamp_utc"].strftime("%Y-%m-%d %H:%M")}\n' \
                            f'Level: {point_data["water_level"]:.2f} ft\n' \
                            f'Source: {point_data["data_source"]}'
-                    self.hover_annotation = self.ax.annotate(text,
-                        xy=(event.xdata, event.ydata),
-                        xytext=(10, 10), textcoords='offset points',
-                        bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.5),
-                        arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0'))
+                    # Only create annotation if mouse coordinates are valid
+                    if event.xdata is not None and event.ydata is not None:
+                        self.hover_annotation = self.ax.annotate(text,
+                            xy=(event.xdata, event.ydata),
+                            xytext=(10, 10), textcoords='offset points',
+                            bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.5),
+                            arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0'))
                     found_point = True
                     break
             elif isinstance(artist, matplotlib.lines.Line2D):
@@ -2962,6 +2970,10 @@ class WaterLevelEditDialog(QDialog):
         """Handle plot clicks during selection mode or for point identification"""
         # First, handle selection mode if active
         if self.selection_mode and event.inaxes == self.ax:
+            # Check if coordinates are valid
+            if event.xdata is None:
+                return
+                
             # Get the exact datetime at click position
             selected_datetime = matplotlib.dates.num2date(event.xdata).replace(tzinfo=None)
             
@@ -2979,6 +2991,10 @@ class WaterLevelEditDialog(QDialog):
         elif event.inaxes == self.ax and not self.selection_mode:
             # Try to find the closest data point to the click
             if not self.transducer_data.empty:
+                # Check if coordinates are valid
+                if event.xdata is None or event.ydata is None:
+                    return
+                    
                 # Convert click x-coordinate to datetime
                 click_datetime = matplotlib.dates.num2date(event.xdata).replace(tzinfo=None)
                 click_level = event.ydata
@@ -3328,7 +3344,7 @@ class WaterLevelEditDialog(QDialog):
             return
         
         # Update vertical line position
-        if hasattr(self, 'date_selection_line') and self.date_selection_line:
+        if hasattr(self, 'date_selection_line') and self.date_selection_line and event.xdata is not None:
             self.date_selection_line.set_xdata(event.xdata)
             self.canvas.draw_idle()
 
