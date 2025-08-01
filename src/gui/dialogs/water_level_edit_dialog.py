@@ -1171,27 +1171,62 @@ class WaterLevelEditDialog(QDialog):
                     
                     # Determine which column to display based on data type
                     if self.data_type == 'temperature':
-                        display_column = 'temperature_spike_corrected' if 'temperature_spike_corrected' in well_data.columns else 'temperature'
                         y_label = 'Temperature (°C)'
-                        line_color = 'red'
                         data_type_label = 'Temperature'
+                        
+                        # Always plot the original temperature line first
+                        if 'temperature' in well_data.columns:
+                            original_line, = self.ax.plot(well_data['timestamp_utc'], 
+                                           well_data['temperature'], 
+                                           '-', color='lightcoral', label=f'Well {well} (Original Temperature)',
+                                           alpha=0.6,
+                                           zorder=2,
+                                           picker=5)
+                            self.scatter_plots.append((original_line, well_data))
+                        
+                        # Plot the corrected temperature line if it exists and differs from original
+                        if 'temperature_spike_corrected' in well_data.columns:
+                            # Check if there are any actual corrections (different from original)
+                            has_corrections = False
+                            if 'temperature_spike_flag' in well_data.columns:
+                                has_corrections = (well_data['temperature_spike_flag'] != 'none').any()
+                            
+                            if has_corrections:
+                                corrected_line, = self.ax.plot(well_data['timestamp_utc'], 
+                                               well_data['temperature_spike_corrected'], 
+                                               '-', color='red', label=f'Well {well} (Spike Corrected)',
+                                               alpha=0.8,
+                                               zorder=3,
+                                               linewidth=2,
+                                               picker=5)
+                                self.scatter_plots.append((corrected_line, well_data))
+                            else:
+                                # If no corrections, just use the original line with standard styling
+                                if 'temperature' not in well_data.columns:
+                                    line, = self.ax.plot(well_data['timestamp_utc'], 
+                                                   well_data['temperature_spike_corrected'], 
+                                                   '-', color='red', label=f'Well {well} (Temperature)',
+                                                   alpha=0.7,
+                                                   zorder=3,
+                                                   picker=5)
+                                    self.scatter_plots.append((line, well_data))
                     else:
                         # Use water_level_master_corrected for display if it exists, otherwise fall back to corrected level
                         display_column = 'water_level_master_corrected' if 'water_level_master_corrected' in well_data.columns else 'water_level_level_corrected'
                         y_label = 'Water Level (ft)'
                         line_color = 'blue'
                         data_type_label = 'Water Level'
-                    
-                    # Make the line pickable with a picker tolerance of 5 points
-                    line, = self.ax.plot(well_data['timestamp_utc'], 
-                               well_data[display_column], 
-                               '-', color=line_color, label=f'Well {well} ({data_type_label})',
-                               alpha=0.7,
-                               zorder=3,
-                               picker=5)  # Enable picking for lines with 5-point tolerance
-                    
-                    # Store the line and its data for hover and pick events
-                    self.scatter_plots.append((line, well_data))
+                        
+                        # Make the line pickable with a picker tolerance of 5 points
+                        line, = self.ax.plot(well_data['timestamp_utc'], 
+                                   well_data[display_column], 
+                                   '-', color=line_color, label=f'Well {well} ({data_type_label})',
+                                   alpha=0.7,
+                                   zorder=3,
+                                   picker=5)  # Enable picking for lines with 5-point tolerance
+                        
+                        # Store the line and its data for hover and pick events
+                        self.scatter_plots.append((line, well_data))
             
             # Plot manual readings as scatter points (pickable) - only in water level mode
             if not self.manual_data.empty and self.data_type == 'water_level':
