@@ -187,37 +187,53 @@ class SpikeFixHelperDialog(EditToolHelperDialog):
             if self.parent():
                 self.parent().cancel_spike_point_selection()
         
-    def set_selected_point(self, timestamp, level):
+    def set_selected_point(self, timestamp, value, data_type='water_level'):
         """Set a selected point from the main dialog. Handles first/second point logic."""
-        if self.current_point is None:
-            self.current_point = (timestamp, level)
-            self.status_label.setText(f"First point set: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}, Level: {level:.2f} ft\nClick on second point (end of spike)")
+        # Determine value label and unit based on data type
+        if data_type == 'temperature':
+            value_label = "Temperature"
+            unit = "°C"
         else:
-            pair = (self.current_point, (timestamp, level))
+            value_label = "Level"
+            unit = "ft"
+            
+        if self.current_point is None:
+            self.current_point = (timestamp, value)
+            self.status_label.setText(f"First point set: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}, {value_label}: {value:.2f} {unit}\nClick on second point (end of spike)")
+        else:
+            pair = (self.current_point, (timestamp, value))
             self.pairs.append(pair)
             self.current_point = None
             self.status_label.setText("Pair added. Click on first point for next pair, or finish selection.")
-            self._update_pairs_label()
+            self._update_pairs_label(data_type)
             self.remove_last_pair_btn.setEnabled(True if self.pairs else False)
         
     def _remove_last_pair(self):
         if self.pairs:
             self.pairs.pop()
-            self._update_pairs_label()
+            self._update_pairs_label('water_level')  # Default for remove
             self.remove_last_pair_btn.setEnabled(True if self.pairs else False)
             self.status_label.setText("Last pair removed. Continue selecting or finish.")
         else:
             self.status_label.setText("No pairs to remove.")
         
-    def _update_pairs_label(self):
+    def _update_pairs_label(self, data_type='water_level'):
         if not self.pairs:
             self.pairs_label.setText("<i>No pairs selected.</i>")
         else:
+            # Determine value label and unit based on data type
+            if data_type == 'temperature':
+                value_label = "Temperature"
+                unit = "°C"
+            else:
+                value_label = "Level"
+                unit = "ft"
+                
             text = ""
-            for i, ((t1, l1), (t2, l2)) in enumerate(self.pairs, 1):
+            for i, ((t1, v1), (t2, v2)) in enumerate(self.pairs, 1):
                 text += f"Pair {i}:<br>"
-                text += f"&nbsp;&nbsp;Start: {t1.strftime('%Y-%m-%d %H:%M:%S')}, Level: {l1:.2f} ft<br>"
-                text += f"&nbsp;&nbsp;End: {t2.strftime('%Y-%m-%d %H:%M:%S')}, Level: {l2:.2f} ft<br>"
+                text += f"&nbsp;&nbsp;Start: {t1.strftime('%Y-%m-%d %H:%M:%S')}, {value_label}: {v1:.2f} {unit}<br>"
+                text += f"&nbsp;&nbsp;End: {t2.strftime('%Y-%m-%d %H:%M:%S')}, {value_label}: {v2:.2f} {unit}<br>"
             self.pairs_label.setText(text)
         
     def get_current_parameters(self):

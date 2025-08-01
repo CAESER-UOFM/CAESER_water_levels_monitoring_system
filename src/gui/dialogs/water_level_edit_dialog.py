@@ -1930,15 +1930,15 @@ class WaterLevelEditDialog(QDialog):
             if closest_point is None:
                 QApplication.restoreOverrideCursor()
                 return
-            timestamp, level = closest_point
+            timestamp, value = closest_point
             # Pass point to helper dialog (handles first/second logic and pair logging)
             if hasattr(self, 'spike_helper_dialog') and self.spike_helper_dialog:
-                self.spike_helper_dialog.set_selected_point(timestamp, level)
+                self.spike_helper_dialog.set_selected_point(timestamp, value, self.data_type)
             # Highlight the selected point on the plot
             point_color = 'red' if not self.spike_helper_dialog.current_point else 'blue'
             point_label = None
-            point = self.ax.scatter([timestamp], [level], color=point_color, s=100, zorder=10, label=point_label)
-            self.spike_points.append((point, timestamp, level))
+            point = self.ax.scatter([timestamp], [value], color=point_color, s=100, zorder=10, label=point_label)
+            self.spike_points.append((point, timestamp, value))
             self.canvas.draw_idle()
         except Exception as e:
             logger.error(f"Error processing point click: {e}", exc_info=True)
@@ -1966,7 +1966,15 @@ class WaterLevelEditDialog(QDialog):
             
             # Convert to numpy arrays for efficient calculation
             time_values = view_data['timestamp_utc'].values
-            level_values = view_data['water_level'].values
+            
+            # Get values based on current data type
+            if self.data_type == 'temperature':
+                if 'temperature_spike_corrected' in view_data.columns:
+                    level_values = view_data['temperature_spike_corrected'].values
+                else:
+                    level_values = view_data['temperature'].values
+            else:
+                level_values = view_data['water_level'].values
             
             # Calculate time differences in seconds
             time_diffs = np.array([(pd.to_datetime(t) - pd.to_datetime(click_time)).total_seconds() 
@@ -1991,9 +1999,9 @@ class WaterLevelEditDialog(QDialog):
             
             # Get the closest point
             closest_timestamp = time_values[min_idx]
-            closest_level = level_values[min_idx]
+            closest_value = level_values[min_idx]
             
-            return pd.to_datetime(closest_timestamp), closest_level
+            return pd.to_datetime(closest_timestamp), closest_value
             
         except Exception as e:
             logger.error(f"Error finding closest data point: {e}")
@@ -3088,6 +3096,9 @@ class WaterLevelEditDialog(QDialog):
                     'baro_flag_mod': self.transducer_data.loc[idx, 'baro_flag_mod'] if idx in self.transducer_data.index else None,
                     'level_flag_mod': self.transducer_data.loc[idx, 'level_flag_mod'] if idx in self.transducer_data.index else None,
                     'spike_flag': self.transducer_data.loc[idx, 'spike_flag'] if idx in self.transducer_data.index else None,
+                    'temperature': self.transducer_data.loc[idx, 'temperature'] if idx in self.transducer_data.index and 'temperature' in self.transducer_data.columns else None,
+                    'temperature_spike_corrected': self.transducer_data.loc[idx, 'temperature_spike_corrected'] if idx in self.transducer_data.index and 'temperature_spike_corrected' in self.transducer_data.columns else None,
+                    'temperature_spike_flag': self.transducer_data.loc[idx, 'temperature_spike_flag'] if idx in self.transducer_data.index and 'temperature_spike_flag' in self.transducer_data.columns else None,
                 }
             
             # Apply the changes
