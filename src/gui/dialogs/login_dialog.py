@@ -24,6 +24,10 @@ class LoginDialog(QDialog):
         self.setMinimumWidth(340)  # Reduced by 15% from 400
         self.auth_service = auth_service
         
+        # Force dialog to stay on top and be modal
+        self.setWindowFlags(Qt.Dialog | Qt.WindowStaysOnTopHint)
+        self.setModal(True)
+        
         # Set window icon
         self._set_window_icon()
         
