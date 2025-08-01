@@ -188,7 +188,7 @@ class WaterLevelEditDialog(QDialog):
             non_master_mask = df_sorted['baro_flag'] != 'master'
             if non_master_mask.any():
                 # Get indices where status changes
-                status_changes = non_master_mask.diff().fillna(False).infer_objects(copy=False).astype(bool)
+                status_changes = non_master_mask.diff().fillna(False).astype(bool)
                 change_indices = status_changes[status_changes].index.tolist()
                 
                 # Add the last index if it's not already included
@@ -208,7 +208,7 @@ class WaterLevelEditDialog(QDialog):
             master_mask = df_sorted['baro_flag'] == 'master'
             if master_mask.any():
                 # Similar logic for master groups
-                status_changes = master_mask.diff().fillna(False).infer_objects(copy=False).astype(bool)
+                status_changes = master_mask.diff().fillna(False).astype(bool)
                 change_indices = status_changes[status_changes].index.tolist()
                 
                 if len(change_indices) % 2 != 0:
@@ -1530,6 +1530,11 @@ class WaterLevelEditDialog(QDialog):
     def _apply_temperature_changes(self):
         """Apply temperature spike corrections to the database"""
         try:
+            # Run database migration to ensure temperature_spike_corrected column exists
+            if self.db_path:
+                from ...database.migration_utils import DatabaseMigration
+                migration = DatabaseMigration(self.db_path)
+                migration.check_and_migrate()
             # Find records that have been spike corrected
             if 'temperature_spike_flag' not in self.plot_data.columns:
                 QMessageBox.information(self, "No Changes", "No temperature corrections found to apply.")
@@ -1567,12 +1572,12 @@ class WaterLevelEditDialog(QDialog):
                 # Prepare update data
                 update_data = []
                 for index, row in modified_data.iterrows():
-                    temperature = row['temperature_spike_corrected']
+                    temperature_corrected = row['temperature_spike_corrected']
                     spike_flag = row['temperature_spike_flag']
                     timestamp_utc = row['timestamp_utc'].strftime('%Y-%m-%d %H:%M:%S') if isinstance(row['timestamp_utc'], pd.Timestamp) else str(row['timestamp_utc'])
                     well_number = str(row['well_number']).strip()
                     
-                    update_data.append((temperature, spike_flag, well_number, timestamp_utc))
+                    update_data.append((temperature_corrected, spike_flag, well_number, timestamp_utc))
                     
                     # Update progress
                     progress.setValue(len(update_data))
@@ -1588,7 +1593,7 @@ class WaterLevelEditDialog(QDialog):
                 # Execute batch update
                 cursor.executemany("""
                     UPDATE water_level_readings 
-                    SET temperature = ?, temperature_spike_flag = ?
+                    SET temperature_spike_corrected = ?, temperature_spike_flag = ?
                     WHERE well_number = ? AND timestamp_utc = ?
                 """, update_data)
                 
