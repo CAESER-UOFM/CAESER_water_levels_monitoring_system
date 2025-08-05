@@ -932,11 +932,20 @@ class MainWindow(QMainWindow):
             # Add cloud databases section
             if self.cloud_db_handler:
                 try:
-                    logger.info("Loading cloud projects from Google Drive...")
+                    logger.info("Loading cloud projects...")
                     
-                    # Check if the drive service is authenticated
-                    if hasattr(self.cloud_db_handler.drive_service, 'authenticated') and self.cloud_db_handler.drive_service.authenticated:
-                        logger.info("Drive service is authenticated, fetching projects...")
+                    # Check if cloud handler is available and can access projects
+                    cloud_accessible = False
+                    if hasattr(self.cloud_db_handler, 'drive_service'):
+                        # Google Drive handler
+                        cloud_accessible = (hasattr(self.cloud_db_handler.drive_service, 'authenticated') and 
+                                          self.cloud_db_handler.drive_service.authenticated)
+                    else:
+                        # Shared Drive handler - always accessible if initialized
+                        cloud_accessible = True
+                    
+                    if cloud_accessible:
+                        logger.info("Cloud service accessible, fetching projects...")
                         cloud_projects = self.cloud_db_handler.list_projects()
                         if cloud_projects:
                             logger.info(f"Found {len(cloud_projects)} cloud projects")
