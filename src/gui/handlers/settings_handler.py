@@ -98,7 +98,13 @@ class SettingsHandler:
             "barologger_watch_folder": str(app_dir),  # Add barologger watch folder default
             "water_level_watch_folder": str(app_dir),  # Add water level watch folder default
             "field_data_folders": ["1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW"],  # Field laptop Solinst folders (correct folder ID)
-            "consolidated_field_data_folder": ""  # Will be set to water_levels_monitoring/FIELD_DATA_CONSOLIDATED
+            "consolidated_field_data_folder": "",  # Will be set to water_levels_monitoring/FIELD_DATA_CONSOLIDATED
+            # Shared Drive Settings (for migration from Google Drive)
+            "use_shared_drive": True,  # Enable/disable shared drive functionality - Default to S: drive
+            "shared_drive_root": "S:/Water_Projects/CAESER/Water_Data_Series/Water_levels_monitoring/",
+            "shared_drive_projects": "S:/Water_Projects/CAESER/Water_Data_Series/Water_levels_monitoring/Projects/",
+            "shared_drive_field_data": "S:/Water_Projects/CAESER/Water_Data_Series/Water_levels_monitoring/FIELD_DATA_CONSOLIDATED/",
+            "shared_drive_feedback": "S:/Water_Projects/CAESER/Water_Data_Series/Water_levels_monitoring/App_Feedback/"
         }
         
         # Force update the folder ID if it's set to the wrong value
