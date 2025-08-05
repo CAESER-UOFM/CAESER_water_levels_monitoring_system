@@ -1667,25 +1667,6 @@ class WaterLevelEditDialog(QDialog):
                                   QMessageBox.Yes | QMessageBox.No) == QMessageBox.No:
                 return
                 
-            # Rest of the water level update logic continues as before...
-            # (The rest of the original apply_changes method would go here)
-            # For now, show a message that this part needs completion
-            QMessageBox.information(self, "Water Level Changes", 
-                f"Water level changes would be applied here for {num_records} records.")
-            
-        except Exception as e:
-            logger.error(f"Error applying water level changes: {e}")
-            QMessageBox.critical(self, "Error", f"Failed to apply water level changes: {str(e)}")
-                
-            # Show confirmation dialog
-            num_records = len(modified_data)
-            confirm_msg = f"Are you sure you want to update {num_records} records in the database?\n\n" \
-                          f"This will update water levels and their corresponding flags."
-            
-            if QMessageBox.question(self, 'Confirm Changes', confirm_msg, 
-                                  QMessageBox.Yes | QMessageBox.No) == QMessageBox.No:
-                return
-                
             # Create progress dialog
             progress = QProgressDialog("Updating database...", "Cancel", 0, num_records, self)
             progress.setWindowModality(Qt.WindowModal)
