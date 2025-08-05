@@ -451,6 +451,13 @@ class SharedDriveDbHandler:
         self.database_manager = database_manager
         logger.debug("Database manager set for SharedDriveDbHandler")
     
+    def has_draft(self, project_name: str) -> bool:
+        """Check if project has a draft (interface compatibility with CloudDatabaseHandler)"""
+        # For shared drive, we can check if draft manager has any drafts
+        if hasattr(self, 'draft_manager') and self.draft_manager:
+            return self.draft_manager.has_draft(project_name)
+        return False
+    
     def cleanup_temp_files(self):
         """Clean up any temporary files created during operations"""
         for temp_file in self.temp_files:
