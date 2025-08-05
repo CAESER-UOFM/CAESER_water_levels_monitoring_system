@@ -757,11 +757,11 @@ class SharedDriveDbHandler:
     
     # === SESSION MANAGEMENT (adapted for shared drive) ===
     
-    def create_session_backup(self, project_name: str, local_db_path: str) -> bool:
+    def create_session_backup(self, project_name: str, database_path: str, backup_type: str) -> bool:
         """Create session backup (adapted for shared drive)"""
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_name = f"session_backup_{timestamp}.db"
+            backup_name = f"session_backup_{backup_type}_{timestamp}.db"
             
             # Store in session_backups tracking
             if project_name not in self.session_backups:
@@ -769,20 +769,23 @@ class SharedDriveDbHandler:
             
             # Create backup in local cache
             backup_path = os.path.join(self.cache_dir, f"{project_name}_{backup_name}")
-            shutil.copy2(local_db_path, backup_path)
+            shutil.copy2(database_path, backup_path)
             
-            self.session_backups[project_name]["original"] = backup_path
+            self.session_backups[project_name][backup_type] = backup_path
             
-            logger.info(f"Session backup created for {project_name}")
+            logger.info(f"Session backup ({backup_type}) created for {project_name}")
             return True
             
         except Exception as e:
             logger.error(f"Error creating session backup: {e}")
             return False
     
-    def get_session_backup_path(self, project_name: str) -> Optional[str]:
+    def get_session_backup_path(self, project_name: str, backup_type: str) -> Optional[str]:
         """Get session backup path"""
-        return self.session_backups.get(project_name, {}).get("original")
+        backup_path = self.session_backups.get(project_name, {}).get(backup_type)
+        if backup_path and os.path.exists(backup_path):
+            return backup_path
+        return None
     
     def cleanup_session_backups(self):
         """Cleanup session backups"""
