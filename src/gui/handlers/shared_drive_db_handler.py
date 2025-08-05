@@ -458,6 +458,50 @@ class SharedDriveDbHandler:
             return self.draft_manager.has_draft(project_name)
         return False
     
+    def check_version_status(self, project_name: str) -> Dict:
+        """Check version status of project (interface compatibility with CloudDatabaseHandler)"""
+        try:
+            # Get shared drive database info
+            shared_db_path = self._get_shared_drive_db_path(project_name)
+            
+            if not os.path.exists(shared_db_path):
+                return {
+                    'status': 'not_found',
+                    'message': f'Database not found in shared drive: {project_name}'
+                }
+            
+            # Get modification time
+            modified_time = self._get_file_modified_time(shared_db_path)
+            working_db_path = os.path.join(self.cache_dir, f"wlm_{project_name}.db")
+            
+            # Check if we have a local working copy
+            if os.path.exists(working_db_path):
+                if self._is_working_database_valid(project_name, modified_time):
+                    return {
+                        'status': 'up_to_date',
+                        'message': 'Local database is up to date with shared drive',
+                        'cloud_modified': modified_time
+                    }
+                else:
+                    return {
+                        'status': 'outdated',
+                        'message': 'Local database is outdated, shared drive has newer version',
+                        'cloud_modified': modified_time
+                    }
+            else:
+                return {
+                    'status': 'not_cached',
+                    'message': 'Database not cached locally, will download from shared drive',
+                    'cloud_modified': modified_time
+                }
+                
+        except Exception as e:
+            logger.error(f"Error checking version status for {project_name}: {e}")
+            return {
+                'status': 'error',
+                'message': f'Error checking version status: {str(e)}'
+            }
+    
     def cleanup_temp_files(self):
         """Clean up any temporary files created during operations"""
         for temp_file in self.temp_files:
