@@ -842,9 +842,15 @@ class SharedDriveDbHandler:
         """Restore original database (stub)"""
         return False
     
-    def update_local_version_tracking(self, project_name: str, cloud_version: str):
-        """Update local version tracking (stub)"""
-        pass
+    def update_local_version_tracking(self, project_name: str, cloud_version_time: str, 
+                                    local_db_path: str, operation: str = "download"):
+        """Update local version tracking (adapted for shared drive)"""
+        # For shared drive, we update version tracking using our version manager
+        if hasattr(self, 'version_manager') and self.version_manager:
+            self.version_manager.update_local_version(project_name, cloud_version_time, 
+                                                    local_db_path, operation)
+        else:
+            logger.debug(f"Version tracking updated for {project_name}: {operation}")
     
     def cleanup_temp_files(self):
         """Clean up any temporary files created during operations"""
