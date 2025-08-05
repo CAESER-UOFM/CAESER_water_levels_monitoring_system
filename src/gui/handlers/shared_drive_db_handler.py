@@ -505,6 +505,342 @@ class SharedDriveDbHandler:
                 'message': f'Error checking version status: {str(e)}'
             }
     
+    # === COMPATIBILITY METHODS (adapted from CloudDatabaseHandler) ===
+    
+    def get_projects_folder_id(self):
+        """Get projects folder ID (interface compatibility - returns shared drive path)"""
+        return self.get_projects_folder_path()
+    
+    def get_cached_database_path(self, project_name: str) -> str:
+        """Get cached database path (interface compatibility)"""
+        return self._get_cached_db_path(project_name)
+    
+    def download_database(self, project_name: str, force_download: bool = False) -> Optional[str]:
+        """Download database (interface compatibility - maps to download_project_database)"""
+        return self.download_project_database(project_name, force_download)
+    
+    def save_database(self, project_name: str, local_db_path: str, 
+                     change_tracker=None, create_backup: bool = True) -> bool:
+        """Save database to shared drive (adapted from CloudDatabaseHandler)"""
+        try:
+            logger.info(f"Saving database for {project_name} to shared drive")
+            
+            # Use existing upload_database method
+            success = self.upload_database(project_name, local_db_path, create_backup)
+            
+            if success and change_tracker:
+                # Save change tracking info to shared drive changes folder
+                self._save_detailed_changes(project_name, change_tracker)
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"Error saving database for {project_name}: {e}")
+            return False
+    
+    def _save_detailed_changes(self, project_name: str, change_tracker):
+        """Save detailed change tracking data to shared drive"""
+        try:
+            # Get change data
+            changes_data = change_tracker.get_changes_for_save()
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"changes_{timestamp}.json"
+            
+            # Create changes folder in project databases folder
+            db_folder_path = self._get_shared_drive_db_folder_path(project_name)
+            changes_folder_path = os.path.join(db_folder_path, "changes")
+            os.makedirs(changes_folder_path, exist_ok=True)
+            
+            # Save changes file
+            changes_file_path = os.path.join(changes_folder_path, filename)
+            with open(changes_file_path, 'w') as f:
+                json.dump(changes_data, f, indent=2)
+            
+            logger.info(f"Detailed changes saved to: {changes_file_path}")
+            
+        except Exception as e:
+            logger.error(f"Error saving detailed changes: {e}")
+    
+    # === LOCKING SYSTEM (adapted for shared drive) ===
+    
+    def check_lock(self, project_info: Dict) -> Tuple[bool, Optional[str], Optional[str]]:
+        """Check if database is locked by another user (adapted for shared drive)"""
+        try:
+            # For shared drive, check for lock file
+            project_name = project_info.get('name', '')
+            lock_file_path = os.path.join(
+                self._get_shared_drive_db_folder_path(project_name), 
+                f"{project_name}_lock.json"
+            )
+            
+            if not os.path.exists(lock_file_path):
+                return False, None, None
+            
+            # Read lock info
+            try:
+                with open(lock_file_path, 'r') as f:
+                    lock_info = json.load(f)
+                
+                # Check if lock is expired (5 minutes)
+                lock_time_str = lock_info.get('lock_time', '')
+                if lock_time_str:
+                    lock_time = datetime.fromisoformat(lock_time_str)
+                    if (datetime.now() - lock_time).total_seconds() > 300:
+                        # Lock expired - remove it
+                        os.remove(lock_file_path)
+                        return False, None, None
+                
+                return True, lock_info.get('locked_by'), lock_time_str
+                
+            except (json.JSONDecodeError, ValueError) as e:
+                logger.warning(f"Invalid lock file, removing: {e}")
+                os.remove(lock_file_path)
+                return False, None, None
+                
+        except Exception as e:
+            logger.error(f"Error checking lock: {e}")
+            return False, None, None
+    
+    def acquire_lock(self, project_info: Dict, user_name: str) -> bool:
+        """Try to acquire lock on database (adapted for shared drive)"""
+        try:
+            project_name = project_info.get('name', '')
+            lock_file_path = os.path.join(
+                self._get_shared_drive_db_folder_path(project_name), 
+                f"{project_name}_lock.json"
+            )
+            
+            # Check if already locked
+            is_locked, locked_by, lock_time = self.check_lock(project_info)
+            if is_locked and locked_by != user_name:
+                return False
+            
+            # Create lock file
+            lock_info = {
+                'locked_by': user_name,
+                'lock_time': datetime.now().isoformat(),
+                'project_name': project_name
+            }
+            
+            with open(lock_file_path, 'w') as f:
+                json.dump(lock_info, f, indent=2)
+            
+            logger.info(f"Lock acquired for {project_name} by {user_name}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error acquiring lock: {e}")
+            return False
+    
+    def _release_lock(self, project_info: Dict):
+        """Release lock on database (adapted for shared drive)"""
+        try:
+            project_name = project_info.get('name', '')
+            lock_file_path = os.path.join(
+                self._get_shared_drive_db_folder_path(project_name), 
+                f"{project_name}_lock.json"
+            )
+            
+            if os.path.exists(lock_file_path):
+                os.remove(lock_file_path)
+                logger.info(f"Lock released for {project_name}")
+                
+        except Exception as e:
+            logger.error(f"Error releasing lock: {e}")
+    
+    # === DRAFT MANAGEMENT SYSTEM (adapted for shared drive) ===
+    
+    def save_as_draft(self, project_name: str, local_db_path: str, draft_name: str = None) -> bool:
+        """Save database as draft (adapted for shared drive)"""
+        try:
+            if not draft_name:
+                draft_name = f"draft_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            
+            # Create drafts folder in project databases folder
+            db_folder_path = self._get_shared_drive_db_folder_path(project_name)
+            drafts_folder_path = os.path.join(db_folder_path, "drafts")
+            os.makedirs(drafts_folder_path, exist_ok=True)
+            
+            # Copy database to drafts folder
+            draft_file_path = os.path.join(drafts_folder_path, f"{draft_name}.db")
+            shutil.copy2(local_db_path, draft_file_path)
+            
+            # Save draft metadata
+            draft_metadata = {
+                'draft_name': draft_name,
+                'created_at': datetime.now().isoformat(),
+                'project_name': project_name,
+                'original_size': os.path.getsize(local_db_path)
+            }
+            
+            metadata_path = os.path.join(drafts_folder_path, f"{draft_name}_metadata.json")
+            with open(metadata_path, 'w') as f:
+                json.dump(draft_metadata, f, indent=2)
+            
+            logger.info(f"Draft saved: {draft_name} for {project_name}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error saving draft: {e}")
+            return False
+    
+    def load_draft(self, project_name: str, draft_name: str) -> Optional[str]:
+        """Load draft database (adapted for shared drive)"""
+        try:
+            db_folder_path = self._get_shared_drive_db_folder_path(project_name)
+            drafts_folder_path = os.path.join(db_folder_path, "drafts")
+            draft_file_path = os.path.join(drafts_folder_path, f"{draft_name}.db")
+            
+            if not os.path.exists(draft_file_path):
+                logger.warning(f"Draft not found: {draft_name} for {project_name}")
+                return None
+            
+            # Copy draft to working location
+            working_db_path = os.path.join(self.cache_dir, f"wlm_{project_name}.db")
+            shutil.copy2(draft_file_path, working_db_path)
+            
+            logger.info(f"Draft loaded: {draft_name} for {project_name}")
+            return working_db_path
+            
+        except Exception as e:
+            logger.error(f"Error loading draft: {e}")
+            return None
+    
+    def clear_draft(self, project_name: str, draft_name: str) -> bool:
+        """Clear/delete draft (adapted for shared drive)"""
+        try:
+            db_folder_path = self._get_shared_drive_db_folder_path(project_name)
+            drafts_folder_path = os.path.join(db_folder_path, "drafts")
+            
+            draft_file_path = os.path.join(drafts_folder_path, f"{draft_name}.db")
+            metadata_path = os.path.join(drafts_folder_path, f"{draft_name}_metadata.json")
+            
+            if os.path.exists(draft_file_path):
+                os.remove(draft_file_path)
+            if os.path.exists(metadata_path):
+                os.remove(metadata_path)
+            
+            logger.info(f"Draft cleared: {draft_name} for {project_name}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error clearing draft: {e}")
+            return False
+    
+    def get_draft_info(self, project_name: str) -> List[Dict]:
+        """Get draft information (adapted for shared drive)"""
+        try:
+            db_folder_path = self._get_shared_drive_db_folder_path(project_name)
+            drafts_folder_path = os.path.join(db_folder_path, "drafts")
+            
+            if not os.path.exists(drafts_folder_path):
+                return []
+            
+            drafts = []
+            for file in os.listdir(drafts_folder_path):
+                if file.endswith('_metadata.json'):
+                    try:
+                        metadata_path = os.path.join(drafts_folder_path, file)
+                        with open(metadata_path, 'r') as f:
+                            draft_info = json.load(f)
+                        drafts.append(draft_info)
+                    except Exception as e:
+                        logger.warning(f"Error reading draft metadata {file}: {e}")
+            
+            return drafts
+            
+        except Exception as e:
+            logger.error(f"Error getting draft info: {e}")
+            return []
+    
+    # === SESSION MANAGEMENT (adapted for shared drive) ===
+    
+    def create_session_backup(self, project_name: str, local_db_path: str) -> bool:
+        """Create session backup (adapted for shared drive)"""
+        try:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_name = f"session_backup_{timestamp}.db"
+            
+            # Store in session_backups tracking
+            if project_name not in self.session_backups:
+                self.session_backups[project_name] = {}
+            
+            # Create backup in local cache
+            backup_path = os.path.join(self.cache_dir, f"{project_name}_{backup_name}")
+            shutil.copy2(local_db_path, backup_path)
+            
+            self.session_backups[project_name]["original"] = backup_path
+            
+            logger.info(f"Session backup created for {project_name}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error creating session backup: {e}")
+            return False
+    
+    def get_session_backup_path(self, project_name: str) -> Optional[str]:
+        """Get session backup path"""
+        return self.session_backups.get(project_name, {}).get("original")
+    
+    def cleanup_session_backups(self):
+        """Cleanup session backups"""
+        for project_name, backups in self.session_backups.items():
+            for backup_type, backup_path in backups.items():
+                try:
+                    if os.path.exists(backup_path):
+                        os.remove(backup_path)
+                        logger.debug(f"Cleaned up session backup: {backup_path}")
+                except Exception as e:
+                    logger.warning(f"Could not clean up session backup {backup_path}: {e}")
+        
+        self.session_backups.clear()
+    
+    # === STUB METHODS (for interface compatibility) ===
+    
+    def check_draft_version_changes(self, project_name: str) -> Dict:
+        """Check draft version changes (stub for interface compatibility)"""
+        return {'has_changes': False, 'message': 'Not implemented for shared drive'}
+    
+    def check_for_outdated_working_databases(self) -> List[str]:
+        """Check for outdated working databases (stub)"""
+        return []
+    
+    def ensure_working_database_preserved(self, project_name: str):
+        """Ensure working database preserved (stub)"""
+        pass
+    
+    def has_session_changes_since_download(self, project_name: str) -> bool:
+        """Check if session has changes since download (stub)"""
+        return False
+    
+    def has_session_changes_since_upload(self, project_name: str) -> bool:
+        """Check if session has changes since upload (stub)"""
+        return False
+    
+    def list_proposals(self) -> List[Dict]:
+        """List proposals (stub - not implemented for shared drive)"""
+        return []
+    
+    def download_proposal(self, proposal_id: str) -> Optional[str]:
+        """Download proposal (stub - not implemented for shared drive)"""
+        return None
+    
+    def upload_proposal(self, proposal_data: Dict) -> bool:
+        """Upload proposal (stub - not implemented for shared drive)"""
+        return False
+    
+    def rebuild_xle_tracking_after_database_load(self, project_name: str):
+        """Rebuild XLE tracking after database load (stub)"""
+        pass
+    
+    def restore_original_database(self, project_name: str) -> bool:
+        """Restore original database (stub)"""
+        return False
+    
+    def update_local_version_tracking(self, project_name: str, cloud_version: str):
+        """Update local version tracking (stub)"""
+        pass
+    
     def cleanup_temp_files(self):
         """Clean up any temporary files created during operations"""
         for temp_file in self.temp_files:
