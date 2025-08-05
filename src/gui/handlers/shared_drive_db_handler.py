@@ -458,7 +458,7 @@ class SharedDriveDbHandler:
             return self.draft_manager.has_draft(project_name)
         return False
     
-    def check_version_status(self, project_name: str) -> Dict:
+    def check_version_status(self, project_name: str, cloud_version_time: str = None) -> Dict:
         """Check version status of project (interface compatibility with CloudDatabaseHandler)"""
         try:
             # Get shared drive database info
@@ -470,8 +470,11 @@ class SharedDriveDbHandler:
                     'message': f'Database not found in shared drive: {project_name}'
                 }
             
-            # Get modification time
-            modified_time = self._get_file_modified_time(shared_db_path)
+            # Get modification time (use provided cloud_version_time if available)
+            if cloud_version_time:
+                modified_time = cloud_version_time
+            else:
+                modified_time = self._get_file_modified_time(shared_db_path)
             working_db_path = os.path.join(self.cache_dir, f"wlm_{project_name}.db")
             
             # Check if we have a local working copy
