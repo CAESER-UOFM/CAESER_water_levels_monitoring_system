@@ -38,6 +38,7 @@ from .dialogs.monet_settings_dialog import MonetSettingsDialog  # Import the new
 from .handlers.google_drive_db_handler import GoogleDriveDatabaseHandler
 from .handlers.google_drive_service import GoogleDriveService
 from .handlers.cloud_database_handler import CloudDatabaseHandler
+from .handlers.shared_drive_db_handler import SharedDriveDbHandler
 from .handlers.user_auth_service import UserAuthService
 from .dialogs.login_dialog import LoginDialog
 from .dialogs.user_management_dialog import UserManagementDialog
@@ -393,12 +394,8 @@ class MainWindow(QMainWindow):
                 if self.drive_db_handler.authenticate():
                     logger.info("Successfully authenticated with Google Drive")
                     
-                    # Initialize Cloud database handler
-                    self.cloud_db_handler = CloudDatabaseHandler(self.drive_service, self.settings_handler)
-                    # Set database manager for XLE file operations
-                    self.cloud_db_handler.set_database_manager(self.db_manager)
-                    # Set cloud handler in database manager for import dialogs
-                    self.db_manager.set_cloud_db_handler(self.cloud_db_handler)
+                    # Initialize appropriate cloud database handler (Shared Drive or Google Drive)
+                    self._initialize_cloud_database_handler()
                     
                     # Set Google Drive handler for database manager
                     self.db_manager.set_google_drive_handler(self.drive_db_handler)
@@ -425,6 +422,55 @@ class MainWindow(QMainWindow):
             
         except Exception as e:
             logger.error(f"Error authenticating with Google Drive: {e}")
+            return False
+    
+    def _initialize_cloud_database_handler(self):
+        """
+        Initialize the appropriate cloud database handler (Shared Drive or Google Drive).
+        
+        Returns:
+            True if a cloud handler was initialized, False otherwise
+        """
+        try:
+            # Check if shared drive should be used and is accessible
+            if self.settings_handler.get_setting("use_shared_drive", False):
+                logger.info("Checking shared drive access...")
+                shared_handler = SharedDriveDbHandler(self.settings_handler)
+                
+                if shared_handler._check_shared_drive_access():
+                    logger.info("Shared drive accessible - using SharedDriveDbHandler")
+                    self.cloud_db_handler = shared_handler
+                    
+                    # Set database manager for operations
+                    self.cloud_db_handler.set_database_manager(self.db_manager)
+                    # Set cloud handler in database manager for import dialogs
+                    self.db_manager.set_cloud_db_handler(self.cloud_db_handler)
+                    
+                    return True
+                else:
+                    logger.warning("Shared drive not accessible - cloud features disabled")
+                    self.cloud_db_handler = None
+                    return False
+            else:
+                # Use Google Drive (existing functionality)
+                if self.drive_service and self.drive_service.authenticated:
+                    logger.info("Using Google Drive - initializing CloudDatabaseHandler")
+                    self.cloud_db_handler = CloudDatabaseHandler(self.drive_service, self.settings_handler)
+                    
+                    # Set database manager for XLE file operations
+                    self.cloud_db_handler.set_database_manager(self.db_manager)
+                    # Set cloud handler in database manager for import dialogs
+                    self.db_manager.set_cloud_db_handler(self.cloud_db_handler)
+                    
+                    return True
+                else:
+                    logger.info("Google Drive not authenticated - cloud features disabled")
+                    self.cloud_db_handler = None
+                    return False
+                    
+        except Exception as e:
+            logger.error(f"Error initializing cloud database handler: {e}")
+            self.cloud_db_handler = None
             return False
     
     def apply_application_styling(self):
@@ -4165,12 +4211,10 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
                     
                     # Reinitialize cloud database handler with new settings
                     if self.drive_service and self.drive_service.authenticated:
-                        logger.info("Reinitializing Google Drive components after credential setup")
+                        logger.info("Reinitializing cloud components after credential setup")
                         
-                        # Initialize Cloud database handler
-                        self.cloud_db_handler = CloudDatabaseHandler(self.drive_service, self.settings_handler)
-                        # Set database manager for XLE file operations
-                        self.cloud_db_handler.set_database_manager(self.db_manager)
+                        # Initialize appropriate cloud database handler (Shared Drive or Google Drive)
+                        self._initialize_cloud_database_handler()
                         
                         # Initialize Google Drive database handler
                         if not hasattr(self, 'drive_db_handler') or self.drive_db_handler is None:

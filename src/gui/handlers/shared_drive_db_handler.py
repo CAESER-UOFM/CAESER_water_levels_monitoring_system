@@ -446,6 +446,11 @@ class SharedDriveDbHandler:
             logger.error(f"Error uploading database for {project_name}: {e}")
             return False
     
+    def set_database_manager(self, database_manager):
+        """Set the database manager for operations (interface compatibility)"""
+        self.database_manager = database_manager
+        logger.debug("Database manager set for SharedDriveDbHandler")
+    
     def cleanup_temp_files(self):
         """Clean up any temporary files created during operations"""
         for temp_file in self.temp_files:
