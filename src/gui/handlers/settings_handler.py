@@ -100,7 +100,7 @@ class SettingsHandler:
             "field_data_folders": ["1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW"],  # Field laptop Solinst folders (correct folder ID)
             "consolidated_field_data_folder": "",  # Will be set to water_levels_monitoring/FIELD_DATA_CONSOLIDATED
             # Shared Drive Settings (for migration from Google Drive)
-            "use_shared_drive": False,  # Enable/disable shared drive functionality
+            "use_shared_drive": True,  # Enable/disable shared drive functionality - Default to S: drive
             "shared_drive_root": "S:/Water_Projects/CAESER/Water_Data_Series/Water_levels_monitoring/",
             "shared_drive_projects": "S:/Water_Projects/CAESER/Water_Data_Series/Water_levels_monitoring/Projects/",
             "shared_drive_field_data": "S:/Water_Projects/CAESER/Water_Data_Series/Water_levels_monitoring/FIELD_DATA_CONSOLIDATED/",
