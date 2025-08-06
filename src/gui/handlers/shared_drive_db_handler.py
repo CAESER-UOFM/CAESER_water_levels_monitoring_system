@@ -276,8 +276,8 @@ class SharedDriveDbHandler:
                         'database_name': f"{item}.db",
                         'database_path': db_file_path,
                         'modified_time': modified_time,
-                        'locked_by': None,  # TODO: Implement locking mechanism
-                        'lock_time': None
+                        'locked_by': None,  # No locking for shared drive (users work on local copies)
+                        'lock_time': None   # No locking for shared drive (users work on local copies)
                     })
                     
         except Exception as e:
@@ -563,92 +563,22 @@ class SharedDriveDbHandler:
         except Exception as e:
             logger.error(f"Error saving detailed changes: {e}")
     
-    # === LOCKING SYSTEM (adapted for shared drive) ===
+    # === LOCKING SYSTEM (stub methods for interface compatibility) ===
     
     def check_lock(self, project_info: Dict) -> Tuple[bool, Optional[str], Optional[str]]:
-        """Check if database is locked by another user (adapted for shared drive)"""
-        try:
-            # For shared drive, check for lock file
-            project_name = project_info.get('name', '')
-            lock_file_path = os.path.join(
-                self._get_shared_drive_db_folder_path(project_name), 
-                f"{project_name}_lock.json"
-            )
-            
-            if not os.path.exists(lock_file_path):
-                return False, None, None
-            
-            # Read lock info
-            try:
-                with open(lock_file_path, 'r') as f:
-                    lock_info = json.load(f)
-                
-                # Check if lock is expired (5 minutes)
-                lock_time_str = lock_info.get('lock_time', '')
-                if lock_time_str:
-                    lock_time = datetime.fromisoformat(lock_time_str)
-                    if (datetime.now() - lock_time).total_seconds() > 300:
-                        # Lock expired - remove it
-                        os.remove(lock_file_path)
-                        return False, None, None
-                
-                return True, lock_info.get('locked_by'), lock_time_str
-                
-            except (json.JSONDecodeError, ValueError) as e:
-                logger.warning(f"Invalid lock file, removing: {e}")
-                os.remove(lock_file_path)
-                return False, None, None
-                
-        except Exception as e:
-            logger.error(f"Error checking lock: {e}")
-            return False, None, None
+        """Check if database is locked - no locking for shared drive (users work on local copies)"""
+        # Always return not locked since each user works on their own local copy
+        return False, None, None
     
     def acquire_lock(self, project_info: Dict, user_name: str) -> bool:
-        """Try to acquire lock on database (adapted for shared drive)"""
-        try:
-            project_name = project_info.get('name', '')
-            lock_file_path = os.path.join(
-                self._get_shared_drive_db_folder_path(project_name), 
-                f"{project_name}_lock.json"
-            )
-            
-            # Check if already locked
-            is_locked, locked_by, lock_time = self.check_lock(project_info)
-            if is_locked and locked_by != user_name:
-                return False
-            
-            # Create lock file
-            lock_info = {
-                'locked_by': user_name,
-                'lock_time': datetime.now().isoformat(),
-                'project_name': project_name
-            }
-            
-            with open(lock_file_path, 'w') as f:
-                json.dump(lock_info, f, indent=2)
-            
-            logger.info(f"Lock acquired for {project_name} by {user_name}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error acquiring lock: {e}")
-            return False
+        """Acquire lock - no locking needed for shared drive (users work on local copies)"""
+        # Always successful since no actual locking needed
+        return True
     
     def _release_lock(self, project_info: Dict):
-        """Release lock on database (adapted for shared drive)"""
-        try:
-            project_name = project_info.get('name', '')
-            lock_file_path = os.path.join(
-                self._get_shared_drive_db_folder_path(project_name), 
-                f"{project_name}_lock.json"
-            )
-            
-            if os.path.exists(lock_file_path):
-                os.remove(lock_file_path)
-                logger.info(f"Lock released for {project_name}")
-                
-        except Exception as e:
-            logger.error(f"Error releasing lock: {e}")
+        """Release lock - no-op for shared drive (no locks created)"""
+        # Nothing to release since no locks are created
+        pass
     
     # === DRAFT MANAGEMENT SYSTEM (adapted for shared drive) ===
     
