@@ -532,6 +532,26 @@ class WaterLevelRunsTab(QWidget):
         self.reload_run_btn.clicked.connect(self.reload_current_run)
         form_layout.addWidget(self.reload_run_btn)
         
+        # Add standalone field data consolidation button
+        self.consolidate_field_data_btn = QPushButton("📋 Consolidate Field Data")
+        self.consolidate_field_data_btn.setFont(QFont("Arial", 10))
+        self.consolidate_field_data_btn.setToolTip("Consolidate XLE files from field laptops to organized storage")
+        self.consolidate_field_data_btn.clicked.connect(self.run_standalone_field_consolidation)
+        self.consolidate_field_data_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                border: none;
+                border-radius: 3px;
+                padding: 5px 15px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+        """)
+        form_layout.addWidget(self.consolidate_field_data_btn)
+        
         form_layout.addStretch()
         
         # Button to create a new run
@@ -2821,6 +2841,79 @@ class WaterLevelRunsTab(QWidget):
             QMessageBox.information(self, "Reload Complete", f"Run '{self.current_run_id}' has been reloaded successfully")
         else:
             QMessageBox.warning(self, "No Run Selected", "Please select a run to reload")
+    
+    def run_standalone_field_consolidation(self):
+        """Run field data consolidation as standalone operation"""
+        logger.info("Starting standalone field data consolidation")
+        
+        try:
+            from ..dialogs.water_level_progress_dialog import WaterLevelProgressDialog
+            from ..handlers.field_data_consolidator import FieldDataConsolidator
+            
+            # Show dedicated progress dialog for consolidation
+            progress_dialog = WaterLevelProgressDialog(self)
+            progress_dialog.setWindowTitle("Field Data Consolidation")
+            progress_dialog.update_status("Initializing field data consolidation...")
+            progress_dialog.show()
+            
+            # Get main window and check for drive service
+            main_window = self.window()
+            
+            if hasattr(main_window, 'drive_service') and main_window.drive_service.authenticated:
+                # Use the already authenticated service
+                service = main_window.drive_service.get_service()
+            else:
+                progress_dialog.log_message("❌ Google Drive not authenticated. Please authenticate first.")
+                progress_dialog.close()
+                QMessageBox.warning(self, "Authentication Required", 
+                                  "Google Drive authentication is required to access field data folders.\n"
+                                  "Please authenticate using the main application first.")
+                return
+            
+            # Initialize the field data consolidator
+            consolidator = FieldDataConsolidator(service, main_window.settings_handler)
+            
+            # Create a progress callback that logs to the dialog and uses full 0-100% range
+            def consolidation_progress(message, percent):
+                progress_dialog.update_progress(percent, 100)
+                progress_dialog.update_status(f"Consolidating: {message}")
+                progress_dialog.log_message(message)
+            
+            progress_dialog.log_message("🚀 Starting field data consolidation...")
+            progress_dialog.log_message(f"Mode: {'Shared Drive' if consolidator.use_shared_drive else 'Google Drive'}")
+            
+            # Run consolidation with full progress range
+            consolidation_success = consolidator.consolidate_field_data(consolidation_progress)
+            
+            if consolidation_success:
+                progress_dialog.log_message("✅ Field data consolidation completed successfully!")
+                progress_dialog.update_status("Consolidation completed successfully")
+                
+                # Show success message
+                QMessageBox.information(self, "Consolidation Complete", 
+                                      "Field data consolidation completed successfully!\n\n"
+                                      "XLE files from field laptops have been organized and consolidated.")
+                
+            else:
+                progress_dialog.log_message("⚠️ Field data consolidation completed with issues")
+                progress_dialog.update_status("Consolidation completed with issues")
+                
+                # Show warning message
+                QMessageBox.warning(self, "Consolidation Issues", 
+                                  "Field data consolidation completed but encountered some issues.\n\n"
+                                  "Check the detailed log above for more information.")
+            
+            # Keep dialog open for a moment to show final status
+            QTimer.singleShot(3000, progress_dialog.close)
+            
+        except Exception as e:
+            logger.error(f"Error during standalone field data consolidation: {e}")
+            
+            error_msg = f"Failed to run field data consolidation: {str(e)}"
+            QMessageBox.critical(self, "Consolidation Error", error_msg)
+            
+            if 'progress_dialog' in locals():
+                progress_dialog.close()
 
 
 
