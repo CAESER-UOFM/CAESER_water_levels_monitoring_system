@@ -58,7 +58,12 @@ class SharedDriveDbHandler:
         # Use app directory instead of current working directory
         app_dir = Path(__file__).parent.parent.parent.parent
         local_db_directory = self.settings_handler.get_setting("local_db_directory", str(app_dir))
-        cache_dir = os.path.join(local_db_directory, "databases", "temp")
+        
+        # Fix double "databases" folder issue - check if local_db_directory already ends with "databases"
+        if local_db_directory.endswith("databases") or local_db_directory.endswith("databases\\"):
+            cache_dir = os.path.join(local_db_directory, "temp")
+        else:
+            cache_dir = os.path.join(local_db_directory, "databases", "temp")
         
         # Ensure the directory exists and is writable
         try:
@@ -467,7 +472,9 @@ class SharedDriveDbHandler:
             if not os.path.exists(shared_db_path):
                 return {
                     'status': 'not_found',
-                    'message': f'Database not found in shared drive: {project_name}'
+                    'message': f'Database not found in shared drive: {project_name}',
+                    'local_db_exists': False,
+                    'needs_download': True
                 }
             
             # Get modification time (use provided cloud_version_time if available)
@@ -475,34 +482,85 @@ class SharedDriveDbHandler:
                 modified_time = cloud_version_time
             else:
                 modified_time = self._get_file_modified_time(shared_db_path)
+            
             working_db_path = os.path.join(self.cache_dir, f"wlm_{project_name}.db")
+            local_db_exists = os.path.exists(working_db_path)
+            
+            # Get file size if local database exists
+            file_size_mb = 0
+            if local_db_exists:
+                try:
+                    file_size_mb = round(os.path.getsize(working_db_path) / (1024 * 1024), 2)
+                except:
+                    file_size_mb = 0
             
             # Check if we have a local working copy
-            if os.path.exists(working_db_path):
+            if local_db_exists:
                 if self._is_working_database_valid(project_name, modified_time):
                     return {
-                        'status': 'up_to_date',
-                        'message': 'Local database is up to date with shared drive',
-                        'cloud_modified': modified_time
+                        'status': 'current',
+                        'local_time': modified_time,
+                        'cloud_time': modified_time,
+                        'time_diff': 0,
+                        'needs_download': False,
+                        'message': '✅ Working with latest version (shared drive)',
+                        'local_db_exists': True,
+                        'file_size_mb': file_size_mb,
+                        'db_type': 'working',
+                        'working_db_path': working_db_path
                     }
                 else:
+                    # Calculate time difference for outdated database
+                    time_diff = 60  # Default to 60 minutes if we can't calculate exact difference
+                    try:
+                        local_metadata_path = self._get_working_metadata_path(project_name)
+                        if os.path.exists(local_metadata_path):
+                            with open(local_metadata_path, 'r') as f:
+                                local_metadata = json.load(f)
+                                local_time = local_metadata.get('modifiedTime', modified_time)
+                                
+                            # Parse timestamps to calculate difference
+                            from datetime import datetime
+                            local_dt = datetime.fromisoformat(local_time.replace('Z', '+00:00'))
+                            cloud_dt = datetime.fromisoformat(modified_time.replace('Z', '+00:00'))
+                            time_diff = max(int((cloud_dt - local_dt).total_seconds() / 60), 1)
+                        else:
+                            local_time = modified_time
+                    except Exception as e:
+                        logger.warning(f"Could not calculate time difference for {project_name}: {e}")
+                        local_time = modified_time
+                    
                     return {
                         'status': 'outdated',
-                        'message': 'Local database is outdated, shared drive has newer version',
-                        'cloud_modified': modified_time
+                        'local_time': local_time,
+                        'cloud_time': modified_time,
+                        'time_diff': time_diff,
+                        'needs_download': True,
+                        'message': '⚠️ Your working copy is outdated - shared drive has newer version',
+                        'local_db_exists': True,
+                        'file_size_mb': file_size_mb,
+                        'db_type': 'working_outdated',
+                        'working_db_path': working_db_path
                     }
             else:
                 return {
-                    'status': 'not_cached',
+                    'status': 'no_local',
+                    'local_time': None,
+                    'cloud_time': modified_time,
+                    'time_diff': None,
+                    'needs_download': True,
                     'message': 'Database not cached locally, will download from shared drive',
-                    'cloud_modified': modified_time
+                    'local_db_exists': False,
+                    'file_size_mb': 0
                 }
                 
         except Exception as e:
             logger.error(f"Error checking version status for {project_name}: {e}")
             return {
                 'status': 'error',
-                'message': f'Error checking version status: {str(e)}'
+                'message': f'Error checking version status: {str(e)}',
+                'local_db_exists': False,
+                'needs_download': True
             }
     
     # === COMPATIBILITY METHODS (adapted from CloudDatabaseHandler) ===
