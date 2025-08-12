@@ -615,18 +615,30 @@ class SharedDriveDbHandler:
         # since we handle these differently
         return self.download_project_database(project_name, force_download)
     
-    def save_database(self, project_name: str, local_db_path: str, 
-                     change_tracker=None, create_backup: bool = True) -> bool:
-        """Save database to shared drive (adapted from CloudDatabaseHandler)"""
+    def save_database(self, project_name: str, project_info: Dict, 
+                     temp_db_path: str, user_name: str, changes_desc: str, 
+                     change_tracker=None, progress_callback=None) -> bool:
+        """Save database to shared drive (interface compatibility with CloudDatabaseHandler)"""
         try:
             logger.info(f"Saving database for {project_name} to shared drive")
+            logger.info(f"User: {user_name}, Changes: {changes_desc}")
+            
+            # Report progress if callback provided
+            if progress_callback:
+                progress_callback(10, "Starting upload to shared drive...")
             
             # Use existing upload_database method
-            success = self.upload_database(project_name, local_db_path, create_backup)
+            success = self.upload_database(project_name, temp_db_path, create_backup=True)
+            
+            if progress_callback:
+                progress_callback(70, "Upload complete, saving change tracking...")
             
             if success and change_tracker:
                 # Save change tracking info to shared drive changes folder
                 self._save_detailed_changes(project_name, change_tracker)
+                
+            if progress_callback:
+                progress_callback(100, "Upload completed successfully")
             
             return success
             
