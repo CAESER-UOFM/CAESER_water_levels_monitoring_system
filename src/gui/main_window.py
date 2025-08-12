@@ -1305,12 +1305,17 @@ class MainWindow(QMainWindow):
         
         # Smart version tracking - check if we can use local cache
         force_download = False  # Track if user chose to force download
+        logger.info(f"Version checking: prefer_draft={prefer_draft}")
         if not prefer_draft:  # Only check cache if not using draft
             cloud_version_time = project_info.get('modified_time', '')
+            logger.info(f"Checking version status for {project_name} with cloud time: {cloud_version_time}")
             version_comparison = self.cloud_db_handler.check_version_status(project_name, cloud_version_time)
+            logger.info(f"Version comparison result: {version_comparison}")
             
             # If we have a valid local cache, show version choice dialog
-            if version_comparison.get('local_db_exists', False):
+            local_db_exists = version_comparison.get('local_db_exists', False)
+            logger.info(f"local_db_exists flag: {local_db_exists}")
+            if local_db_exists:
                 from .dialogs.version_choice_dialog import VersionChoiceDialog
                 
                 version_dialog = VersionChoiceDialog(
@@ -1387,8 +1392,13 @@ class MainWindow(QMainWindow):
                         logger.info(f"User chose to download fresh, bypassing cache for {project_name}")
                 else:
                     # User cancelled version choice
+                    logger.info("User cancelled version choice dialog")
                     return
+            else:
+                logger.info("No local database exists, proceeding with direct download")
             # If no local cache available, proceed with direct download
+        else:
+            logger.info("Skipping version check due to draft preference")
             
         # Show progress dialog for download
         progress_dialog.show(f"Opening cloud project: {project_name}", "Loading Cloud Database")
