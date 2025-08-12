@@ -484,30 +484,51 @@ class SharedDriveDbHandler:
                 modified_time = self._get_file_modified_time(shared_db_path)
             
             working_db_path = os.path.join(self.cache_dir, f"wlm_{project_name}.db")
-            local_db_exists = os.path.exists(working_db_path)
+            cached_db_path = os.path.join(self.cache_dir, f"{project_name}.db")
+            
+            # Check for both working database and cached database
+            working_db_exists = os.path.exists(working_db_path)
+            cached_db_exists = os.path.exists(cached_db_path)
+            local_db_exists = working_db_exists or cached_db_exists
+            
+            # Determine which database to use for operations
+            if working_db_exists:
+                primary_db_path = working_db_path
+                db_type_prefix = "working"
+            elif cached_db_exists:
+                primary_db_path = cached_db_path
+                db_type_prefix = "cached"
+            else:
+                primary_db_path = working_db_path  # Default for error messages
             
             # Get file size if local database exists
             file_size_mb = 0
             if local_db_exists:
                 try:
-                    file_size_mb = round(os.path.getsize(working_db_path) / (1024 * 1024), 2)
+                    file_size_mb = round(os.path.getsize(primary_db_path) / (1024 * 1024), 2)
                 except:
                     file_size_mb = 0
             
-            # Check if we have a local working copy
+            # Check if we have a local database copy
             if local_db_exists:
-                if self._is_working_database_valid(project_name, modified_time):
+                # For cached databases, we can't validate like working databases, so assume they're valid
+                # For working databases, check validation
+                is_valid = True
+                if working_db_exists:
+                    is_valid = self._is_working_database_valid(project_name, modified_time)
+                
+                if is_valid:
                     return {
                         'status': 'current',
                         'local_time': modified_time,
                         'cloud_time': modified_time,
                         'time_diff': 0,
                         'needs_download': False,
-                        'message': '✅ Working with latest version (shared drive)',
+                        'message': f'✅ Working with latest version ({db_type_prefix} database)',
                         'local_db_exists': True,
                         'file_size_mb': file_size_mb,
-                        'db_type': 'working',
-                        'working_db_path': working_db_path
+                        'db_type': db_type_prefix,
+                        'working_db_path': primary_db_path
                     }
                 else:
                     # Calculate time difference for outdated database
@@ -536,11 +557,11 @@ class SharedDriveDbHandler:
                         'cloud_time': modified_time,
                         'time_diff': time_diff,
                         'needs_download': True,
-                        'message': '⚠️ Your working copy is outdated - shared drive has newer version',
+                        'message': f'⚠️ Your {db_type_prefix} copy is outdated - shared drive has newer version',
                         'local_db_exists': True,
                         'file_size_mb': file_size_mb,
-                        'db_type': 'working_outdated',
-                        'working_db_path': working_db_path
+                        'db_type': f'{db_type_prefix}_outdated',
+                        'working_db_path': primary_db_path
                     }
             else:
                 return {
