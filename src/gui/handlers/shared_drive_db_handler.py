@@ -38,9 +38,9 @@ class SharedDriveDbHandler:
     def get_shared_drive_root(self):
         """Get the shared drive root path from settings"""
         if not self.shared_drive_root:
-            self.shared_drive_root = self.settings_handler.get_setting(
-                "shared_drive_root", "S:/Water_Projects/CAESER/Water_Data_Series/Water_levels_monitoring/"
-            )
+            self.shared_drive_root = self.settings_handler.get_setting("shared_drive_root")
+            if not self.shared_drive_root:
+                raise ValueError("shared_drive_root not configured in settings.json. Please configure shared drive paths.")
             logger.info(f"SharedDriveDbHandler root path: '{self.shared_drive_root}'")
         return self.shared_drive_root
     
@@ -109,6 +109,11 @@ class SharedDriveDbHandler:
         """Get the shared drive databases folder path for a project"""
         project_path = self._get_shared_drive_project_path(project_name)
         return os.path.join(project_path, "DATABASES")
+    
+    def _get_shared_drive_backup_folder_path(self, project_name: str) -> str:
+        """Get the shared drive backup folder path for a project"""
+        db_folder_path = self._get_shared_drive_db_folder_path(project_name)
+        return os.path.join(db_folder_path, "backup")
     
     def _check_shared_drive_access(self) -> bool:
         """Check if shared drive is accessible"""
@@ -421,10 +426,20 @@ class SharedDriveDbHandler:
             
             # Create backup if requested and file exists
             if create_backup and os.path.exists(shared_db_path):
-                backup_name = f"{project_name}_backup_{int(time.time())}.db"
-                backup_path = os.path.join(db_folder_path, backup_name)
+                # Create backup folder (matching Google Drive structure)
+                backup_folder_path = self._get_shared_drive_backup_folder_path(project_name)
+                os.makedirs(backup_folder_path, exist_ok=True)
+                
+                # Generate backup filename with timestamp and better format
+                timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
+                backup_name = f"{project_name}_backup_{timestamp}.db"
+                backup_path = os.path.join(backup_folder_path, backup_name)
+                
                 shutil.copy2(shared_db_path, backup_path)
-                logger.info(f"Backup created: {backup_name}")
+                logger.info(f"Backup created in backup/ folder: {backup_name}")
+                
+                # Clean up old backups (keep only last 5 backups)
+                self._cleanup_old_backups(backup_folder_path, project_name)
             
             # Upload database
             logger.info(f"Uploading database for {project_name} to shared drive")
@@ -851,6 +866,38 @@ class SharedDriveDbHandler:
         """Restore original database (stub)"""
         return False
     
+    def _cleanup_old_backups(self, backup_folder_path: str, project_name: str, keep_count: int = 5):
+        """Clean up old backup files, keeping only the most recent ones"""
+        try:
+            if not os.path.exists(backup_folder_path):
+                return
+            
+            # Get all backup files for this project
+            backup_files = []
+            for file in os.listdir(backup_folder_path):
+                if file.startswith(f"{project_name}_backup_") and file.endswith(".db"):
+                    file_path = os.path.join(backup_folder_path, file)
+                    if os.path.isfile(file_path):
+                        backup_files.append((file_path, os.path.getmtime(file_path)))
+            
+            # Sort by modification time (newest first)
+            backup_files.sort(key=lambda x: x[1], reverse=True)
+            
+            # Remove old backups beyond keep_count
+            files_to_remove = backup_files[keep_count:]
+            for file_path, _ in files_to_remove:
+                try:
+                    os.remove(file_path)
+                    logger.info(f"Removed old backup: {os.path.basename(file_path)}")
+                except Exception as e:
+                    logger.warning(f"Could not remove old backup {file_path}: {e}")
+            
+            if files_to_remove:
+                logger.info(f"Cleaned up {len(files_to_remove)} old backup files, keeping {keep_count} most recent")
+                
+        except Exception as e:
+            logger.error(f"Error cleaning up old backups: {e}")
+
     def update_local_version_tracking(self, project_name: str, cloud_version_time: str, 
                                     local_db_path: str, operation: str = "download"):
         """Update local version tracking (adapted for shared drive)"""

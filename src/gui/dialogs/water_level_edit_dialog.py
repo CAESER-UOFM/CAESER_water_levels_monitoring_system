@@ -1791,7 +1791,7 @@ class WaterLevelEditDialog(QDialog):
                         parent_window.db_manager.mark_cloud_modified()
                         logger.info("Marked cloud database as modified after water level edits")
                     
-                    # Emit database modification signal to enable Save to Cloud button
+                    # Emit database modification signal to enable Save to SMOO button
                     if hasattr(parent_window.db_manager, 'database_modified'):
                         parent_window.db_manager.database_modified.emit()
                         logger.info("Emitted database_modified signal after water level edits")

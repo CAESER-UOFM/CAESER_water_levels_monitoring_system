@@ -2,7 +2,7 @@
 Save Options Dialog
 
 Dialog for choosing save options when closing app with unsaved changes.
-Offers: Save to Cloud, Save as Draft, Discard Changes
+Offers: Save to SMOO, Save as Draft, Discard Changes
 """
 
 import logging
@@ -137,8 +137,8 @@ class SaveOptionsDialog(QDialog):
         # Radio button group
         self.button_group = QButtonGroup()
         
-        # Option 1: Save to Cloud
-        self.cloud_radio = QRadioButton("💾 Save to Cloud")
+        # Option 1: Save to SMOO
+        self.cloud_radio = QRadioButton("💾 Save to SMOO")
         self.cloud_radio.setStyleSheet("color: #2196f3; font-weight: bold;")
         self.cloud_radio.setChecked(True)  # Default option
         self.button_group.addButton(self.cloud_radio, 1)

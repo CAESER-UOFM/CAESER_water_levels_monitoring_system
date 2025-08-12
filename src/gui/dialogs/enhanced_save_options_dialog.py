@@ -3,7 +3,7 @@ Enhanced Save Options Dialog
 
 Dialog for choosing save options when closing app with unsaved changes,
 specifically handling the case where user uploaded during session but made more changes.
-Offers: Save to Cloud, Save as Draft, Restore to Last Upload, Restore to Original, Discard Changes
+Offers: Save to SMOO, Save as Draft, Restore to Last Upload, Restore to Original, Discard Changes
 """
 
 import logging

@@ -30,7 +30,7 @@ class SaveToCloudDialog(QDialog):
         
     def setup_ui(self):
         """Setup the dialog UI"""
-        self.setWindowTitle(f"Save to Cloud - {self.project_name}")
+        self.setWindowTitle(f"Save to SMOO - {self.project_name}")
         self.setMinimumWidth(500)
         self.setMinimumHeight(300)
         
@@ -138,7 +138,7 @@ class SaveToCloudDialog(QDialog):
         
         # Customize button text
         save_button = button_box.button(QDialogButtonBox.Save)
-        save_button.setText("Save to Cloud")
+        save_button.setText("Save to SMOO")
         
         button_box.accepted.connect(self.validate_and_accept)
         button_box.rejected.connect(self.reject)

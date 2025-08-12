@@ -48,6 +48,7 @@
 ### 🔧 Method 1: During First Launch
 - 📁 **Load file**: `google_drive_credentials.json`
 - 📂 **Location**: `S:\Water_Projects\CAESER\Water_Data_Series\Water_levels_monitoring_system\config`
+- 📝 **Note**: Shared drive paths are configured centrally in `config/settings.json`
 
 ### ⚙️ Method 2: Through Settings
 1. 🚀 Go to **Settings** if you missed it during first launch

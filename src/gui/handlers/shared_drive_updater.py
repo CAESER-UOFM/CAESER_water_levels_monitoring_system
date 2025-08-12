@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Optional, Dict, Tuple
 from PyQt5.QtWidgets import QMessageBox, QProgressDialog, QApplication
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from ...config.paths import DefaultPaths
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +30,8 @@ class SharedDriveUpdater:
         self.app_root = Path(app_root)
         self.current_version_file = self.app_root / "version.json"
         
-        # Default to your organization's shared drive path
-        self.shared_drive_path = shared_drive_path or "S:\\Water_Projects\\CAESER\\Water_Data_Series\\Water_levels_monitoring_system"
+        # Use centralized path configuration
+        self.shared_drive_path = shared_drive_path or DefaultPaths.SHARED_DRIVE_BASE
         self.shared_version_file = Path(self.shared_drive_path) / "version.json"
         self.shared_src_folder = Path(self.shared_drive_path) / "src"
         

@@ -663,8 +663,8 @@ class MainWindow(QMainWindow):
         self.reload_db_btn.setEnabled(False)  # Initially disabled until a database is selected
         self._update_reload_button_style()
         
-        # Add Save to Cloud button (initially hidden)
-        self.save_cloud_btn = QPushButton("Save to Cloud")
+        # Add Save to SMOO button (initially hidden)
+        self.save_cloud_btn = QPushButton("Save to SMOO")
         self.save_cloud_btn.setStyleSheet("""
             background-color: #2E7D32;
             color: white;
@@ -1384,7 +1384,7 @@ class MainWindow(QMainWindow):
                             self._complete_database_opening(display_name, start_time)
                             
                             # Add version status to cloud label
-                            self.cloud_mode_label.setText(f"Cloud: {project_name} - {version_status}")
+                            self.cloud_mode_label.setText(f"SMOO: {project_name} - {version_status}")
                             return
                     elif choice == "download_fresh":
                         # User explicitly chose to download fresh - bypass automatic cache
@@ -1480,7 +1480,7 @@ class MainWindow(QMainWindow):
             # Update UI to show draft state with modifications
             self.save_cloud_btn.setEnabled(True)
             self.compare_changes_btn.setEnabled(True)
-            self.cloud_mode_label.setText(f"Cloud: {project_name} (Draft - Has Changes)")
+            self.cloud_mode_label.setText(f"SMOO: {project_name} (Draft - Has Changes)")
         else:
             display_name = f"{project_name} (Cloud)"
         
@@ -1594,7 +1594,7 @@ class MainWindow(QMainWindow):
             self.compare_changes_btn.setEnabled(False)  # Initially disabled
             self.create_local_copy_btn.setVisible(True)
             self.create_local_copy_btn.setEnabled(True)  # Always enabled for cloud databases
-            self.cloud_mode_label.setText(f"Cloud: {project_name}")
+            self.cloud_mode_label.setText(f"SMOO: {project_name}")
         else:
             self.save_cloud_btn.setVisible(False)
             self.compare_changes_btn.setVisible(False)
@@ -1875,7 +1875,7 @@ class MainWindow(QMainWindow):
             self.db_manager.is_cloud_modified = False
             self.save_cloud_btn.setEnabled(False)
             self.compare_changes_btn.setEnabled(False)
-            self.cloud_mode_label.setText(f"Cloud: {self.db_manager.cloud_project_name}")
+            self.cloud_mode_label.setText(f"SMOO: {self.db_manager.cloud_project_name}")
             
             # DEBUG: Verify database state after upload
             import os
@@ -4298,7 +4298,7 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
                 self.db_manager.is_cloud_modified = True
                 self.save_cloud_btn.setEnabled(True)
                 self.compare_changes_btn.setEnabled(True)
-                self.cloud_mode_label.setText(f"Cloud: {self.db_manager.cloud_project_name} (MODIFIED)")
+                self.cloud_mode_label.setText(f"SMOO: {self.db_manager.cloud_project_name} (MODIFIED)")
             elif self.db_manager.is_google_drive_db:
                 self.db_manager._modified_since_sync = True
             

@@ -12,6 +12,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 from pathlib import Path
 import logging
+from ...config.paths import DefaultPaths
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ class SharedDriveSettingsDialog(QDialog):
         path_input_layout.addWidget(QLabel("Shared Drive Path:"))
         
         self.path_input = QLineEdit()
-        self.path_input.setPlaceholderText("e.g., S:\\Water_Projects\\CAESER\\Water_Data_Series\\Water_levels_monitoring_system")
+        self.path_input.setPlaceholderText(f"e.g., {DefaultPaths.SHARED_DRIVE_BASE}")
         self.path_input.textChanged.connect(self.on_path_changed)
         path_input_layout.addWidget(self.path_input)
         

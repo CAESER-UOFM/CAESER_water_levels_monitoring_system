@@ -2188,7 +2188,7 @@ water_levels_monitoring/
         <li><b>Database Dropdown:</b> Shows available cloud projects</li>
         <li><b>Download & Cache:</b> Projects downloaded to local cache for performance</li>
         <li><b>Change Detection:</b> Only downloads when cloud version is newer</li>
-        <li><b>Save to Cloud:</b> Button appears when cloud database is loaded</li>
+        <li><b>Save to SMOO:</b> Button appears when SMOO database is loaded</li>
         </ul>
         
         <h3>🔄 Change Tracking System</h3>
@@ -2225,9 +2225,9 @@ water_levels_monitoring/
         <li><b>Context:</b> Additional information (file names, methods, etc.)</li>
         </ul>
         
-        <h3>💾 Save to Cloud Process</h3>
+        <h3>💾 Save to SMOO Process</h3>
         
-        <h4>When Save to Cloud Button Appears</h4>
+        <h4>When Save to SMOO Button Appears</h4>
         <ul>
         <li><b>Cloud database loaded:</b> Working with a project from Google Drive</li>
         <li><b>Changes detected:</b> Manual or automatic modifications made</li>
@@ -2236,7 +2236,7 @@ water_levels_monitoring/
         </ul>
         
         <h4>Save Dialog Features</h4>
-        <p>When you click "Save to Cloud", the dialog shows:</p>
+        <p>When you click "Save to SMOO", the dialog shows:</p>
         <ul>
         <li><b>Change Summary:</b> Count of manual vs automatic changes</li>
         <li><b>Detected Changes:</b> Auto-generated description of modifications</li>
@@ -2289,7 +2289,7 @@ water_levels_monitoring/
         <ol>
         <li>Select cloud project from database dropdown</li>
         <li>System downloads and caches database locally</li>
-        <li>"Save to Cloud" button appears (initially disabled)</li>
+        <li>"Save to SMOO" button appears (initially disabled)</li>
         <li>Cloud project name shown in status area</li>
         <li>Change tracking begins automatically</li>
         <li>Work with database normally in all tabs</li>
@@ -2299,9 +2299,9 @@ water_levels_monitoring/
         <ol>
         <li>Perform normal operations (import data, edit flags, etc.)</li>
         <li>System tracks all changes automatically</li>
-        <li>"Save to Cloud" button becomes enabled (green)</li>
+        <li>"Save to SMOO" button becomes enabled (green)</li>
         <li>Status shows project as "(MODIFIED)"</li>
-        <li>Click "Save to Cloud" when ready to share changes</li>
+        <li>Click "Save to SMOO" when ready to share changes</li>
         <li>Review and edit change description in dialog</li>
         <li>Confirm save to upload changes</li>
         <li>Button becomes disabled until next change</li>
@@ -2345,7 +2345,7 @@ water_levels_monitoring/
         
         <h3>🔧 Troubleshooting</h3>
         
-        <h4>Save to Cloud Button Not Appearing</h4>
+        <h4>Save to SMOO Button Not Appearing</h4>
         <ul>
         <li><b>Local database:</b> Feature only works with cloud databases</li>
         <li><b>Download issues:</b> Ensure cloud database downloaded successfully</li>
