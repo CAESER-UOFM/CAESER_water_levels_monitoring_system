@@ -13,183 +13,346 @@ class FieldDataConsolidator:
     """Consolidates XLE files from multiple field data folders into organized structure"""
     
     def __init__(self, drive_service, settings_handler):
-        self.drive_service = drive_service
+        self.drive_service = drive_service  # For Google Drive source operations
         self.settings_handler = settings_handler
-        self.consolidated_folder_id = None
+        self.consolidated_folder_id = None  # For Google Drive mode
         
-    def get_or_create_consolidated_folder(self):
-        """Get or create the FIELD_DATA_CONSOLIDATED folder in water_levels_monitoring"""
+        # Hybrid mode configuration
+        self.use_shared_drive = settings_handler.get_setting("use_shared_drive", False)
+        self.shared_drive_field_data_path = settings_handler.get_setting("shared_drive_field_data", "")
+        
+        logger.info(f"FieldDataConsolidator initialized - Mode: {'Shared Drive' if self.use_shared_drive else 'Google Drive'}")
+        if self.use_shared_drive:
+            logger.info(f"Shared drive destination: {self.shared_drive_field_data_path}")
+    
+    # === SHARED DRIVE DESTINATION METHODS ===
+    
+    def _get_shared_drive_consolidated_path(self):
+        """Get S: drive consolidated folder path"""
+        if not self.shared_drive_field_data_path:
+            logger.error("Shared drive field data path not configured")
+            return None
+        return self.shared_drive_field_data_path
+    
+    def _create_shared_drive_monthly_folder(self, year_month):
+        """Create monthly folder on S: drive"""
         try:
-            # Get main water_levels_monitoring folder
-            main_folder_id = self.settings_handler.get_setting("google_drive_folder_id")
-            if not main_folder_id:
-                logger.error("Main Google Drive folder ID not configured")
+            base_path = self._get_shared_drive_consolidated_path()
+            if not base_path:
                 return None
             
-            # Check if FIELD_DATA_CONSOLIDATED folder exists
-            query = f"'{main_folder_id}' in parents and name='FIELD_DATA_CONSOLIDATED' and mimeType='application/vnd.google-apps.folder' and trashed=false"
-            results = self.drive_service.files().list(q=query, fields="files(id, name)").execute()
-            folders = results.get('files', [])
+            folder_path = os.path.join(base_path, year_month)
+            os.makedirs(folder_path, exist_ok=True)
+            logger.info(f"Created/verified shared drive monthly folder: {folder_path}")
+            return folder_path
+        except Exception as e:
+            logger.error(f"Error creating shared drive monthly folder {year_month}: {e}")
+            return None
+    
+    def _download_and_save_to_shared_drive(self, file_info, target_folder_path):
+        """Download from Google Drive and save to S: drive"""
+        try:
+            import shutil
+            from googleapiclient.http import MediaIoBaseDownload
             
-            if folders:
-                self.consolidated_folder_id = folders[0]['id']
-                logger.info(f"Found existing FIELD_DATA_CONSOLIDATED folder: {self.consolidated_folder_id}")
+            # Generate corrected filename
+            new_filename = self.generate_corrected_filename(file_info)
+            target_file_path = os.path.join(target_folder_path, new_filename)
+            
+            # Check if file already exists and is up to date
+            if os.path.exists(target_file_path):
+                existing_modified = datetime.fromtimestamp(os.path.getmtime(target_file_path))
+                source_modified = datetime.fromisoformat(file_info['modified_time'].replace('Z', '+00:00')).replace(tzinfo=None)
                 
-                # Update settings even for existing folder to ensure it's saved
-                self.settings_handler.set_setting("consolidated_field_data_folder", self.consolidated_folder_id)
+                if source_modified <= existing_modified:
+                    logger.debug(f"File {new_filename} already up to date in shared drive")
+                    return target_file_path
+                else:
+                    logger.info(f"Updating existing file {new_filename} with newer version")
+            
+            # Download file content from Google Drive
+            request = self.drive_service.files().get_media(fileId=file_info['id'])
+            file_content = io.BytesIO()
+            downloader = MediaIoBaseDownload(file_content, request)
+            done = False
+            while not done:
+                _, done = downloader.next_chunk()
+            
+            # Save to S: drive
+            file_content.seek(0)
+            with open(target_file_path, 'wb') as f:
+                shutil.copyfileobj(file_content, f)
+            
+            logger.info(f"Downloaded {file_info['name']} as {new_filename} to shared drive")
+            return target_file_path
+            
+        except Exception as e:
+            logger.error(f"Error downloading and saving file {file_info['name']}: {e}")
+            return None
+    
+    def _write_shared_drive_metadata(self, folder_path, metadata):
+        """Write metadata.json to S: drive folder"""
+        try:
+            metadata_path = os.path.join(folder_path, "metadata.json")
+            with open(metadata_path, 'w') as f:
+                json.dump(metadata, f, indent=2)
+            logger.debug(f"Updated metadata.json in shared drive folder: {folder_path}")
+        except Exception as e:
+            logger.error(f"Error writing shared drive metadata to {folder_path}: {e}")
+            raise
+    
+    # === ORIGINAL GOOGLE DRIVE METHODS (updated for hybrid mode) ===
+        
+    def get_or_create_consolidated_folder(self):
+        """Get or create the FIELD_DATA_CONSOLIDATED folder (hybrid mode)"""
+        try:
+            if self.use_shared_drive:
+                # Shared drive mode - ensure S: drive folder exists
+                base_path = self._get_shared_drive_consolidated_path()
+                if not base_path:
+                    return None
+                
+                # Create base folder if it doesn't exist
+                os.makedirs(base_path, exist_ok=True)
+                logger.info(f"Verified shared drive consolidated folder: {base_path}")
+                return base_path
             else:
-                # Create the folder
-                folder_metadata = {
-                    'name': 'FIELD_DATA_CONSOLIDATED',
-                    'mimeType': 'application/vnd.google-apps.folder',
-                    'parents': [main_folder_id]
-                }
-                folder = self.drive_service.files().create(body=folder_metadata, fields='id').execute()
-                self.consolidated_folder_id = folder.get('id')
-                logger.info(f"Created FIELD_DATA_CONSOLIDATED folder: {self.consolidated_folder_id}")
+                # Google Drive mode - original logic
+                main_folder_id = self.settings_handler.get_setting("google_drive_folder_id")
+                if not main_folder_id:
+                    logger.error("Main Google Drive folder ID not configured")
+                    return None
                 
-                # Update settings
-                self.settings_handler.set_setting("consolidated_field_data_folder", self.consolidated_folder_id)
-            
-            return self.consolidated_folder_id
+                # Check if FIELD_DATA_CONSOLIDATED folder exists
+                query = f"'{main_folder_id}' in parents and name='FIELD_DATA_CONSOLIDATED' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+                results = self.drive_service.files().list(q=query, fields="files(id, name)").execute()
+                folders = results.get('files', [])
+                
+                if folders:
+                    self.consolidated_folder_id = folders[0]['id']
+                    logger.info(f"Found existing FIELD_DATA_CONSOLIDATED folder: {self.consolidated_folder_id}")
+                    
+                    # Update settings even for existing folder to ensure it's saved
+                    self.settings_handler.set_setting("consolidated_field_data_folder", self.consolidated_folder_id)
+                else:
+                    # Create the folder
+                    folder_metadata = {
+                        'name': 'FIELD_DATA_CONSOLIDATED',
+                        'mimeType': 'application/vnd.google-apps.folder',
+                        'parents': [main_folder_id]
+                    }
+                    folder = self.drive_service.files().create(body=folder_metadata, fields='id').execute()
+                    self.consolidated_folder_id = folder.get('id')
+                    logger.info(f"Created FIELD_DATA_CONSOLIDATED folder: {self.consolidated_folder_id}")
+                    
+                    # Update settings
+                    self.settings_handler.set_setting("consolidated_field_data_folder", self.consolidated_folder_id)
+                
+                return self.consolidated_folder_id
             
         except Exception as e:
             logger.error(f"Error getting/creating consolidated folder: {e}")
             return None
     
     def get_or_create_monthly_folder(self, year_month):
-        """Get or create a monthly folder (e.g., '2025-01') in the consolidated folder"""
+        """Get or create a monthly folder (e.g., '2025-01') in the consolidated folder (hybrid mode)"""
         try:
-            if not self.consolidated_folder_id:
-                if not self.get_or_create_consolidated_folder():
-                    return None
-            
-            # Check if monthly folder exists
-            query = f"'{self.consolidated_folder_id}' in parents and name='{year_month}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
-            results = self.drive_service.files().list(q=query, fields="files(id, name)").execute()
-            folders = results.get('files', [])
-            
-            if folders:
-                folder_id = folders[0]['id']
-                logger.debug(f"Found existing monthly folder {year_month}: {folder_id}")
+            if self.use_shared_drive:
+                # Shared drive mode - create local folder
+                return self._create_shared_drive_monthly_folder(year_month)
             else:
-                # Create the monthly folder
-                folder_metadata = {
-                    'name': year_month,
-                    'mimeType': 'application/vnd.google-apps.folder',
-                    'parents': [self.consolidated_folder_id]
-                }
-                folder = self.drive_service.files().create(body=folder_metadata, fields='id').execute()
-                folder_id = folder.get('id')
-                logger.info(f"Created monthly folder {year_month}: {folder_id}")
-            
-            return folder_id
+                # Google Drive mode - original logic
+                if not self.consolidated_folder_id:
+                    if not self.get_or_create_consolidated_folder():
+                        return None
+                
+                # Check if monthly folder exists
+                query = f"'{self.consolidated_folder_id}' in parents and name='{year_month}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+                results = self.drive_service.files().list(q=query, fields="files(id, name)").execute()
+                folders = results.get('files', [])
+                
+                if folders:
+                    folder_id = folders[0]['id']
+                    logger.debug(f"Found existing monthly folder {year_month}: {folder_id}")
+                else:
+                    # Create the monthly folder
+                    folder_metadata = {
+                        'name': year_month,
+                        'mimeType': 'application/vnd.google-apps.folder',
+                        'parents': [self.consolidated_folder_id]
+                    }
+                    folder = self.drive_service.files().create(body=folder_metadata, fields='id').execute()
+                    folder_id = folder.get('id')
+                    logger.info(f"Created monthly folder {year_month}: {folder_id}")
+                
+                return folder_id
             
         except Exception as e:
             logger.error(f"Error getting/creating monthly folder {year_month}: {e}")
             return None
     
-    def update_folder_metadata(self, folder_id, year_month, copied_file_id):
-        """Update or create metadata.json in the specified folder after adding a file"""
+    def update_folder_metadata(self, folder_ref, year_month, file_ref):
+        """Update or create metadata.json in the specified folder after adding a file (hybrid mode)"""
         try:
             import json
             import io
             from datetime import datetime
             from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
             
-            # Step 1: Get file info for the copied file
-            file_info = self.drive_service.files().get(
-                fileId=copied_file_id,
-                fields="id, name, size, modifiedTime"
-            ).execute()
-            
-            # Step 2: Read the file content to get actual data info
-            file_metadata = self.get_file_metadata_from_drive(copied_file_id, file_info['name'])
-            if not file_metadata:
-                logger.warning(f"Could not extract metadata from {file_info['name']}")
-                return
-            
-            # Step 3: Check if metadata.json exists in folder
-            query = f"'{folder_id}' in parents and name='metadata.json' and trashed=false"
-            results = self.drive_service.files().list(q=query, fields="files(id)").execute()
-            metadata_files = results.get('files', [])
-            
-            # Step 4: Load existing metadata or create new
-            if metadata_files:
-                # Download existing metadata
-                metadata_file_id = metadata_files[0]['id']
-                request = self.drive_service.files().get_media(fileId=metadata_file_id)
-                content = io.BytesIO()
-                downloader = MediaIoBaseDownload(content, request)
-                done = False
-                while not done:
-                    _, done = downloader.next_chunk()
+            if self.use_shared_drive:
+                # Shared drive mode - folder_ref is folder path, file_ref is file path
+                folder_path = folder_ref
+                file_path = file_ref
                 
-                content.seek(0)
-                metadata = json.loads(content.read().decode('utf-8'))
-            else:
-                # Create new metadata structure
-                metadata = {
-                    'folder': year_month,
-                    'generated_date': datetime.now().isoformat(),
-                    'files': []
+                # Get file info from local file
+                filename = os.path.basename(file_path)
+                file_size = os.path.getsize(file_path)
+                file_modified = datetime.fromtimestamp(os.path.getmtime(file_path)).isoformat()
+                
+                # Get file metadata by reading the local file
+                file_metadata = self._get_file_metadata_from_local_file(file_path, filename)
+                if not file_metadata:
+                    logger.warning(f"Could not extract metadata from {filename}")
+                    return
+                
+                # Load existing metadata or create new
+                metadata_path = os.path.join(folder_path, "metadata.json")
+                if os.path.exists(metadata_path):
+                    with open(metadata_path, 'r') as f:
+                        metadata = json.load(f)
+                else:
+                    metadata = {
+                        'folder': year_month,
+                        'generated_date': datetime.now().isoformat(),
+                        'files': []
+                    }
+                
+                # Create file entry
+                file_entry = {
+                    'filename': filename,
+                    'shared_drive_file_path': file_path,
+                    'serial_number': file_metadata.get('serial_number', 'unknown'),
+                    'cae_number': file_metadata.get('cae_number', 'unknown'),
+                    'location': file_metadata.get('location', 'unknown'),
+                    'device_type': file_metadata.get('device_type', 'unknown'),
+                    'actual_start_date': file_metadata.get('actual_start_date', ''),
+                    'actual_end_date': file_metadata.get('actual_end_date', ''),
+                    'file_size': file_size,
+                    'file_modified_time': file_modified,
+                    'processed_date': datetime.now().isoformat()
                 }
-                metadata_file_id = None
-            
-            # Step 5: Update file list (replace if exists, add if new)
-            file_entry = {
-                'filename': file_info['name'],
-                'google_drive_file_id': copied_file_id,
-                'serial_number': file_metadata.get('serial_number', 'unknown'),
-                'cae_number': file_metadata.get('cae_number', 'unknown'),
-                'location': file_metadata.get('location', 'unknown'),
-                'device_type': file_metadata.get('device_type', 'unknown'),
-                'actual_start_date': file_metadata.get('actual_start_date', ''),
-                'actual_end_date': file_metadata.get('actual_end_date', ''),
-                'file_size': int(file_info.get('size', 0)),
-                'drive_modified_time': file_info.get('modifiedTime', ''),
-                'processed_date': datetime.now().isoformat()
-            }
-            
-            # Remove any existing entry with same filename or file_id
-            metadata['files'] = [
-                f for f in metadata['files'] 
-                if f.get('filename') != file_info['name'] and f.get('google_drive_file_id') != copied_file_id
-            ]
-            
-            # Add the new/updated entry
-            metadata['files'].append(file_entry)
-            
-            # Update generation date
-            metadata['generated_date'] = datetime.now().isoformat()
-            
-            # Step 6: Upload updated metadata.json
-            json_content = json.dumps(metadata, indent=2)
-            media = MediaIoBaseUpload(
-                io.BytesIO(json_content.encode()),
-                mimetype='application/json',
-                resumable=True
-            )
-            
-            if metadata_file_id:
-                # Update existing file
-                self.drive_service.files().update(
-                    fileId=metadata_file_id,
-                    media_body=media
-                ).execute()
-                logger.debug(f"Updated existing metadata.json in {year_month} folder")
+                
+                # Remove any existing entry with same filename
+                metadata['files'] = [
+                    f for f in metadata['files'] 
+                    if f.get('filename') != filename
+                ]
+                
+                # Add the new/updated entry
+                metadata['files'].append(file_entry)
+                metadata['generated_date'] = datetime.now().isoformat()
+                
+                # Write to shared drive
+                self._write_shared_drive_metadata(folder_path, metadata)
+                
             else:
-                # Create new file
-                file_metadata_obj = {
-                    'name': 'metadata.json', 
-                    'parents': [folder_id]
-                }
-                self.drive_service.files().create(
-                    body=file_metadata_obj,
-                    media_body=media,
-                    fields='id'
+                # Google Drive mode - original logic
+                folder_id = folder_ref
+                copied_file_id = file_ref
+                
+                # Step 1: Get file info for the copied file
+                file_info = self.drive_service.files().get(
+                    fileId=copied_file_id,
+                    fields="id, name, size, modifiedTime"
                 ).execute()
-                logger.debug(f"Created new metadata.json in {year_month} folder")
+                
+                # Step 2: Read the file content to get actual data info
+                file_metadata = self.get_file_metadata_from_drive(copied_file_id, file_info['name'])
+                if not file_metadata:
+                    logger.warning(f"Could not extract metadata from {file_info['name']}")
+                    return
+                
+                # Step 3: Check if metadata.json exists in folder
+                query = f"'{folder_id}' in parents and name='metadata.json' and trashed=false"
+                results = self.drive_service.files().list(q=query, fields="files(id)").execute()
+                metadata_files = results.get('files', [])
+                
+                # Step 4: Load existing metadata or create new
+                if metadata_files:
+                    # Download existing metadata
+                    metadata_file_id = metadata_files[0]['id']
+                    request = self.drive_service.files().get_media(fileId=metadata_file_id)
+                    content = io.BytesIO()
+                    downloader = MediaIoBaseDownload(content, request)
+                    done = False
+                    while not done:
+                        _, done = downloader.next_chunk()
+                    
+                    content.seek(0)
+                    metadata = json.loads(content.read().decode('utf-8'))
+                else:
+                    # Create new metadata structure
+                    metadata = {
+                        'folder': year_month,
+                        'generated_date': datetime.now().isoformat(),
+                        'files': []
+                    }
+                    metadata_file_id = None
+                
+                # Step 5: Update file list (replace if exists, add if new)
+                file_entry = {
+                    'filename': file_info['name'],
+                    'google_drive_file_id': copied_file_id,
+                    'serial_number': file_metadata.get('serial_number', 'unknown'),
+                    'cae_number': file_metadata.get('cae_number', 'unknown'),
+                    'location': file_metadata.get('location', 'unknown'),
+                    'device_type': file_metadata.get('device_type', 'unknown'),
+                    'actual_start_date': file_metadata.get('actual_start_date', ''),
+                    'actual_end_date': file_metadata.get('actual_end_date', ''),
+                    'file_size': int(file_info.get('size', 0)),
+                    'drive_modified_time': file_info.get('modifiedTime', ''),
+                    'processed_date': datetime.now().isoformat()
+                }
+                
+                # Remove any existing entry with same filename or file_id
+                metadata['files'] = [
+                    f for f in metadata['files'] 
+                    if f.get('filename') != file_info['name'] and f.get('google_drive_file_id') != copied_file_id
+                ]
+                
+                # Add the new/updated entry
+                metadata['files'].append(file_entry)
+                
+                # Update generation date
+                metadata['generated_date'] = datetime.now().isoformat()
+                
+                # Step 6: Upload updated metadata.json
+                json_content = json.dumps(metadata, indent=2)
+                media = MediaIoBaseUpload(
+                    io.BytesIO(json_content.encode()),
+                    mimetype='application/json',
+                    resumable=True
+                )
+                
+                if metadata_file_id:
+                    # Update existing file
+                    self.drive_service.files().update(
+                        fileId=metadata_file_id,
+                        media_body=media
+                    ).execute()
+                    logger.debug(f"Updated existing metadata.json in {year_month} folder")
+                else:
+                    # Create new file
+                    file_metadata_obj = {
+                        'name': 'metadata.json', 
+                        'parents': [folder_id]
+                    }
+                    self.drive_service.files().create(
+                        body=file_metadata_obj,
+                        media_body=media,
+                        fields='id'
+                    ).execute()
+                    logger.debug(f"Created new metadata.json in {year_month} folder")
                 
         except Exception as e:
             logger.error(f"Error updating folder metadata: {e}")
@@ -244,6 +407,34 @@ class FieldDataConsolidator:
                     
         except Exception as e:
             logger.error(f"Error reading file metadata from {filename}: {e}")
+            
+        return None
+    
+    def _get_file_metadata_from_local_file(self, file_path, filename):
+        """Get metadata by reading local file (for shared drive mode)"""
+        try:
+            from ..handlers.solinst_reader import SolinstReader
+            from pathlib import Path
+            
+            # Read XLE file directly
+            reader = SolinstReader()
+            df, metadata = reader.read_xle(Path(file_path))
+            
+            if not df.empty and 'timestamp' in df.columns:
+                first_date = df['timestamp'].min()
+                last_date = df['timestamp'].max()
+                
+                return {
+                    'serial_number': str(metadata.serial_number) if metadata.serial_number else 'unknown',
+                    'cae_number': metadata.location.replace(':', '') if metadata.location else 'unknown',
+                    'location': metadata.location if metadata.location else 'unknown',
+                    'device_type': 'barologger' if 'baro' in filename.lower() else 'water_level',
+                    'actual_start_date': first_date.isoformat(),
+                    'actual_end_date': last_date.isoformat()
+                }
+                
+        except Exception as e:
+            logger.error(f"Error reading local file metadata from {filename}: {e}")
             
         return None
     
@@ -498,45 +689,52 @@ class FieldDataConsolidator:
             logger.error(f"Error scanning field folder {folder_id}: {e}")
             return []
     
-    def copy_file_to_consolidated(self, file_info, target_folder_id):
-        """Copy a file from field folder to consolidated folder with corrected filename"""
+    def copy_file_to_consolidated(self, file_info, target_folder):
+        """Copy a file from field folder to consolidated folder with corrected filename (hybrid mode)"""
         try:
-            # Generate new filename based on actual data content
-            new_filename = self.generate_corrected_filename(file_info)
-            
-            # Check if file already exists in target folder
-            query = f"'{target_folder_id}' in parents and name='{new_filename}' and trashed=false"
-            results = self.drive_service.files().list(q=query, fields="files(id, name, modifiedTime)").execute()
-            existing_files = results.get('files', [])
-            
-            if existing_files:
-                # File exists, check if it's newer
-                existing_file = existing_files[0]
-                existing_modified = datetime.fromisoformat(existing_file['modifiedTime'].replace('Z', '+00:00'))
-                source_modified = datetime.fromisoformat(file_info['modified_time'].replace('Z', '+00:00'))
+            if self.use_shared_drive:
+                # Shared drive mode - download and save to S: drive
+                return self._download_and_save_to_shared_drive(file_info, target_folder)
+            else:
+                # Google Drive mode - original logic
+                target_folder_id = target_folder  # In Google Drive mode, this is a folder ID
                 
-                if source_modified <= existing_modified:
-                    logger.debug(f"File {new_filename} already up to date in consolidated folder")
-                    return existing_file['id']
-                else:
-                    logger.info(f"Updating existing file {new_filename} with newer version")
-                    # Delete old version
-                    self.drive_service.files().delete(fileId=existing_file['id']).execute()
-            
-            # Copy the file with new name
-            copy_metadata = {
-                'name': new_filename,
-                'parents': [target_folder_id]
-            }
-            
-            copied_file = self.drive_service.files().copy(
-                fileId=file_info['id'],
-                body=copy_metadata,
-                fields='id'
-            ).execute()
-            
-            logger.info(f"Copied {file_info['name']} as {new_filename} to consolidated folder")
-            return copied_file.get('id')
+                # Generate new filename based on actual data content
+                new_filename = self.generate_corrected_filename(file_info)
+                
+                # Check if file already exists in target folder
+                query = f"'{target_folder_id}' in parents and name='{new_filename}' and trashed=false"
+                results = self.drive_service.files().list(q=query, fields="files(id, name, modifiedTime)").execute()
+                existing_files = results.get('files', [])
+                
+                if existing_files:
+                    # File exists, check if it's newer
+                    existing_file = existing_files[0]
+                    existing_modified = datetime.fromisoformat(existing_file['modifiedTime'].replace('Z', '+00:00'))
+                    source_modified = datetime.fromisoformat(file_info['modified_time'].replace('Z', '+00:00'))
+                    
+                    if source_modified <= existing_modified:
+                        logger.debug(f"File {new_filename} already up to date in consolidated folder")
+                        return existing_file['id']
+                    else:
+                        logger.info(f"Updating existing file {new_filename} with newer version")
+                        # Delete old version
+                        self.drive_service.files().delete(fileId=existing_file['id']).execute()
+                
+                # Copy the file with new name
+                copy_metadata = {
+                    'name': new_filename,
+                    'parents': [target_folder_id]
+                }
+                
+                copied_file = self.drive_service.files().copy(
+                    fileId=file_info['id'],
+                    body=copy_metadata,
+                    fields='id'
+                ).execute()
+                
+                logger.info(f"Copied {file_info['name']} as {new_filename} to consolidated folder")
+                return copied_file.get('id')
             
         except Exception as e:
             logger.error(f"Error copying file {file_info['name']}: {e}")
