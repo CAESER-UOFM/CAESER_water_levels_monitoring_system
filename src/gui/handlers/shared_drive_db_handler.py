@@ -483,10 +483,12 @@ class SharedDriveDbHandler:
                 logger.debug(f"No drafts folder exists: {drafts_folder_path}")
                 return False
             
-            # Look for any draft files for this project
+            # FIXED: Look for draft files with new naming scheme (draft_PROJECTNAME_timestamp)
             import glob
-            draft_pattern = os.path.join(drafts_folder_path, f"draft_*{project_name}*.db")
+            draft_pattern = os.path.join(drafts_folder_path, f"draft_{project_name}_*.db")
             draft_files = glob.glob(draft_pattern)
+            logger.debug(f"Searching for drafts with pattern: {draft_pattern}")
+            logger.debug(f"Found draft files: {draft_files}")
             
             # Also check for generic draft files (they contain project info in metadata)
             if not draft_files:
@@ -738,11 +740,13 @@ class SharedDriveDbHandler:
                      original_download_time: str, changes_description: str = None) -> bool:
         """Save database as draft (adapted for shared drive with compatible signature)"""
         try:
-            # Generate draft name from download time and changes if available
-            draft_name = f"draft_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            # FIXED: Generate draft name with PROJECT NAME first for easy identification
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            draft_name = f"draft_{project_name}_{timestamp}"
+            
             if changes_description:
                 # Add first few words of changes description to draft name
-                clean_desc = "".join(c for c in changes_description[:20] if c.isalnum() or c in (' ', '_'))
+                clean_desc = "".join(c for c in changes_description[:15] if c.isalnum() or c in (' ', '_'))
                 clean_desc = clean_desc.strip().replace(' ', '_')
                 if clean_desc:
                     draft_name += f"_{clean_desc}"
@@ -755,13 +759,29 @@ class SharedDriveDbHandler:
             
             # Copy database to drafts folder
             draft_file_path = os.path.join(drafts_folder_path, f"{draft_name}.db")
-            logger.info(f"Copying database from {local_db_path} to {draft_file_path}")
+            
+            # ENHANCED: Add detailed logging for draft saving process
+            logger.info(f"=== SAVING DRAFT: {draft_name} ===")
+            logger.info(f"Project: {project_name}")
+            logger.info(f"Source database: {local_db_path}")
+            logger.info(f"Target draft path: {draft_file_path}")
             
             if not os.path.exists(local_db_path):
                 raise FileNotFoundError(f"Source database file not found: {local_db_path}")
-                
+            
+            source_size = os.path.getsize(local_db_path)
+            logger.info(f"Source database size: {source_size} bytes")
+            logger.info(f"Source database basename: {os.path.basename(local_db_path)}")
+            
+            # Verify this is the working database (should be wlm_PROJECT.db)
+            if not os.path.basename(local_db_path).startswith(f"wlm_{project_name}"):
+                logger.warning(f"WARNING: Source database doesn't appear to be working copy for {project_name}")
+                logger.warning(f"Expected: wlm_{project_name}.db, Got: {os.path.basename(local_db_path)}")
+            
             shutil.copy2(local_db_path, draft_file_path)
-            logger.info(f"Database copied successfully, size: {os.path.getsize(draft_file_path)} bytes")
+            draft_size = os.path.getsize(draft_file_path)
+            logger.info(f"Draft saved successfully, size: {draft_size} bytes")
+            logger.info(f"Size verification: source={source_size}, draft={draft_size}, match={source_size == draft_size}")
             
             # Save draft metadata (enhanced with additional fields)
             draft_metadata = {
@@ -811,9 +831,24 @@ class SharedDriveDbHandler:
             
             # Copy draft to working location
             working_db_path = os.path.join(self.cache_dir, f"wlm_{project_name}.db")
-            shutil.copy2(draft_file_path, working_db_path)
             
-            logger.info(f"Draft loaded: {draft_name} for {project_name} -> {working_db_path}")
+            # ENHANCED: Add detailed logging for draft loading process
+            draft_size = os.path.getsize(draft_file_path)
+            logger.info(f"Loading draft: {draft_name}")
+            logger.info(f"Draft source: {draft_file_path} (size: {draft_size} bytes)")
+            logger.info(f"Working target: {working_db_path}")
+            
+            # Check if working database already exists and compare
+            if os.path.exists(working_db_path):
+                existing_size = os.path.getsize(working_db_path)
+                logger.info(f"Existing working database size: {existing_size} bytes")
+            
+            shutil.copy2(draft_file_path, working_db_path)
+            final_size = os.path.getsize(working_db_path)
+            
+            logger.info(f"Draft loaded successfully: {draft_name} for {project_name}")
+            logger.info(f"Final working database size: {final_size} bytes")
+            logger.info(f"Working database path: {working_db_path}")
             return working_db_path
             
         except Exception as e:
