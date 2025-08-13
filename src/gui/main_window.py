@@ -1410,13 +1410,17 @@ class MainWindow(QMainWindow):
             )
             progress_dialog.progress_dialog.show()
         
-        progress_dialog.update(10, f"Downloading {project_info['database_name']}...")
+        # Check if we're loading draft or downloading from cloud
+        if prefer_draft and self.cloud_db_handler.has_draft(project_name):
+            progress_dialog.update(10, f"Loading draft for {project_name}...")
+            logger.info(f"Loading draft for project {project_name}")
+            logger.info(f"Starting draft load...")
+        else:
+            progress_dialog.update(10, f"Downloading {project_info['database_name']}...")
+            logger.info(f"Downloading cloud database: {project_info['database_name']} from project {project_name}")
+            logger.info(f"Starting download of {project_info['database_name']}...")
+        
         QApplication.processEvents()
-        
-        logger.info(f"Downloading cloud database: {project_info['database_name']} from project {project_name}")
-        
-        # Download database with progress tracking
-        logger.info(f"Starting download of {project_info['database_name']}...")
         
         # Create progress callback to update UI
         def download_progress_callback(progress_percent, status_message):
@@ -1428,12 +1432,21 @@ class MainWindow(QMainWindow):
         temp_path = self.cloud_db_handler.download_database(project_name, project_info, download_progress_callback, prefer_draft, force_download)
         if not temp_path:
             progress_dialog.close()
-            logger.error("Download failed - no temporary path returned")
-            QMessageBox.critical(self, "Download Failed", 
-                               "Failed to download cloud database.")
+            if prefer_draft and self.cloud_db_handler.has_draft(project_name):
+                logger.error("Draft load failed - no temporary path returned")
+                QMessageBox.critical(self, "Draft Load Failed", 
+                                   "Failed to load draft database.")
+            else:
+                logger.error("Download failed - no temporary path returned")
+                QMessageBox.critical(self, "Download Failed", 
+                                   "Failed to download cloud database.")
             return
             
-        logger.info(f"Cloud database downloaded successfully to: {temp_path}")
+        # Log appropriate success message
+        if prefer_draft and self.cloud_db_handler.has_draft(project_name):
+            logger.info(f"Draft loaded successfully to: {temp_path}")
+        else:
+            logger.info(f"Cloud database downloaded successfully to: {temp_path}")
         progress_dialog.update(85, "Opening database...")
         QApplication.processEvents()
         
