@@ -2399,7 +2399,8 @@ class WaterLevelTab(QWidget):
                 manual_data=plot_data_dict['manual_data'], 
                 master_baro_data=plot_data_dict['master_baro_data'],  # Updated name
                 parent=self, 
-                db_path=self.db_manager.current_db
+                db_path=self.db_manager.current_db,
+                db_manager=self.db_manager  # CRITICAL FIX: Pass db_manager for change tracking
             )
             
             if dialog.exec_() == QDialog.Accepted:

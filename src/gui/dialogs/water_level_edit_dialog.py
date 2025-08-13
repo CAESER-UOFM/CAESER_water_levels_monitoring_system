@@ -27,7 +27,7 @@ import copy
 logger = logging.getLogger(__name__)
 
 class WaterLevelEditDialog(QDialog):
-    def __init__(self, transducer_data=None, manual_data=None, master_baro_data=None, parent=None, db_path=None):
+    def __init__(self, transducer_data=None, manual_data=None, master_baro_data=None, parent=None, db_path=None, db_manager=None):
         super().__init__(parent)
         
         # Store each data type separately
@@ -45,8 +45,9 @@ class WaterLevelEditDialog(QDialog):
         # For backwards compatibility, create a combined plot_data for visualization
         self.plot_data = pd.concat([self.transducer_data, self.manual_data])
         
-        # Store the database path
+        # Store the database path and manager
         self.db_path = db_path
+        self.db_manager = db_manager
         
         # Initialize data type selection early (before UI setup)
         self.data_type = 'water_level'  # or 'temperature'
@@ -1781,20 +1782,18 @@ class WaterLevelEditDialog(QDialog):
                 # Use total_updated for the success message
                 logger.info(f"Database updated successfully. {total_updated} records affected.")
                 
-                # Mark database as modified and emit signals
-                parent_window = self.parent()
-                if (hasattr(self, 'parent') and parent_window and 
-                    hasattr(parent_window, 'db_manager') and parent_window.db_manager):
-                    
-                    # Mark cloud database as modified if applicable
-                    if parent_window.db_manager.is_cloud_database:
-                        parent_window.db_manager.mark_cloud_modified()
-                        logger.info("Marked cloud database as modified after water level edits")
-                    
-                    # Emit database modification signal to enable Save to SMOO button
-                    if hasattr(parent_window.db_manager, 'database_modified'):
-                        parent_window.db_manager.database_modified.emit()
-                        logger.info("Emitted database_modified signal after water level edits")
+                # CRITICAL FIX: Use proper change tracking
+                if self.db_manager:
+                    logger.info("DIALOG_FIX: Calling mark_as_modified after water level changes")
+                    self.db_manager.mark_as_modified()
+                else:
+                    # Fallback to old method if no db_manager passed
+                    logger.warning("DIALOG_FIX: Using fallback change tracking method")
+                    parent_window = self.parent()
+                    if (hasattr(self, 'parent') and parent_window and 
+                        hasattr(parent_window, 'db_manager') and parent_window.db_manager):
+                        parent_window.db_manager.mark_as_modified()
+                        logger.info("DIALOG_FIX: Called mark_as_modified via parent window")
                     
                     # Track changes in the automatic change tracking system
                     if (hasattr(parent_window.db_manager, 'change_tracker') and 
