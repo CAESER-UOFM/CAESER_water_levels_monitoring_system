@@ -42,6 +42,9 @@ logging.getLogger('src.database.manager').setLevel(logging.INFO)
 logging.getLogger('src.database.models.base_model').setLevel(logging.INFO)
 logging.getLogger('src.database.models.water_level').setLevel(logging.INFO)
 
+# Enable INFO level logging for dialog debugging  
+logging.getLogger('src.gui.dialogs.water_level_edit_dialog').setLevel(logging.INFO)
+
 # Suppress noisy third-party libraries
 logging.getLogger('PyQt5').setLevel(logging.ERROR)
 logging.getLogger('matplotlib').setLevel(logging.ERROR)
