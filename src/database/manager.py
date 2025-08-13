@@ -242,10 +242,16 @@ class DatabaseManager(QObject):
     @property
     def water_level_model(self):
         if self._water_level_model is None and self.current_db:
+            logger.info(f"WATER_MODEL_DEBUG: Creating water level model for {self.current_db}")
+            logger.info(f"WATER_MODEL_DEBUG: is_cloud_database={self.is_cloud_database}")
+            logger.info(f"WATER_MODEL_DEBUG: is_loaded_from_draft={self.is_loaded_from_draft}")
             self._water_level_model = WaterLevelModel(self.current_db)
             # Set the db_manager reference
             if hasattr(self._water_level_model, 'set_db_manager'):
                 self._water_level_model.set_db_manager(self)
+                logger.info(f"WATER_MODEL_DEBUG: Successfully set db_manager for water level model")
+            else:
+                logger.warning(f"WATER_MODEL_DEBUG: Water level model doesn't have set_db_manager method!")
         return self._water_level_model
         
     @property

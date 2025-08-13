@@ -21,6 +21,9 @@ class BaseModel:
     def set_db_manager(self, db_manager):
         """Set the database manager reference for marking modifications"""
         self.db_manager = db_manager
+        logger.info(f"DB_MANAGER_DEBUG: set_db_manager called for {self.db_path}")
+        logger.info(f"DB_MANAGER_DEBUG: db_manager is_cloud_database={getattr(db_manager, 'is_cloud_database', 'MISSING')}")
+        logger.info(f"DB_MANAGER_DEBUG: db_manager is_loaded_from_draft={getattr(db_manager, 'is_loaded_from_draft', 'MISSING')}")
     
     def mark_modified(self):
         """Mark the database as modified"""
