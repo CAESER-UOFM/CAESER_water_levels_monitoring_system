@@ -675,10 +675,8 @@ class SharedDriveDbHandler:
                         if os.path.exists(draft_path):
                             logger.info(f"DRAFT: Found draft at {draft_path}")
                             
-                            # Copy draft to temp location with expected name
-                            temp_dir = os.path.join(self.cache_dir, "temp")
-                            os.makedirs(temp_dir, exist_ok=True)
-                            temp_draft_path = os.path.join(temp_dir, f"{project_name}.db")
+                            # Copy draft to cache directory with expected name (no nested temp needed)
+                            temp_draft_path = os.path.join(self.cache_dir, f"{project_name}.db")
                             
                             logger.debug(f"DRAFT: Copying draft from {draft_path} to {temp_draft_path}")
                             shutil.copy2(draft_path, temp_draft_path)
