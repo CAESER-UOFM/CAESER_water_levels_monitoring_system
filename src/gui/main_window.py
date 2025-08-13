@@ -2505,6 +2505,14 @@ class MainWindow(QMainWindow):
             if (hasattr(self, 'db_manager') and self.db_manager and 
                 self.db_manager.is_cloud_database and self.db_manager.is_cloud_modified):
                 
+                # FIXED: Skip dialog if loaded from draft but no new changes made
+                if (self.db_manager.is_loaded_from_draft and not self.db_manager.is_draft_modified):
+                    logger.info("Loaded from draft with no new changes - closing without dialog")
+                    # Still call the cleanup to log the "keeping existing draft" message
+                    self._save_as_draft_on_close()
+                    event.accept()
+                    return
+                
                 # Enhanced logic: Check what kind of changes we have
                 project_name = self.db_manager.cloud_project_name
                 current_db_path = str(self.db_manager.current_db)
