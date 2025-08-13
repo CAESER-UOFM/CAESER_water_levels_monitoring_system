@@ -711,14 +711,21 @@ class SharedDriveDbHandler:
                 if clean_desc:
                     draft_name += f"_{clean_desc}"
             
-            # Create drafts folder in project databases folder
-            db_folder_path = self._get_shared_drive_db_folder_path(project_name)
-            drafts_folder_path = os.path.join(db_folder_path, "drafts")
+            # FIXED: Create drafts folder in LOCAL cache directory, not shared drive
+            # Shared drive may not be writable or accessible for draft storage
+            drafts_folder_path = os.path.join(self.cache_dir, "drafts")
             os.makedirs(drafts_folder_path, exist_ok=True)
+            logger.info(f"Creating draft in local cache directory: {drafts_folder_path}")
             
             # Copy database to drafts folder
             draft_file_path = os.path.join(drafts_folder_path, f"{draft_name}.db")
+            logger.info(f"Copying database from {local_db_path} to {draft_file_path}")
+            
+            if not os.path.exists(local_db_path):
+                raise FileNotFoundError(f"Source database file not found: {local_db_path}")
+                
             shutil.copy2(local_db_path, draft_file_path)
+            logger.info(f"Database copied successfully, size: {os.path.getsize(draft_file_path)} bytes")
             
             # Save draft metadata (enhanced with additional fields)
             draft_metadata = {
@@ -732,10 +739,12 @@ class SharedDriveDbHandler:
             }
             
             metadata_path = os.path.join(drafts_folder_path, f"{draft_name}_metadata.json")
+            logger.info(f"Saving metadata to: {metadata_path}")
             with open(metadata_path, 'w') as f:
                 json.dump(draft_metadata, f, indent=2)
             
-            logger.info(f"Draft saved: {draft_name} for {project_name}")
+            logger.info(f"Draft saved successfully: {draft_name} for {project_name}")
+            logger.info(f"Draft files created: {draft_file_path}, {metadata_path}")
             return True
             
         except Exception as e:
@@ -743,10 +752,10 @@ class SharedDriveDbHandler:
             return False
     
     def load_draft(self, project_name: str, draft_name: str) -> Optional[str]:
-        """Load draft database (adapted for shared drive)"""
+        """Load draft database (adapted for shared drive from local cache)"""
         try:
-            db_folder_path = self._get_shared_drive_db_folder_path(project_name)
-            drafts_folder_path = os.path.join(db_folder_path, "drafts")
+            # FIXED: Look for drafts in local cache directory
+            drafts_folder_path = os.path.join(self.cache_dir, "drafts")
             draft_file_path = os.path.join(drafts_folder_path, f"{draft_name}.db")
             
             if not os.path.exists(draft_file_path):
@@ -765,10 +774,10 @@ class SharedDriveDbHandler:
             return None
     
     def clear_draft(self, project_name: str, draft_name: str) -> bool:
-        """Clear/delete draft (adapted for shared drive)"""
+        """Clear/delete draft (adapted for shared drive from local cache)"""
         try:
-            db_folder_path = self._get_shared_drive_db_folder_path(project_name)
-            drafts_folder_path = os.path.join(db_folder_path, "drafts")
+            # FIXED: Look for drafts in local cache directory
+            drafts_folder_path = os.path.join(self.cache_dir, "drafts")
             
             draft_file_path = os.path.join(drafts_folder_path, f"{draft_name}.db")
             metadata_path = os.path.join(drafts_folder_path, f"{draft_name}_metadata.json")
@@ -786,10 +795,10 @@ class SharedDriveDbHandler:
             return False
     
     def get_draft_info(self, project_name: str) -> List[Dict]:
-        """Get draft information (adapted for shared drive)"""
+        """Get draft information (adapted for shared drive from local cache)"""
         try:
-            db_folder_path = self._get_shared_drive_db_folder_path(project_name)
-            drafts_folder_path = os.path.join(db_folder_path, "drafts")
+            # FIXED: Look for drafts in local cache directory
+            drafts_folder_path = os.path.join(self.cache_dir, "drafts")
             
             if not os.path.exists(drafts_folder_path):
                 return []
