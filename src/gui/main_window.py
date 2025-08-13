@@ -2401,9 +2401,17 @@ class MainWindow(QMainWindow):
         """Discard working changes by cleaning up working database files."""
         try:
             import os
+            import time
             
             project_name = self.db_manager.cloud_project_name
             current_db_path = str(self.db_manager.current_db)
+            
+            # CRITICAL: Close database connections BEFORE trying to delete files
+            logger.info("Closing database connections before cleanup")
+            self.db_manager.close()  # Close all SQLite connections
+            
+            # Small delay to ensure file handles are released (Windows specific)
+            time.sleep(0.1)
             
             # Clean up working database and related SQLite files
             if current_db_path and "wlm_" in os.path.basename(current_db_path):
@@ -2415,8 +2423,13 @@ class MainWindow(QMainWindow):
                 
                 for file_path in files_to_remove:
                     if os.path.exists(file_path):
-                        os.remove(file_path)
-                        logger.info(f"Removed working database file: {file_path}")
+                        try:
+                            os.remove(file_path)
+                            logger.info(f"Removed working database file: {file_path}")
+                        except PermissionError as pe:
+                            logger.warning(f"Could not remove {file_path}: {pe} - file may still be in use")
+                        except Exception as fe:
+                            logger.warning(f"Could not remove {file_path}: {fe}")
             
             # Reset database manager state
             self.db_manager.reset_cloud_state()
