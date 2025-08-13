@@ -612,10 +612,18 @@ class SharedDriveDbHandler:
         return self._get_cached_db_path(project_name)
     
     def download_database(self, project_name: str, project_info: Dict, progress_callback=None, prefer_draft=False, force_download=False) -> Optional[str]:
-        """Download database (interface compatibility - maps to download_project_database)"""
-        # For shared drive, we ignore project_info, progress_callback, and prefer_draft
-        # since we handle these differently
-        return self.download_project_database(project_name, force_download)
+        """Download database (interface compatibility - returns working database for editing)"""
+        # For shared drive, use working database path for editing operations
+        # This ensures changes are made to working copy, not cached copy
+        if progress_callback:
+            progress_callback(20, "Downloading from shared drive...")
+            
+        working_db_path = self.get_working_database_path(project_name, force_download)
+        
+        if progress_callback:
+            progress_callback(100, "Download complete")
+            
+        return working_db_path
     
     def save_database(self, project_name: str, project_info: Dict, 
                      temp_db_path: str, user_name: str, changes_desc: str, 
