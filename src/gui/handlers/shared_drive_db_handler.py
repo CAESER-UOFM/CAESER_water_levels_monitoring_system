@@ -980,8 +980,9 @@ class SharedDriveDbHandler:
         else:
             logger.debug(f"Version tracking updated for {project_name}: {operation}")
     
-    def cleanup_temp_files(self):
+    def cleanup_temp_files(self, force_cleanup_working_dbs=False):
         """Clean up any temporary files created during operations"""
+        
         for temp_file in self.temp_files:
             try:
                 if os.path.exists(temp_file):
@@ -991,3 +992,89 @@ class SharedDriveDbHandler:
                 logger.warning(f"Could not clean up temp file {temp_file}: {e}")
         
         self.temp_files.clear()
+        
+        # If force cleanup is requested, attempt to clean up all working database files
+        if force_cleanup_working_dbs:
+            self._cleanup_working_database_files()
+    
+    def _cleanup_working_database_files(self):
+        """
+        Safely clean up working database files (wlm_*.db and related files).
+        This method handles the Windows file locking issue by waiting and retrying.
+        """
+        import glob
+        
+        try:
+            # Find all working database files in cache directory
+            working_db_pattern = os.path.join(self.cache_dir, "wlm_*.db*")
+            working_files = glob.glob(working_db_pattern)
+            
+            if not working_files:
+                logger.debug("No working database files found to clean up")
+                return
+            
+            logger.info(f"Found {len(working_files)} working database files to clean up")
+            
+            # Group files by base database name
+            db_groups = {}
+            for file_path in working_files:
+                basename = os.path.basename(file_path)
+                if basename.endswith('.db'):
+                    base_name = basename
+                elif basename.endswith('.db-shm'):
+                    base_name = basename[:-4]  # Remove '-shm'
+                elif basename.endswith('.db-wal'):
+                    base_name = basename[:-4]  # Remove '-wal'
+                else:
+                    base_name = basename
+                
+                if base_name not in db_groups:
+                    db_groups[base_name] = []
+                db_groups[base_name].append(file_path)
+            
+            # Clean up each database group
+            for db_name, file_list in db_groups.items():
+                self._cleanup_database_file_group(db_name, file_list)
+                
+        except Exception as e:
+            logger.error(f"Error during working database cleanup: {e}")
+    
+    def _cleanup_database_file_group(self, db_name, file_list):
+        """Clean up a group of database files (main, shm, wal) with retry logic"""
+        
+        logger.info(f"Cleaning up database files for: {db_name}")
+        
+        # Sort files to delete main database last (SQLite might recreate shm/wal)
+        file_list.sort(key=lambda x: (
+            0 if x.endswith('.db-shm') else 
+            1 if x.endswith('.db-wal') else 
+            2  # .db file last
+        ))
+        
+        for file_path in file_list:
+            if not os.path.exists(file_path):
+                continue
+                
+            success = False
+            max_retries = 5
+            
+            for attempt in range(max_retries):
+                try:
+                    os.remove(file_path)
+                    logger.info(f"Successfully removed: {file_path}")
+                    success = True
+                    break
+                except PermissionError as e:
+                    if attempt < max_retries - 1:
+                        wait_time = 0.1 * (2 ** attempt)  # Exponential backoff
+                        logger.debug(f"File locked, retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                        time.sleep(wait_time)
+                    else:
+                        logger.warning(f"Could not remove {file_path} after {max_retries} attempts: {e} - file may still be in use")
+                except Exception as e:
+                    logger.warning(f"Could not remove {file_path}: {e}")
+                    break
+            
+            if success:
+                # Small delay between files to let Windows release handles
+                time.sleep(0.05)

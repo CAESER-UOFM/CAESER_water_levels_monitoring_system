@@ -2421,21 +2421,47 @@ class MainWindow(QMainWindow):
             # Reset current database reference  
             self.db_manager.current_db = None
             
-            # Give Windows a moment to release file handles
-            time.sleep(0.2)
+            # Give Windows a moment to release file handles and force garbage collection
+            import gc
+            gc.collect()  # Force garbage collection to ensure connections are cleaned up
+            time.sleep(0.3)  # Increased wait time for Windows to release handles
             
-            # STEP 2: Delete working database files
+            # STEP 2: Delete working database files with retry logic
             if current_db_path and "wlm_" in os.path.basename(current_db_path):
                 files_to_remove = [
-                    current_db_path,
-                    current_db_path + "-shm", 
-                    current_db_path + "-wal"
+                    current_db_path + "-shm",  # Delete shm first
+                    current_db_path + "-wal",  # Then wal
+                    current_db_path           # Main database last
                 ]
                 
                 for file_path in files_to_remove:
-                    if os.path.exists(file_path):
-                        os.remove(file_path)
-                        logger.info(f"Deleted working database file: {file_path}")
+                    if not os.path.exists(file_path):
+                        continue
+                        
+                    # Retry logic for Windows file locking
+                    success = False
+                    max_retries = 5
+                    
+                    for attempt in range(max_retries):
+                        try:
+                            os.remove(file_path)
+                            logger.info(f"Successfully deleted working database file: {file_path}")
+                            success = True
+                            break
+                        except PermissionError as perm_e:
+                            if attempt < max_retries - 1:
+                                wait_time = 0.1 * (2 ** attempt)  # Exponential backoff
+                                logger.debug(f"File locked, retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                                time.sleep(wait_time)
+                            else:
+                                logger.warning(f"Could not remove {file_path} after {max_retries} attempts: {perm_e} - file may still be in use")
+                        except Exception as other_e:
+                            logger.warning(f"Could not remove {file_path}: {other_e}")
+                            break
+                    
+                    if success:
+                        # Small delay between files to let Windows release handles
+                        time.sleep(0.05)
             
             # STEP 3: Reset cloud state
             self.db_manager.reset_cloud_state()
@@ -2521,9 +2547,20 @@ class MainWindow(QMainWindow):
                         event.ignore()
                         return
             
-            # Clean up cloud database resources
+            # Clean up cloud database resources with enhanced cleanup
             if hasattr(self, 'cloud_db_handler') and self.cloud_db_handler:
-                self.cloud_db_handler.cleanup_temp_files()
+                # Close database connections before cleanup
+                logger.info("Closing database connections before cleanup")
+                if hasattr(self, 'db_manager') and self.db_manager:
+                    self.db_manager.close()
+                    
+                # Force garbage collection to ensure all connections are released
+                import gc, time
+                gc.collect()
+                time.sleep(0.2)  # Give Windows time to release file handles
+                
+                # Enhanced cleanup with force cleanup of working databases
+                self.cloud_db_handler.cleanup_temp_files(force_cleanup_working_dbs=True)
                 # Clean up session backups
                 self.cloud_db_handler.cleanup_session_backups()
                 
