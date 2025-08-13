@@ -76,25 +76,45 @@ class DatabaseManager(QObject):
         
     def open_cloud_database(self, temp_path: str, project_name: str, project_info: Dict):
         """
-        Open a cloud database from a temporary path.
+        Open a cloud database by creating a working copy from the cached version.
         
         Args:
-            temp_path: Path to the temporary database file
+            temp_path: Path to the cached database file (MEGASITE.db)
             project_name: Name of the cloud project
             project_info: Project information dictionary
         """
+        import shutil
+        from pathlib import Path
+        
         # Reset cloud state
         self.is_cloud_database = True
         self.cloud_project_name = project_name
         self.cloud_project_info = project_info
-        self.temp_db_path = temp_path
+        self.temp_db_path = temp_path  # This is the cached database path
         self.is_cloud_modified = False
         
         # Set loading flag to prevent change tracking during initialization
         self._loading_database = True
         
-        # Open as regular database first
-        self.open_database(Path(temp_path))
+        # Create working copy from cached database
+        cached_path = Path(temp_path)
+        working_path = cached_path.parent / f"wlm_{project_name}.db"
+        
+        try:
+            # Copy cached database to working database
+            logger.info(f"Creating working copy: {cached_path} → {working_path}")
+            shutil.copy2(cached_path, working_path)
+            
+            # Open the working copy (not the cached version)
+            self.open_database(working_path)
+            
+            logger.info(f"Opened working database for cloud project: {project_name}")
+            
+        except Exception as e:
+            logger.error(f"Error creating working copy: {e}")
+            # Fallback: open cached database directly (old behavior)
+            logger.warning("Falling back to opening cached database directly")
+            self.open_database(cached_path)
         
         # Initialize change tracker AFTER database is loaded
         if hasattr(self, '_user_auth_service') and self._user_auth_service:

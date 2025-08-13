@@ -1851,7 +1851,7 @@ class MainWindow(QMainWindow):
         success = self.cloud_db_handler.save_database(
             self.db_manager.cloud_project_name,
             self.db_manager.cloud_project_info,
-            self.db_manager.temp_db_path,
+            str(self.db_manager.current_db),  # Use current working database instead of cached
             current_user,
             changes_desc,
             self.db_manager.change_tracker,
@@ -1864,7 +1864,7 @@ class MainWindow(QMainWindow):
             # Create session backup of the uploaded state
             self.cloud_db_handler.create_session_backup(
                 self.db_manager.cloud_project_name,
-                self.db_manager.temp_db_path,
+                str(self.db_manager.current_db),  # Use current working database
                 'last_uploaded'
             )
             
@@ -1879,19 +1879,20 @@ class MainWindow(QMainWindow):
             
             # DEBUG: Verify database state after upload
             import os
-            if self.db_manager.temp_db_path and os.path.exists(self.db_manager.temp_db_path):
-                file_size_after_upload = os.path.getsize(self.db_manager.temp_db_path)
+            current_db_path = str(self.db_manager.current_db)
+            if current_db_path and os.path.exists(current_db_path):
+                file_size_after_upload = os.path.getsize(current_db_path)
                 logger.info(f"UPLOAD_DEBUG: Database file size after upload: {file_size_after_upload} bytes")
-                logger.info(f"UPLOAD_DEBUG: Database path after upload: {self.db_manager.temp_db_path}")
+                logger.info(f"UPLOAD_DEBUG: Database path after upload: {current_db_path}")
                 
                 # CRITICAL FIX: Remove uploaded database from cleanup list
                 # The uploaded database is now our current working database and should NOT be cleaned up
                 if (self.cloud_db_handler and hasattr(self.cloud_db_handler, 'temp_files') and 
-                    self.db_manager.temp_db_path in self.cloud_db_handler.temp_files):
-                    self.cloud_db_handler.temp_files.remove(self.db_manager.temp_db_path)
-                    logger.info(f"UPLOAD_DEBUG: Removed uploaded database from cleanup list: {self.db_manager.temp_db_path}")
+                    current_db_path in self.cloud_db_handler.temp_files):
+                    self.cloud_db_handler.temp_files.remove(current_db_path)
+                    logger.info(f"UPLOAD_DEBUG: Removed uploaded database from cleanup list: {current_db_path}")
             else:
-                logger.warning(f"UPLOAD_DEBUG: Database file not found after upload: {self.db_manager.temp_db_path}")
+                logger.warning(f"UPLOAD_DEBUG: Database file not found after upload: {current_db_path}")
             
             # Clean up draft after successful upload (local DB is now current)
             if self.cloud_db_handler.has_draft(self.db_manager.cloud_project_name):
@@ -1919,7 +1920,7 @@ class MainWindow(QMainWindow):
                     self.cloud_db_handler.update_local_version_tracking(
                         self.db_manager.cloud_project_name, 
                         actual_cloud_time,  # Use actual Google Drive timestamp
-                        self.db_manager.temp_db_path,
+                        str(self.db_manager.current_db),
                         "upload"
                     )
                     logger.info(f"Version tracking updated with actual Google Drive timestamp: {actual_cloud_time}")
@@ -1932,7 +1933,7 @@ class MainWindow(QMainWindow):
                     self.cloud_db_handler.update_local_version_tracking(
                         self.db_manager.cloud_project_name, 
                         fallback_time,
-                        self.db_manager.temp_db_path,
+                        str(self.db_manager.current_db),
                         "upload"
                     )
             except Exception as e:
@@ -1944,7 +1945,7 @@ class MainWindow(QMainWindow):
                 self.cloud_db_handler.update_local_version_tracking(
                     self.db_manager.cloud_project_name, 
                     fallback_time,
-                    self.db_manager.temp_db_path,
+                    str(self.db_manager.current_db),
                     "upload"
                 )
             
@@ -2011,7 +2012,7 @@ class MainWindow(QMainWindow):
             QApplication.processEvents()
             
             # Copy the current cloud database file to the specified location
-            shutil.copy2(self.db_manager.temp_db_path, file_path)
+            shutil.copy2(str(self.db_manager.current_db), file_path)
             
             progress.setValue(60)
             progress.setLabelText("Updating database metadata...")
@@ -2104,7 +2105,7 @@ class MainWindow(QMainWindow):
             # Save the draft
             success = self.cloud_db_handler.save_as_draft(
                 self.db_manager.cloud_project_name,
-                self.db_manager.temp_db_path,
+                str(self.db_manager.current_db),
                 self.db_manager.cloud_download_time,
                 changes_desc
             )
@@ -2135,7 +2136,7 @@ class MainWindow(QMainWindow):
             # Save the draft
             success = self.cloud_db_handler.save_as_draft(
                 self.db_manager.cloud_project_name,
-                self.db_manager.temp_db_path,
+                str(self.db_manager.current_db),
                 self.db_manager.cloud_download_time,
                 changes_desc
             )
@@ -2349,7 +2350,7 @@ class MainWindow(QMainWindow):
             
             # Copy the backup over the current database
             import shutil
-            shutil.copy2(last_uploaded_path, self.db_manager.temp_db_path)
+            shutil.copy2(last_uploaded_path, str(self.db_manager.current_db))
             
             # Reset modification state
             self.db_manager.is_cloud_modified = False
@@ -2380,7 +2381,7 @@ class MainWindow(QMainWindow):
             
             # Copy the backup over the current database
             import shutil
-            shutil.copy2(original_path, self.db_manager.temp_db_path)
+            shutil.copy2(original_path, str(self.db_manager.current_db))
             
             # Reset modification state
             self.db_manager.is_cloud_modified = False
@@ -2405,7 +2406,7 @@ class MainWindow(QMainWindow):
                 
                 # Enhanced logic: Check what kind of changes we have
                 project_name = self.db_manager.cloud_project_name
-                current_db_path = self.db_manager.temp_db_path
+                current_db_path = str(self.db_manager.current_db)
                 
                 # Check if we have changes since last upload vs since download
                 has_changes_since_upload = self.cloud_db_handler.has_session_changes_since_upload(
