@@ -2398,7 +2398,7 @@ class MainWindow(QMainWindow):
             return False
     
     def _discard_working_changes(self) -> bool:
-        """Discard working changes by cleaning up working database files."""
+        """Discard working changes by completely closing connections and deleting working files."""
         try:
             import os
             import time
@@ -2406,14 +2406,25 @@ class MainWindow(QMainWindow):
             project_name = self.db_manager.cloud_project_name
             current_db_path = str(self.db_manager.current_db)
             
-            # CRITICAL: Close database connections BEFORE trying to delete files
-            logger.info("Closing database connections before cleanup")
-            self.db_manager.close()  # Close all SQLite connections
+            # STEP 1: Completely disconnect from database
+            logger.info("Discarding working changes - completely closing database")
             
-            # Small delay to ensure file handles are released (Windows specific)
-            time.sleep(0.1)
+            # Reset models first (they hold connections)
+            self.db_manager._well_model = None
+            self.db_manager._water_level_model = None
+            self.db_manager._baro_model = None
+            self.db_manager._user_repository = None
             
-            # Clean up working database and related SQLite files
+            # Close all connections in the pool
+            self.db_manager.close()
+            
+            # Reset current database reference  
+            self.db_manager.current_db = None
+            
+            # Give Windows a moment to release file handles
+            time.sleep(0.2)
+            
+            # STEP 2: Delete working database files
             if current_db_path and "wlm_" in os.path.basename(current_db_path):
                 files_to_remove = [
                     current_db_path,
@@ -2423,18 +2434,13 @@ class MainWindow(QMainWindow):
                 
                 for file_path in files_to_remove:
                     if os.path.exists(file_path):
-                        try:
-                            os.remove(file_path)
-                            logger.info(f"Removed working database file: {file_path}")
-                        except PermissionError as pe:
-                            logger.warning(f"Could not remove {file_path}: {pe} - file may still be in use")
-                        except Exception as fe:
-                            logger.warning(f"Could not remove {file_path}: {fe}")
+                        os.remove(file_path)
+                        logger.info(f"Deleted working database file: {file_path}")
             
-            # Reset database manager state
+            # STEP 3: Reset cloud state
             self.db_manager.reset_cloud_state()
             
-            logger.info("Successfully discarded working changes - only cached database remains")
+            logger.info("Successfully discarded working changes and deleted working files")
             return True
             
         except Exception as e:
