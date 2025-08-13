@@ -795,8 +795,10 @@ class SharedDriveDbHandler:
             os.makedirs(drafts_folder_path, exist_ok=True)
             logger.info(f"Creating draft in local cache directory: {drafts_folder_path}")
             
-            # SINGLE DRAFT SYSTEM: Remove existing draft files first
+            # ENHANCED: Define all draft file paths (including WAL/SHM)
             draft_file_path = os.path.join(drafts_folder_path, f"{draft_name}.db")
+            draft_wal_path = os.path.join(drafts_folder_path, f"{draft_name}.db-wal")
+            draft_shm_path = os.path.join(drafts_folder_path, f"{draft_name}.db-shm")
             metadata_path = os.path.join(drafts_folder_path, f"{draft_name}_metadata.json")
             
             # Check if we're updating existing draft
@@ -804,12 +806,12 @@ class SharedDriveDbHandler:
             
             if is_updating_existing:
                 logger.info(f"Updating existing draft for {project_name}")
-                # Remove old files
+                # Remove old files (including WAL/SHM)
                 try:
-                    if os.path.exists(draft_file_path):
-                        os.remove(draft_file_path)
-                    if os.path.exists(metadata_path):
-                        os.remove(metadata_path)
+                    for file_path in [draft_file_path, draft_wal_path, draft_shm_path, metadata_path]:
+                        if os.path.exists(file_path):
+                            os.remove(file_path)
+                            logger.debug(f"Removed old draft file: {os.path.basename(file_path)}")
                     logger.debug(f"Removed old draft files for {project_name}")
                 except Exception as e:
                     logger.warning(f"Error removing old draft files: {e}")
@@ -834,12 +836,37 @@ class SharedDriveDbHandler:
                 logger.warning(f"WARNING: Source database doesn't appear to be working copy for {project_name}")
                 logger.warning(f"Expected: wlm_{project_name}.db, Got: {os.path.basename(local_db_path)}")
             
+            # Copy main database file
             shutil.copy2(local_db_path, draft_file_path)
             draft_size = os.path.getsize(draft_file_path)
-            logger.info(f"Draft saved successfully, size: {draft_size} bytes")
+            logger.info(f"Draft database saved, size: {draft_size} bytes")
+            
+            # Copy WAL file if it exists (essential for change tracking)
+            wal_source = f"{local_db_path}-wal"
+            has_wal = False
+            if os.path.exists(wal_source):
+                shutil.copy2(wal_source, draft_wal_path)
+                wal_size = os.path.getsize(draft_wal_path)
+                logger.info(f"Draft WAL file saved, size: {wal_size} bytes")
+                has_wal = True
+            else:
+                logger.debug(f"No WAL file found at: {wal_source}")
+            
+            # Copy SHM file if it exists (essential for change tracking)
+            shm_source = f"{local_db_path}-shm"
+            has_shm = False
+            if os.path.exists(shm_source):
+                shutil.copy2(shm_source, draft_shm_path)
+                shm_size = os.path.getsize(draft_shm_path)
+                logger.info(f"Draft SHM file saved, size: {shm_size} bytes")
+                has_shm = True
+            else:
+                logger.debug(f"No SHM file found at: {shm_source}")
+            
+            logger.info(f"Draft structure saved: DB=✓, WAL={'✓' if has_wal else '✗'}, SHM={'✓' if has_shm else '✗'}")
             logger.info(f"Size verification: source={source_size}, draft={draft_size}, match={source_size == draft_size}")
             
-            # Save draft metadata (enhanced with additional fields)
+            # Save draft metadata (enhanced with WAL/SHM tracking)
             draft_metadata = {
                 'draft_name': draft_name,
                 'created_at': datetime.now().isoformat(),
@@ -847,7 +874,11 @@ class SharedDriveDbHandler:
                 'original_size': os.path.getsize(local_db_path),
                 'original_download_time': original_download_time,
                 'changes_description': changes_description or "No description provided",
-                'draft_type': 'shared_drive'
+                'draft_type': 'shared_drive',
+                'has_wal': has_wal,
+                'has_shm': has_shm,
+                'wal_size': os.path.getsize(draft_wal_path) if has_wal else 0,
+                'shm_size': os.path.getsize(draft_shm_path) if has_shm else 0
             }
             
             logger.info(f"Saving metadata to: {metadata_path}")
@@ -887,8 +918,14 @@ class SharedDriveDbHandler:
                 logger.warning(f"Draft database file not found: {draft_file_path}")
                 return None
             
-            # Copy draft to working location
+            # ENHANCED: Copy complete draft structure to working location
             working_db_path = os.path.join(self.cache_dir, f"wlm_{project_name}.db")
+            working_wal_path = f"{working_db_path}-wal"
+            working_shm_path = f"{working_db_path}-shm"
+            
+            # Define draft file paths
+            draft_wal_source = os.path.join(drafts_folder_path, f"{draft_name}.db-wal")
+            draft_shm_source = os.path.join(drafts_folder_path, f"{draft_name}.db-shm")
             
             # ENHANCED: Add detailed logging for draft loading process
             draft_size = os.path.getsize(draft_file_path)
@@ -896,17 +933,61 @@ class SharedDriveDbHandler:
             logger.info(f"Draft source: {draft_file_path} (size: {draft_size} bytes)")
             logger.info(f"Working target: {working_db_path}")
             
-            # Check if working database already exists and compare
+            # Check if working database already exists and remove all working files
             if os.path.exists(working_db_path):
                 existing_size = os.path.getsize(working_db_path)
-                logger.info(f"Existing working database size: {existing_size} bytes")
+                logger.info(f"Removing existing working database (size: {existing_size} bytes)")
+                # Remove all working files to ensure clean state
+                for working_file in [working_db_path, working_wal_path, working_shm_path]:
+                    if os.path.exists(working_file):
+                        os.remove(working_file)
+                        logger.debug(f"Removed existing file: {os.path.basename(working_file)}")
             
+            # Copy main database file
             shutil.copy2(draft_file_path, working_db_path)
             final_size = os.path.getsize(working_db_path)
+            logger.info(f"Working database copied, size: {final_size} bytes")
+            
+            # Copy WAL file if it exists in draft
+            has_wal = False
+            if os.path.exists(draft_wal_source):
+                shutil.copy2(draft_wal_source, working_wal_path)
+                wal_size = os.path.getsize(working_wal_path)
+                logger.info(f"Working WAL file restored, size: {wal_size} bytes")
+                has_wal = True
+            else:
+                logger.debug(f"No WAL file in draft: {draft_wal_source}")
+            
+            # Copy SHM file if it exists in draft
+            has_shm = False
+            if os.path.exists(draft_shm_source):
+                shutil.copy2(draft_shm_source, working_shm_path)
+                shm_size = os.path.getsize(working_shm_path)
+                logger.info(f"Working SHM file restored, size: {shm_size} bytes")
+                has_shm = True
+            else:
+                logger.debug(f"No SHM file in draft: {draft_shm_source}")
             
             logger.info(f"Draft loaded successfully: {draft_name} for {project_name}")
-            logger.info(f"Final working database size: {final_size} bytes")
+            logger.info(f"Working structure restored: DB=✓, WAL={'✓' if has_wal else '✗'}, SHM={'✓' if has_shm else '✗'}")
             logger.info(f"Working database path: {working_db_path}")
+            
+            # CRITICAL: If no WAL/SHM files exist, we need to ensure SQLite creates them
+            # by opening the database in WAL mode
+            if not has_wal or not has_shm:
+                logger.info("Creating WAL/SHM files for change tracking by opening database in WAL mode")
+                try:
+                    import sqlite3
+                    with sqlite3.connect(working_db_path) as conn:
+                        conn.execute('PRAGMA journal_mode = WAL')
+                        conn.execute('PRAGMA synchronous = OFF')
+                        # Force creation of WAL/SHM files
+                        conn.execute('SELECT COUNT(*) FROM sqlite_master')
+                        conn.commit()
+                    logger.info("WAL/SHM files created for change tracking")
+                except Exception as e:
+                    logger.warning(f"Error creating WAL/SHM files: {e}")
+            
             return working_db_path
             
         except Exception as e:
@@ -922,23 +1003,25 @@ class SharedDriveDbHandler:
             if not os.path.exists(drafts_folder_path):
                 return True  # No drafts to clear
             
-            # Define file paths for single draft system
+            # Define file paths for complete draft structure
             draft_file_path = os.path.join(drafts_folder_path, f"draft_{project_name}.db")
+            draft_wal_path = os.path.join(drafts_folder_path, f"draft_{project_name}.db-wal")
+            draft_shm_path = os.path.join(drafts_folder_path, f"draft_{project_name}.db-shm")
             metadata_path = os.path.join(drafts_folder_path, f"draft_{project_name}_metadata.json")
             
             draft_existed = False
             
-            # Delete database file if exists
-            if os.path.exists(draft_file_path):
-                os.remove(draft_file_path)
-                logger.info(f"Removed draft database: {draft_file_path}")
-                draft_existed = True
-            
-            # Delete metadata file if exists  
-            if os.path.exists(metadata_path):
-                os.remove(metadata_path)
-                logger.info(f"Removed draft metadata: {metadata_path}")
-                draft_existed = True
+            # Delete all draft files if they exist
+            for file_path, file_type in [
+                (draft_file_path, "database"),
+                (draft_wal_path, "WAL"),
+                (draft_shm_path, "SHM"),
+                (metadata_path, "metadata")
+            ]:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    logger.info(f"Removed draft {file_type}: {os.path.basename(file_path)}")
+                    draft_existed = True
             
             if draft_existed:
                 logger.info(f"Cleared draft for project {project_name}")
