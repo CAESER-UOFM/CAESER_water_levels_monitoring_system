@@ -651,8 +651,41 @@ class SharedDriveDbHandler:
     
     def download_database(self, project_name: str, project_info: Dict, progress_callback=None, prefer_draft=False, force_download=False) -> Optional[str]:
         """Download database (interface compatibility - maps to download_project_database)"""
-        # For shared drive, we ignore project_info, progress_callback, and prefer_draft
-        # since we handle these differently
+        logger.debug(f"SharedDriveDbHandler.download_database called with prefer_draft={prefer_draft}")
+        
+        # FIXED: Handle prefer_draft parameter properly
+        if prefer_draft and self.has_draft(project_name):
+            logger.info(f"DRAFT: Loading existing draft for {project_name} instead of downloading from shared drive")
+            if progress_callback:
+                progress_callback(50, "Loading existing draft...")
+            
+            # Load the draft instead of downloading from shared drive
+            draft_info = self.get_draft_info(project_name)
+            if draft_info:
+                draft_path = draft_info.get('path')
+                if draft_path and os.path.exists(draft_path):
+                    logger.info(f"DRAFT: Found draft at {draft_path}")
+                    
+                    # Copy draft to temp location with expected name
+                    temp_dir = os.path.join(self.cache_dir, "temp")
+                    os.makedirs(temp_dir, exist_ok=True)
+                    temp_draft_path = os.path.join(temp_dir, f"{project_name}.db")
+                    
+                    logger.debug(f"DRAFT: Copying draft from {draft_path} to {temp_draft_path}")
+                    shutil.copy2(draft_path, temp_draft_path)
+                    
+                    if progress_callback:
+                        progress_callback(100, "Draft loaded successfully")
+                        
+                    logger.info(f"DRAFT: Successfully loaded draft to {temp_draft_path}")
+                    return temp_draft_path
+                else:
+                    logger.warning(f"DRAFT: Draft file not found at {draft_path}, falling back to shared drive download")
+            else:
+                logger.warning(f"DRAFT: No draft info found for {project_name}, falling back to shared drive download")
+        
+        # Fallback to shared drive download (original behavior)
+        logger.info(f"SHARED_DRIVE: Downloading {project_name} from shared drive (prefer_draft={prefer_draft})")
         if progress_callback:
             progress_callback(20, "Downloading from shared drive...")
             

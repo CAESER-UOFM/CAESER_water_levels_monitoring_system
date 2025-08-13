@@ -34,6 +34,9 @@ logging.getLogger('src.gui.handlers.auto_update_handler').setLevel(logging.INFO)
 logging.getLogger('src.gui.handlers.field_data_consolidator').setLevel(logging.INFO)
 logging.getLogger('src.gui.handlers.runs_folder_monitor').setLevel(logging.INFO)
 
+# Enable DEBUG level logging for shared drive database handler (draft debugging)
+logging.getLogger('src.gui.handlers.shared_drive_db_handler').setLevel(logging.DEBUG)
+
 # Suppress noisy third-party libraries
 logging.getLogger('PyQt5').setLevel(logging.ERROR)
 logging.getLogger('matplotlib').setLevel(logging.ERROR)
