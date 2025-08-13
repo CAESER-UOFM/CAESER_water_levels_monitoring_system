@@ -533,6 +533,12 @@ class DatabaseManager(QObject):
             # Also mark as draft modified if we loaded from draft
             if self.is_loaded_from_draft:
                 self.is_draft_modified = True
+                logger.info(f"DRAFT_MODIFY: Marked draft as modified for {self.cloud_project_name}")
+            else:
+                logger.debug(f"DRAFT_MODIFY: Not loaded from draft, is_loaded_from_draft={self.is_loaded_from_draft}")
         
         # Always emit the database_modified signal for UI updates
         self.database_modified.emit()
+        
+        # DEBUG: Log current state after modification
+        logger.debug(f"DRAFT_STATE: is_loaded_from_draft={getattr(self, 'is_loaded_from_draft', 'MISSING')}, is_draft_modified={getattr(self, 'is_draft_modified', 'MISSING')}")

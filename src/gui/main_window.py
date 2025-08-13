@@ -2519,6 +2519,7 @@ class MainWindow(QMainWindow):
                 self.db_manager.is_cloud_database and self.db_manager.is_cloud_modified):
                 
                 # FIXED: Skip dialog if loaded from draft but no new changes made
+                logger.info(f"DRAFT_DEBUG: is_loaded_from_draft={self.db_manager.is_loaded_from_draft}, is_draft_modified={self.db_manager.is_draft_modified}")
                 if (self.db_manager.is_loaded_from_draft and not self.db_manager.is_draft_modified):
                     logger.info("Loaded from draft with no new changes - closing without dialog")
                     # Still call the cleanup to log the "keeping existing draft" message
