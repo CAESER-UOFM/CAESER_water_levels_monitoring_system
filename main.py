@@ -37,6 +37,11 @@ logging.getLogger('src.gui.handlers.runs_folder_monitor').setLevel(logging.INFO)
 # Enable DEBUG level logging for shared drive database handler (draft debugging)
 logging.getLogger('src.gui.handlers.shared_drive_db_handler').setLevel(logging.DEBUG)
 
+# Enable INFO level logging for database debugging
+logging.getLogger('src.database.manager').setLevel(logging.INFO)
+logging.getLogger('src.database.models.base_model').setLevel(logging.INFO)
+logging.getLogger('src.database.models.water_level').setLevel(logging.INFO)
+
 # Suppress noisy third-party libraries
 logging.getLogger('PyQt5').setLevel(logging.ERROR)
 logging.getLogger('matplotlib').setLevel(logging.ERROR)
