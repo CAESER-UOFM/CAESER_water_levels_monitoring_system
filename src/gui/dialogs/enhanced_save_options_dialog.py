@@ -139,54 +139,34 @@ class EnhancedSaveOptionsDialog(QDialog):
         options_layout = QVBoxLayout()
         options_layout.setSpacing(6)
         
-        # Option 1: Save additional changes to Cloud
-        self.cloud_radio = QRadioButton("💾 Upload Additional Changes")
-        self.cloud_radio.setStyleSheet("color: #2196f3; font-weight: bold;")
-        self.cloud_radio.setChecked(True)  # Default option
-        self.button_group.addButton(self.cloud_radio, 1)
-        options_layout.addWidget(self.cloud_radio)
-        
-        cloud_desc = QLabel("Upload your new changes to the cloud database")
-        cloud_desc.setStyleSheet("margin-left: 24px; margin-bottom: 8px; color: #666; font-size: 11px;")
-        options_layout.addWidget(cloud_desc)
-        
-        # Option 2: Save as Draft
-        self.draft_radio = QRadioButton("📝 Save Additional Changes as Draft")
+        # Option 1: Save as Draft (Default - safest option)
+        self.draft_radio = QRadioButton("📝 Save as Draft")
         self.draft_radio.setStyleSheet("color: #4caf50; font-weight: bold;")
+        self.draft_radio.setChecked(True)  # Default option - safest
         self.button_group.addButton(self.draft_radio, 2)
         options_layout.addWidget(self.draft_radio)
         
-        draft_desc = QLabel("Save your additional changes locally to continue working later")
+        draft_desc = QLabel("Save your changes locally to continue working later")
         draft_desc.setStyleSheet("margin-left: 24px; margin-bottom: 8px; color: #666; font-size: 11px;")
         options_layout.addWidget(draft_desc)
         
-        # Option 3: Restore to Last Upload
-        self.restore_upload_radio = QRadioButton("⏮️ Restore to Last Upload")
-        self.restore_upload_radio.setStyleSheet("color: #ff9800; font-weight: bold;")
-        self.button_group.addButton(self.restore_upload_radio, 3)
-        options_layout.addWidget(self.restore_upload_radio)
+        # Option 2: Push to SMOO  
+        self.cloud_radio = QRadioButton("🚀 Push to SMOO")
+        self.cloud_radio.setStyleSheet("color: #2196f3; font-weight: bold;")
+        self.button_group.addButton(self.cloud_radio, 1)
+        options_layout.addWidget(self.cloud_radio)
         
-        restore_upload_desc = QLabel("Discard additional changes and return to the uploaded state")
-        restore_upload_desc.setStyleSheet("margin-left: 24px; margin-bottom: 8px; color: #666; font-size: 11px;")
-        options_layout.addWidget(restore_upload_desc)
+        cloud_desc = QLabel("Upload your changes to the shared SMOO database")
+        cloud_desc.setStyleSheet("margin-left: 24px; margin-bottom: 8px; color: #666; font-size: 11px;")
+        options_layout.addWidget(cloud_desc)
         
-        # Option 4: Restore to Original
-        self.restore_original_radio = QRadioButton("⏪ Restore to Original Download")
-        self.restore_original_radio.setStyleSheet("color: #9c27b0; font-weight: bold;")
-        self.button_group.addButton(self.restore_original_radio, 4)
-        options_layout.addWidget(self.restore_original_radio)
-        
-        restore_original_desc = QLabel("Discard all session changes and return to the originally downloaded state")
-        restore_original_desc.setStyleSheet("margin-left: 24px; margin-bottom: 8px; color: #666; font-size: 11px;")
-        options_layout.addWidget(restore_original_desc)
-        
-        # Option 5: Discard All Changes
-        self.discard_radio = QRadioButton("🗑️ Discard Additional Changes")
+        # Option 3: Discard Changes
+        self.discard_radio = QRadioButton("🗑️ Discard Changes")
         self.discard_radio.setStyleSheet("color: #f44336; font-weight: bold;")
         self.button_group.addButton(self.discard_radio, 5)
         options_layout.addWidget(self.discard_radio)
         
-        discard_desc = QLabel("Close without saving additional changes (keep uploaded state)")
+        discard_desc = QLabel("Close without saving changes (keep only original downloaded database)")
         discard_desc.setStyleSheet("margin-left: 24px; margin-bottom: 8px; color: #666; font-size: 11px;")
         options_layout.addWidget(discard_desc)
         
@@ -248,15 +228,11 @@ class EnhancedSaveOptionsDialog(QDialog):
         selected_id = self.button_group.checkedId()
         
         if selected_id == 1:
-            self.choice = "save_cloud"
+            self.choice = "save_cloud"  # Push to SMOO
         elif selected_id == 2:
-            self.choice = "save_draft"
-        elif selected_id == 3:
-            self.choice = "restore_upload"
-        elif selected_id == 4:
-            self.choice = "restore_original"
+            self.choice = "save_draft"  # Save as Draft  
         elif selected_id == 5:
-            self.choice = "discard"
+            self.choice = "discard"     # Discard Changes
         
         self.accept()
     

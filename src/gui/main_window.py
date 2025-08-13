@@ -2396,6 +2396,37 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Restore Failed", 
                 f"Failed to restore database: {str(e)}")
             return False
+    
+    def _discard_working_changes(self) -> bool:
+        """Discard working changes by cleaning up working database files."""
+        try:
+            import os
+            
+            project_name = self.db_manager.cloud_project_name
+            current_db_path = str(self.db_manager.current_db)
+            
+            # Clean up working database and related SQLite files
+            if current_db_path and "wlm_" in os.path.basename(current_db_path):
+                files_to_remove = [
+                    current_db_path,
+                    current_db_path + "-shm", 
+                    current_db_path + "-wal"
+                ]
+                
+                for file_path in files_to_remove:
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                        logger.info(f"Removed working database file: {file_path}")
+            
+            # Reset database manager state
+            self.db_manager.reset_cloud_state()
+            
+            logger.info("Successfully discarded working changes - only cached database remains")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error discarding working changes: {e}")
+            return False
 
     def closeEvent(self, event):
         """Handle application close event with proper cleanup."""
@@ -2465,7 +2496,11 @@ class MainWindow(QMainWindow):
                     if not self._restore_to_original():
                         event.ignore()
                         return
-                # If choice == "discard", continue to close without saving
+                elif choice == "discard":
+                    # Discard changes: clean up working copy, keep only cached database
+                    if not self._discard_working_changes():
+                        event.ignore()
+                        return
             
             # Clean up cloud database resources
             if hasattr(self, 'cloud_db_handler') and self.cloud_db_handler:
