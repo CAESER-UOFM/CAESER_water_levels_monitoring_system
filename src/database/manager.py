@@ -522,6 +522,12 @@ class DatabaseManager(QObject):
         if hasattr(self, '_loading_database') and self._loading_database:
             logger.debug("Skipping mark_as_modified during database loading")
             return
+        
+        # CRITICAL DEBUG: Log every call to mark_as_modified
+        logger.info(f"MARK_MODIFIED_DEBUG: Called for database {self.current_db}")
+        logger.info(f"MARK_MODIFIED_DEBUG: is_cloud_database={self.is_cloud_database}")
+        logger.info(f"MARK_MODIFIED_DEBUG: is_loaded_from_draft={self.is_loaded_from_draft}")
+        logger.info(f"MARK_MODIFIED_DEBUG: is_draft_modified={self.is_draft_modified}")
             
         if self.is_google_drive_db:
             self._modified_since_sync = True
@@ -535,10 +541,10 @@ class DatabaseManager(QObject):
                 self.is_draft_modified = True
                 logger.info(f"DRAFT_MODIFY: Marked draft as modified for {self.cloud_project_name}")
             else:
-                logger.debug(f"DRAFT_MODIFY: Not loaded from draft, is_loaded_from_draft={self.is_loaded_from_draft}")
+                logger.info(f"DRAFT_MODIFY: Not loaded from draft, is_loaded_from_draft={self.is_loaded_from_draft}")
         
         # Always emit the database_modified signal for UI updates
         self.database_modified.emit()
         
-        # DEBUG: Log current state after modification
-        logger.debug(f"DRAFT_STATE: is_loaded_from_draft={getattr(self, 'is_loaded_from_draft', 'MISSING')}, is_draft_modified={getattr(self, 'is_draft_modified', 'MISSING')}")
+        # DEBUG: Log final state after modification
+        logger.info(f"DRAFT_STATE_FINAL: is_loaded_from_draft={getattr(self, 'is_loaded_from_draft', 'MISSING')}, is_draft_modified={getattr(self, 'is_draft_modified', 'MISSING')}")
