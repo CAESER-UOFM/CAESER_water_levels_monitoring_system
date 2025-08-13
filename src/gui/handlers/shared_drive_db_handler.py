@@ -698,11 +698,18 @@ class SharedDriveDbHandler:
     
     # === DRAFT MANAGEMENT SYSTEM (adapted for shared drive) ===
     
-    def save_as_draft(self, project_name: str, local_db_path: str, draft_name: str = None) -> bool:
-        """Save database as draft (adapted for shared drive)"""
+    def save_as_draft(self, project_name: str, local_db_path: str, 
+                     original_download_time: str, changes_description: str = None) -> bool:
+        """Save database as draft (adapted for shared drive with compatible signature)"""
         try:
-            if not draft_name:
-                draft_name = f"draft_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            # Generate draft name from download time and changes if available
+            draft_name = f"draft_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            if changes_description:
+                # Add first few words of changes description to draft name
+                clean_desc = "".join(c for c in changes_description[:20] if c.isalnum() or c in (' ', '_'))
+                clean_desc = clean_desc.strip().replace(' ', '_')
+                if clean_desc:
+                    draft_name += f"_{clean_desc}"
             
             # Create drafts folder in project databases folder
             db_folder_path = self._get_shared_drive_db_folder_path(project_name)
@@ -713,12 +720,15 @@ class SharedDriveDbHandler:
             draft_file_path = os.path.join(drafts_folder_path, f"{draft_name}.db")
             shutil.copy2(local_db_path, draft_file_path)
             
-            # Save draft metadata
+            # Save draft metadata (enhanced with additional fields)
             draft_metadata = {
                 'draft_name': draft_name,
                 'created_at': datetime.now().isoformat(),
                 'project_name': project_name,
-                'original_size': os.path.getsize(local_db_path)
+                'original_size': os.path.getsize(local_db_path),
+                'original_download_time': original_download_time,
+                'changes_description': changes_description or "No description provided",
+                'draft_type': 'shared_drive'
             }
             
             metadata_path = os.path.join(drafts_folder_path, f"{draft_name}_metadata.json")
@@ -804,47 +814,38 @@ class SharedDriveDbHandler:
     # === SESSION MANAGEMENT (adapted for shared drive) ===
     
     def create_session_backup(self, project_name: str, database_path: str, backup_type: str) -> bool:
-        """Create session backup (adapted for shared drive)"""
-        try:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_name = f"session_backup_{backup_type}_{timestamp}.db"
-            
-            # Store in session_backups tracking
-            if project_name not in self.session_backups:
-                self.session_backups[project_name] = {}
-            
-            # Create backup in local cache
-            backup_path = os.path.join(self.cache_dir, f"{project_name}_{backup_name}")
-            shutil.copy2(database_path, backup_path)
-            
-            self.session_backups[project_name][backup_type] = backup_path
-            
-            logger.info(f"Session backup ({backup_type}) created for {project_name}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error creating session backup: {e}")
-            return False
+        """
+        OPTIMIZED: Skip session backup creation for shared drive.
+        We use the cached database as our reference instead.
+        """
+        logger.info(f"Skipping session backup creation for {project_name} - using cached database as reference")
+        return True  # Always return True to maintain compatibility
     
     def get_session_backup_path(self, project_name: str, backup_type: str) -> Optional[str]:
-        """Get session backup path"""
-        backup_path = self.session_backups.get(project_name, {}).get(backup_type)
-        if backup_path and os.path.exists(backup_path):
-            return backup_path
+        """
+        OPTIMIZED: Return cached database path as backup reference.
+        This eliminates the need for separate session backup files.
+        """
+        if backup_type == 'original':
+            # Return cached database path as "original" backup
+            cached_path = self._get_cached_db_path(project_name)
+            if os.path.exists(cached_path):
+                logger.debug(f"Using cached database as original backup: {cached_path}")
+                return cached_path
+        elif backup_type == 'last_uploaded':
+            # For "last_uploaded", also use cached database since it represents the latest known state
+            cached_path = self._get_cached_db_path(project_name)
+            if os.path.exists(cached_path):
+                logger.debug(f"Using cached database as last_uploaded backup: {cached_path}")
+                return cached_path
+        
         return None
     
     def cleanup_session_backups(self):
-        """Cleanup session backups"""
-        for project_name, backups in self.session_backups.items():
-            for backup_type, backup_path in backups.items():
-                try:
-                    if os.path.exists(backup_path):
-                        os.remove(backup_path)
-                        logger.debug(f"Cleaned up session backup: {backup_path}")
-                except Exception as e:
-                    logger.warning(f"Could not clean up session backup {backup_path}: {e}")
-        
-        self.session_backups.clear()
+        """OPTIMIZED: No session backups to clean up for shared drive"""
+        # Session backups are no longer created, so nothing to clean up
+        logger.debug("No session backups to clean up - using cached database as reference")
+        self.session_backups.clear()  # Clear any legacy references
     
     # === STUB METHODS (for interface compatibility) ===
     
@@ -879,6 +880,7 @@ class SharedDriveDbHandler:
     def has_session_changes_since_upload(self, project_name: str, current_db_path: str) -> bool:
         """
         Check if session has changes since upload by comparing working database with cached.
+        OPTIMIZED: Uses cached database as reference instead of session backup.
         
         Args:
             project_name: Name of the project
@@ -890,10 +892,11 @@ class SharedDriveDbHandler:
         try:
             import os
             
-            # Get cached database path
+            # Get cached database path (this is our "original" reference)
             cached_db_path = self._get_cached_db_path(project_name)
             
             if not os.path.exists(cached_db_path) or not os.path.exists(current_db_path):
+                logger.debug(f"Missing database files for comparison: cached={os.path.exists(cached_db_path)}, current={os.path.exists(current_db_path)}")
                 return False
             
             # Compare file sizes as quick check
@@ -1001,6 +1004,7 @@ class SharedDriveDbHandler:
         """
         Safely clean up working database files (wlm_*.db and related files).
         This method handles the Windows file locking issue by waiting and retrying.
+        ENHANCED: Also cleans up legacy session backup files.
         """
         import glob
         
@@ -1009,13 +1013,19 @@ class SharedDriveDbHandler:
             working_db_pattern = os.path.join(self.cache_dir, "wlm_*.db*")
             working_files = glob.glob(working_db_pattern)
             
-            if not working_files:
-                logger.debug("No working database files found to clean up")
+            # Also find legacy session backup files to clean up
+            session_backup_pattern = os.path.join(self.cache_dir, "*session_backup*.db")
+            session_backup_files = glob.glob(session_backup_pattern)
+            
+            all_files = working_files + session_backup_files
+            
+            if not all_files:
+                logger.debug("No working database or session backup files found to clean up")
                 return
             
-            logger.info(f"Found {len(working_files)} working database files to clean up")
+            logger.info(f"Found {len(working_files)} working database files and {len(session_backup_files)} legacy session backup files to clean up")
             
-            # Group files by base database name
+            # Group working database files by base database name
             db_groups = {}
             for file_path in working_files:
                 basename = os.path.basename(file_path)
@@ -1035,6 +1045,14 @@ class SharedDriveDbHandler:
             # Clean up each database group
             for db_name, file_list in db_groups.items():
                 self._cleanup_database_file_group(db_name, file_list)
+            
+            # Clean up legacy session backup files (simple deletion)
+            for backup_file in session_backup_files:
+                try:
+                    os.remove(backup_file)
+                    logger.info(f"Removed legacy session backup: {backup_file}")
+                except Exception as e:
+                    logger.warning(f"Could not remove legacy session backup {backup_file}: {e}")
                 
         except Exception as e:
             logger.error(f"Error during working database cleanup: {e}")
