@@ -430,8 +430,10 @@ class SharedDriveDbHandler:
                 backup_folder_path = self._get_shared_drive_backup_folder_path(project_name)
                 os.makedirs(backup_folder_path, exist_ok=True)
                 
-                # Generate backup filename with timestamp and better format
-                timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
+                # Generate backup filename using source file's modification time
+                source_mtime = os.path.getmtime(shared_db_path)
+                source_datetime = datetime.fromtimestamp(source_mtime)
+                timestamp = source_datetime.strftime("%Y-%m-%d_%H-%M")
                 backup_name = f"{project_name}_backup_{timestamp}.db"
                 backup_path = os.path.join(backup_folder_path, backup_name)
                 
