@@ -158,6 +158,11 @@ class WaterLevelTab(QWidget):
             self.water_level_model = WaterLevelModel(self.db_manager.current_db)
             self.water_level_model.set_db_manager(self.db_manager)
             logger.info(f"WATER_LEVEL_TAB_DEBUG: Set db_manager on water_level_model, change_tracker available: {hasattr(self.db_manager, 'change_tracker') and self.db_manager.change_tracker is not None}")
+            
+            # CRITICAL FIX: Ensure database manager's water_level_model is also initialized
+            # This ensures both tab model and db_manager model are properly set up
+            _ = self.db_manager.water_level_model  # Force initialization of db_manager's model
+            logger.info("WATER_LEVEL_TAB_DEBUG: Forced initialization of db_manager.water_level_model")
             self.refresh_wells_table()
             self.refresh_transducers_table()
     
