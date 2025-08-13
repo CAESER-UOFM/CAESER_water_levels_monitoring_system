@@ -630,9 +630,28 @@ class SharedDriveDbHandler:
         
         # FIXED: Handle prefer_draft parameter properly
         if prefer_draft:
-            logger.debug(f"DRAFT: Checking for draft for {project_name}")
+            logger.info(f"DRAFT: Checking for draft for {project_name}")
             has_draft = self.has_draft(project_name)
-            logger.debug(f"DRAFT: has_draft({project_name}) = {has_draft}")
+            logger.info(f"DRAFT: has_draft({project_name}) = {has_draft}")
+            
+            # Enhanced debugging - check what files exist
+            drafts_folder_path = os.path.join(self.cache_dir, "drafts")
+            logger.info(f"DRAFT: Drafts folder path: {drafts_folder_path}")
+            logger.info(f"DRAFT: Drafts folder exists: {os.path.exists(drafts_folder_path)}")
+            
+            if os.path.exists(drafts_folder_path):
+                try:
+                    draft_files = os.listdir(drafts_folder_path)
+                    logger.info(f"DRAFT: Files in drafts folder: {draft_files}")
+                    
+                    # Check for specific files
+                    expected_db = f"draft_{project_name}.db"
+                    expected_meta = f"draft_{project_name}_metadata.json"
+                    logger.info(f"DRAFT: Looking for: {expected_db}, {expected_meta}")
+                    logger.info(f"DRAFT: DB file exists: {expected_db in draft_files}")
+                    logger.info(f"DRAFT: Metadata file exists: {expected_meta in draft_files}")
+                except Exception as e:
+                    logger.error(f"DRAFT: Error listing drafts folder: {e}")
             
             if has_draft:
                 logger.info(f"DRAFT: Loading existing draft for {project_name} instead of downloading from shared drive")
