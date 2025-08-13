@@ -1461,14 +1461,20 @@ class MainWindow(QMainWindow):
             # Ensure working database is preserved and not cleaned up
             self.cloud_db_handler.ensure_working_database_preserved(project_name)
         
-        # If we loaded a draft, mark it as modified since it has unsaved changes
+        # If we loaded a draft, set the correct modification states
         if prefer_draft and has_draft:
-            self.db_manager.is_cloud_modified = True
+            # FIXED: Set proper draft state tracking
+            self.db_manager.is_cloud_modified = True     # Draft has changes vs cloud (enables Upload)
+            self.db_manager.is_loaded_from_draft = True  # Track that we loaded from draft
+            self.db_manager.is_draft_modified = False    # No NEW changes vs draft yet
+            
             # Store the existing draft changes description for later use
             self.db_manager.draft_changes_description = draft_info.get('changes_description', '')
-            logger.info("Draft loaded - marking as modified with unsaved changes")
+            logger.info("Draft loaded - enabled upload (has changes vs cloud), but no new changes vs draft yet")
         else:
-            # Clear draft description if not loading a draft
+            # Clear draft state if not loading a draft
+            self.db_manager.is_loaded_from_draft = False
+            self.db_manager.is_draft_modified = False
             self.db_manager.draft_changes_description = None
         
         # Update UI for cloud mode
@@ -2097,12 +2103,28 @@ class MainWindow(QMainWindow):
             if not self.db_manager.is_cloud_database:
                 return True
                 
+            project_name = self.db_manager.cloud_project_name
+            
+            # FIXED: Check if we actually have NEW changes vs draft
+            if self.db_manager.is_loaded_from_draft and not self.db_manager.is_draft_modified:
+                logger.info(f"No new changes since loading draft for {project_name} - keeping existing draft")
+                return True  # Don't create duplicate draft
+                
             # Get change description from change tracker
             changes_desc = ""
             if self.db_manager.change_tracker and self.db_manager.change_tracker.changes:
                 changes_desc = self.db_manager.change_tracker.get_manual_changes_description()
             
-            # Save the draft
+            # If we loaded from draft but made new changes, update description to include previous changes
+            if self.db_manager.is_loaded_from_draft and self.db_manager.draft_changes_description:
+                # Combine previous draft changes with new changes
+                prev_desc = self.db_manager.draft_changes_description
+                if changes_desc and prev_desc:
+                    changes_desc = f"{prev_desc} + NEW: {changes_desc}"
+                elif prev_desc:
+                    changes_desc = prev_desc
+            
+            # Save the draft (this will replace existing draft if we loaded from one)
             success = self.cloud_db_handler.save_as_draft(
                 self.db_manager.cloud_project_name,
                 str(self.db_manager.current_db),
@@ -2111,7 +2133,10 @@ class MainWindow(QMainWindow):
             )
             
             if success:
-                logger.info(f"Draft saved successfully for project: {self.db_manager.cloud_project_name}")
+                if self.db_manager.is_loaded_from_draft:
+                    logger.info(f"Draft updated with new changes for project: {project_name}")
+                else:
+                    logger.info(f"Draft saved successfully for project: {project_name}")
                 return True
             else:
                 QMessageBox.warning(self, "Draft Save Failed", "Failed to save draft. Continue closing anyway?")

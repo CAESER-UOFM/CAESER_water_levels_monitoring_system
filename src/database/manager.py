@@ -58,6 +58,10 @@ class DatabaseManager(QObject):
         self.draft_changes_description = None  # Store existing draft description
         self.cloud_db_handler = None  # Reference to cloud database handler
         
+        # Draft state tracking (separate from cloud modifications)
+        self.is_loaded_from_draft = False  # True if current working db was loaded from draft
+        self.is_draft_modified = False     # True if changes made since loading draft
+        
     def set_google_drive_handler(self, handler):
         """Set the Google Drive handler for database operations"""
         self.google_drive_handler = handler
@@ -144,6 +148,10 @@ class DatabaseManager(QObject):
         self.temp_db_path = None
         self.is_cloud_modified = False
         self.change_tracker = None
+        
+        # Also reset draft state
+        self.is_loaded_from_draft = False
+        self.is_draft_modified = False
     
     def configure_connection(self, conn):
         """
@@ -521,6 +529,10 @@ class DatabaseManager(QObject):
         # Mark cloud databases as modified to enable upload button
         if self.is_cloud_database:
             self.is_cloud_modified = True
+            
+            # Also mark as draft modified if we loaded from draft
+            if self.is_loaded_from_draft:
+                self.is_draft_modified = True
         
         # Always emit the database_modified signal for UI updates
         self.database_modified.emit()

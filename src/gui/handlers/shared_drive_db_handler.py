@@ -474,45 +474,20 @@ class SharedDriveDbHandler:
         logger.debug("Database manager set for SharedDriveDbHandler")
     
     def has_draft(self, project_name: str) -> bool:
-        """Check if project has a draft (interface compatibility with CloudDatabaseHandler)"""
+        """Check if project has a draft (single draft per project system)"""
         try:
-            # FIXED: Check local drafts folder directly instead of using draft_manager
+            # SINGLE DRAFT SYSTEM: Simple check for draft_PROJECTNAME.db
             drafts_folder_path = os.path.join(self.cache_dir, "drafts")
             
             if not os.path.exists(drafts_folder_path):
                 logger.debug(f"No drafts folder exists: {drafts_folder_path}")
                 return False
             
-            # FIXED: Look for draft files with new naming scheme (draft_PROJECTNAME_timestamp)
-            import glob
-            draft_pattern = os.path.join(drafts_folder_path, f"draft_{project_name}_*.db")
-            draft_files = glob.glob(draft_pattern)
-            logger.debug(f"Searching for drafts with pattern: {draft_pattern}")
-            logger.debug(f"Found draft files: {draft_files}")
+            draft_file_path = os.path.join(drafts_folder_path, f"draft_{project_name}.db")
+            has_draft = os.path.exists(draft_file_path)
+            logger.debug(f"Checking for single draft: {draft_file_path} -> {has_draft}")
             
-            # Also check for generic draft files (they contain project info in metadata)
-            if not draft_files:
-                generic_pattern = os.path.join(drafts_folder_path, "draft_*.db")
-                all_drafts = glob.glob(generic_pattern)
-                
-                # Check metadata of each draft to see if it belongs to this project
-                for draft_file in all_drafts:
-                    draft_name = os.path.basename(draft_file)[:-3]  # Remove .db extension
-                    metadata_path = os.path.join(drafts_folder_path, f"{draft_name}_metadata.json")
-                    
-                    if os.path.exists(metadata_path):
-                        try:
-                            import json
-                            with open(metadata_path, 'r') as f:
-                                metadata = json.load(f)
-                            if metadata.get('project_name') == project_name:
-                                draft_files.append(draft_file)
-                        except Exception as e:
-                            logger.warning(f"Error reading draft metadata {metadata_path}: {e}")
-            
-            has_drafts = len(draft_files) > 0
-            logger.info(f"Draft check for {project_name}: {has_drafts} (found {len(draft_files)} draft files)")
-            return has_drafts
+            return has_draft
             
         except Exception as e:
             logger.error(f"Error checking for drafts: {e}")
@@ -790,18 +765,10 @@ class SharedDriveDbHandler:
     
     def save_as_draft(self, project_name: str, local_db_path: str, 
                      original_download_time: str, changes_description: str = None) -> bool:
-        """Save database as draft (adapted for shared drive with compatible signature)"""
+        """Save database as draft (single draft per project system)"""
         try:
-            # FIXED: Generate draft name with PROJECT NAME first for easy identification
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            draft_name = f"draft_{project_name}_{timestamp}"
-            
-            if changes_description:
-                # Add first few words of changes description to draft name
-                clean_desc = "".join(c for c in changes_description[:15] if c.isalnum() or c in (' ', '_'))
-                clean_desc = clean_desc.strip().replace(' ', '_')
-                if clean_desc:
-                    draft_name += f"_{clean_desc}"
+            # SINGLE DRAFT SYSTEM: Simple naming without timestamps
+            draft_name = f"draft_{project_name}"
             
             # FIXED: Create drafts folder in LOCAL cache directory, not shared drive
             # Shared drive may not be writable or accessible for draft storage
@@ -809,8 +776,26 @@ class SharedDriveDbHandler:
             os.makedirs(drafts_folder_path, exist_ok=True)
             logger.info(f"Creating draft in local cache directory: {drafts_folder_path}")
             
-            # Copy database to drafts folder
+            # SINGLE DRAFT SYSTEM: Remove existing draft files first
             draft_file_path = os.path.join(drafts_folder_path, f"{draft_name}.db")
+            metadata_path = os.path.join(drafts_folder_path, f"{draft_name}_metadata.json")
+            
+            # Check if we're updating existing draft
+            is_updating_existing = os.path.exists(draft_file_path)
+            
+            if is_updating_existing:
+                logger.info(f"Updating existing draft for {project_name}")
+                # Remove old files
+                try:
+                    if os.path.exists(draft_file_path):
+                        os.remove(draft_file_path)
+                    if os.path.exists(metadata_path):
+                        os.remove(metadata_path)
+                    logger.debug(f"Removed old draft files for {project_name}")
+                except Exception as e:
+                    logger.warning(f"Error removing old draft files: {e}")
+            else:
+                logger.info(f"Creating new draft for {project_name}")
             
             # ENHANCED: Add detailed logging for draft saving process
             logger.info(f"=== SAVING DRAFT: {draft_name} ===")
@@ -846,13 +831,15 @@ class SharedDriveDbHandler:
                 'draft_type': 'shared_drive'
             }
             
-            metadata_path = os.path.join(drafts_folder_path, f"{draft_name}_metadata.json")
             logger.info(f"Saving metadata to: {metadata_path}")
             with open(metadata_path, 'w') as f:
                 json.dump(draft_metadata, f, indent=2)
             
-            logger.info(f"Draft saved successfully: {draft_name} for {project_name}")
-            logger.info(f"Draft files created: {draft_file_path}, {metadata_path}")
+            if is_updating_existing:
+                logger.info(f"Draft updated successfully: {draft_name} for {project_name}")
+            else:
+                logger.info(f"Draft created successfully: {draft_name} for {project_name}")
+            logger.info(f"Draft files: {draft_file_path}, {metadata_path}")
             return True
             
         except Exception as e:
@@ -908,43 +895,37 @@ class SharedDriveDbHandler:
             return None
     
     def clear_draft(self, project_name: str) -> bool:
-        """Clear/delete ALL drafts for a project (adapted for shared drive from local cache)"""
+        """Clear/delete the single draft for a project (single draft per project system)"""
         try:
-            # FIXED: Look for drafts in local cache directory and clear all drafts for the project
+            # SINGLE DRAFT SYSTEM: Simple deletion of specific files
             drafts_folder_path = os.path.join(self.cache_dir, "drafts")
             
             if not os.path.exists(drafts_folder_path):
                 return True  # No drafts to clear
             
-            cleared_count = 0
+            # Define file paths for single draft system
+            draft_file_path = os.path.join(drafts_folder_path, f"draft_{project_name}.db")
+            metadata_path = os.path.join(drafts_folder_path, f"draft_{project_name}_metadata.json")
             
-            # Get all draft files for this project
-            for file in os.listdir(drafts_folder_path):
-                if file.endswith('_metadata.json'):
-                    try:
-                        metadata_path = os.path.join(drafts_folder_path, file)
-                        with open(metadata_path, 'r') as f:
-                            draft_info = json.load(f)
-                        
-                        # If this draft belongs to the project, delete it and its database file
-                        if draft_info.get('project_name') == project_name:
-                            draft_name = draft_info.get('draft_name')
-                            draft_file_path = os.path.join(drafts_folder_path, f"{draft_name}.db")
-                            
-                            # Delete database file
-                            if os.path.exists(draft_file_path):
-                                os.remove(draft_file_path)
-                                logger.info(f"Removed draft database: {draft_file_path}")
-                            
-                            # Delete metadata file
-                            os.remove(metadata_path)
-                            logger.info(f"Removed draft metadata: {metadata_path}")
-                            cleared_count += 1
-                            
-                    except Exception as e:
-                        logger.warning(f"Error processing draft metadata {file}: {e}")
+            draft_existed = False
             
-            logger.info(f"Cleared {cleared_count} drafts for project {project_name}")
+            # Delete database file if exists
+            if os.path.exists(draft_file_path):
+                os.remove(draft_file_path)
+                logger.info(f"Removed draft database: {draft_file_path}")
+                draft_existed = True
+            
+            # Delete metadata file if exists  
+            if os.path.exists(metadata_path):
+                os.remove(metadata_path)
+                logger.info(f"Removed draft metadata: {metadata_path}")
+                draft_existed = True
+            
+            if draft_existed:
+                logger.info(f"Cleared draft for project {project_name}")
+            else:
+                logger.debug(f"No draft found to clear for project {project_name}")
+            
             return True
             
         except Exception as e:
@@ -952,42 +933,28 @@ class SharedDriveDbHandler:
             return False
     
     def get_draft_info(self, project_name: str) -> Optional[Dict]:
-        """Get draft information (adapted for shared drive from local cache)"""
+        """Get draft information (single draft per project system)"""
         try:
-            # FIXED: Look for drafts in local cache directory
+            # SINGLE DRAFT SYSTEM: Look for specific draft file
             drafts_folder_path = os.path.join(self.cache_dir, "drafts")
             
             if not os.path.exists(drafts_folder_path):
                 logger.debug(f"DRAFT: No drafts folder exists at {drafts_folder_path}")
                 return None
             
-            drafts = []
-            for file in os.listdir(drafts_folder_path):
-                if file.endswith('_metadata.json'):
-                    try:
-                        metadata_path = os.path.join(drafts_folder_path, file)
-                        with open(metadata_path, 'r') as f:
-                            draft_info = json.load(f)
-                        
-                        # FIXED: Filter drafts by project name
-                        if draft_info.get('project_name') == project_name:
-                            drafts.append(draft_info)
-                            
-                    except Exception as e:
-                        logger.warning(f"Error reading draft metadata {file}: {e}")
+            # Check for the single draft file for this project
+            metadata_path = os.path.join(drafts_folder_path, f"draft_{project_name}_metadata.json")
             
-            logger.info(f"Found {len(drafts)} drafts for project {project_name}")
-            
-            # FIXED: Return the most recent draft (single dict) to match CloudDatabaseHandler interface
-            if not drafts:
+            if not os.path.exists(metadata_path):
+                logger.debug(f"DRAFT: No draft metadata found at {metadata_path}")
                 return None
             
-            # Sort by creation time and return the most recent
-            drafts.sort(key=lambda d: d.get('created_at', ''), reverse=True)
-            latest_draft = drafts[0]
+            # Load draft metadata
+            with open(metadata_path, 'r') as f:
+                draft_info = json.load(f)
             
-            logger.info(f"Returning latest draft: {latest_draft.get('draft_name')} created at {latest_draft.get('created_at')}")
-            return latest_draft
+            logger.info(f"Found single draft for project {project_name}: {draft_info.get('draft_name')}")
+            return draft_info
             
         except Exception as e:
             logger.error(f"Error getting draft info: {e}")
