@@ -654,35 +654,54 @@ class SharedDriveDbHandler:
         logger.debug(f"SharedDriveDbHandler.download_database called with prefer_draft={prefer_draft}")
         
         # FIXED: Handle prefer_draft parameter properly
-        if prefer_draft and self.has_draft(project_name):
-            logger.info(f"DRAFT: Loading existing draft for {project_name} instead of downloading from shared drive")
-            if progress_callback:
-                progress_callback(50, "Loading existing draft...")
+        if prefer_draft:
+            logger.debug(f"DRAFT: Checking for draft for {project_name}")
+            has_draft = self.has_draft(project_name)
+            logger.debug(f"DRAFT: has_draft({project_name}) = {has_draft}")
             
-            # Load the draft instead of downloading from shared drive
-            draft_info = self.get_draft_info(project_name)
-            if draft_info:
-                draft_path = draft_info.get('path')
-                if draft_path and os.path.exists(draft_path):
-                    logger.info(f"DRAFT: Found draft at {draft_path}")
+            if has_draft:
+                logger.info(f"DRAFT: Loading existing draft for {project_name} instead of downloading from shared drive")
+                if progress_callback:
+                    progress_callback(50, "Loading existing draft...")
+                
+                # Load the draft instead of downloading from shared drive
+                draft_info = self.get_draft_info(project_name)
+                logger.debug(f"DRAFT: get_draft_info({project_name}) returned: {draft_info}")
+                
+                if draft_info:
+                    # Calculate draft path from draft_name (metadata doesn't store 'path')
+                    draft_name = draft_info.get('draft_name')
+                    logger.debug(f"DRAFT: draft_name from info: {repr(draft_name)}")
                     
-                    # Copy draft to temp location with expected name
-                    temp_dir = os.path.join(self.cache_dir, "temp")
-                    os.makedirs(temp_dir, exist_ok=True)
-                    temp_draft_path = os.path.join(temp_dir, f"{project_name}.db")
-                    
-                    logger.debug(f"DRAFT: Copying draft from {draft_path} to {temp_draft_path}")
-                    shutil.copy2(draft_path, temp_draft_path)
-                    
-                    if progress_callback:
-                        progress_callback(100, "Draft loaded successfully")
+                    if draft_name:
+                        drafts_folder_path = os.path.join(self.cache_dir, "drafts")
+                        draft_path = os.path.join(drafts_folder_path, f"{draft_name}.db")
+                        logger.debug(f"DRAFT: calculated draft_path: {repr(draft_path)}")
                         
-                    logger.info(f"DRAFT: Successfully loaded draft to {temp_draft_path}")
-                    return temp_draft_path
+                        if os.path.exists(draft_path):
+                            logger.info(f"DRAFT: Found draft at {draft_path}")
+                            
+                            # Copy draft to temp location with expected name
+                            temp_dir = os.path.join(self.cache_dir, "temp")
+                            os.makedirs(temp_dir, exist_ok=True)
+                            temp_draft_path = os.path.join(temp_dir, f"{project_name}.db")
+                            
+                            logger.debug(f"DRAFT: Copying draft from {draft_path} to {temp_draft_path}")
+                            shutil.copy2(draft_path, temp_draft_path)
+                            
+                            if progress_callback:
+                                progress_callback(100, "Draft loaded successfully")
+                                
+                            logger.info(f"DRAFT: Successfully loaded draft to {temp_draft_path}")
+                            return temp_draft_path
+                        else:
+                            logger.warning(f"DRAFT: Draft file not found at {draft_path}, falling back to shared drive download")
+                    else:
+                        logger.warning(f"DRAFT: No draft_name found in draft info, falling back to shared drive download")
                 else:
-                    logger.warning(f"DRAFT: Draft file not found at {draft_path}, falling back to shared drive download")
+                    logger.warning(f"DRAFT: No draft info found for {project_name}, falling back to shared drive download")
             else:
-                logger.warning(f"DRAFT: No draft info found for {project_name}, falling back to shared drive download")
+                logger.info(f"DRAFT: No draft found for {project_name}, falling back to shared drive download")
         
         # Fallback to shared drive download (original behavior)
         logger.info(f"SHARED_DRIVE: Downloading {project_name} from shared drive (prefer_draft={prefer_draft})")
@@ -939,7 +958,8 @@ class SharedDriveDbHandler:
             drafts_folder_path = os.path.join(self.cache_dir, "drafts")
             
             if not os.path.exists(drafts_folder_path):
-                return []
+                logger.debug(f"DRAFT: No drafts folder exists at {drafts_folder_path}")
+                return None
             
             drafts = []
             for file in os.listdir(drafts_folder_path):
