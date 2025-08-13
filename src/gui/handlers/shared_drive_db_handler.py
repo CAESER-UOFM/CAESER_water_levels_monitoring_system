@@ -860,13 +860,63 @@ class SharedDriveDbHandler:
         """Ensure working database preserved (stub)"""
         pass
     
-    def has_session_changes_since_download(self, project_name: str) -> bool:
-        """Check if session has changes since download (stub)"""
-        return False
+    def has_session_changes_since_download(self, project_name: str, current_db_path: str) -> bool:
+        """
+        Check if session has changes since download by comparing working database with cached.
+        This is the same as has_session_changes_since_upload for shared drive.
+        
+        Args:
+            project_name: Name of the project
+            current_db_path: Path to current working database
+            
+        Returns:
+            True if working database differs from cached database
+        """
+        # For shared drive, changes since download = changes since upload
+        # Both compare working copy against cached copy
+        return self.has_session_changes_since_upload(project_name, current_db_path)
     
-    def has_session_changes_since_upload(self, project_name: str) -> bool:
-        """Check if session has changes since upload (stub)"""
-        return False
+    def has_session_changes_since_upload(self, project_name: str, current_db_path: str) -> bool:
+        """
+        Check if session has changes since upload by comparing working database with cached.
+        
+        Args:
+            project_name: Name of the project
+            current_db_path: Path to current working database
+            
+        Returns:
+            True if working database differs from cached database
+        """
+        try:
+            import os
+            
+            # Get cached database path
+            cached_db_path = self._get_cached_db_path(project_name)
+            
+            if not os.path.exists(cached_db_path) or not os.path.exists(current_db_path):
+                return False
+            
+            # Compare file sizes as quick check
+            cached_size = os.path.getsize(cached_db_path)
+            current_size = os.path.getsize(current_db_path)
+            
+            if cached_size != current_size:
+                logger.info(f"Database size changed: cached={cached_size}, current={current_size}")
+                return True
+            
+            # Compare modification times
+            cached_mtime = os.path.getmtime(cached_db_path)
+            current_mtime = os.path.getmtime(current_db_path)
+            
+            if current_mtime > cached_mtime:
+                logger.info(f"Working database modified after cached version")
+                return True
+                
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error checking session changes: {e}")
+            return False
     
     def list_proposals(self) -> List[Dict]:
         """List proposals (stub - not implemented for shared drive)"""
