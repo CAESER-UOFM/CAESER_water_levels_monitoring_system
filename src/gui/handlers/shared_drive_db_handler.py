@@ -787,26 +787,37 @@ class SharedDriveDbHandler:
             logger.error(f"Error saving draft: {e}")
             return False
     
-    def load_draft(self, project_name: str, draft_name: str) -> Optional[str]:
-        """Load draft database (adapted for shared drive from local cache)"""
+    def load_draft(self, project_name: str) -> Optional[str]:
+        """Load draft database (adapted for shared drive from local cache, compatible signature)"""
         try:
-            # FIXED: Look for drafts in local cache directory
+            # FIXED: Get the latest draft info to determine which draft to load
+            draft_info = self.get_draft_info(project_name)
+            if not draft_info:
+                logger.warning(f"No draft found for {project_name}")
+                return None
+            
+            draft_name = draft_info.get('draft_name')
+            if not draft_name:
+                logger.error(f"Draft info missing draft_name for {project_name}")
+                return None
+            
+            # Look for drafts in local cache directory
             drafts_folder_path = os.path.join(self.cache_dir, "drafts")
             draft_file_path = os.path.join(drafts_folder_path, f"{draft_name}.db")
             
             if not os.path.exists(draft_file_path):
-                logger.warning(f"Draft not found: {draft_name} for {project_name}")
+                logger.warning(f"Draft database file not found: {draft_file_path}")
                 return None
             
             # Copy draft to working location
             working_db_path = os.path.join(self.cache_dir, f"wlm_{project_name}.db")
             shutil.copy2(draft_file_path, working_db_path)
             
-            logger.info(f"Draft loaded: {draft_name} for {project_name}")
+            logger.info(f"Draft loaded: {draft_name} for {project_name} -> {working_db_path}")
             return working_db_path
             
         except Exception as e:
-            logger.error(f"Error loading draft: {e}")
+            logger.error(f"Error loading draft for {project_name}: {e}")
             return None
     
     def clear_draft(self, project_name: str) -> bool:
@@ -853,7 +864,7 @@ class SharedDriveDbHandler:
             logger.error(f"Error clearing drafts for {project_name}: {e}")
             return False
     
-    def get_draft_info(self, project_name: str) -> List[Dict]:
+    def get_draft_info(self, project_name: str) -> Optional[Dict]:
         """Get draft information (adapted for shared drive from local cache)"""
         try:
             # FIXED: Look for drafts in local cache directory
@@ -878,11 +889,21 @@ class SharedDriveDbHandler:
                         logger.warning(f"Error reading draft metadata {file}: {e}")
             
             logger.info(f"Found {len(drafts)} drafts for project {project_name}")
-            return drafts
+            
+            # FIXED: Return the most recent draft (single dict) to match CloudDatabaseHandler interface
+            if not drafts:
+                return None
+            
+            # Sort by creation time and return the most recent
+            drafts.sort(key=lambda d: d.get('created_at', ''), reverse=True)
+            latest_draft = drafts[0]
+            
+            logger.info(f"Returning latest draft: {latest_draft.get('draft_name')} created at {latest_draft.get('created_at')}")
+            return latest_draft
             
         except Exception as e:
             logger.error(f"Error getting draft info: {e}")
-            return []
+            return None
     
     # === SESSION MANAGEMENT (adapted for shared drive) ===
     
