@@ -3854,9 +3854,11 @@ class MainWindow(QMainWindow):
     def open_feedback_dialog(self):
         """Open the feedback dialog for submitting bug reports and feature requests"""
         try:
-            # REMOVED: Google Drive OAuth dependency check
-            # QMessageBox.warning(self, "Feedback Unavailable", "Feedback submission requires Google Drive integration.")
-            logger.warning("Feedback system disabled - requires service account adaptation")
+            # Check if SMOO shared drive is available
+            if not hasattr(self, 'cloud_db_handler') or not self.cloud_db_handler:
+                QMessageBox.warning(self, "Feedback Unavailable", 
+                                  "Feedback submission requires SMOO shared drive connection.")
+                return
             
             # Get current user name
             user_name = "Anonymous"
@@ -3868,10 +3870,15 @@ class MainWindow(QMainWindow):
                 except Exception:
                     pass  # Use default if we can't get user info
             
-            # REMOVED: Feedback dialog with Google Drive OAuth dependency
-            # feedback_dialog = FeedbackDialog(parent=self, drive_service=self.drive_service, user_name=user_name)
-            QMessageBox.information(self, "Feedback System", "Feedback system is temporarily disabled during Google Drive service account transition.")
-            return
+            # Use SMOO-compatible feedback dialog
+            from .dialogs.smoo_feedback_dialog import SMOOFeedbackDialog
+            feedback_dialog = SMOOFeedbackDialog(
+                parent=self, 
+                shared_drive_handler=self.cloud_db_handler, 
+                user_name=user_name
+            )
+            
+            feedback_dialog.exec_()
             
         except Exception as e:
             logger.error(f"Error opening feedback dialog: {e}")
