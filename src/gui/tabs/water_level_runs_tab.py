@@ -21,7 +21,7 @@ import folium
 from folium import plugins
 import branca
 from ..handlers.google_drive_monitor import GoogleDriveMonitor
-from ..handlers.field_data_consolidator import FieldDataConsolidator
+from ..handlers.field_data_consolidator import HybridHybridFieldDataConsolidator
 from pathlib import Path
 import traceback
 from ..handlers.runs_folder_monitor import RunsFolderMonitor
@@ -1787,7 +1787,7 @@ class WaterLevelRunsTab(QWidget):
             progress_dialog.log_message("Starting field data consolidation...")
             
             # Initialize the field data consolidator
-            consolidator = FieldDataConsolidator(service, main_window.settings_handler)
+            consolidator = HybridFieldDataConsolidator(service, main_window.settings_handler)
             
             # Create a progress callback that logs to the dialog
             def consolidation_progress(message, percent):
@@ -2848,7 +2848,7 @@ class WaterLevelRunsTab(QWidget):
         
         try:
             from ..dialogs.water_level_progress_dialog import WaterLevelProgressDialog
-            from ..handlers.field_data_consolidator import FieldDataConsolidator
+            from ..handlers.field_data_consolidator import HybridHybridFieldDataConsolidator
             
             # Show dedicated progress dialog for consolidation
             progress_dialog = WaterLevelProgressDialog(self)
@@ -2871,7 +2871,7 @@ class WaterLevelRunsTab(QWidget):
                 return
             
             # Initialize the field data consolidator
-            consolidator = FieldDataConsolidator(service, main_window.settings_handler)
+            consolidator = HybridFieldDataConsolidator(service, main_window.settings_handler)
             
             # Create a progress callback that logs to the dialog and uses full 0-100% range
             def consolidation_progress(message, percent):
