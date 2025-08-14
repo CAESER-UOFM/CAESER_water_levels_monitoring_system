@@ -2801,6 +2801,12 @@ class MainWindow(QMainWindow):
         auto_sync_menu.addAction(sync_water_action)
         # Add separator
         auto_sync_menu.addSeparator()
+        # Sync Field Data Files Only (no database updates)
+        sync_files_action = QAction("Sync Field Data Files Only", self)
+        sync_files_action.triggered.connect(self.sync_field_data_files_only)
+        auto_sync_menu.addAction(sync_files_action)
+        # Add separator
+        auto_sync_menu.addSeparator()
         # Sync to Turso
         sync_turso_action = QAction("Sync to Turso Database", self)
         sync_turso_action.triggered.connect(self.sync_to_turso)
@@ -2979,6 +2985,86 @@ class MainWindow(QMainWindow):
         
         # Delegate to the handler
         self.auto_update_handler.auto_sync_water_levels()
+    
+    def sync_field_data_files_only(self):
+        """Sync field data files only - organize XLE files from Google Drive to SMOO without database updates"""
+        try:
+            logger.info("Starting field data files sync only...")
+            
+            # Check if Google Drive service account is available
+            if not self.google_drive_service_account or not self.google_drive_service_account.get_service():
+                QMessageBox.warning(
+                    self,
+                    "Google Drive Service Required",
+                    "Google Drive service account is required for field data sync.\n\n"
+                    "Please check your service account configuration in Settings."
+                )
+                return
+            
+            # Check if SMOO is accessible
+            smoo_root = self.settings_handler.get_setting("shared_drive_root", "")
+            if not smoo_root or not os.path.exists(smoo_root):
+                QMessageBox.warning(
+                    self,
+                    "SMOO Access Required", 
+                    "SMOO shared drive access is required for field data organization.\n\n"
+                    "Please configure SMOO path in Settings."
+                )
+                return
+            
+            # Create progress dialog
+            from PyQt5.QtWidgets import QProgressDialog
+            from PyQt5.QtCore import Qt
+            progress_dialog = QProgressDialog("Initializing field data sync...", None, 0, 100, self)
+            progress_dialog.setWindowTitle("Field Data Files Sync")
+            progress_dialog.setWindowModality(Qt.WindowModal)
+            progress_dialog.setCancelButton(None)
+            progress_dialog.setMinimumDuration(0)
+            progress_dialog.setFixedSize(450, 120)
+            progress_dialog.show()
+            
+            def progress_callback(message, percent):
+                progress_dialog.setLabelText(message)
+                progress_dialog.setValue(percent)
+                QApplication.processEvents()
+            
+            # Create hybrid consolidator
+            from .handlers.smoo_field_data_consolidator import HybridFieldDataConsolidator
+            consolidator = HybridFieldDataConsolidator(
+                self.google_drive_service_account, 
+                self.settings_handler
+            )
+            
+            # Run consolidation
+            success = consolidator.consolidate_field_data(progress_callback)
+            
+            progress_dialog.close()
+            
+            if success:
+                QMessageBox.information(
+                    self,
+                    "Sync Complete",
+                    "Field data files have been successfully organized!\n\n"
+                    "New XLE files from Google Drive SOLINST have been\n"
+                    "organized into SMOO FIELD_DATA_CONSOLIDATED structure.\n\n"
+                    "You can now run 'Sync Barologger Files' or 'Sync Water Level Files'\n"
+                    "to process the organized data into your database."
+                )
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Sync Failed",
+                    "Field data file sync encountered errors.\n\n"
+                    "Please check the logs for detailed information."
+                )
+                
+        except Exception as e:
+            logger.error(f"Error in field data files sync: {e}")
+            QMessageBox.critical(
+                self,
+                "Sync Error",
+                f"An error occurred during field data sync:\n\n{str(e)}"
+            )
     
     def sync_to_turso(self):
         """Manually sync the current database to Turso"""
