@@ -2984,10 +2984,10 @@ class MainWindow(QMainWindow):
         database_folder_action.triggered.connect(self.open_database_folder_settings)
         settings_menu.addAction(database_folder_action)
         
-        # Google Drive setup
-        google_drive_settings_action = QAction("Google Drive Setup", self)
-        google_drive_settings_action.triggered.connect(self.setup_credentials)
-        settings_menu.addAction(google_drive_settings_action)
+        # Service Account setup for XLE file sync
+        service_account_settings_action = QAction("Service Account Setup (XLE Sync)", self)
+        service_account_settings_action.triggered.connect(self.setup_service_account)
+        settings_menu.addAction(service_account_settings_action)
         
         # Monet API settings
         monet_settings_action = QAction("Monet API Settings", self)
@@ -3080,11 +3080,6 @@ class MainWindow(QMainWindow):
         # Update menu
         update_menu = menu_bar.addMenu("Update")
         
-        # Check for updates action
-        check_updates_action = QAction("Check for Updates", self)
-        check_updates_action.triggered.connect(self.check_for_updates)
-        update_menu.addAction(check_updates_action)
-        
         # Show current version action
         show_version_action = QAction("About Version", self)
         show_version_action.triggered.connect(self.show_version_info)
@@ -3102,14 +3097,6 @@ class MainWindow(QMainWindow):
         shared_drive_settings_action = QAction("Shared Drive Settings", self)
         shared_drive_settings_action.triggered.connect(self.open_shared_drive_settings)
         update_menu.addAction(shared_drive_settings_action)
-        
-        # Add separator and credentials setup
-        update_menu.addSeparator()
-        
-        # Setup credentials action
-        setup_credentials_action = QAction("Setup Google Credentials", self)
-        setup_credentials_action.triggered.connect(self.setup_credentials)
-        update_menu.addAction(setup_credentials_action)
     
     def edit_user_credentials(self, username):
         """Open a dialog to edit user credentials"""
@@ -4347,6 +4334,19 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
         except Exception as e:
             logger.error(f"Error checking credentials: {e}")
             
+    def setup_service_account(self):
+        """Open service account setup dialog for XLE file sync to SMOO"""
+        QMessageBox.information(
+            self,
+            "Service Account Setup",
+            "Service Account Setup for XLE file synchronization to SMOO.\n\n"
+            "This will be configured to:\n"
+            "• Use Google Drive service account (no OAuth required)\n"
+            "• Sync XLE files from SOLINST folder to SMOO\n"
+            "• Transfer metadata and consolidated files\n\n"
+            "Feature coming soon - currently under development."
+        )
+    
     def setup_credentials(self):
         """Open unified credentials setup dialog manually"""
         try:
