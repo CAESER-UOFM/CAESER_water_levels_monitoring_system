@@ -21,7 +21,7 @@ import folium
 from folium import plugins
 import branca
 from ..handlers.google_drive_monitor import GoogleDriveMonitor
-from ..handlers.field_data_consolidator import HybridHybridFieldDataConsolidator
+from ..handlers.field_data_consolidator import HybridFieldDataConsolidator
 from pathlib import Path
 import traceback
 from ..handlers.runs_folder_monitor import RunsFolderMonitor
@@ -2848,7 +2848,7 @@ class WaterLevelRunsTab(QWidget):
         
         try:
             from ..dialogs.water_level_progress_dialog import WaterLevelProgressDialog
-            from ..handlers.field_data_consolidator import HybridHybridFieldDataConsolidator
+            from ..handlers.field_data_consolidator import HybridFieldDataConsolidator
             
             # Show dedicated progress dialog for consolidation
             progress_dialog = WaterLevelProgressDialog(self)
