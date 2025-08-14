@@ -14,9 +14,10 @@ import os
 import shutil
 import logging
 import tempfile
+import json
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, List, Callable
+from typing import Optional, Dict, List, Callable, Tuple
 from googleapiclient.http import MediaIoBaseDownload
 from ...config.paths import DefaultPaths
 
@@ -324,26 +325,46 @@ class HybridFieldDataConsolidator:
             
             logger.info(f"Found {len(files_to_consolidate)} files to consolidate from Google Drive")
             
-            # Consolidate each file
+            # Consolidate each file and track metadata
             successful_count = 0
             total_files = len(files_to_consolidate)
+            monthly_metadata = {}  # Track files by month for metadata generation
             
             for i, file_info in enumerate(files_to_consolidate):
-                # Calculate progress (10% for scanning, 90% for processing)
-                base_progress = 10 + int((i / total_files) * 90)
+                # Calculate progress (10% for scanning, 80% for processing, 10% for metadata)
+                base_progress = 10 + int((i / total_files) * 80)
                 
                 def file_progress_callback(message, percent):
                     if progress_callback:
                         # Map file progress to overall progress
-                        file_range = 90 / total_files  # Each file gets this % range
+                        file_range = 80 / total_files  # Each file gets this % range
                         overall_progress = base_progress + int((percent / 100) * file_range)
-                        progress_callback(message, min(overall_progress, 99))
+                        progress_callback(message, min(overall_progress, 89))
                 
-                success = self.consolidate_file(file_info, file_progress_callback)
-                if success:
+                # Consolidate file and get metadata
+                success, file_metadata = self.consolidate_file_with_metadata(file_info, file_progress_callback)
+                if success and file_metadata:
                     successful_count += 1
+                    
+                    # Group by month for metadata.json generation
+                    month_key = file_metadata.get('month_folder', 'unknown')
+                    if month_key not in monthly_metadata:
+                        monthly_metadata[month_key] = {
+                            'folder': month_key,
+                            'generated_date': datetime.now().isoformat(),
+                            'files': []
+                        }
+                    monthly_metadata[month_key]['files'].append(file_metadata)
+            
+            # Generate metadata.json files for each month
+            if progress_callback:
+                progress_callback("Generating metadata files...", 90)
+            
+            metadata_success = self._generate_metadata_files(monthly_metadata)
             
             logger.info(f"Consolidation complete: {successful_count}/{total_files} files processed successfully")
+            if metadata_success:
+                logger.info(f"Generated metadata files for {len(monthly_metadata)} month folders")
             
             if progress_callback:
                 progress_callback(f"Complete: {successful_count}/{total_files} files consolidated", 100)
@@ -354,6 +375,151 @@ class HybridFieldDataConsolidator:
             logger.error(f"Error during field data consolidation: {e}")
             if progress_callback:
                 progress_callback(f"Error: {str(e)}", 100)
+            return False
+    
+    def consolidate_file_with_metadata(self, file_info: Dict, progress_callback: Optional[Callable] = None) -> Tuple[bool, Optional[Dict]]:
+        """
+        Consolidate a single file and return metadata for metadata.json generation
+        
+        Args:
+            file_info: Google Drive file information dictionary
+            progress_callback: Optional progress callback function
+            
+        Returns:
+            Tuple of (success, metadata_dict)
+        """
+        try:
+            file_id = file_info['id']
+            filename = file_info['name']
+            file_size = file_info['size']
+            
+            if progress_callback:
+                progress_callback(f"Downloading {filename}...", 0)
+            
+            # Download file from Google Drive to temp location
+            service = self.drive_service.service
+            request = service.files().get_media(fileId=file_id)
+            
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.xle') as temp_file:
+                downloader = MediaIoBaseDownload(temp_file, request)
+                done = False
+                while done is False:
+                    status, done = downloader.next_chunk()
+                    if progress_callback and status:
+                        progress = int(status.progress() * 50)  # First 50% for download
+                        progress_callback(f"Downloading {filename}...", progress)
+                
+                temp_path = temp_file.name
+            
+            if progress_callback:
+                progress_callback(f"Organizing {filename}...", 50)
+            
+            # Extract metadata for organization
+            metadata = self.extract_xle_metadata(temp_path)
+            
+            # Determine target folder
+            target_folder = self.organize_file_by_date(temp_path, metadata)
+            target_path = os.path.join(target_folder, filename)
+            
+            # Get month folder name for metadata
+            month_folder = os.path.basename(target_folder)
+            
+            # Check if file already exists in SMOO target
+            file_exists = False
+            if os.path.exists(target_path):
+                # Compare file sizes to see if it's the same file
+                target_size = os.path.getsize(target_path)
+                
+                if file_size == target_size:
+                    logger.info(f"File already consolidated: {filename}")
+                    os.remove(temp_path)  # Clean up temp file
+                    if progress_callback:
+                        progress_callback(f"Already exists: {filename}", 100)
+                    file_exists = True
+                else:
+                    # Create unique name for different file
+                    timestamp = datetime.now().strftime("%H%M%S")
+                    name, ext = os.path.splitext(filename)
+                    target_path = os.path.join(target_folder, f"{name}_{timestamp}{ext}")
+                    filename = f"{name}_{timestamp}{ext}"  # Update filename for metadata
+            
+            if not file_exists:
+                if progress_callback:
+                    progress_callback(f"Saving {filename}...", 75)
+                
+                # Move file from temp to SMOO target location
+                logger.info(f"Consolidating: {filename} -> {os.path.relpath(target_path, self.consolidated_folder)}")
+                shutil.move(temp_path, target_path)
+            
+            if progress_callback:
+                progress_callback(f"Consolidated: {filename}", 100)
+            
+            # Create metadata entry
+            file_metadata = {
+                'filename': filename,
+                'shared_drive_file_path': target_path,
+                'serial_number': metadata.get('serial_number', 'unknown'),
+                'cae_number': metadata.get('serial_number', 'unknown'),  # Use serial as CAE number
+                'location': metadata.get('location', 'unknown'),
+                'device_type': metadata.get('instrument_type', 'unknown'),
+                'actual_start_date': metadata.get('start_date', ''),
+                'actual_end_date': metadata.get('end_date', ''),
+                'file_size': file_size,
+                'file_modified_time': file_info['modified_time'],
+                'processed_date': datetime.now().isoformat(),
+                'month_folder': month_folder
+            }
+            
+            return True, file_metadata
+            
+        except Exception as e:
+            logger.error(f"Error consolidating file {file_info['name']}: {e}")
+            # Clean up temp file if it exists
+            if 'temp_path' in locals() and os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except:
+                    pass
+            if progress_callback:
+                progress_callback(f"Error: {file_info['name']}", 100)
+            return False, None
+    
+    def _generate_metadata_files(self, monthly_metadata: Dict) -> bool:
+        """
+        Generate metadata.json files for each month folder
+        
+        Args:
+            monthly_metadata: Dictionary of month data with file metadata
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            success_count = 0
+            
+            for month_folder, metadata in monthly_metadata.items():
+                try:
+                    # Create metadata.json path
+                    month_path = os.path.join(self.consolidated_folder, month_folder)
+                    metadata_path = os.path.join(month_path, 'metadata.json')
+                    
+                    # Ensure month folder exists
+                    os.makedirs(month_path, exist_ok=True)
+                    
+                    # Write metadata.json file
+                    with open(metadata_path, 'w', encoding='utf-8') as f:
+                        json.dump(metadata, f, indent=2, ensure_ascii=False)
+                    
+                    logger.info(f"Generated metadata.json for {month_folder} with {len(metadata['files'])} files")
+                    success_count += 1
+                    
+                except Exception as e:
+                    logger.error(f"Error generating metadata for {month_folder}: {e}")
+            
+            return success_count == len(monthly_metadata)
+            
+        except Exception as e:
+            logger.error(f"Error generating metadata files: {e}")
             return False
     
     def get_consolidated_folder_info(self) -> Dict:
