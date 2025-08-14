@@ -3776,13 +3776,9 @@ class MainWindow(QMainWindow):
             
             # Initialize AutoUpdateHandler now that tabs are setup
             if self.auto_update_handler is None:
-                self.auto_update_handler = AutoUpdateHandler(
-                    parent=self, 
-                    db_manager=self.db_manager,
-                    drive_service=self.drive_service,
-                    settings_handler=self.settings_handler,
-                    tabs=self._tabs
-                )
+                # REMOVED: AutoUpdateHandler with Google Drive OAuth dependency
+                # self.auto_update_handler = AutoUpdateHandler(...)
+                logger.info("Auto-update handler disabled - requires service account adaptation")
             
             # Final steps
             self.progress_dialog.setValue(100)
