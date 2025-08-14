@@ -3950,13 +3950,12 @@ class WaterLevelEditDialog(QDialog):
     def open_protocol_feedback_dialog(self):
         """Open the water levels protocol feedback dialog"""
         try:
-            # Since the button is only visible when service is available,
-            # we can assume the service is available when this method is called
-            if not hasattr(self, 'drive_service') or not self.drive_service:
-                # This shouldn't happen since button visibility is controlled,
-                # but added as a safety check
+            # Check if SMOO shared drive is available via main window
+            if not (hasattr(self, 'main_window') and self.main_window and 
+                   hasattr(self.main_window, 'cloud_db_handler') and 
+                   self.main_window.cloud_db_handler):
                 QMessageBox.warning(self, "Service Unavailable", 
-                                  "Google Drive service is not available. Please check your connection and authentication.")
+                                  "SMOO shared drive connection is not available. Please check your connection.")
                 return
             
             # Get current well information
@@ -3978,12 +3977,12 @@ class WaterLevelEditDialog(QDialog):
                         'total_points': len(self.transducer_data)
                     }
             
-            # Import and open the dialog
-            from .water_levels_protocol_feedback_dialog import WaterLevelsProtocolFeedbackDialog
+            # Import and open the SMOO-compatible dialog
+            from .smoo_protocol_feedback_dialog import SMOOWaterLevelsProtocolFeedbackDialog
             
-            dialog = WaterLevelsProtocolFeedbackDialog(
+            dialog = SMOOWaterLevelsProtocolFeedbackDialog(
                 parent=self,
-                drive_service=self.drive_service,
+                shared_drive_handler=self.main_window.cloud_db_handler,
                 user_name=self.user_name,
                 well_number=well_number,
                 current_data_info=data_info
