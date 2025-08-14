@@ -243,6 +243,9 @@ class MainWindow(QMainWindow):
                 # Set cloud handler in database manager for import dialogs
                 self.db_manager.set_cloud_db_handler(self.cloud_db_handler)
                 
+                # Update feedback button visibility based on successful SMOO connection
+                self._update_feedback_button_visibility()
+                
                 return True
             else:
                 # Check if user specifically wants shared drive but it's not accessible
@@ -254,11 +257,19 @@ class MainWindow(QMainWindow):
                 # REMOVED: Google Drive OAuth fallback
                 logger.info("Google Drive OAuth handlers removed - no cloud handler available")
                 self.cloud_db_handler = None
+                
+                # Update feedback button visibility (will be hidden due to no cloud handler)
+                self._update_feedback_button_visibility()
+                
                 return False
                     
         except Exception as e:
             logger.error(f"Error initializing cloud database handler: {e}")
             self.cloud_db_handler = None
+            
+            # Update feedback button visibility (will be hidden due to error)
+            self._update_feedback_button_visibility()
+            
             return False
     
     def apply_application_styling(self):
@@ -3868,17 +3879,21 @@ class MainWindow(QMainWindow):
                                f"Failed to open feedback dialog:\n{str(e)}")
 
     def _update_feedback_button_visibility(self):
-        """Update feedback button visibility based on Google Drive authentication status"""
+        """Update feedback button visibility based on SMOO shared drive connection status"""
         try:
-            # REMOVED: Google Drive OAuth-dependent feedback button visibility
-            # is_authenticated = (hasattr(self, 'drive_service') and self.drive_service ...)
+            # Check if SMOO shared drive is accessible (replaces Google Drive OAuth check)
+            is_smoo_connected = (hasattr(self, 'cloud_db_handler') and 
+                               self.cloud_db_handler is not None and
+                               hasattr(self.cloud_db_handler, 'shared_drive_accessible') and
+                               self.cloud_db_handler.shared_drive_accessible)
+            
             if hasattr(self, 'feedback_btn'):
-                self.feedback_btn.setVisible(False)  # Hidden during OAuth transition
+                self.feedback_btn.setVisible(is_smoo_connected)
                 
-            if is_authenticated:
-                logger.debug("Feedback button shown - Google Drive authentication detected")
+            if is_smoo_connected:
+                logger.debug("Feedback button shown - SMOO shared drive connection detected")
             else:
-                logger.debug("Feedback button hidden - No Google Drive authentication")
+                logger.debug("Feedback button hidden - No SMOO shared drive connection")
                 
         except Exception as e:
             logger.error(f"Error updating feedback button visibility: {e}")

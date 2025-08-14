@@ -3918,35 +3918,31 @@ class WaterLevelEditDialog(QDialog):
             self.user_name = "CAESER Team Member"
     
     def _update_protocol_feedback_button_visibility(self):
-        """Update visibility of protocol feedback button based on Drive service availability"""
+        """Update visibility of protocol feedback button based on SMOO shared drive connection"""
         try:
-            logger.info("DEBUG: _update_protocol_feedback_button_visibility called")
+            logger.debug("Checking protocol feedback button visibility...")
             
             if hasattr(self, 'protocol_feedback_btn'):
-                logger.info("DEBUG: protocol_feedback_btn exists, checking Drive service...")
+                # Check if SMOO shared drive connection is available via main window
+                is_smoo_connected = False
+                if hasattr(self, 'main_window') and self.main_window:
+                    is_smoo_connected = (hasattr(self.main_window, 'cloud_db_handler') and 
+                                       self.main_window.cloud_db_handler is not None and
+                                       hasattr(self.main_window.cloud_db_handler, 'shared_drive_accessible') and
+                                       self.main_window.cloud_db_handler.shared_drive_accessible)
                 
-                # Check if Google Drive service is available (same simple logic as main feedback button)
-                is_available = bool(hasattr(self, 'drive_service') and self.drive_service)
+                # Only show button if SMOO is connected
+                self.protocol_feedback_btn.setVisible(is_smoo_connected)
                 
-                logger.info(f"DEBUG: Drive service available: {is_available}")
-                logger.info(f"DEBUG: drive_service: {self.drive_service}")
-                
-                # Only show button if Google Drive is available
-                self.protocol_feedback_btn.setVisible(is_available)
-                
-                if is_available:
-                    logger.info("DEBUG: Protocol feedback button shown - Google Drive service available")
+                if is_smoo_connected:
+                    logger.debug("Protocol feedback button shown - SMOO shared drive connection available")
                 else:
-                    logger.info("DEBUG: Protocol feedback button hidden - No Google Drive service available")
-                    
-                logger.info(f"DEBUG: Protocol feedback button visibility set: {self.protocol_feedback_btn.isVisible()}")
+                    logger.debug("Protocol feedback button hidden - No SMOO shared drive connection")
             else:
-                logger.error("DEBUG: protocol_feedback_btn does NOT exist!")
+                logger.warning("protocol_feedback_btn does not exist!")
                 
         except Exception as e:
             logger.error(f"Error updating protocol feedback button visibility: {e}")
-            import traceback
-            logger.error(f"DEBUG: Full traceback: {traceback.format_exc()}")
             # Hide button on error to be safe
             if hasattr(self, 'protocol_feedback_btn'):
                 self.protocol_feedback_btn.setVisible(False)

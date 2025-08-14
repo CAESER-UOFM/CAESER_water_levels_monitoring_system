@@ -6,24 +6,35 @@ from pathlib import Path
 import json
 import tempfile
 import io
+from .google_service_account import GoogleServiceAccountHandler
 
 logger = logging.getLogger(__name__)
 
 class FieldDataConsolidator:
-    """Consolidates XLE files from multiple field data folders into organized structure"""
+    """Consolidates XLE files from SOLINST folder (via service account) to SMOO shared drive"""
     
-    def __init__(self, drive_service, settings_handler):
-        self.drive_service = drive_service  # For Google Drive source operations
+    def __init__(self, service_account_handler=None, settings_handler=None):
+        """
+        Initialize with service account handler for SOLINST folder access and SMOO destination.
+        
+        Args:
+            service_account_handler: GoogleServiceAccountHandler for SOLINST folder access
+            settings_handler: Settings handler for configuration
+        """
+        self.service_account_handler = service_account_handler
         self.settings_handler = settings_handler
-        self.consolidated_folder_id = None  # For Google Drive mode
         
-        # Hybrid mode configuration
-        self.use_shared_drive = settings_handler.get_setting("use_shared_drive", False)
-        self.shared_drive_field_data_path = settings_handler.get_setting("shared_drive_field_data", "")
+        # SMOO destination configuration (replaces consolidated_folder_id)
+        self.shared_drive_field_data_path = settings_handler.get_setting("shared_drive_field_data", "") if settings_handler else ""
         
-        logger.info(f"FieldDataConsolidator initialized - Mode: {'Shared Drive' if self.use_shared_drive else 'Google Drive'}")
-        if self.use_shared_drive:
-            logger.info(f"Shared drive destination: {self.shared_drive_field_data_path}")
+        # Always use SMOO shared drive mode (replaces hybrid mode)
+        self.use_shared_drive = True
+        
+        logger.info("FieldDataConsolidator initialized - Service Account → SMOO mode")
+        if self.shared_drive_field_data_path:
+            logger.info(f"SMOO destination: {self.shared_drive_field_data_path}")
+        else:
+            logger.warning("SMOO destination path not configured")
     
     # === SHARED DRIVE DESTINATION METHODS ===
     
@@ -50,10 +61,13 @@ class FieldDataConsolidator:
             return None
     
     def _download_and_save_to_shared_drive(self, file_info, target_folder_path):
-        """Download from Google Drive and save to S: drive"""
+        """Download from SOLINST folder (via service account) and save to SMOO drive"""
         try:
             import shutil
-            from googleapiclient.http import MediaIoBaseDownload
+            
+            if not self.service_account_handler or not self.service_account_handler.is_authenticated():
+                logger.error("Service account handler not available or not authenticated")
+                return None
             
             # Generate corrected filename
             new_filename = self.generate_corrected_filename(file_info)
@@ -65,25 +79,24 @@ class FieldDataConsolidator:
                 source_modified = datetime.fromisoformat(file_info['modified_time'].replace('Z', '+00:00')).replace(tzinfo=None)
                 
                 if source_modified <= existing_modified:
-                    logger.debug(f"File {new_filename} already up to date in shared drive")
+                    logger.debug(f"File {new_filename} already up to date in SMOO drive")
                     return target_file_path
                 else:
                     logger.info(f"Updating existing file {new_filename} with newer version")
             
-            # Download file content from Google Drive
-            request = self.drive_service.files().get_media(fileId=file_info['id'])
-            file_content = io.BytesIO()
-            downloader = MediaIoBaseDownload(file_content, request)
-            done = False
-            while not done:
-                _, done = downloader.next_chunk()
+            # Download file from SOLINST folder using service account
+            temp_file_path = self.service_account_handler.download_file(file_info['id'])
+            if not temp_file_path:
+                logger.error(f"Failed to download file {file_info['name']} from SOLINST folder")
+                return None
             
-            # Save to S: drive
-            file_content.seek(0)
-            with open(target_file_path, 'wb') as f:
-                shutil.copyfileobj(file_content, f)
+            # Copy to SMOO drive
+            shutil.copy2(temp_file_path, target_file_path)
             
-            logger.info(f"Downloaded {file_info['name']} as {new_filename} to shared drive")
+            # Clean up temp file
+            os.unlink(temp_file_path)
+            
+            logger.info(f"Downloaded {file_info['name']} as {new_filename} to SMOO drive")
             return target_file_path
             
         except Exception as e:
@@ -524,32 +537,23 @@ class FieldDataConsolidator:
         """Read XLE file to determine the correct year-month folder based on actual data"""
         try:
             import tempfile
-            import io
             from ..handlers.solinst_reader import SolinstReader
             
-            # Download file to memory
+            if not self.service_account_handler or not self.service_account_handler.is_authenticated():
+                logger.error("Service account handler not available for reading XLE file")
+                return None
+            
+            # Download file to temporary location using service account
             logger.debug(f"Reading {file_info['name']} to determine correct month folder...")
-            request = self.drive_service.files().get_media(fileId=file_info['id'])
-            file_content = io.BytesIO()
-            
-            # Use the media download functionality
-            from googleapiclient.http import MediaIoBaseDownload
-            downloader = MediaIoBaseDownload(file_content, request)
-            done = False
-            while not done:
-                status, done = downloader.next_chunk()
-            
-            file_content.seek(0)
-            
-            # Write to temporary file
-            with tempfile.NamedTemporaryFile(suffix='.xle', delete=False) as tmp_file:
-                tmp_file.write(file_content.read())
-                tmp_path = tmp_file.name
+            temp_file_path = self.service_account_handler.download_file(file_info['id'])
+            if not temp_file_path:
+                logger.error(f"Failed to download {file_info['name']} for analysis")
+                return None
             
             try:
                 # Read XLE file to get actual data
                 reader = SolinstReader()
-                df, metadata = reader.read_xle(Path(tmp_path))
+                df, metadata = reader.read_xle(Path(temp_file_path))
                 
                 # Get actual last date from data to determine folder
                 if not df.empty and 'timestamp' in df.columns:
@@ -560,13 +564,13 @@ class FieldDataConsolidator:
                     return year_month
                 else:
                     logger.warning(f"No data found in {file_info['name']}, falling back to filename parsing")
-                    return file_info.get('year_month')
+                    return self.extract_date_from_filename(file_info['name'])
                     
             finally:
                 # Clean up temp file
                 import os
-                if os.path.exists(tmp_path):
-                    os.unlink(tmp_path)
+                if os.path.exists(temp_file_path):
+                    os.unlink(temp_file_path)
                     
         except Exception as e:
             logger.error(f"Error reading actual dates from {file_info['name']}: {e}")
@@ -782,126 +786,111 @@ class FieldDataConsolidator:
             logger.error(f"Error moving file to archived: {e}")
             return False
     
-    def consolidate_field_data(self, progress_callback=None):
-        """Main method to consolidate all field data"""
+    def consolidate_solinst_data(self, progress_callback=None):
+        """Main method to consolidate XLE files from SOLINST folder to SMOO"""
         try:
-            logger.info("Starting field data consolidation...")
+            logger.info("Starting SOLINST data consolidation to SMOO...")
             
-            # Get field data folders from settings
-            field_folders = self.settings_handler.get_setting("field_data_folders", [])
-            if not field_folders:
-                logger.warning("No field data folders configured")
+            # Check service account authentication
+            if not self.service_account_handler or not self.service_account_handler.is_authenticated():
+                logger.error("Service account handler not available or not authenticated")
                 return False
             
-            # Ensure consolidated folder exists
-            if not self.get_or_create_consolidated_folder():
-                logger.error("Could not create consolidated folder")
+            # Check SOLINST folder access
+            if not self.service_account_handler.check_folder_access():
+                logger.error("SOLINST folder not accessible via service account")
                 return False
             
-            total_files = 0
+            # Ensure SMOO destination folder exists
+            if not self._get_shared_drive_consolidated_path():
+                logger.error("SMOO destination path not configured")
+                return False
+            
+            if progress_callback:
+                progress_callback("Scanning SOLINST folder for XLE files...", 10)
+            
+            # Get all XLE files from SOLINST folder
+            files = self.service_account_handler.list_xle_files()
+            if not files:
+                logger.info("No XLE files found in SOLINST folder")
+                return True
+            
+            total_files = len(files)
             processed_files = 0
             monthly_folders = {}
             
-            # First pass: scan all field folders to count files
-            all_files = []
-            field_folder_archives = {}  # Track archived folder for each field folder
+            logger.info(f"Found {total_files} XLE files in SOLINST folder")
             
-            for i, folder_id in enumerate(field_folders):
-                if progress_callback:
-                    progress_callback(f"Scanning field folder {i+1}/{len(field_folders)}...", 
-                                    int((i / len(field_folders)) * 30))
-                
-                files = self.scan_field_folder(folder_id)
-                
-                if progress_callback and len(files) > 0:
-                    progress_callback(f"Found {len(files)} XLE files in folder {i+1}", 
-                                    int((i / len(field_folders)) * 30))
-                
-                # Add source folder info to each file
-                for file in files:
-                    file['source_folder_id'] = folder_id
-                
-                all_files.extend(files)
-                total_files += len(files)
-                
-                # Get or create archived folder for this field folder
-                if len(files) > 0:
-                    if progress_callback:
-                        progress_callback(f"Creating archived folder for field folder {i+1}...", 
-                                        int((i / len(field_folders)) * 30))
-                    archived_folder_id = self.get_or_create_archived_folder(folder_id)
-                    if archived_folder_id:
-                        field_folder_archives[folder_id] = archived_folder_id
+            if progress_callback:
+                progress_callback(f"Found {total_files} XLE files to process...", 20)
             
-            logger.info(f"Found {total_files} total XLE files to process")
-            
-            # Second pass: organize and copy files
-            for file_info in all_files:
-                file_num = processed_files + 1
+            # Process each XLE file from SOLINST folder
+            for i, file_info in enumerate(files):
+                file_num = i + 1
                 
                 if progress_callback:
-                    progress = 30 + int((processed_files / total_files) * 60)
+                    progress = 30 + int((i / total_files) * 60)
                     progress_callback(f"Processing file {file_num}/{total_files}: {file_info['name']}", progress)
                 
-                # CRITICAL FIX: Get actual year-month from XLE data instead of filename
-                # This ensures files go into the correct month folder based on their actual data
-                actual_year_month = self.get_actual_year_month_from_xle(file_info)
+                # Convert file_info format to match expected structure
+                standardized_file_info = {
+                    'id': file_info['id'],
+                    'name': file_info['name'],
+                    'modified_time': file_info.get('modifiedTime', ''),
+                    'size': file_info.get('size', 0)
+                }
+                
+                # Get actual year-month from XLE data
+                actual_year_month = self.get_actual_year_month_from_xle(standardized_file_info)
                 if not actual_year_month:
                     logger.warning(f"Could not determine year-month for {file_info['name']}, skipping")
                     processed_files += 1
                     continue
                 
-                # Get or create monthly folder using the actual year-month
+                # Get or create monthly folder on SMOO
                 if actual_year_month not in monthly_folders:
                     if progress_callback:
-                        progress_callback(f"Creating folder for {actual_year_month}...", progress)
-                    monthly_folders[actual_year_month] = self.get_or_create_monthly_folder(actual_year_month)
+                        progress_callback(f"Creating SMOO folder for {actual_year_month}...", progress)
+                    monthly_folders[actual_year_month] = self._create_shared_drive_monthly_folder(actual_year_month)
                 
-                target_folder_id = monthly_folders[actual_year_month]
-                if target_folder_id:
-                    # Copy file to consolidated folder
+                target_folder_path = monthly_folders[actual_year_month]
+                if target_folder_path:
+                    # Download from SOLINST and save to SMOO
                     if progress_callback:
-                        progress_callback(f"Reading {file_info['name']} to determine actual dates...", progress)
+                        progress_callback(f"Downloading {file_info['name']} to SMOO...", progress)
                     
-                    copied_file_id = self.copy_file_to_consolidated(file_info, target_folder_id)
+                    saved_file_path = self._download_and_save_to_shared_drive(standardized_file_info, target_folder_path)
                     
-                    if copied_file_id:
-                        # CRITICAL FIX: Update metadata.json in the target folder after successful copy
+                    if saved_file_path:
+                        # Update metadata.json in SMOO folder
                         if progress_callback:
-                            progress_callback(f"Updating metadata for {actual_year_month} folder...", progress)
+                            progress_callback(f"Updating SMOO metadata for {actual_year_month}...", progress)
                         
                         try:
-                            self.update_folder_metadata(target_folder_id, actual_year_month, copied_file_id)
-                            logger.debug(f"Updated metadata.json in {actual_year_month} folder for new file")
+                            metadata = {
+                                'last_updated': datetime.now().isoformat(),
+                                'files_processed': processed_files + 1,
+                                'latest_file': os.path.basename(saved_file_path)
+                            }
+                            self._write_shared_drive_metadata(target_folder_path, metadata)
+                            logger.debug(f"Updated metadata.json in SMOO {actual_year_month} folder")
                         except Exception as e:
-                            logger.error(f"Failed to update metadata for {actual_year_month}: {e}")
+                            logger.error(f"Failed to update SMOO metadata for {actual_year_month}: {e}")
                         
-                        if progress_callback:
-                            progress_callback(f"Moving {file_info['name']} to archived folder...", progress)
-                        
-                        # Move original file to archived folder
-                        source_folder_id = file_info['source_folder_id']
-                        archived_folder_id = field_folder_archives.get(source_folder_id)
-                        
-                        if archived_folder_id:
-                            if self.move_to_archived(file_info['id'], source_folder_id, archived_folder_id):
-                                logger.info(f"Moved {file_info['name']} to archived folder")
-                                if progress_callback:
-                                    progress_callback(f"✓ Completed {file_info['name']}", progress)
-                            else:
-                                logger.warning(f"Failed to move {file_info['name']} to archived folder")
-                                if progress_callback:
-                                    progress_callback(f"⚠ Warning: Could not archive {file_info['name']}", progress)
-                
-                processed_files += 1
+                        processed_files += 1
+                        logger.info(f"Successfully processed {file_info['name']} to SMOO")
+                    else:
+                        logger.error(f"Failed to download {file_info['name']} to SMOO")
+                else:
+                    logger.error(f"Could not create SMOO folder for {actual_year_month}")
             
+            # Final summary
             if progress_callback:
-                summary = f"✓ Consolidation complete! Processed {processed_files} files into {len(monthly_folders)} monthly folders"
-                progress_callback(summary, 100)
+                progress_callback(f"Consolidation complete: {processed_files}/{total_files} files processed", 100)
             
-            logger.info(f"Field data consolidation completed. Processed {processed_files} files into {len(monthly_folders)} monthly folders")
-            return True
+            logger.info(f"SOLINST data consolidation completed: {processed_files}/{total_files} files processed")
+            return processed_files > 0
             
         except Exception as e:
-            logger.error(f"Error during field data consolidation: {e}")
+            logger.error(f"Error during SOLINST data consolidation: {e}")
             return False
