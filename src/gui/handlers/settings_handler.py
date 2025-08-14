@@ -85,30 +85,37 @@ class SettingsHandler:
         xle_import_directory = str(app_dir / "imported_xle_files")
         
         defaults = {
+            # Local paths
             "local_db_directory": default_db_directory,
             "xle_import_directory": xle_import_directory,  # Always in main app folder, separate from database location
-            "use_google_drive_db": True,
-            "google_drive_auto_check": False,
-            "google_drive_folder_id": "1vGoxkS-HQ0n0u0ToNcYL_wJGZ02RDhAK",  # Default CAESER folder ID for database
-            "google_drive_xle_folder_id": "1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW",  # Default folder ID for XLE files
-            "google_drive_projects_folder_id": "1JjiXRblLAf6rdhiOzrAaYik8bjNpBc9s",  # Default Projects folder ID
-            "google_drive_secret_path": default_secret_path,  # Default client secret path (legacy OAuth)
-            "oauth_client_secret_path": str(app_dir / "config" / "client_secret_oauth.json"),  # OAuth client secret path
-            "service_account_key_path": default_service_account_path,  # Service account key path (deprecated)
-            "transducer_watch_folder": str(app_dir),  # Add transducer watch folder default
-            "barologger_watch_folder": str(app_dir),  # Add barologger watch folder default
-            "water_level_watch_folder": str(app_dir),  # Add water level watch folder default
-            "field_data_folders": ["1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW"],  # Field laptop Solinst folders (correct folder ID)
-            "consolidated_field_data_folder": "",  # Will be set to water_levels_monitoring/FIELD_DATA_CONSOLIDATED
-            # Shared Drive Settings (for migration from Google Drive)
-            "use_shared_drive": True,  # Enable/disable shared drive functionality - Default to S: drive
-            **get_default_shared_drive_paths()  # Import centralized path configuration
+            
+            # Service account for XLE file downloads from Google Drive
+            "service_account_key_file": default_service_account_path,  # Service account key file for XLE downloads
+            "google_drive_solinst_folder_id": "",  # Google Drive SOLINST folder ID (user configures)
+            
+            # SMOO paths (databases and organized XLE files)
+            **get_default_shared_drive_paths()  # Import centralized SMOO path configuration
         }
         
-        # Force update the folder ID if it's set to the wrong value
-        if "google_drive_folder_id" in self.settings and self.settings["google_drive_folder_id"] == "1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW":
-            logger.warning("Correcting Google Drive folder ID from XLE folder to CAESER folder")
-            self.settings["google_drive_folder_id"] = "1vGoxkS-HQ0n0u0ToNcYL_wJGZ02RDhAK"
+        # Migration: Clean up legacy settings from old config files
+        legacy_settings = [
+            "use_google_drive_db", "google_drive_auto_check", "google_drive_folder_id",
+            "google_drive_xle_folder_id", "google_drive_projects_folder_id", 
+            "google_drive_secret_path", "oauth_client_secret_path", "service_account_key_path",
+            "transducer_watch_folder", "barologger_watch_folder", "water_level_watch_folder",
+            "field_data_folders", "consolidated_field_data_folder", "use_shared_drive"
+        ]
+        
+        removed_any = False
+        for legacy_key in legacy_settings:
+            if legacy_key in self.settings:
+                logger.info(f"Removing legacy setting: {legacy_key}")
+                del self.settings[legacy_key]
+                removed_any = True
+        
+        if removed_any:
+            self.save_settings()
+            logger.info("Legacy settings cleaned up")
         
         # Force update local_db_directory if it's still pointing to old hardcoded paths
         if "local_db_directory" in self.settings:
@@ -118,7 +125,6 @@ class SettingsHandler:
             if any(indicator in current_path for indicator in old_path_indicators):
                 logger.warning(f"Correcting local_db_directory from old hardcoded path: {current_path} -> {default_db_directory}")
                 self.settings["local_db_directory"] = default_db_directory
-                # Force save immediately to persist the correction
                 self.save_settings()
         
         # Always force XLE import directory to be in main app folder regardless of database location
