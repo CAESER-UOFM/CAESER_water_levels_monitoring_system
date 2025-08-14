@@ -1783,9 +1783,11 @@ class WaterLevelEditDialog(QDialog):
                 logger.info(f"Database updated successfully. {total_updated} records affected.")
                 
                 # CRITICAL FIX: Use proper change tracking
+                current_db_manager = None
                 if self.db_manager:
                     logger.info("DIALOG_FIX: Calling mark_as_modified after water level changes")
                     self.db_manager.mark_as_modified()
+                    current_db_manager = self.db_manager
                 else:
                     # Fallback to old method if no db_manager passed
                     logger.warning("DIALOG_FIX: Using fallback change tracking method")
@@ -1794,37 +1796,38 @@ class WaterLevelEditDialog(QDialog):
                         hasattr(parent_window, 'db_manager') and parent_window.db_manager):
                         parent_window.db_manager.mark_as_modified()
                         logger.info("DIALOG_FIX: Called mark_as_modified via parent window")
-                    
-                    # Track changes in the automatic change tracking system
-                    if (hasattr(parent_window.db_manager, 'change_tracker') and 
-                        parent_window.db_manager.change_tracker):
-                        try:
-                            from ...gui.handlers.change_tracker import ChangeType, ChangeAction
+                        current_db_manager = parent_window.db_manager
+                
+                # CHANGE_TRACKER_FIX: Always track detailed changes when change_tracker is available
+                if (current_db_manager and hasattr(current_db_manager, 'change_tracker') and 
+                    current_db_manager.change_tracker):
+                    try:
+                        from ...gui.handlers.change_tracker import ChangeType, ChangeAction
+                        
+                        # Group changes by well and summarize them
+                        wells_modified = modified_data['well_number'].unique()
+                        for well_number in wells_modified:
+                            well_changes = modified_data[modified_data['well_number'] == well_number]
+                            change_types = []
+                            if (well_changes['baro_flag_mod'] == 'master_mod').any():
+                                change_types.append("barometric compensation")
+                            if (well_changes['level_flag_mod'] == 'level_mod').any():
+                                change_types.append("baseline adjustment")
+                            if (well_changes['spike_flag'] == 'spike_corrected').any():
+                                change_types.append("spike correction")
                             
-                            # Group changes by well and summarize them
-                            wells_modified = modified_data['well_number'].unique()
-                            for well_number in wells_modified:
-                                well_changes = modified_data[modified_data['well_number'] == well_number]
-                                change_types = []
-                                if (well_changes['baro_flag_mod'] == 'master_mod').any():
-                                    change_types.append("barometric compensation")
-                                if (well_changes['level_flag_mod'] == 'level_mod').any():
-                                    change_types.append("baseline adjustment")
-                                if (well_changes['spike_flag'] == 'spike_corrected').any():
-                                    change_types.append("spike correction")
-                                
-                                change_description = f"Applied {', '.join(change_types)} to {len(well_changes)} readings"
-                                
-                                change_id = parent_window.db_manager.change_tracker.track_water_level_edit(
-                                    well_number=str(well_number),
-                                    records_modified=len(well_changes),
-                                    change_description=change_description,
-                                    change_type=ChangeType.MANUAL
-                                )
-                                logger.info(f"Tracked water level edit for well {well_number}: {change_description} (ID: {change_id})")
-                        except Exception as e:
-                            logger.error(f"Error tracking water level edit changes: {e}")
-                            # Continue even if change tracking fails
+                            change_description = f"Applied {', '.join(change_types)} to {len(well_changes)} readings"
+                            
+                            change_id = current_db_manager.change_tracker.track_water_level_edit(
+                                well_number=str(well_number),
+                                records_modified=len(well_changes),
+                                change_description=change_description,
+                                change_type=ChangeType.MANUAL
+                            )
+                            logger.info(f"CHANGE_TRACKER_FIX: Tracked water level edit for well {well_number}: {change_description} (ID: {change_id})")
+                    except Exception as e:
+                        logger.error(f"Error tracking water level edit changes: {e}")
+                        # Continue even if change tracking fails
                 
                 QMessageBox.information(self, "Changes Applied", 
                                       f"Successfully updated {total_updated} records in the database.")
