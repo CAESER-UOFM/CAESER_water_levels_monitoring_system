@@ -3973,8 +3973,8 @@ class MainWindow(QMainWindow):
             # Determine app root directory
             app_root = Path(__file__).parent.parent.parent
             
-            # Get shared drive path from settings
-            shared_drive_path = self.settings_handler.get_setting("shared_drive_path", "")
+            # Get shared drive path from settings (use same key as SharedDriveDbHandler)
+            shared_drive_path = self.settings_handler.get_setting("shared_drive_root", "")
             
             # Initialize shared drive updater
             self.shared_drive_updater = SharedDriveUpdater(app_root, shared_drive_path)
