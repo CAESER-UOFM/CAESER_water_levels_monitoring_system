@@ -4207,16 +4207,117 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
             
     def setup_service_account(self):
         """Open service account setup dialog for XLE file sync to SMOO"""
-        QMessageBox.information(
-            self,
-            "Service Account Setup",
-            "Service Account Setup for XLE file synchronization to SMOO.\n\n"
-            "This will be configured to:\n"
-            "• Use Google Drive service account (no OAuth required)\n"
-            "• Sync XLE files from SOLINST folder to SMOO\n"
-            "• Transfer metadata and consolidated files\n\n"
-            "Feature coming soon - currently under development."
+        from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFileDialog, QLineEdit, QTextEdit
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Service Account Setup")
+        dialog.setMinimumSize(500, 400)
+        
+        layout = QVBoxLayout(dialog)
+        
+        # Instructions
+        instructions = QLabel(
+            "Service Account Setup for XLE file synchronization:\n\n"
+            "• Downloads XLE files from Google Drive SOLINST folder\n"
+            "• Organizes files in SMOO FIELD_DATA_CONSOLIDATED\n"
+            "• No OAuth required - uses service account key\n\n"
+            "Please select your service account JSON key file:"
         )
+        instructions.setWordWrap(True)
+        layout.addWidget(instructions)
+        
+        # File selection
+        file_layout = QHBoxLayout()
+        self.service_file_edit = QLineEdit()
+        current_path = self.settings_handler.get_setting("service_account_key_file", "")
+        self.service_file_edit.setText(current_path)
+        self.service_file_edit.setPlaceholderText("Path to service account JSON file...")
+        
+        browse_btn = QPushButton("Browse...")
+        browse_btn.clicked.connect(self._browse_service_account_file)
+        
+        file_layout.addWidget(self.service_file_edit)
+        file_layout.addWidget(browse_btn)
+        layout.addLayout(file_layout)
+        
+        # Test button
+        test_btn = QPushButton("Test Connection")
+        test_btn.clicked.connect(self._test_service_account)
+        layout.addWidget(test_btn)
+        
+        # Status area
+        self.service_status_area = QTextEdit()
+        self.service_status_area.setMaximumHeight(100)
+        self.service_status_area.setPlaceholderText("Connection status will appear here...")
+        layout.addWidget(self.service_status_area)
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        save_btn = QPushButton("Save")
+        save_btn.clicked.connect(lambda: self._save_service_account_settings(dialog))
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(dialog.reject)
+        
+        button_layout.addWidget(save_btn)
+        button_layout.addWidget(cancel_btn)
+        layout.addLayout(button_layout)
+        
+        dialog.exec_()
+    
+    def _browse_service_account_file(self):
+        """Browse for service account file"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Service Account JSON File",
+            "",
+            "JSON Files (*.json);;All Files (*)"
+        )
+        if file_path:
+            self.service_file_edit.setText(file_path)
+    
+    def _test_service_account(self):
+        """Test service account connection"""
+        try:
+            file_path = self.service_file_edit.text().strip()
+            if not file_path:
+                self.service_status_area.setText("❌ Please select a service account file first")
+                return
+            
+            self.service_status_area.setText("🔄 Testing connection...")
+            
+            # Test the service account
+            from .handlers.google_service_account import GoogleServiceAccountHandler
+            handler = GoogleServiceAccountHandler(self.settings_handler)
+            
+            if handler.authenticate(file_path):
+                self.service_status_area.setText("✅ Connection successful!\nService account authenticated with Google Drive API.")
+            else:
+                self.service_status_area.setText("❌ Connection failed.\nPlease check the service account file and try again.")
+                
+        except Exception as e:
+            self.service_status_area.setText(f"❌ Error testing connection:\n{str(e)}")
+    
+    def _save_service_account_settings(self, dialog):
+        """Save service account settings"""
+        try:
+            file_path = self.service_file_edit.text().strip()
+            if not file_path:
+                QMessageBox.warning(self, "Warning", "Please select a service account file")
+                return
+            
+            # Validate file exists
+            if not os.path.exists(file_path):
+                QMessageBox.warning(self, "Warning", "Service account file not found")
+                return
+            
+            # Save to settings
+            self.settings_handler.set_setting("service_account_key_file", file_path)
+            
+            QMessageBox.information(self, "Success", "Service account settings saved!")
+            dialog.accept()
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save settings: {str(e)}")
     
     def setup_credentials(self):
         """Open unified credentials setup dialog manually"""

@@ -63,7 +63,6 @@ class GoogleServiceAccountHandler:
                 # Try fallback to local config directory
                 if self.settings_handler and service_account_key_path.startswith("S:"):
                     logger.info("SMOO not accessible, trying local config directory...")
-                    from pathlib import Path
                     app_dir = Path(__file__).parent.parent.parent.parent
                     config_dir = app_dir / "config"
                     
