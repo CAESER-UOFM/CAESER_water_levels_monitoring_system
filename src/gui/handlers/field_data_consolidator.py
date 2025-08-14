@@ -89,18 +89,26 @@ class HybridFieldDataConsolidator:
     
     def scan_google_drive_solinst(self) -> List[Dict]:
         """
-        Scan Google Drive SOLINST folder for new XLE files using service account handler
+        Scan Google Drive SOLINST folder for NEW XLE files only using date filtering
         
         Returns:
-            List of file info dictionaries
+            List of file info dictionaries for new files only
         """
         try:
             # Set the SOLINST folder ID if not set
             if self.solinst_folder_id:
                 self.drive_service.set_solinst_folder_id(self.solinst_folder_id)
             
-            # Use the service account handler's built-in method
-            files_found = self.drive_service.list_xle_files()
+            # Get last sync date to only fetch new files
+            last_sync_date = self._get_last_sync_date()
+            
+            # Use optimized API filtering to get only new files
+            if last_sync_date:
+                logger.info(f"Scanning for files created after last sync: {last_sync_date}")
+                files_found = self.drive_service.list_xle_files(created_after=last_sync_date)
+            else:
+                logger.info("No previous sync found - scanning all files")
+                files_found = self.drive_service.list_xle_files()
             
             # Convert to format expected by consolidator
             consolidated_files = []
@@ -109,17 +117,104 @@ class HybridFieldDataConsolidator:
                     'id': file_info['id'],
                     'name': file_info['name'], 
                     'size': int(file_info.get('size', 0)),
-                    'modified_time': file_info['modifiedTime']
+                    'modified_time': file_info['modifiedTime'],
+                    'created_time': file_info.get('createdTime', file_info['modifiedTime'])
                 }
                 consolidated_files.append(consolidated_file)
-                logger.debug(f"Found Google Drive XLE: {file_info['name']} (Modified: {file_info['modifiedTime']})")
+                logger.debug(f"Found Google Drive XLE: {file_info['name']} (Created: {file_info.get('createdTime', 'N/A')})")
             
-            logger.info(f"Found {len(consolidated_files)} XLE files in Google Drive SOLINST")
+            if last_sync_date:
+                logger.info(f"Found {len(consolidated_files)} NEW XLE files since last sync")
+            else:
+                logger.info(f"Found {len(consolidated_files)} XLE files in Google Drive SOLINST")
+            
             return consolidated_files
             
         except Exception as e:
             logger.error(f"Error scanning Google Drive SOLINST: {e}")
             return []
+    
+    def _get_last_sync_date(self) -> Optional[str]:
+        """
+        Get the last successful sync date to optimize Google Drive queries
+        
+        Returns:
+            ISO datetime string of last sync, or None if no previous sync
+        """
+        try:
+            # Check for a sync tracking file in the consolidated folder
+            sync_file = os.path.join(self.consolidated_folder, '.last_sync')
+            
+            if os.path.exists(sync_file):
+                with open(sync_file, 'r') as f:
+                    last_sync = f.read().strip()
+                    logger.debug(f"Last sync date from file: {last_sync}")
+                    return last_sync
+            else:
+                # Fallback: Get the newest file's creation date from existing metadata
+                return self._get_newest_file_date_from_metadata()
+                
+        except Exception as e:
+            logger.error(f"Error getting last sync date: {e}")
+            return None
+    
+    def _get_newest_file_date_from_metadata(self) -> Optional[str]:
+        """
+        Fallback method: scan existing metadata.json files to find newest file date
+        
+        Returns:
+            ISO datetime string of newest file, or None
+        """
+        try:
+            newest_date = None
+            
+            # Scan all month folders for metadata
+            if not os.path.exists(self.consolidated_folder):
+                return None
+                
+            for month_folder in os.listdir(self.consolidated_folder):
+                month_path = os.path.join(self.consolidated_folder, month_folder)
+                if not os.path.isdir(month_path):
+                    continue
+                    
+                metadata_path = os.path.join(month_path, 'metadata.json')
+                if os.path.exists(metadata_path):
+                    try:
+                        with open(metadata_path, 'r') as f:
+                            metadata = json.load(f)
+                            
+                        for file_info in metadata.get('files', []):
+                            file_date = file_info.get('processed_date') or file_info.get('file_modified_time')
+                            if file_date and (not newest_date or file_date > newest_date):
+                                newest_date = file_date
+                                
+                    except Exception as e:
+                        logger.debug(f"Error reading metadata from {metadata_path}: {e}")
+                        continue
+            
+            if newest_date:
+                logger.info(f"Fallback: newest file date from metadata: {newest_date}")
+            
+            return newest_date
+            
+        except Exception as e:
+            logger.error(f"Error getting newest file date from metadata: {e}")
+            return None
+    
+    def _update_last_sync_date(self):
+        """Update the last sync date after successful consolidation"""
+        try:
+            sync_file = os.path.join(self.consolidated_folder, '.last_sync')
+            current_time = datetime.now().isoformat()
+            
+            os.makedirs(self.consolidated_folder, exist_ok=True)
+            with open(sync_file, 'w') as f:
+                f.write(current_time)
+                
+            logger.debug(f"Updated last sync date to: {current_time}")
+            
+        except Exception as e:
+            logger.error(f"Error updating last sync date: {e}")
     
     def extract_xle_metadata(self, file_path: str) -> Dict:
         """
@@ -365,6 +460,10 @@ class HybridFieldDataConsolidator:
             logger.info(f"Consolidation complete: {successful_count}/{total_files} files processed successfully")
             if metadata_success:
                 logger.info(f"Generated metadata files for {len(monthly_metadata)} month folders")
+            
+            # Update last sync date for future optimizations
+            if successful_count > 0:
+                self._update_last_sync_date()
             
             if progress_callback:
                 progress_callback(f"Complete: {successful_count}/{total_files} files consolidated", 100)

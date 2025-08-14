@@ -150,29 +150,52 @@ class GoogleServiceAccountHandler:
             self.settings_handler.set_setting("google_drive_solinst_folder_id", folder_id)
         logger.info(f"SOLINST folder ID set to: {folder_id}")
     
-    def list_xle_files(self) -> List[Dict]:
+    def list_xle_files(self, created_after: str = None, modified_after: str = None) -> List[Dict]:
         """
-        List all XLE files in the SOLINST folder.
+        List XLE files in the SOLINST folder with optional date filtering.
+        
+        Args:
+            created_after: ISO datetime string (e.g., '2025-08-01T00:00:00Z') - only files created after this date
+            modified_after: ISO datetime string (e.g., '2025-08-01T00:00:00Z') - only files modified after this date
         
         Returns:
-            List of file dictionaries with id, name, modifiedTime
+            List of file dictionaries with id, name, modifiedTime, createdTime, size
         """
         if not self.authenticated or not self.solinst_folder_id:
             logger.error("Not authenticated or SOLINST folder ID not set")
             return []
         
         try:
-            # Query for XLE files in the SOLINST folder
-            query = f"'{self.solinst_folder_id}' in parents and trashed = false and fileExtension = 'xle'"
+            # Base query for XLE files in the SOLINST folder
+            query_parts = [
+                f"'{self.solinst_folder_id}' in parents",
+                "trashed = false",
+                "fileExtension = 'xle'"
+            ]
+            
+            # Add date filters if provided
+            if created_after:
+                query_parts.append(f"createdTime > '{created_after}'")
+                logger.info(f"Filtering for files created after: {created_after}")
+            
+            if modified_after:
+                query_parts.append(f"modifiedTime > '{modified_after}'")
+                logger.info(f"Filtering for files modified after: {modified_after}")
+            
+            query = " and ".join(query_parts)
+            logger.debug(f"Google Drive query: {query}")
             
             results = self.service.files().list(
                 q=query,
-                fields="files(id, name, modifiedTime, size)",
+                fields="files(id, name, modifiedTime, createdTime, size)",
                 orderBy="modifiedTime desc"
             ).execute()
             
             files = results.get('files', [])
-            logger.info(f"Found {len(files)} XLE files in SOLINST folder")
+            if created_after or modified_after:
+                logger.info(f"Found {len(files)} XLE files matching date filters")
+            else:
+                logger.info(f"Found {len(files)} XLE files in SOLINST folder")
             
             return files
             
