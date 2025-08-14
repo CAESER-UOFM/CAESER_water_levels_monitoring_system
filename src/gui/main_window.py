@@ -250,13 +250,9 @@ class MainWindow(QMainWindow):
                     self.cloud_db_handler = None
                     return False
             else:
-                # Use Google Drive (existing functionality)
-                if self.drive_service and self.drive_service.authenticated:
-                    logger.info("Using Google Drive - initializing CloudDatabaseHandler")
-                    self.cloud_db_handler = CloudDatabaseHandler(self.drive_service, self.settings_handler)
-                    
-                    # Set database manager for XLE file operations
-                    self.cloud_db_handler.set_database_manager(self.db_manager)
+                # REMOVED: Google Drive OAuth-based cloud handler
+                # self.cloud_db_handler = CloudDatabaseHandler(self.drive_service, self.settings_handler)
+                logger.info("Google Drive OAuth handlers removed - using shared drive only")
                     # Set cloud handler in database manager for import dialogs
                     self.db_manager.set_cloud_db_handler(self.cloud_db_handler)
                     
@@ -2002,10 +1998,9 @@ class MainWindow(QMainWindow):
                               "The current database is local and cannot be synced with Google Drive.")
             return
             
-        if not self.drive_service.authenticated:
-            QMessageBox.warning(self, "Not Authenticated", 
-                              "Not authenticated with Google Drive. Please log in first.")
-            return
+        # REMOVED: Google Drive OAuth authentication check
+        # QMessageBox.warning(self, "Not Authenticated", "Not authenticated with Google Drive. Please log in first.")
+        logger.warning("Google Drive OAuth authentication removed - manual sync disabled")
             
         # Sync the database
         if self.db_manager.sync_with_google_drive():
@@ -2409,21 +2404,8 @@ class MainWindow(QMainWindow):
                 # Clean up session backups
                 self.cloud_db_handler.cleanup_session_backups()
                 
-            # Explicitly disconnect from Google Drive before closing
-            if hasattr(self, 'drive_service') and self.drive_service and self.drive_service.authenticated:
-                logger.info("Disconnecting from Google Drive before closing application")
-                try:
-                    # Clear tokens to force re-authentication next time
-                    if hasattr(self.drive_service, 'clear_credentials'):
-                        self.drive_service.clear_credentials()
-                    else:
-                        # Alternative approach if no direct method exists
-                        token_path = Path.home() / '.credentials' / 'water_levels_token.json'
-                        if token_path.exists():
-                            logger.info(f"Removing token file at {token_path}")
-                            token_path.unlink(missing_ok=True)
-                except Exception as e:
-                    logger.error(f"Error disconnecting from Google Drive: {e}")
+            # REMOVED: Google Drive OAuth disconnection
+            # No longer needed since OAuth is removed
             
             # Check if there are unsaved changes
             if self.db_manager and self.db_manager.has_unsaved_changes:
@@ -2951,13 +2933,9 @@ class MainWindow(QMainWindow):
         
         # Initialize handler if needed
         if self.auto_update_handler is None:
-            self.auto_update_handler = AutoUpdateHandler(
-                parent=self, 
-                db_manager=self.db_manager,
-                drive_service=self.drive_service,
-                settings_handler=self.settings_handler,
-                tabs=self._tabs
-            )
+            # REMOVED: AutoUpdateHandler with Google Drive OAuth dependency
+            # self.auto_update_handler = AutoUpdateHandler(...)
+            logger.info("Auto-update handler disabled - requires service account adaptation")
         
         # Delegate to the handler
         self.auto_update_handler.auto_sync_barologgers()
@@ -2976,13 +2954,9 @@ class MainWindow(QMainWindow):
         
         # Initialize handler if needed
         if self.auto_update_handler is None:
-            self.auto_update_handler = AutoUpdateHandler(
-                parent=self, 
-                db_manager=self.db_manager,
-                drive_service=self.drive_service,
-                settings_handler=self.settings_handler,
-                tabs=self._tabs
-            )
+            # REMOVED: AutoUpdateHandler with Google Drive OAuth dependency
+            # self.auto_update_handler = AutoUpdateHandler(...)
+            logger.info("Auto-update handler disabled - requires service account adaptation")
         
         # Delegate to the handler
         self.auto_update_handler.auto_sync_water_levels()
@@ -3755,14 +3729,9 @@ class MainWindow(QMainWindow):
                 self.progress_dialog.setValue(start_progress)
                 self.progress_dialog.setLabelText("Connecting to Google Drive...")
             
-            # First ensure we're authenticated
-            if not self.drive_service.authenticated:
-                if self.progress_dialog:
-                    self.progress_dialog.setLabelText("Authenticating with Google Drive...")
-                
-                if not self.authenticate_google_drive():
-                    self._complete_initialization()
-                    return
+            # REMOVED: Google Drive OAuth authentication check
+            # if not self.drive_service.authenticated: ...
+            logger.info("Google Drive OAuth authentication removed - skipping auth check")
             
             # Update progress
             if self.progress_dialog:
@@ -3879,12 +3848,9 @@ class MainWindow(QMainWindow):
     def open_feedback_dialog(self):
         """Open the feedback dialog for submitting bug reports and feature requests"""
         try:
-            # Check if Google Drive service is available
-            if not hasattr(self, 'drive_service') or not self.drive_service:
-                QMessageBox.warning(self, "Feedback Unavailable", 
-                                  "Feedback submission requires Google Drive integration. "
-                                  "Please configure your Google Drive credentials first.")
-                return
+            # REMOVED: Google Drive OAuth dependency check
+            # QMessageBox.warning(self, "Feedback Unavailable", "Feedback submission requires Google Drive integration.")
+            logger.warning("Feedback system disabled - requires service account adaptation")
             
             # Get current user name
             user_name = "Anonymous"
@@ -3896,16 +3862,10 @@ class MainWindow(QMainWindow):
                 except Exception:
                     pass  # Use default if we can't get user info
             
-            # Create and show feedback dialog
-            feedback_dialog = FeedbackDialog(
-                parent=self,
-                drive_service=self.drive_service if self.drive_service else None,
-                user_name=user_name
-            )
-            
-            result = feedback_dialog.exec_()
-            if result == QDialog.Accepted:
-                logger.info(f"Feedback submitted successfully by user: {user_name}")
+            # REMOVED: Feedback dialog with Google Drive OAuth dependency
+            # feedback_dialog = FeedbackDialog(parent=self, drive_service=self.drive_service, user_name=user_name)
+            QMessageBox.information(self, "Feedback System", "Feedback system is temporarily disabled during Google Drive service account transition.")
+            return
             
         except Exception as e:
             logger.error(f"Error opening feedback dialog: {e}")
@@ -3915,14 +3875,10 @@ class MainWindow(QMainWindow):
     def _update_feedback_button_visibility(self):
         """Update feedback button visibility based on Google Drive authentication status"""
         try:
-            # Check if Google Drive service is authenticated
-            is_authenticated = (hasattr(self, 'drive_service') and 
-                              self.drive_service and 
-                              hasattr(self.drive_service, 'service') and
-                              self.drive_service.service is not None)
-            
+            # REMOVED: Google Drive OAuth-dependent feedback button visibility
+            # is_authenticated = (hasattr(self, 'drive_service') and self.drive_service ...)
             if hasattr(self, 'feedback_btn'):
-                self.feedback_btn.setVisible(is_authenticated)
+                self.feedback_btn.setVisible(False)  # Hidden during OAuth transition
                 
             if is_authenticated:
                 logger.debug("Feedback button shown - Google Drive authentication detected")
@@ -4157,20 +4113,10 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
                     # Reinitialize Google Drive service completely
                     if hasattr(self, 'drive_service'):
                         logger.info("Reinitializing Google Drive service with new credentials")
-                        # Reset and recreate the singleton instance
-                        from src.gui.handlers.google_drive_service import GoogleDriveService
-                        GoogleDriveService.reset_instance()
-                        self.drive_service = GoogleDriveService.get_instance(self.settings_handler)
-                        auth_result = self.drive_service.authenticate(force=True, interactive=True)
-                        logger.info(f"Google Drive authentication result: {auth_result}")
-                        logger.info(f"Google Drive service authenticated: {self.drive_service.authenticated}")
-                    
-                    # Reinitialize cloud database handler with new settings
-                    if self.drive_service and self.drive_service.authenticated:
-                        logger.info("Reinitializing cloud components after credential setup")
-                        
-                        # Initialize appropriate cloud database handler (Shared Drive or Google Drive)
-                        self._initialize_cloud_database_handler()
+                        # REMOVED: Google Drive OAuth service reinitialization
+                        # GoogleDriveService.reset_instance()
+                        # self.drive_service = GoogleDriveService.get_instance(self.settings_handler)
+                        logger.info("Google Drive OAuth reinitialization removed - using service account approach")
                         
                         # Initialize Google Drive database handler
                         if not hasattr(self, 'drive_db_handler') or self.drive_db_handler is None:
@@ -4198,22 +4144,14 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
                     if 'water_level_runs' in self._tabs:
                         runs_tab = self._tabs['water_level_runs']
                         
-                        # If we're authenticated, reload existing runs
-                        if self.drive_service and self.drive_service.authenticated:
-                            if hasattr(runs_tab, 'load_existing_runs'):
-                                runs_tab.load_existing_runs()
+                        # REMOVED: Google Drive OAuth-dependent runs loading
+                        # if self.drive_service and self.drive_service.authenticated: ...
                     
                     # Update barologger tab if it exists
-                    if 'barologger' in self._tabs:
-                        barologger_tab = self._tabs['barologger']
-                        if hasattr(barologger_tab, 'update_drive_state'):
-                            barologger_tab.update_drive_state(self.drive_service.authenticated)
-                    
-                    # Update water level tab if it exists
-                    if 'water_level' in self._tabs:
-                        water_level_tab = self._tabs['water_level']
-                        if hasattr(water_level_tab, 'update_drive_state'):
-                            water_level_tab.update_drive_state(self.drive_service.authenticated)
+                    # REMOVED: Google Drive OAuth-dependent tab state updates
+                    # if 'barologger' in self._tabs: barologger_tab.update_drive_state(...)
+                    # if 'water_level' in self._tabs: water_level_tab.update_drive_state(...)
+                    logger.info("Tab Google Drive state updates removed - OAuth no longer used")
                     
                     QMessageBox.information(self, "Setup Complete", 
                                           "Google Drive setup completed successfully!\n\n" +
