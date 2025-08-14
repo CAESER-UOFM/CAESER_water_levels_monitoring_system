@@ -3926,10 +3926,10 @@ class WaterLevelEditDialog(QDialog):
                 # Check if SMOO shared drive connection is available via main window
                 is_smoo_connected = False
                 if hasattr(self, 'main_window') and self.main_window:
+                    from ..handlers.shared_drive_db_handler import SharedDriveDbHandler
                     is_smoo_connected = (hasattr(self.main_window, 'cloud_db_handler') and 
                                        self.main_window.cloud_db_handler is not None and
-                                       hasattr(self.main_window.cloud_db_handler, 'shared_drive_accessible') and
-                                       self.main_window.cloud_db_handler.shared_drive_accessible)
+                                       isinstance(self.main_window.cloud_db_handler, SharedDriveDbHandler))
                 
                 # Only show button if SMOO is connected
                 self.protocol_feedback_btn.setVisible(is_smoo_connected)

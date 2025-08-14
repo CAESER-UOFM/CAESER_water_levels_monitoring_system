@@ -3882,10 +3882,10 @@ class MainWindow(QMainWindow):
         """Update feedback button visibility based on SMOO shared drive connection status"""
         try:
             # Check if SMOO shared drive is accessible (replaces Google Drive OAuth check)
+            # Use cached status to avoid repeated I/O operations
             is_smoo_connected = (hasattr(self, 'cloud_db_handler') and 
                                self.cloud_db_handler is not None and
-                               hasattr(self.cloud_db_handler, 'shared_drive_accessible') and
-                               self.cloud_db_handler.shared_drive_accessible)
+                               isinstance(self.cloud_db_handler, SharedDriveDbHandler))
             
             if hasattr(self, 'feedback_btn'):
                 self.feedback_btn.setVisible(is_smoo_connected)
