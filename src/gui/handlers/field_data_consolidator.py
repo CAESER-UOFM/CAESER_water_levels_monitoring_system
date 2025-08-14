@@ -118,49 +118,16 @@ class FieldDataConsolidator:
     def get_or_create_consolidated_folder(self):
         """Get or create the FIELD_DATA_CONSOLIDATED folder (hybrid mode)"""
         try:
-            # Always use shared drive mode
-                # Shared drive mode - ensure S: drive folder exists
-                base_path = self._get_shared_drive_consolidated_path()
-                if not base_path:
-                    return None
-                
-                # Create base folder if it doesn't exist
-                os.makedirs(base_path, exist_ok=True)
-                logger.info(f"Verified shared drive consolidated folder: {base_path}")
-                return base_path
-            else:
-                # Google Drive mode - original logic
-                main_folder_id = self.settings_handler.get_setting("google_drive_folder_id")
-                if not main_folder_id:
-                    logger.error("Main Google Drive folder ID not configured")
-                    return None
-                
-                # Check if FIELD_DATA_CONSOLIDATED folder exists
-                query = f"'{main_folder_id}' in parents and name='FIELD_DATA_CONSOLIDATED' and mimeType='application/vnd.google-apps.folder' and trashed=false"
-                results = self.drive_service.files().list(q=query, fields="files(id, name)").execute()
-                folders = results.get('files', [])
-                
-                if folders:
-                    self.consolidated_folder_id = folders[0]['id']
-                    logger.info(f"Found existing FIELD_DATA_CONSOLIDATED folder: {self.consolidated_folder_id}")
-                    
-                    # Update settings even for existing folder to ensure it's saved
-                    self.settings_handler.set_setting("consolidated_field_data_folder", self.consolidated_folder_id)
-                else:
-                    # Create the folder
-                    folder_metadata = {
-                        'name': 'FIELD_DATA_CONSOLIDATED',
-                        'mimeType': 'application/vnd.google-apps.folder',
-                        'parents': [main_folder_id]
-                    }
-                    folder = self.drive_service.files().create(body=folder_metadata, fields='id').execute()
-                    self.consolidated_folder_id = folder.get('id')
-                    logger.info(f"Created FIELD_DATA_CONSOLIDATED folder: {self.consolidated_folder_id}")
-                    
-                    # Update settings
-                    self.settings_handler.set_setting("consolidated_field_data_folder", self.consolidated_folder_id)
-                
-                return self.consolidated_folder_id
+            # Always use shared drive mode - ensure S: drive folder exists
+            base_path = self._get_shared_drive_consolidated_path()
+            if not base_path:
+                logger.error("Shared drive consolidated path not configured")
+                return None
+            
+            # Create base folder if it doesn't exist
+            os.makedirs(base_path, exist_ok=True)
+            logger.info(f"Verified shared drive consolidated folder: {base_path}")
+            return base_path
             
         except Exception as e:
             logger.error(f"Error getting/creating consolidated folder: {e}")
