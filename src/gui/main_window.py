@@ -2991,13 +2991,16 @@ class MainWindow(QMainWindow):
         try:
             logger.info("Starting field data files sync only...")
             
-            # Check if Google Drive service account is available
-            if not self.google_drive_service_account or not self.google_drive_service_account.get_service():
+            # Create and authenticate Google Drive service account
+            from .handlers.google_service_account import GoogleServiceAccountHandler
+            google_service = GoogleServiceAccountHandler(self.settings_handler)
+            
+            if not google_service.authenticate():
                 QMessageBox.warning(
                     self,
                     "Google Drive Service Required",
-                    "Google Drive service account is required for field data sync.\n\n"
-                    "Please check your service account configuration in Settings."
+                    "Google Drive service account authentication failed.\n\n"
+                    "Please configure your service account key file in Settings."
                 )
                 return
             
@@ -3031,7 +3034,7 @@ class MainWindow(QMainWindow):
             # Create hybrid consolidator
             from .handlers.smoo_field_data_consolidator import HybridFieldDataConsolidator
             consolidator = HybridFieldDataConsolidator(
-                self.google_drive_service_account, 
+                google_service, 
                 self.settings_handler
             )
             

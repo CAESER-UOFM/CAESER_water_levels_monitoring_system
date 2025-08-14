@@ -37,7 +37,7 @@ class HybridFieldDataConsolidator:
         self.settings_handler = settings_handler
         
         # Google Drive source (SOLINST folder)
-        self.solinst_folder_id = self.settings_handler.get_setting("solinst_folder_id", "")
+        self.solinst_folder_id = self.settings_handler.get_setting("google_drive_solinst_folder_id", "")
         
         # SMOO target (FIELD_DATA_CONSOLIDATED)
         self.smoo_root = self.settings_handler.get_setting("shared_drive_root", DefaultPaths.SHARED_DRIVE_BASE)
@@ -51,7 +51,7 @@ class HybridFieldDataConsolidator:
         """Check if both Google Drive and SMOO are accessible"""
         try:
             # Check Google Drive service
-            if not self.drive_service.get_service():
+            if not self.drive_service.service:
                 logger.error("Google Drive service not available")
                 return False
             
@@ -88,49 +88,37 @@ class HybridFieldDataConsolidator:
     
     def scan_google_drive_solinst(self) -> List[Dict]:
         """
-        Scan Google Drive SOLINST folder for new XLE files
+        Scan Google Drive SOLINST folder for new XLE files using service account handler
         
         Returns:
             List of file info dictionaries
         """
-        files_found = []
-        
         try:
-            service = self.drive_service.get_service()
-            if not service:
-                logger.error("Google Drive service not available")
-                return files_found
+            # Set the SOLINST folder ID if not set
+            if self.solinst_folder_id:
+                self.drive_service.set_solinst_folder_id(self.solinst_folder_id)
             
-            logger.info(f"Scanning Google Drive SOLINST folder: {self.solinst_folder_id}")
+            # Use the service account handler's built-in method
+            files_found = self.drive_service.list_xle_files()
             
-            # Query for XLE files in SOLINST folder
-            query = f"parents in '{self.solinst_folder_id}' and name contains '.xle' and trashed=false"
-            
-            results = service.files().list(
-                q=query,
-                fields="nextPageToken, files(id, name, size, modifiedTime, parents)",
-                pageSize=1000
-            ).execute()
-            
-            items = results.get('files', [])
-            
-            for item in items:
-                file_info = {
-                    'id': item['id'],
-                    'name': item['name'],
-                    'size': int(item.get('size', 0)),
-                    'modified_time': item['modifiedTime'],
-                    'parents': item.get('parents', [])
+            # Convert to format expected by consolidator
+            consolidated_files = []
+            for file_info in files_found:
+                consolidated_file = {
+                    'id': file_info['id'],
+                    'name': file_info['name'], 
+                    'size': int(file_info.get('size', 0)),
+                    'modified_time': file_info['modifiedTime']
                 }
-                files_found.append(file_info)
-                logger.debug(f"Found Google Drive XLE: {item['name']} (Modified: {item['modifiedTime']})")
+                consolidated_files.append(consolidated_file)
+                logger.debug(f"Found Google Drive XLE: {file_info['name']} (Modified: {file_info['modifiedTime']})")
             
-            logger.info(f"Found {len(files_found)} XLE files in Google Drive SOLINST")
-            return files_found
+            logger.info(f"Found {len(consolidated_files)} XLE files in Google Drive SOLINST")
+            return consolidated_files
             
         except Exception as e:
             logger.error(f"Error scanning Google Drive SOLINST: {e}")
-            return files_found
+            return []
     
     def extract_xle_metadata(self, file_path: str) -> Dict:
         """
@@ -234,7 +222,7 @@ class HybridFieldDataConsolidator:
                 progress_callback(f"Downloading {filename}...", 0)
             
             # Download file from Google Drive to temp location
-            service = self.drive_service.get_service()
+            service = self.drive_service.service
             request = service.files().get_media(fileId=file_id)
             
             with tempfile.NamedTemporaryFile(delete=False, suffix='.xle') as temp_file:
