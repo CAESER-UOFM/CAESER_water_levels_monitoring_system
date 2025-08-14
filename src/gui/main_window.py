@@ -253,14 +253,8 @@ class MainWindow(QMainWindow):
                 # REMOVED: Google Drive OAuth-based cloud handler
                 # self.cloud_db_handler = CloudDatabaseHandler(self.drive_service, self.settings_handler)
                 logger.info("Google Drive OAuth handlers removed - using shared drive only")
-                    # Set cloud handler in database manager for import dialogs
-                    self.db_manager.set_cloud_db_handler(self.cloud_db_handler)
-                    
-                    return True
-                else:
-                    logger.info("Google Drive not authenticated - cloud features disabled")
-                    self.cloud_db_handler = None
-                    return False
+                self.cloud_db_handler = None
+                return False
                     
         except Exception as e:
             logger.error(f"Error initializing cloud database handler: {e}")
