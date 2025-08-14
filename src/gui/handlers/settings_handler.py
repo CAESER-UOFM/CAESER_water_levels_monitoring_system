@@ -91,7 +91,7 @@ class SettingsHandler:
             
             # Service account for XLE file downloads from Google Drive
             "service_account_key_file": default_service_account_path,  # Service account key file for XLE downloads
-            "google_drive_solinst_folder_id": "",  # Google Drive SOLINST folder ID (user configures)
+            "google_drive_solinst_folder_id": "1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW",  # Default SOLINST folder ID
             
             # SMOO paths (databases and organized XLE files)
             **get_default_shared_drive_paths()  # Import centralized SMOO path configuration
