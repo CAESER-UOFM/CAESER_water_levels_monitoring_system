@@ -2880,7 +2880,7 @@ class WaterLevelRunsTab(QWidget):
                 progress_dialog.log_message(message)
             
             progress_dialog.log_message("🚀 Starting field data consolidation...")
-            progress_dialog.log_message(f"Mode: {'Shared Drive' if consolidator.use_shared_drive else 'Google Drive'}")
+            progress_dialog.log_message("Mode: Service Account → SMOO Shared Drive")
             
             # Run consolidation with full progress range
             consolidation_success = consolidator.consolidate_field_data(consolidation_progress)

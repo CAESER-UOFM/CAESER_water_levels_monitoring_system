@@ -27,8 +27,7 @@ class FieldDataConsolidator:
         # SMOO destination configuration (replaces consolidated_folder_id)
         self.shared_drive_field_data_path = settings_handler.get_setting("shared_drive_field_data", "") if settings_handler else ""
         
-        # Always use SMOO shared drive mode (replaces hybrid mode)
-        self.use_shared_drive = True
+        # Always use SMOO shared drive mode
         
         logger.info("FieldDataConsolidator initialized - Service Account → SMOO mode")
         if self.shared_drive_field_data_path:
@@ -119,7 +118,7 @@ class FieldDataConsolidator:
     def get_or_create_consolidated_folder(self):
         """Get or create the FIELD_DATA_CONSOLIDATED folder (hybrid mode)"""
         try:
-            if self.use_shared_drive:
+            # Always use shared drive mode
                 # Shared drive mode - ensure S: drive folder exists
                 base_path = self._get_shared_drive_consolidated_path()
                 if not base_path:
@@ -170,7 +169,7 @@ class FieldDataConsolidator:
     def get_or_create_monthly_folder(self, year_month):
         """Get or create a monthly folder (e.g., '2025-01') in the consolidated folder (hybrid mode)"""
         try:
-            if self.use_shared_drive:
+            # Always use shared drive mode
                 # Shared drive mode - create local folder
                 return self._create_shared_drive_monthly_folder(year_month)
             else:
@@ -212,7 +211,7 @@ class FieldDataConsolidator:
             from datetime import datetime
             from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
             
-            if self.use_shared_drive:
+            # Always use shared drive mode
                 # Shared drive mode - folder_ref is folder path, file_ref is file path
                 folder_path = folder_ref
                 file_path = file_ref
@@ -696,49 +695,8 @@ class FieldDataConsolidator:
     def copy_file_to_consolidated(self, file_info, target_folder):
         """Copy a file from field folder to consolidated folder with corrected filename (hybrid mode)"""
         try:
-            if self.use_shared_drive:
-                # Shared drive mode - download and save to S: drive
-                return self._download_and_save_to_shared_drive(file_info, target_folder)
-            else:
-                # Google Drive mode - original logic
-                target_folder_id = target_folder  # In Google Drive mode, this is a folder ID
-                
-                # Generate new filename based on actual data content
-                new_filename = self.generate_corrected_filename(file_info)
-                
-                # Check if file already exists in target folder
-                query = f"'{target_folder_id}' in parents and name='{new_filename}' and trashed=false"
-                results = self.drive_service.files().list(q=query, fields="files(id, name, modifiedTime)").execute()
-                existing_files = results.get('files', [])
-                
-                if existing_files:
-                    # File exists, check if it's newer
-                    existing_file = existing_files[0]
-                    existing_modified = datetime.fromisoformat(existing_file['modifiedTime'].replace('Z', '+00:00'))
-                    source_modified = datetime.fromisoformat(file_info['modified_time'].replace('Z', '+00:00'))
-                    
-                    if source_modified <= existing_modified:
-                        logger.debug(f"File {new_filename} already up to date in consolidated folder")
-                        return existing_file['id']
-                    else:
-                        logger.info(f"Updating existing file {new_filename} with newer version")
-                        # Delete old version
-                        self.drive_service.files().delete(fileId=existing_file['id']).execute()
-                
-                # Copy the file with new name
-                copy_metadata = {
-                    'name': new_filename,
-                    'parents': [target_folder_id]
-                }
-                
-                copied_file = self.drive_service.files().copy(
-                    fileId=file_info['id'],
-                    body=copy_metadata,
-                    fields='id'
-                ).execute()
-                
-                logger.info(f"Copied {file_info['name']} as {new_filename} to consolidated folder")
-                return copied_file.get('id')
+            # Always use shared drive mode - download and save to S: drive
+            return self._download_and_save_to_shared_drive(file_info, target_folder)
             
         except Exception as e:
             logger.error(f"Error copying file {file_info['name']}: {e}")

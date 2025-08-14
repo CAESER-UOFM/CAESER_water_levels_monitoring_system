@@ -108,29 +108,16 @@ class SettingsHandler:
             "service_account_key_file": default_service_account_path,  # Service account key file for XLE downloads
             "google_drive_solinst_folder_id": "1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW",  # Default SOLINST folder ID
             
+            # Individual user credentials (configured through Settings menu)
+            "monet_username": "",
+            "monet_password": "",
+            "monet_api_url": "https://services1.arcgis.com/EX9Lx0EdFAxE7zvX/arcgis/rest/services/MONET/FeatureServer/2/query",
+            "turso_auth_token": "",
+            
             # SMOO paths (databases and organized XLE files)
             **get_default_shared_drive_paths()  # Import centralized SMOO path configuration
         }
         
-        # Migration: Clean up legacy settings from old config files
-        legacy_settings = [
-            "use_google_drive_db", "google_drive_auto_check", "google_drive_folder_id",
-            "google_drive_xle_folder_id", "google_drive_projects_folder_id", 
-            "google_drive_secret_path", "oauth_client_secret_path", "service_account_key_path",
-            "transducer_watch_folder", "barologger_watch_folder", "water_level_watch_folder",
-            "field_data_folders", "consolidated_field_data_folder", "use_shared_drive"
-        ]
-        
-        removed_any = False
-        for legacy_key in legacy_settings:
-            if legacy_key in self.settings:
-                logger.info(f"Removing legacy setting: {legacy_key}")
-                del self.settings[legacy_key]
-                removed_any = True
-        
-        if removed_any:
-            self.save_settings()
-            logger.info("Legacy settings cleaned up")
         
         # Force update local_db_directory if it's still pointing to old hardcoded paths
         if "local_db_directory" in self.settings:

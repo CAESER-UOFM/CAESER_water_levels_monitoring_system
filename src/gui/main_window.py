@@ -248,11 +248,8 @@ class MainWindow(QMainWindow):
                 
                 return True
             else:
-                # Check if user specifically wants shared drive but it's not accessible
-                if self.settings_handler.get_setting("use_shared_drive", False):
-                    logger.warning("Shared drive configured but not accessible - cloud features disabled")
-                else:
-                    logger.info("Shared drive not configured - checking accessibility anyway")
+                # Shared drive not accessible - cloud features disabled
+                logger.info("Shared drive not accessible - cloud features disabled")
                 
                 # REMOVED: Google Drive OAuth fallback
                 logger.info("Google Drive OAuth handlers removed - no cloud handler available")
