@@ -194,7 +194,7 @@ class EnhancedHelpSystem(QDialog):
                 <h2 style="margin-top: 0;">🎯 What do you want to do?</h2>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
                     
-                    <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="background: white; padding: 15px; border-radius: 8px; ">
                         <h3 style="color: #1976d2; margin-top: 0;">🚀 First Time User</h3>
                         <p>New to the app? Start here for a quick tutorial and setup guide.</p>
                         <button style="background: #4caf50; color: white; border: none; padding: 8px 16px; 
@@ -203,7 +203,7 @@ class EnhancedHelpSystem(QDialog):
                         </button>
                     </div>
                     
-                    <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="background: white; padding: 15px; border-radius: 8px; ">
                         <h3 style="color: #1976d2; margin-top: 0;">📁 Import Data</h3>
                         <p>Need to import XLE files or other data? Get step-by-step guidance.</p>
                         <button style="background: #2196f3; color: white; border: none; padding: 8px 16px; 
@@ -212,7 +212,7 @@ class EnhancedHelpSystem(QDialog):
                         </button>
                     </div>
                     
-                    <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="background: white; padding: 15px; border-radius: 8px; ">
                         <h3 style="color: #1976d2; margin-top: 0;">⚙️ How It Works</h3>
                         <p>Understand the technical details and processing behind the scenes.</p>
                         <button style="background: #ff9800; color: white; border: none; padding: 8px 16px; 
@@ -221,7 +221,7 @@ class EnhancedHelpSystem(QDialog):
                         </button>
                     </div>
                     
-                    <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="background: white; padding: 15px; border-radius: 8px; ">
                         <h3 style="color: #1976d2; margin-top: 0;">🔧 Having Issues?</h3>
                         <p>Something not working? Check our troubleshooting guide.</p>
                         <button style="background: #f44336; color: white; border: none; padding: 8px 16px; 

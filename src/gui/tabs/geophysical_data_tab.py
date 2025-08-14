@@ -130,7 +130,6 @@ class GeophysicalDataTab(QWidget):
                     background: white;
                     border-radius: 15px;
                     padding: 40px;
-                    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
                     text-align: center;
                     max-width: 600px;
                     width: 100%;
@@ -259,7 +258,6 @@ class GeophysicalDataTab(QWidget):
                     background: white;
                     border-radius: 15px;
                     padding: 40px;
-                    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
                     text-align: center;
                     max-width: 600px;
                     width: 100%;

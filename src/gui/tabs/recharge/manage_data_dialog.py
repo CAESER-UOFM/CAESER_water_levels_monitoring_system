@@ -390,7 +390,6 @@ class ManageDataDialog(QDialog):
         
         #statCard:hover {
             border-color: #4a90e2;
-            box-shadow: 0 4px 8px rgba(74, 144, 226, 0.1);
         }
         
         #statValue {

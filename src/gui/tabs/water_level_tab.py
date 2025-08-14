@@ -2656,7 +2656,6 @@ class WaterLevelTab(QWidget):
             QPushButton:hover {
                 background-color: #bbdefb;
                 border-color: #1976d2;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
             QPushButton:pressed {
                 background-color: #90caf9;
@@ -2687,7 +2686,6 @@ class WaterLevelTab(QWidget):
             QPushButton:hover {
                 background-color: #bbdefb;
                 border-color: #1976d2;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
             QPushButton:pressed {
                 background-color: #90caf9;
@@ -2764,7 +2762,6 @@ class WaterLevelTab(QWidget):
             QPushButton:hover {
                 background-color: #c8e6c9;
                 border-color: #4caf50;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
             QPushButton:pressed {
                 background-color: #a5d6a7;
@@ -2840,7 +2837,6 @@ class WaterLevelTab(QWidget):
             QPushButton:hover {
                 background-color: #ffecb3;
                 border-color: #ff9800;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
             QPushButton:pressed {
                 background-color: #ffe082;
@@ -2871,7 +2867,6 @@ class WaterLevelTab(QWidget):
             QPushButton:hover {
                 background-color: #e1bee7;
                 border-color: #9c27b0;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
             QPushButton:pressed {
                 background-color: #ce93d8;
@@ -2902,7 +2897,6 @@ class WaterLevelTab(QWidget):
             QPushButton:hover {
                 background-color: #e1bee7;
                 border-color: #9c27b0;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
             QPushButton:pressed {
                 background-color: #ce93d8;
