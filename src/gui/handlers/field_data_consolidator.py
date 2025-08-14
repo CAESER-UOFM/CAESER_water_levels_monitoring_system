@@ -218,25 +218,29 @@ class HybridFieldDataConsolidator:
     
     def extract_xle_metadata(self, file_path: str) -> Dict:
         """
-        Extract basic metadata from XLE file for organization
+        Enhanced metadata extraction from XLE file for hierarchical organization
         
         Args:
             file_path: Path to XLE file
             
         Returns:
-            Dictionary with extracted metadata
+            Dictionary with extracted metadata including device type for organization
         """
         metadata = {
             'serial_number': 'unknown',
             'location': 'unknown',  
             'start_date': None,
             'end_date': None,
-            'instrument_type': 'unknown'
+            'instrument_type': 'unknown',
+            'instrument_model': 'unknown',
+            'device_category': 'UNKNOWN_TYPE'  # For hierarchical organization
         }
         
         try:
+            filename = os.path.basename(file_path).lower()
+            
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                content = f.read(1024)  # Read first 1KB for metadata
+                content = f.read(2048)  # Read more content for better metadata extraction
                 
                 # Extract serial number
                 if 'Serial_number=' in content:
@@ -250,23 +254,122 @@ class HybridFieldDataConsolidator:
                     if location_line:
                         metadata['location'] = location_line[0].split('=')[-1].strip()
                 
-                # Determine instrument type from filename or content
-                filename = os.path.basename(file_path).lower()
-                if any(keyword in filename for keyword in ['baro', 'bar']):
+                # Extract instrument model
+                if 'Instrument=' in content:
+                    model_line = [line for line in content.split('\n') if 'Instrument=' in line]
+                    if model_line:
+                        metadata['instrument_model'] = model_line[0].split('=')[-1].strip()
+                
+                # Enhanced device type detection for hierarchical organization
+                device_category = self._determine_device_category(filename, content, metadata)
+                metadata['device_category'] = device_category
+                
+                # Legacy instrument_type for backward compatibility
+                if device_category == 'BAROLOGGERS':
                     metadata['instrument_type'] = 'barologger'
-                elif any(keyword in filename for keyword in ['level', 'lev', 'wl']):
+                elif device_category == 'WATER_LEVELS':
                     metadata['instrument_type'] = 'levellogger'
                 else:
-                    metadata['instrument_type'] = 'levellogger'  # Default
+                    metadata['instrument_type'] = 'unknown'
         
         except Exception as e:
             logger.error(f"Error extracting metadata from {file_path}: {e}")
         
         return metadata
     
+    def _determine_device_category(self, filename: str, content: str, metadata: Dict) -> str:
+        """
+        Determine device category for hierarchical organization
+        
+        Args:
+            filename: Lowercase filename
+            content: File content sample
+            metadata: Partially extracted metadata
+            
+        Returns:
+            Device category: 'BAROLOGGERS', 'WATER_LEVELS', or 'UNKNOWN_TYPE'
+        """
+        # Check filename patterns first (most reliable)
+        if any(keyword in filename for keyword in ['baro', 'bar', 'atmospheric', 'pressure']):
+            logger.debug(f"Categorized as BAROLOGGER based on filename: {filename}")
+            return 'BAROLOGGERS'
+        
+        if any(keyword in filename for keyword in ['level', 'lev', 'wl', 'water', 'depth']):
+            logger.debug(f"Categorized as WATER_LEVELS based on filename: {filename}")
+            return 'WATER_LEVELS'
+        
+        # Check instrument model from content
+        instrument_model = metadata.get('instrument_model', '').lower()
+        if 'baro' in instrument_model or 'atmospheric' in instrument_model:
+            logger.debug(f"Categorized as BAROLOGGER based on instrument model: {instrument_model}")
+            return 'BAROLOGGERS'
+        
+        if 'level' in instrument_model or 'water' in instrument_model:
+            logger.debug(f"Categorized as WATER_LEVELS based on instrument model: {instrument_model}")
+            return 'WATER_LEVELS'
+        
+        # Check content patterns
+        content_lower = content.lower()
+        if 'barometric' in content_lower or 'atmospheric pressure' in content_lower:
+            logger.debug(f"Categorized as BAROLOGGER based on content analysis")
+            return 'BAROLOGGERS'
+        
+        if 'water level' in content_lower or 'depth' in content_lower:
+            logger.debug(f"Categorized as WATER_LEVELS based on content analysis")
+            return 'WATER_LEVELS'
+        
+        # Default to WATER_LEVELS if unsure (most common case)
+        logger.debug(f"Could not determine device type, defaulting to WATER_LEVELS: {filename}")
+        return 'WATER_LEVELS'
+    
+    def organize_file_by_hierarchy(self, file_path: str, metadata: Dict) -> str:
+        """
+        Determine target folder using hierarchical organization: YYYY-MM/DEVICE_TYPE/
+        
+        Args:
+            file_path: Source file path
+            metadata: Extracted metadata with device_category
+            
+        Returns:
+            Target folder path in hierarchical consolidated structure
+        """
+        try:
+            # Get file modification date as fallback
+            file_stat = os.stat(file_path)
+            file_date = datetime.fromtimestamp(file_stat.st_mtime)
+            
+            # Create hierarchical structure: FIELD_DATA_CONSOLIDATED/YYYY-MM/DEVICE_TYPE/
+            year_month = file_date.strftime("%Y-%m")
+            device_category = metadata.get('device_category', 'UNKNOWN_TYPE')
+            
+            target_folder = os.path.join(
+                self.consolidated_folder, 
+                year_month, 
+                device_category
+            )
+            
+            # Ensure target folder exists
+            os.makedirs(target_folder, exist_ok=True)
+            
+            logger.debug(f"Hierarchical target for {os.path.basename(file_path)}: {os.path.relpath(target_folder, self.consolidated_folder)}")
+            return target_folder
+            
+        except Exception as e:
+            logger.error(f"Error determining hierarchical target folder: {e}")
+            # Fallback to current month with unknown type
+            current_month = datetime.now().strftime("%Y-%m")
+            fallback_folder = os.path.join(
+                self.consolidated_folder, 
+                current_month, 
+                'UNKNOWN_TYPE'
+            )
+            os.makedirs(fallback_folder, exist_ok=True)
+            return fallback_folder
+    
     def organize_file_by_date(self, file_path: str, metadata: Dict) -> str:
         """
-        Determine target folder for file based on date and metadata
+        Legacy method - maintained for backward compatibility
+        Now calls hierarchical organization by default
         
         Args:
             file_path: Source file path
@@ -275,28 +378,8 @@ class HybridFieldDataConsolidator:
         Returns:
             Target folder path in consolidated structure
         """
-        try:
-            # Get file modification date as fallback
-            file_stat = os.stat(file_path)
-            file_date = datetime.fromtimestamp(file_stat.st_mtime)
-            
-            # Create folder structure: FIELD_DATA_CONSOLIDATED/YYYY-MM/
-            year_month = file_date.strftime("%Y-%m")
-            target_folder = os.path.join(self.consolidated_folder, year_month)
-            
-            # Ensure target folder exists
-            os.makedirs(target_folder, exist_ok=True)
-            
-            logger.debug(f"Target folder for {os.path.basename(file_path)}: {target_folder}")
-            return target_folder
-            
-        except Exception as e:
-            logger.error(f"Error determining target folder: {e}")
-            # Fallback to current month
-            current_month = datetime.now().strftime("%Y-%m")
-            fallback_folder = os.path.join(self.consolidated_folder, current_month)
-            os.makedirs(fallback_folder, exist_ok=True)
-            return fallback_folder
+        # Use hierarchical organization by default
+        return self.organize_file_by_hierarchy(file_path, metadata)
     
     def consolidate_file(self, file_info: Dict, progress_callback: Optional[Callable] = None) -> bool:
         """
@@ -338,8 +421,8 @@ class HybridFieldDataConsolidator:
             # Extract metadata for organization
             metadata = self.extract_xle_metadata(temp_path)
             
-            # Determine target folder
-            target_folder = self.organize_file_by_date(temp_path, metadata)
+            # Determine target folder using hierarchical organization
+            target_folder = self.organize_file_by_hierarchy(temp_path, metadata)
             target_path = os.path.join(target_folder, filename)
             
             # Check if file already exists in SMOO target
@@ -516,8 +599,8 @@ class HybridFieldDataConsolidator:
             # Extract metadata for organization
             metadata = self.extract_xle_metadata(temp_path)
             
-            # Determine target folder
-            target_folder = self.organize_file_by_date(temp_path, metadata)
+            # Determine target folder using hierarchical organization
+            target_folder = self.organize_file_by_hierarchy(temp_path, metadata)
             target_path = os.path.join(target_folder, filename)
             
             # Get month folder name for metadata
@@ -585,8 +668,8 @@ class HybridFieldDataConsolidator:
     
     def _generate_metadata_files(self, monthly_metadata: Dict) -> bool:
         """
-        Generate metadata.json files for each month folder
-        
+        Generate metadata.json files for hierarchical month/device structure
+
         Args:
             monthly_metadata: Dictionary of month data with file metadata
             
@@ -598,28 +681,65 @@ class HybridFieldDataConsolidator:
             
             for month_folder, metadata in monthly_metadata.items():
                 try:
-                    # Create metadata.json path
-                    month_path = os.path.join(self.consolidated_folder, month_folder)
-                    metadata_path = os.path.join(month_path, 'metadata.json')
+                    # Group files by device category for hierarchical organization
+                    device_groups = {}
                     
-                    # Ensure month folder exists
-                    os.makedirs(month_path, exist_ok=True)
+                    for file_info in metadata['files']:
+                        device_type = file_info.get('device_type', 'unknown')
+                        device_category = self._map_device_type_to_category(device_type)
+                        
+                        if device_category not in device_groups:
+                            device_groups[device_category] = {
+                                'folder': f"{month_folder}/{device_category}",
+                                'device_type': device_category,
+                                'generated_date': datetime.now().isoformat(),
+                                'files': []
+                            }
+                        
+                        device_groups[device_category]['files'].append(file_info)
                     
-                    # Write metadata.json file
-                    with open(metadata_path, 'w', encoding='utf-8') as f:
-                        json.dump(metadata, f, indent=2, ensure_ascii=False)
+                    # Generate metadata.json for each device category
+                    for device_category, device_metadata in device_groups.items():
+                        device_path = os.path.join(self.consolidated_folder, month_folder, device_category)
+                        metadata_path = os.path.join(device_path, 'metadata.json')
+                        
+                        # Ensure device folder exists
+                        os.makedirs(device_path, exist_ok=True)
+                        
+                        # Write device-specific metadata.json file
+                        with open(metadata_path, 'w', encoding='utf-8') as f:
+                            json.dump(device_metadata, f, indent=2, ensure_ascii=False)
+                        
+                        logger.info(f"Generated metadata.json for {month_folder}/{device_category} with {len(device_metadata['files'])} files")
                     
-                    logger.info(f"Generated metadata.json for {month_folder} with {len(metadata['files'])} files")
                     success_count += 1
                     
                 except Exception as e:
-                    logger.error(f"Error generating metadata for {month_folder}: {e}")
+                    logger.error(f"Error generating hierarchical metadata for {month_folder}: {e}")
             
             return success_count == len(monthly_metadata)
             
         except Exception as e:
-            logger.error(f"Error generating metadata files: {e}")
+            logger.error(f"Error generating hierarchical metadata files: {e}")
             return False
+    
+    def _map_device_type_to_category(self, device_type: str) -> str:
+        """
+        Map legacy device type to hierarchical category
+
+        Args:
+            device_type: Legacy device type string
+            
+        Returns:
+            Hierarchical category name
+        """
+        device_mapping = {
+            'barologger': 'BAROLOGGERS',
+            'levellogger': 'WATER_LEVELS',
+            'unknown': 'UNKNOWN_TYPE'
+        }
+        
+        return device_mapping.get(device_type.lower(), 'UNKNOWN_TYPE')
     
     def get_consolidated_folder_info(self) -> Dict:
         """
