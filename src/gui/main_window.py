@@ -35,8 +35,9 @@ from .handlers.settings_handler import SettingsHandler
 # Legacy Google Drive dialog - replaced by UnifiedCredentialsDialog
 # from .dialogs.google_drive_settings_dialog import GoogleDriveSettingsDialog
 from .dialogs.monet_settings_dialog import MonetSettingsDialog  # Import the new dialog
-from .handlers.google_drive_db_handler import GoogleDriveDatabaseHandler
-from .handlers.google_drive_service import GoogleDriveService
+# REMOVED: Google Drive OAuth handlers - replaced by service account
+# from .handlers.google_drive_db_handler import GoogleDriveDatabaseHandler
+# from .handlers.google_drive_service import GoogleDriveService
 from .handlers.cloud_database_handler import CloudDatabaseHandler
 from .handlers.shared_drive_db_handler import SharedDriveDbHandler
 from .handlers.user_auth_service import UserAuthService
@@ -82,11 +83,9 @@ class MainWindow(QMainWindow):
         if hasattr(self.db_manager, 'database_modified'):
             self.db_manager.database_modified.connect(self.mark_database_modified)
         
-        # Initialize Google Drive service
-        self.drive_service = GoogleDriveService.get_instance(self.settings_handler)
-        
-        # Initialize Google Drive database handler (will be set after authentication)
-        self.drive_db_handler = None
+        # REMOVED: Google Drive OAuth service initialization
+        # self.drive_service = GoogleDriveService.get_instance(self.settings_handler)
+        # self.drive_db_handler = None
         
         
         # Initialize Cloud database handler (will be set after authentication)
@@ -99,7 +98,8 @@ class MainWindow(QMainWindow):
         config_dir.mkdir(exist_ok=True)  # Ensure config directory exists
         users_db_path = config_dir / "users.db"
         logger.info(f"Using users database path: {users_db_path}")
-        self.user_auth_service = UserAuthService.get_instance(self.drive_service, self.settings_handler, str(users_db_path))
+        # REMOVED: Google Drive dependency from UserAuthService
+        self.user_auth_service = UserAuthService.get_instance(None, self.settings_handler, str(users_db_path))
         
         # Initialize the user auth service (create admin user)
         if not self.user_auth_service.initialize():
@@ -177,11 +177,9 @@ class MainWindow(QMainWindow):
         # Log successful initialization
         self.logger.info("Main window initialized successfully")
         
-        # Initialize Google Drive with service account (no user login needed)
-        self.progress_dialog.setValue(20)
-        self.progress_dialog.setLabelText("Checking Google Drive connection...")
-        # Check for existing authentication without forcing browser popup
-        QTimer.singleShot(100, self._check_drive_and_continue_init)
+        # REMOVED: Google Drive OAuth initialization
+        # Continue directly with initialization (no Google Drive check needed)
+        QTimer.singleShot(100, self._finish_initialization)
         
         self.progress_dialog.setValue(40)
         self.progress_dialog.setLabelText("Setting up application menu...")
@@ -377,52 +375,12 @@ class MainWindow(QMainWindow):
             )
             return False
     
-    def authenticate_google_drive(self, force=False, interactive=True):
-        """Authenticate with Google Drive and set up database handler"""
-        try:
-            # Authenticate with Google Drive
-            if self.drive_service.authenticate(force=force, interactive=interactive):
-                # Get folder ID from settings
-                folder_id = self.settings_handler.get_setting("google_drive_folder_id", "")
-                if not folder_id:
-                    logger.warning("Google Drive folder ID not set, using default")
-                    folder_id = "1vGoxkS-HQ0n0u0ToNcYL_wJGZ02RDhAK"  # Default CAESER folder ID
-                    self.settings_handler.set_setting("google_drive_folder_id", folder_id)
-                
-                # Initialize Google Drive database handler
-                self.drive_db_handler = GoogleDriveDatabaseHandler(self.settings_handler)
-                if self.drive_db_handler.authenticate():
-                    logger.info("Successfully authenticated with Google Drive")
-                    
-                    # Initialize appropriate cloud database handler (Shared Drive or Google Drive)
-                    self._initialize_cloud_database_handler()
-                    
-                    # Set Google Drive handler for database manager
-                    self.db_manager.set_google_drive_handler(self.drive_db_handler)
-                    
-                    # Log that we're about to refresh databases
-                    logger.info("Google Drive authentication complete, refreshing database dropdown...")
-                    
-                    # Set flag to indicate Google Drive just authenticated
-                    self._google_drive_just_authenticated = True
-                    
-                    # Refresh database dropdown to show cloud projects immediately
-                    self._load_databases()
-                    
-                    # Update feedback button visibility
-                    self._update_feedback_button_visibility()
-                    
-                    return True
-                else:
-                    logger.error("Failed to authenticate Google Drive database handler")
-            else:
-                logger.error("Failed to authenticate with Google Drive")
-                
-            return False
-            
-        except Exception as e:
-            logger.error(f"Error authenticating with Google Drive: {e}")
-            return False
+    # REMOVED: Google Drive OAuth authentication method
+    # def authenticate_google_drive(self, force=False, interactive=True):
+    #     """Authenticate with Google Drive and set up database handler"""
+    #     # This method has been removed as part of OAuth 2.0 to service account transition
+    #     logger.warning("Google Drive OAuth authentication is no longer supported")
+    #     return False
     
     def _initialize_cloud_database_handler(self):
         """

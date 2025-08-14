@@ -24,7 +24,8 @@ class UserAuthService:
     @classmethod
     def get_instance(cls, drive_service=None, settings_handler=None, db_path=None):
         """Get or create the singleton instance of UserAuthService"""
-        if cls._instance is None and drive_service is not None and settings_handler is not None:
+        # UPDATED: Allow None drive_service for local-only operation
+        if cls._instance is None and settings_handler is not None:
             cls._instance = cls(drive_service, settings_handler, db_path)
         return cls._instance
     
@@ -33,6 +34,7 @@ class UserAuthService:
         if UserAuthService._instance is not None:
             raise Exception("This class is a singleton. Use get_instance() instead.")
             
+        # UPDATED: Allow None drive_service for local-only operation
         self.drive_service = drive_service
         self.settings_handler = settings_handler
         self.users_file_name = "water_levels_users.json"
