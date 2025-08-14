@@ -48,7 +48,7 @@ class GoogleServiceAccountHandler:
             if not service_account_key_path:
                 if self.settings_handler:
                     service_account_key_path = self.settings_handler.get_setting(
-                        "google_service_account_key_path", ""
+                        "service_account_key_file", ""
                     )
                 
                 if not service_account_key_path:
@@ -58,8 +58,38 @@ class GoogleServiceAccountHandler:
             # Check if key file exists
             key_path = Path(service_account_key_path)
             if not key_path.exists():
-                logger.error(f"Service account key file not found: {service_account_key_path}")
-                return False
+                logger.warning(f"Service account key file not found at primary location: {service_account_key_path}")
+                
+                # Try fallback to local config directory
+                if self.settings_handler and service_account_key_path.startswith("S:"):
+                    logger.info("SMOO not accessible, trying local config directory...")
+                    from pathlib import Path
+                    app_dir = Path(__file__).parent.parent.parent.parent
+                    config_dir = app_dir / "config"
+                    
+                    # Look for any service account JSON file in local config
+                    service_account_files = list(config_dir.glob("*service-account*.json"))
+                    if not service_account_files:
+                        service_account_files = [f for f in config_dir.glob("*.json") 
+                                               if f.name != "settings.json" and not f.name.startswith("client_secret")]
+                    
+                    for potential_file in service_account_files:
+                        try:
+                            with open(potential_file, 'r') as f:
+                                data = json.load(f)
+                                if data.get('type') == 'service_account':
+                                    logger.info(f"Found local service account file: {potential_file}")
+                                    service_account_key_path = str(potential_file)
+                                    key_path = potential_file
+                                    break
+                        except:
+                            continue
+                    else:
+                        logger.error("No valid service account key file found in local config either")
+                        return False
+                else:
+                    logger.error(f"Service account key file not found: {service_account_key_path}")
+                    return False
             
             # Load service account credentials
             self.credentials = service_account.Credentials.from_service_account_file(
