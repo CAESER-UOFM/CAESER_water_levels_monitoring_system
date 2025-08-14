@@ -230,29 +230,29 @@ class MainWindow(QMainWindow):
             True if a cloud handler was initialized, False otherwise
         """
         try:
-            # Check if shared drive should be used and is accessible
-            if self.settings_handler.get_setting("use_shared_drive", False):
-                logger.info("Checking shared drive access...")
-                shared_handler = SharedDriveDbHandler(self.settings_handler)
+            # Always try shared drive first (primary method now)
+            logger.info("Checking shared drive access...")
+            shared_handler = SharedDriveDbHandler(self.settings_handler)
+            
+            if shared_handler._check_shared_drive_access():
+                logger.info("Shared drive accessible - using SharedDriveDbHandler")
+                self.cloud_db_handler = shared_handler
                 
-                if shared_handler._check_shared_drive_access():
-                    logger.info("Shared drive accessible - using SharedDriveDbHandler")
-                    self.cloud_db_handler = shared_handler
-                    
-                    # Set database manager for operations
-                    self.cloud_db_handler.set_database_manager(self.db_manager)
-                    # Set cloud handler in database manager for import dialogs
-                    self.db_manager.set_cloud_db_handler(self.cloud_db_handler)
-                    
-                    return True
-                else:
-                    logger.warning("Shared drive not accessible - cloud features disabled")
-                    self.cloud_db_handler = None
-                    return False
+                # Set database manager for operations
+                self.cloud_db_handler.set_database_manager(self.db_manager)
+                # Set cloud handler in database manager for import dialogs
+                self.db_manager.set_cloud_db_handler(self.cloud_db_handler)
+                
+                return True
             else:
-                # REMOVED: Google Drive OAuth-based cloud handler
-                # self.cloud_db_handler = CloudDatabaseHandler(self.drive_service, self.settings_handler)
-                logger.info("Google Drive OAuth handlers removed - using shared drive only")
+                # Check if user specifically wants shared drive but it's not accessible
+                if self.settings_handler.get_setting("use_shared_drive", False):
+                    logger.warning("Shared drive configured but not accessible - cloud features disabled")
+                else:
+                    logger.info("Shared drive not configured - checking accessibility anyway")
+                
+                # REMOVED: Google Drive OAuth fallback
+                logger.info("Google Drive OAuth handlers removed - no cloud handler available")
                 self.cloud_db_handler = None
                 return False
                     
@@ -3621,6 +3621,11 @@ class MainWindow(QMainWindow):
             
         self.progress_dialog.setValue(60)
         self.progress_dialog.setLabelText("Finalizing initialization...")
+        
+        # Initialize cloud database handler for SMOO/shared drive access
+        self.progress_dialog.setValue(65)
+        self.progress_dialog.setLabelText("Initializing cloud database handler...")
+        self._initialize_cloud_database_handler()
         
         # Check if we should load database folder at startup
         load_folder_at_startup = self.settings_handler.get_setting("load_db_folder_at_startup", True)
