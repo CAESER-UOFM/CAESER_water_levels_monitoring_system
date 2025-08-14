@@ -50,9 +50,24 @@ class SettingsHandler:
                 default_secret_path = str(secret_files[0])
                 logger.info(f"Found default client secret file: {default_secret_path}")
         
-        # Find default service account file
+        # Find default service account file - check SMOO first, then local config
         default_service_account_path = ""
-        if config_dir.exists():
+        from ...config.paths import DefaultPaths
+        
+        # Check SMOO location first (shared across installations)
+        smoo_service_account = Path(DefaultPaths.SHARED_DRIVE_BASE) / "service-account.json"
+        if smoo_service_account.exists():
+            try:
+                with open(smoo_service_account, 'r') as f:
+                    data = json.load(f)
+                    if data.get('type') == 'service_account':
+                        default_service_account_path = str(smoo_service_account)
+                        logger.info(f"Found SMOO service account file: {default_service_account_path}")
+            except:
+                pass
+        
+        # Fallback to local config directory
+        if not default_service_account_path and config_dir.exists():
             service_account_files = [
                 f for f in config_dir.glob("*.json")
                 if not f.name.startswith("client_secret")
@@ -64,7 +79,7 @@ class SettingsHandler:
                         data = json.load(f)
                         if data.get('type') == 'service_account':
                             default_service_account_path = str(file_path)
-                            logger.info(f"Found default service account file: {default_service_account_path}")
+                            logger.info(f"Found local service account file: {default_service_account_path}")
                             break
                 except:
                     continue
