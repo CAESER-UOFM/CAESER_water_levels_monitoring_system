@@ -2942,6 +2942,16 @@ class MainWindow(QMainWindow):
             # self.auto_update_handler = AutoUpdateHandler(...)
             logger.info("Auto-update handler disabled - requires service account adaptation")
         
+        # Check if handler is available
+        if not self.auto_update_handler:
+            QMessageBox.information(
+                self, 
+                "Feature Temporarily Unavailable", 
+                "Barologger auto-sync is temporarily disabled during the Google Drive service account transition.\n\n"
+                "Please use manual sync options in the meantime."
+            )
+            return
+        
         # Delegate to the handler
         self.auto_update_handler.auto_sync_barologgers()
     
@@ -2957,11 +2967,15 @@ class MainWindow(QMainWindow):
             )
             return
         
-        # Initialize handler if needed
-        if self.auto_update_handler is None:
-            # REMOVED: AutoUpdateHandler with Google Drive OAuth dependency
-            # self.auto_update_handler = AutoUpdateHandler(...)
-            logger.info("Auto-update handler disabled - requires service account adaptation")
+        # Check if handler is available
+        if not self.auto_update_handler:
+            QMessageBox.information(
+                self, 
+                "Feature Temporarily Unavailable", 
+                "Water level auto-sync is temporarily disabled during the Google Drive service account transition.\n\n"
+                "Please use manual sync options in the meantime."
+            )
+            return
         
         # Delegate to the handler
         self.auto_update_handler.auto_sync_water_levels()

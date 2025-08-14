@@ -263,3 +263,24 @@ class ButtonStyles:
         
         if style_type in style_map:
             button.setStyleSheet(style_map[style_type])
+    
+    # Convenience methods for common button types
+    @staticmethod
+    def apply_primary_button_style(button):
+        """Apply primary button style (blue theme)"""
+        button.setStyleSheet(ButtonStyles.get_primary_button_style())
+    
+    @staticmethod
+    def apply_secondary_button_style(button):
+        """Apply secondary button style (gray theme)"""
+        button.setStyleSheet(ButtonStyles.get_cancel_button_style())
+    
+    @staticmethod
+    def apply_save_button_style(button):
+        """Apply save button style (green theme)"""
+        button.setStyleSheet(ButtonStyles.get_save_button_style())
+    
+    @staticmethod
+    def apply_delete_button_style(button):
+        """Apply delete button style (red theme)"""
+        button.setStyleSheet(ButtonStyles.get_delete_button_style())

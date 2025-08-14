@@ -3923,13 +3923,16 @@ class WaterLevelEditDialog(QDialog):
             logger.debug("Checking protocol feedback button visibility...")
             
             if hasattr(self, 'protocol_feedback_btn'):
-                # Check if SMOO shared drive connection is available via main window
+                # Check if SMOO shared drive connection is available via main window (traverse parent hierarchy)
                 is_smoo_connected = False
-                if hasattr(self, 'main_window') and self.main_window:
+                main_window = self.parent()
+                while main_window and not hasattr(main_window, 'cloud_db_handler'):
+                    main_window = main_window.parent()
+                
+                if main_window and hasattr(main_window, 'cloud_db_handler'):
                     from ..handlers.shared_drive_db_handler import SharedDriveDbHandler
-                    is_smoo_connected = (hasattr(self.main_window, 'cloud_db_handler') and 
-                                       self.main_window.cloud_db_handler is not None and
-                                       isinstance(self.main_window.cloud_db_handler, SharedDriveDbHandler))
+                    is_smoo_connected = (main_window.cloud_db_handler is not None and
+                                       isinstance(main_window.cloud_db_handler, SharedDriveDbHandler))
                 
                 # Only show button if SMOO is connected
                 self.protocol_feedback_btn.setVisible(is_smoo_connected)
@@ -3950,10 +3953,13 @@ class WaterLevelEditDialog(QDialog):
     def open_protocol_feedback_dialog(self):
         """Open the water levels protocol feedback dialog"""
         try:
-            # Check if SMOO shared drive is available via main window
-            if not (hasattr(self, 'main_window') and self.main_window and 
-                   hasattr(self.main_window, 'cloud_db_handler') and 
-                   self.main_window.cloud_db_handler):
+            # Check if SMOO shared drive is available via main window (traverse parent hierarchy)
+            main_window = self.parent()
+            while main_window and not hasattr(main_window, 'cloud_db_handler'):
+                main_window = main_window.parent()
+            
+            if not (main_window and hasattr(main_window, 'cloud_db_handler') and 
+                   main_window.cloud_db_handler):
                 QMessageBox.warning(self, "Service Unavailable", 
                                   "SMOO shared drive connection is not available. Please check your connection.")
                 return
@@ -3982,7 +3988,7 @@ class WaterLevelEditDialog(QDialog):
             
             dialog = SMOOWaterLevelsProtocolFeedbackDialog(
                 parent=self,
-                shared_drive_handler=self.main_window.cloud_db_handler,
+                shared_drive_handler=main_window.cloud_db_handler,
                 user_name=self.user_name,
                 well_number=well_number,
                 current_data_info=data_info
