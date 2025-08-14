@@ -60,14 +60,17 @@ class SharedDriveUpdater:
             True if accessible, False otherwise
         """
         try:
+            logger.error(f"DEBUG: check_shared_drive_access() called with path: {self.shared_drive_path}")
             shared_path = Path(self.shared_drive_path)
             
             # Check if path exists and is accessible
             if not shared_path.exists():
+                logger.error(f"DEBUG: Path does not exist: {self.shared_drive_path}")
                 logger.debug(f"Shared drive path does not exist: {self.shared_drive_path}")
                 return False
             
             if not shared_path.is_dir():
+                logger.error(f"DEBUG: Path is not a directory: {self.shared_drive_path}")
                 logger.debug(f"Shared drive path is not a directory: {self.shared_drive_path}")
                 return False
             
@@ -76,9 +79,11 @@ class SharedDriveUpdater:
             
             # Check if version file exists
             if not self.shared_version_file.exists():
+                logger.error(f"DEBUG: Version file missing: {self.shared_version_file}")
                 logger.debug(f"Version file not found in shared drive: {self.shared_version_file}")
                 return False
             
+            logger.error(f"DEBUG: All checks passed for: {self.shared_drive_path}")
             logger.info(f"Shared drive access confirmed: {self.shared_drive_path}")
             return True
             
@@ -341,7 +346,11 @@ del "%~f0"
     def get_update_status_message(self) -> str:
         """Get status message for display in UI"""
         try:
-            if not self.check_shared_drive_access():
+            logger.error(f"DEBUG: get_update_status_message() called")
+            access_result = self.check_shared_drive_access()
+            logger.error(f"DEBUG: check_shared_drive_access() returned: {access_result}")
+            if not access_result:
+                logger.error(f"DEBUG: Returning 'Shared drive not accessible' message")
                 return "❌ Shared drive not accessible"
             
             shared_info = self.get_shared_version_info()
