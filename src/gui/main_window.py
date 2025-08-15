@@ -3043,14 +3043,17 @@ class MainWindow(QMainWindow):
             if success:
                 QMessageBox.information(
                     self,
-                    "Sync Complete - SMOO XLE Workflow",
+                    "Sync Complete - SMOO XLE Workflow with Incremental Sync",
                     "Field data files have been successfully organized using the new SMOO XLE workflow!\n\n"
+                    "✅ INCREMENTAL SYNC: Only downloaded files newer than last sync\n"
                     "✅ Files downloaded from Google Drive SOLINST folder\n"
                     "✅ Metadata extracted (device type, serial numbers, locations, dates)\n"
                     "✅ Organized into proper SMOO structure:\n"
                     "   • Barologgers → barologgers/{serial_number}/\n"
                     "   • Transducers → transducers/{well_number}/\n"
-                    "✅ Standardized filenames with location and date ranges\n\n"
+                    "✅ Standardized filenames with location and date ranges\n"
+                    "✅ Sync timestamp saved for next incremental sync\n\n"
+                    "Future syncs will only download new/modified files!\n\n"
                     "You can now run 'Sync Barologger Files' or 'Sync Water Level Files'\n"
                     "to process the organized data into your database."
                 )

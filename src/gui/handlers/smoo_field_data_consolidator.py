@@ -14,8 +14,9 @@ import os
 import shutil
 import logging
 import tempfile
+import json
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Dict, List, Callable
 from googleapiclient.http import MediaIoBaseDownload
@@ -52,10 +53,14 @@ class HybridFieldDataConsolidator:
             settings_handler=settings_handler
         )
         
+        # Timestamp tracking for incremental sync
+        self.sync_timestamp_file = os.path.join(self.consolidated_folder, ".last_field_sync_timestamp.json")
+        
         logger.info(f"Hybrid Consolidator initialized:")
         logger.info(f"  Google Drive SOLINST ID: {self.solinst_folder_id}")
         logger.info(f"  SMOO Consolidated: {self.consolidated_folder}")
         logger.info(f"  Using new SMOO XLE workflow for organization")
+        logger.info(f"  Timestamp tracking: {self.sync_timestamp_file}")
     
     def check_access(self) -> bool:
         """Check if both Google Drive and SMOO are accessible"""
@@ -96,14 +101,79 @@ class HybridFieldDataConsolidator:
             logger.error(f"Error checking access: {e}")
             return False
     
-    def scan_google_drive_solinst(self) -> List[Dict]:
+    def get_last_sync_timestamp(self) -> Optional[datetime]:
         """
-        Scan Google Drive SOLINST folder for new XLE files using service account handler
+        Get the timestamp of the last successful field sync
+        
+        Returns:
+            Last sync timestamp or None if never synced
+        """
+        try:
+            if os.path.exists(self.sync_timestamp_file):
+                with open(self.sync_timestamp_file, 'r') as f:
+                    data = json.load(f)
+                    timestamp_str = data.get('last_sync_timestamp')
+                    if timestamp_str:
+                        # Parse ISO format timestamp
+                        return datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+            return None
+        except Exception as e:
+            logger.warning(f"Could not read last sync timestamp: {e}")
+            return None
+    
+    def save_sync_timestamp(self, timestamp: datetime = None) -> bool:
+        """
+        Save the current sync timestamp
+        
+        Args:
+            timestamp: Timestamp to save (defaults to current time)
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            if timestamp is None:
+                timestamp = datetime.now(timezone.utc)
+            
+            # Ensure the directory exists
+            os.makedirs(os.path.dirname(self.sync_timestamp_file), exist_ok=True)
+            
+            data = {
+                'last_sync_timestamp': timestamp.isoformat(),
+                'sync_completed_at': datetime.now(timezone.utc).isoformat(),
+                'smoo_consolidated_folder': self.consolidated_folder
+            }
+            
+            with open(self.sync_timestamp_file, 'w') as f:
+                json.dump(data, f, indent=2)
+            
+            logger.info(f"INCREMENTAL_SYNC: Saved sync timestamp: {timestamp.isoformat()}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Could not save sync timestamp: {e}")
+            return False
+    
+    def scan_google_drive_solinst(self, incremental: bool = True) -> List[Dict]:
+        """
+        Scan Google Drive SOLINST folder for XLE files with optional incremental filtering
+        
+        Args:
+            incremental: If True, only return files newer than last sync
         
         Returns:
             List of file info dictionaries
         """
         try:
+            # Get last sync timestamp for incremental sync
+            last_sync = None
+            if incremental:
+                last_sync = self.get_last_sync_timestamp()
+                if last_sync:
+                    logger.info(f"INCREMENTAL_SYNC: Only syncing files modified after {last_sync.isoformat()}")
+                else:
+                    logger.info("INCREMENTAL_SYNC: No previous sync found, downloading all files")
+            
             # Set the SOLINST folder ID if not set
             if self.solinst_folder_id:
                 self.drive_service.set_solinst_folder_id(self.solinst_folder_id)
@@ -111,19 +181,46 @@ class HybridFieldDataConsolidator:
             # Use the service account handler's built-in method
             files_found = self.drive_service.list_xle_files()
             
-            # Convert to format expected by consolidator
+            # Convert to format expected by consolidator and filter by timestamp
             consolidated_files = []
+            skipped_count = 0
+            
             for file_info in files_found:
+                # Parse file modification time
+                file_modified_str = file_info['modifiedTime']
+                try:
+                    # Google Drive uses RFC 3339 format: 2024-01-01T12:00:00.000Z
+                    file_modified = datetime.fromisoformat(file_modified_str.replace('Z', '+00:00'))
+                except Exception as time_error:
+                    logger.warning(f"Could not parse modification time for {file_info['name']}: {time_error}")
+                    file_modified = None
+                
+                # Apply incremental filtering
+                if incremental and last_sync and file_modified:
+                    if file_modified <= last_sync:
+                        skipped_count += 1
+                        logger.debug(f"INCREMENTAL_SYNC: Skipping {file_info['name']} (not modified since last sync)")
+                        continue
+                
                 consolidated_file = {
                     'id': file_info['id'],
                     'name': file_info['name'], 
                     'size': int(file_info.get('size', 0)),
-                    'modified_time': file_info['modifiedTime']
+                    'modified_time': file_modified_str,
+                    'modified_datetime': file_modified
                 }
                 consolidated_files.append(consolidated_file)
-                logger.debug(f"Found Google Drive XLE: {file_info['name']} (Modified: {file_info['modifiedTime']})")
+                
+                if incremental and last_sync:
+                    logger.info(f"INCREMENTAL_SYNC: Will sync {file_info['name']} (Modified: {file_modified_str})")
+                else:
+                    logger.debug(f"Found Google Drive XLE: {file_info['name']} (Modified: {file_modified_str})")
             
-            logger.info(f"Found {len(consolidated_files)} XLE files in Google Drive SOLINST")
+            if incremental and skipped_count > 0:
+                logger.info(f"INCREMENTAL_SYNC: Found {len(consolidated_files)} new files, skipped {skipped_count} unchanged files")
+            else:
+                logger.info(f"Found {len(consolidated_files)} XLE files in Google Drive SOLINST")
+            
             return consolidated_files
             
         except Exception as e:
@@ -386,18 +483,20 @@ class HybridFieldDataConsolidator:
                 progress_callback(f"Error: {file_info['name']}", 100)
             return False
     
-    def consolidate_field_data(self, progress_callback: Optional[Callable] = None) -> bool:
+    def consolidate_field_data(self, progress_callback: Optional[Callable] = None, force_full_sync: bool = False) -> bool:
         """
         Consolidate all field data from Google Drive SOLINST to SMOO organized structure
         
         Args:
             progress_callback: Optional progress callback function (message, percent)
+            force_full_sync: If True, download all files regardless of timestamp
             
         Returns:
             True if consolidation successful, False otherwise
         """
         try:
-            logger.info("Starting hybrid field data consolidation (Google Drive → SMOO)...")
+            sync_type = "FULL SYNC" if force_full_sync else "INCREMENTAL SYNC"
+            logger.info(f"Starting hybrid field data consolidation (Google Drive → SMOO) - {sync_type}...")
             
             if progress_callback:
                 progress_callback("Checking access...", 0)
@@ -412,13 +511,15 @@ class HybridFieldDataConsolidator:
             if progress_callback:
                 progress_callback("Scanning Google Drive SOLINST...", 10)
             
-            # Scan Google Drive for files
-            files_to_consolidate = self.scan_google_drive_solinst()
+            # Scan Google Drive for files (with incremental sync unless forced)
+            files_to_consolidate = self.scan_google_drive_solinst(incremental=not force_full_sync)
             
             if not files_to_consolidate:
-                logger.info("No files found to consolidate in Google Drive SOLINST")
+                logger.info("No new files found to consolidate in Google Drive SOLINST")
                 if progress_callback:
-                    progress_callback("No files to consolidate", 100)
+                    progress_callback("No new files to consolidate", 100)
+                # Even if no files, update timestamp to mark this sync attempt
+                self.save_sync_timestamp()
                 return True
             
             logger.info(f"Found {len(files_to_consolidate)} files to consolidate from Google Drive")
@@ -444,10 +545,33 @@ class HybridFieldDataConsolidator:
             
             logger.info(f"Consolidation complete: {successful_count}/{total_files} files processed successfully")
             
-            if progress_callback:
-                progress_callback(f"Complete: {successful_count}/{total_files} files consolidated", 100)
+            # Save sync timestamp after successful consolidation
+            if successful_count > 0:
+                # Use the latest file modification time as sync timestamp
+                latest_file_time = None
+                for file_info in files_to_consolidate:
+                    if file_info.get('modified_datetime'):
+                        if latest_file_time is None or file_info['modified_datetime'] > latest_file_time:
+                            latest_file_time = file_info['modified_datetime']
+                
+                if latest_file_time:
+                    self.save_sync_timestamp(latest_file_time)
+                    logger.info(f"INCREMENTAL_SYNC: Updated sync timestamp to {latest_file_time.isoformat()}")
+                else:
+                    # Fallback to current time
+                    self.save_sync_timestamp()
+                    logger.info("INCREMENTAL_SYNC: Updated sync timestamp to current time")
+            else:
+                # Even if no files succeeded, update timestamp to avoid re-processing same files
+                self.save_sync_timestamp()
             
-            return successful_count > 0
+            if progress_callback:
+                if successful_count > 0:
+                    progress_callback(f"Complete: {successful_count}/{total_files} files consolidated (incremental sync)", 100)
+                else:
+                    progress_callback(f"Complete: No files needed consolidation (incremental sync)", 100)
+            
+            return successful_count > 0 or total_files == 0  # Success if files processed or no files needed
             
         except Exception as e:
             logger.error(f"Error during field data consolidation: {e}")
