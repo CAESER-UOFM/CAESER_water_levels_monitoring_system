@@ -15,9 +15,8 @@ APP_ROOT = Path(__file__).parent.parent.parent
 class DefaultPaths:
     """Default path constants - single source of truth"""
     
-    # Base shared drive structure  
-    # TODO: Replace with actual Windows shared drive path or ensure settings.json has shared_drive_root configured
-    SHARED_DRIVE_BASE = "C:/CAESER_SHARED_DRIVE_FALLBACK"  # Fallback path - should use settings.json instead
+    # Base shared drive structure
+    SHARED_DRIVE_BASE = "S:/Water_Projects/CAESER/Water_Data_Series/Water_levels_monitoring_system"
     
     # Derived paths
     SHARED_DRIVE_ROOT = f"{SHARED_DRIVE_BASE}/"
