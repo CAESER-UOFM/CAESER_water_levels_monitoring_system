@@ -32,6 +32,7 @@ logging.getLogger('src.gui.main_window').setLevel(logging.INFO)
 # Enable detailed logging for auto-sync debugging
 logging.getLogger('src.gui.handlers.auto_update_handler').setLevel(logging.INFO)
 logging.getLogger('src.gui.handlers.field_data_consolidator').setLevel(logging.INFO)
+logging.getLogger('src.gui.handlers.smoo_field_data_consolidator').setLevel(logging.INFO)
 logging.getLogger('src.gui.handlers.runs_folder_monitor').setLevel(logging.INFO)
 
 # Enable DEBUG level logging for shared drive database handler (draft debugging)
