@@ -14,9 +14,11 @@ This module implements professional field data processing following the user's r
 import os
 import re
 import logging
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from typing import Dict, Tuple, Optional, List
 from dataclasses import dataclass
+from io import StringIO
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +56,7 @@ class EnhancedXLEMetadataExtractor:
     
     def extract_comprehensive_metadata(self, file_path: str) -> XLEMetadata:
         """
-        Extract comprehensive metadata from XLE file using professional field data approach
+        Extract comprehensive metadata from XML-format XLE file using professional field data approach
         
         Args:
             file_path: Path to XLE file
@@ -65,20 +67,20 @@ class EnhancedXLEMetadataExtractor:
         self.extraction_errors = []
         
         try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                content = f.read()
+            # Parse XML content (real XLE files are XML format)
+            root = self._parse_xle_xml(file_path)
             
-            # Extract basic metadata from header
-            serial_number = self._extract_serial_number(content)
-            location = self._extract_location(content)
-            instrument_model = self._extract_instrument_model(content)
+            # Extract metadata from XML structure
+            serial_number = self._extract_serial_from_xml(root)
+            location = self._extract_location_from_xml(root)
+            instrument_model = self._extract_instrument_model_from_xml(root)
             
             # Extract data units for device type detection
-            data_units = self._extract_data_units(content)
+            data_units = self._extract_data_units_from_xml(root)
             device_type = self._determine_device_type_by_units(data_units)
             
-            # Extract actual data timestamps (most reliable)
-            start_date, end_date, data_points = self._extract_actual_date_range(content)
+            # Extract actual data timestamps from XML data logs
+            start_date, end_date, data_points = self._extract_date_range_from_xml(root)
             
             return XLEMetadata(
                 serial_number=serial_number,
@@ -109,114 +111,134 @@ class EnhancedXLEMetadataExtractor:
                 extraction_errors=self.extraction_errors.copy()
             )
     
-    def _extract_serial_number(self, content: str) -> str:
-        """Extract instrument serial number from XLE content"""
+    def _parse_xle_xml(self, file_path: str) -> ET.Element:
+        """Parse XLE XML file and return root element"""
         try:
-            # Common XLE patterns for serial number
-            patterns = [
-                r'Logger serial number\s*[:=]\s*(\d+)',  # Full format first
-                r'Serial_number\s*[:=]\s*(\d+)',
-                r'Serial\s*number\s*[:=]\s*(\d+)',
-                r'Serial\s*[:=]\s*(\d+)',
-                r'S/N\s*[:=]\s*(\d+)',
-                r'Instrument\s*#\s*[:=]\s*(\d+)'
-            ]
+            # Try different encodings
+            encodings = ['utf-8', 'latin1', 'cp1252']
             
-            for pattern in patterns:
-                match = re.search(pattern, content, re.IGNORECASE)
-                if match:
-                    serial = match.group(1).strip()
-                    logger.debug(f"Extracted serial number: {serial}")
+            for encoding in encodings:
+                try:
+                    with open(file_path, 'r', encoding=encoding) as f:
+                        content = f.read()
+                    
+                    # Fix common XML issues in XLE files
+                    # Fix temperature unit issues (special characters before 'C')
+                    import re
+                    content = re.sub(r'<Unit>([^<]*?)C</Unit>', r'<Unit>C</Unit>', content)
+                    
+                    # Parse XML
+                    root = ET.fromstring(content)
+                    logger.debug(f"Successfully parsed XML with encoding: {encoding}")
+                    return root
+                    
+                except Exception as e:
+                    logger.debug(f"Failed with encoding {encoding}: {e}")
+                    continue
+            
+            raise ValueError("Could not parse XLE file with any supported encoding")
+            
+        except Exception as e:
+            logger.error(f"Error parsing XLE XML: {e}")
+            raise
+    
+    def _extract_serial_from_xml(self, root: ET.Element) -> str:
+        """Extract instrument serial number from XML"""
+        try:
+            # Look for serial number in XML structure
+            instrument_info = root.find('.//Instrument_info')
+            if instrument_info is not None:
+                serial_element = instrument_info.find('Serial_number')
+                if serial_element is not None and serial_element.text:
+                    serial = serial_element.text.strip()
+                    logger.debug(f"Extracted serial number from XML: {serial}")
                     return serial
             
-            self.extraction_errors.append("Serial number not found in standard locations")
+            self.extraction_errors.append("Serial number not found in XML structure")
             return 'UNKNOWN'
             
         except Exception as e:
             self.extraction_errors.append(f"Error extracting serial number: {str(e)}")
             return 'UNKNOWN'
     
-    def _extract_location(self, content: str) -> str:
-        """Extract location from XLE content"""
+    def _extract_location_from_xml(self, root: ET.Element) -> str:
+        """Extract location from XML"""
         try:
-            # Common XLE patterns for location
-            patterns = [
-                r'Location\s*[:=]\s*([^\n\r]+)',
-                r'Site\s*[:=]\s*([^\n\r]+)',
-                r'Well\s*[:=]\s*([^\n\r]+)',
-                r'Station\s*[:=]\s*([^\n\r]+)'
-            ]
-            
-            for pattern in patterns:
-                match = re.search(pattern, content, re.IGNORECASE)
-                if match:
-                    location = match.group(1).strip()
+            # Look for location in XML structure  
+            header_info = root.find('.//Instrument_info_data_header')
+            if header_info is not None:
+                location_element = header_info.find('Location')
+                if location_element is not None and location_element.text:
+                    location = location_element.text.strip()
                     # Clean up location string
                     location = re.sub(r'[<>:"/\\|?*]', '_', location)  # Remove forbidden chars
-                    logger.debug(f"Extracted location: {location}")
+                    logger.debug(f"Extracted location from XML: {location}")
                     return location
             
-            self.extraction_errors.append("Location not found in standard locations")
+            self.extraction_errors.append("Location not found in XML structure")
             return 'UNKNOWN_LOCATION'
             
         except Exception as e:
             self.extraction_errors.append(f"Error extracting location: {str(e)}")
             return 'UNKNOWN_LOCATION'
     
-    def _extract_instrument_model(self, content: str) -> str:
-        """Extract instrument model from XLE content"""
+    def _extract_instrument_model_from_xml(self, root: ET.Element) -> str:
+        """Extract instrument model from XML"""
         try:
-            # Common XLE patterns for instrument model
-            patterns = [
-                r'Instrument\s*[:=]\s*([^\n\r]+)',
-                r'Model\s*[:=]\s*([^\n\r]+)',
-                r'Device\s*[:=]\s*([^\n\r]+)'
-            ]
+            # Look for instrument info in XML structure
+            instrument_info = root.find('.//Instrument_info')
+            if instrument_info is not None:
+                # Try instrument type first
+                type_element = instrument_info.find('Instrument_type')
+                model_element = instrument_info.find('Model_number')
+                
+                instrument_type = type_element.text.strip() if type_element is not None and type_element.text else ''
+                model_number = model_element.text.strip() if model_element is not None and model_element.text else ''
+                
+                if instrument_type and model_number:
+                    model = f"{instrument_type} {model_number}"
+                elif instrument_type:
+                    model = instrument_type
+                elif model_number:
+                    model = model_number
+                else:
+                    model = 'UNKNOWN_MODEL'
+                
+                logger.debug(f"Extracted instrument model from XML: {model}")
+                return model
             
-            for pattern in patterns:
-                match = re.search(pattern, content, re.IGNORECASE)
-                if match:
-                    model = match.group(1).strip()
-                    logger.debug(f"Extracted instrument model: {model}")
-                    return model
-            
-            self.extraction_errors.append("Instrument model not found")
+            self.extraction_errors.append("Instrument model not found in XML structure")
             return 'UNKNOWN_MODEL'
             
         except Exception as e:
             self.extraction_errors.append(f"Error extracting instrument model: {str(e)}")
             return 'UNKNOWN_MODEL'
     
-    def _extract_data_units(self, content: str) -> str:
+    def _extract_data_units_from_xml(self, root: ET.Element) -> str:
         """
-        Extract data units from XLE content for reliable device type detection
+        Extract data units from XML for reliable device type detection
         This is the most reliable way to determine if device is barologger or water level
         """
         try:
-            # Look for units in various XLE formats
-            unit_patterns = [
-                r'LEVEL\s+TEMPERATURE.*?\n.*?(\w+)',  # Common table header format
-                r'Unit\s*[:=]\s*(\w+)',               # Direct unit specification
-                r'\[Data\]\s*\n.*?(\w+)',             # Units after data header
-                r'Level.*?[\(\[](\w+)[\)\]]',         # Units in parentheses
-                r'Pressure.*?[\(\[](\w+)[\)\]]',      # Pressure units
-                r'Head.*?[\(\[](\w+)[\)\]]'           # Head/level units
-            ]
+            # Look for Ch1 (primary channel) unit in XML structure
+            ch1_info = root.find('.//Ch1_data_header')
+            if ch1_info is not None:
+                unit_element = ch1_info.find('Unit')
+                if unit_element is not None and unit_element.text:
+                    unit = unit_element.text.strip().lower()
+                    logger.debug(f"Extracted data units from XML: {unit}")
+                    return unit
             
-            units_found = []
-            for pattern in unit_patterns:
-                matches = re.findall(pattern, content, re.IGNORECASE | re.MULTILINE)
-                units_found.extend(matches)
+            # Fallback: look in other possible locations
+            for element in root.iter('Unit'):
+                if element.text:
+                    unit = element.text.strip().lower()
+                    if unit in self.PRESSURE_UNITS + self.WATER_LEVEL_UNITS:
+                        logger.debug(f"Found valid unit in XML: {unit}")
+                        return unit
             
-            # Return first valid unit found
-            for unit in units_found:
-                unit_clean = unit.lower().strip()
-                if unit_clean and len(unit_clean) <= 10:  # Reasonable unit length
-                    logger.debug(f"Extracted data units: {unit_clean}")
-                    return unit_clean
-            
-            # Fallback: analyze first few data lines
-            return self._extract_units_from_data_lines(content)
+            self.extraction_errors.append("Data units not found in XML structure")
+            return ''
             
         except Exception as e:
             self.extraction_errors.append(f"Error extracting data units: {str(e)}")
@@ -285,57 +307,60 @@ class EnhancedXLEMetadataExtractor:
         logger.warning(f"Unknown units detected, defaulting to WATER_LEVELS: {units}")
         return 'WATER_LEVELS'  # Default to most common type
     
-    def _extract_actual_date_range(self, content: str) -> Tuple[str, str, int]:
+    def _extract_date_range_from_xml(self, root: ET.Element) -> Tuple[str, str, int]:
         """
-        Extract actual start/end dates from data rows (not metadata)
+        Extract actual start/end dates from XML data logs (not metadata)
         This avoids Solinst firmware bugs in metadata end dates
         
         Returns:
             Tuple of (start_date, end_date, data_point_count)
         """
         try:
-            # Find data section
-            data_markers = ['[Level data]', '[Data]', 'DATE', 'Time']
-            data_start_pos = None
+            # Find all Log entries in XML
+            log_entries = root.findall('.//Log')
             
-            for marker in data_markers:
-                pos = content.find(marker)
-                if pos != -1:
-                    data_start_pos = pos
-                    break
-            
-            if data_start_pos is None:
-                self.extraction_errors.append("No data section found")
+            if not log_entries:
+                self.extraction_errors.append("No data log entries found in XML")
                 return '', '', 0
             
-            # Extract data section
-            data_section = content[data_start_pos:]
-            lines = data_section.split('\n')
+            # Extract timestamps from first and last entries
+            valid_entries = []
             
-            # Find actual data lines (skip headers)
-            data_lines = []
-            for line in lines:
-                line = line.strip()
-                if self._is_data_line(line):
-                    data_lines.append(line)
+            for log in log_entries:
+                date_elem = log.find('Date')
+                time_elem = log.find('Time')
+                
+                if (date_elem is not None and date_elem.text and 
+                    time_elem is not None and time_elem.text):
+                    
+                    date_str = date_elem.text.strip()
+                    time_str = time_elem.text.strip()
+                    
+                    # Skip "END OF" entries
+                    if "END OF" not in date_str and "END OF" not in time_str:
+                        timestamp_str = f"{date_str} {time_str}"
+                        try:
+                            # Parse to validate and normalize
+                            timestamp = datetime.strptime(timestamp_str, '%Y/%m/%d %H:%M:%S')
+                            valid_entries.append(timestamp)
+                        except ValueError:
+                            logger.debug(f"Could not parse timestamp: {timestamp_str}")
+                            continue
             
-            if not data_lines:
-                self.extraction_errors.append("No data lines found")
+            if not valid_entries:
+                self.extraction_errors.append("No valid timestamps found in data logs")
                 return '', '', 0
             
-            # Extract timestamps from first and last data lines
-            first_timestamp = self._extract_timestamp_from_line(data_lines[0])
-            last_timestamp = self._extract_timestamp_from_line(data_lines[-1])
+            # Sort to get actual first and last
+            valid_entries.sort()
+            first_timestamp = valid_entries[0].strftime('%Y-%m-%d')
+            last_timestamp = valid_entries[-1].strftime('%Y-%m-%d')
             
-            if not first_timestamp or not last_timestamp:
-                self.extraction_errors.append("Could not extract timestamps from data")
-                return '', '', 0
-            
-            logger.debug(f"Extracted actual date range: {first_timestamp} to {last_timestamp}")
-            return first_timestamp, last_timestamp, len(data_lines)
+            logger.debug(f"Extracted actual date range from XML: {first_timestamp} to {last_timestamp}")
+            return first_timestamp, last_timestamp, len(valid_entries)
             
         except Exception as e:
-            self.extraction_errors.append(f"Error extracting actual date range: {str(e)}")
+            self.extraction_errors.append(f"Error extracting date range from XML: {str(e)}")
             return '', '', 0
     
     def _is_data_line(self, line: str) -> bool:
