@@ -294,7 +294,20 @@ class SingleFileImportDialog(QDialog):
                 try:
                     # Initialize file organizer using settings handler for proper path
                     db_name = Path(self.baro_model.db_path).stem if self.baro_model.db_path else None
-                    file_organizer = XLEFileOrganizer(db_name=db_name, settings_handler=self.settings_handler)
+                    
+                    # Get cache directory from baro_model database manager
+                    cache_dir = None
+                    if hasattr(self.baro_model, 'db_manager') and self.baro_model.db_manager:
+                        if hasattr(self.baro_model.db_manager, 'get_cache_dir'):
+                            cache_dir = self.baro_model.db_manager.get_cache_dir()
+                        elif hasattr(self.baro_model.db_manager, 'cache_dir'):
+                            cache_dir = self.baro_model.db_manager.cache_dir
+                    
+                    file_organizer = XLEFileOrganizer(
+                        db_name=db_name, 
+                        settings_handler=self.settings_handler,
+                        cache_dir=cache_dir
+                    )
                     
                     # Get location from database
                     location = self._get_location_description(self.metadata['serial_number'])
@@ -311,38 +324,10 @@ class SingleFileImportDialog(QDialog):
                     if organized_path:
                         logger.info(f"File organized at: {organized_path}")
                         
-                        # Track XLE file for cloud upload if we have a cloud database
-                        try:
-                            if (self.baro_model.db_manager and 
-                                hasattr(self.baro_model.db_manager, 'is_cloud_database') and 
-                                self.baro_model.db_manager.is_cloud_database and
-                                hasattr(self.baro_model.db_manager, 'cloud_db_handler') and
-                                self.baro_model.db_manager.cloud_db_handler and
-                                hasattr(self.baro_model.db_manager.cloud_db_handler, 'xle_manager') and
-                                self.baro_model.db_manager.cloud_db_handler.xle_manager):
-                                
-                                # Get project name from cloud database manager
-                                project_name = getattr(self.baro_model.db_manager, 'cloud_project_name', None)
-                                
-                                if project_name:
-                                    # Track the organized XLE file for cloud upload
-                                    file_id = self.baro_model.db_manager.cloud_db_handler.xle_manager.track_xle_file(
-                                        file_path=str(organized_path),
-                                        file_type='barologger',
-                                        serial_number=self.metadata['serial_number'],
-                                        well_number=None,  # Not applicable for barologgers
-                                        start_date=start_date.isoformat(),
-                                        end_date=end_date.isoformat(),
-                                        project_name=project_name
-                                    )
-                                    logger.info(f"XLE file tracked for cloud upload: {organized_path} (ID: {file_id})")
-                                else:
-                                    logger.warning("Cannot track XLE file: no project name available")
-                            else:
-                                logger.debug("Not a cloud database or XLE manager not available, skipping XLE file tracking")
-                        except Exception as e:
-                            logger.error(f"Error tracking XLE file for cloud upload: {e}")
-                            # Continue even if XLE tracking fails
+                        # XLE file organization complete
+                        # Note: For shared databases (wlm_ prefix), files are stored in temp location
+                        # For local databases, files are stored in permanent imported_xle_files location
+                        logger.info(f"XLE file organization complete: {organized_path}")
                 except Exception as e:
                     logger.error(f"Error organizing file: {e}")
                     # Continue with success even if file organization fails

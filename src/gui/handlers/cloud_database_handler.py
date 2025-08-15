@@ -1478,13 +1478,22 @@ class CloudDatabaseHandler:
             logger.error(f"XLE_REBUILD: Error rebuilding XLE tracking from database: {e}")
     
     def _upload_project_xle_files(self, project_name: str, progress_callback=None):
-        """Upload pending XLE files for a project."""
+        """
+        Upload pending XLE files for a project.
+        
+        TASK 6: OBSOLETE GOOGLE DRIVE XLE UPLOAD - DISABLED
+        This functionality has been replaced by the new SMOO XLE file workflow.
+        XLE files are now managed through SharedDatabaseXLEManager for shared databases.
+        """
         try:
-            logger.info(f"XLE_UPLOAD: Starting XLE upload for project: '{project_name}'")
+            logger.info(f"XLE_UPLOAD: DISABLED - Obsolete Google Drive XLE upload skipped for project: '{project_name}'")
+            logger.info("XLE_UPLOAD: XLE files are now managed through SMOO workflow for shared databases")
             
-            if not self.xle_manager:
-                logger.warning("XLE_UPLOAD: XLE file manager not initialized - skipping XLE upload")
-                return
+            # Skip all Google Drive XLE upload functionality
+            if progress_callback:
+                progress_callback(89, "XLE upload disabled - using SMOO workflow")
+            
+            return
             
             # Check what pending files we have before upload
             pending_files = self.xle_manager.get_pending_uploads(project_name)

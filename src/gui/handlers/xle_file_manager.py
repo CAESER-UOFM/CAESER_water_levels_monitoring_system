@@ -38,6 +38,10 @@ class XLEFileManager:
         """
         Track an XLE file in the database for future upload.
         
+        TASK 6: OBSOLETE GOOGLE DRIVE XLE TRACKING - DISABLED
+        This functionality has been replaced by the new SMOO XLE file workflow.
+        XLE files are now managed through SharedDatabaseXLEManager for shared databases.
+        
         Args:
             file_path: Local path to the XLE file
             file_type: 'transducer' or 'barologger'
@@ -50,6 +54,12 @@ class XLEFileManager:
         Returns:
             ID of the tracked file record
         """
+        # TASK 6: Disable obsolete Google Drive XLE tracking
+        logger.info(f"XLE_TRACK: DISABLED - Obsolete Google Drive XLE tracking skipped for: {file_path}")
+        logger.info("XLE_TRACK: XLE files are now managed through SMOO workflow for shared databases")
+        return -1  # Return invalid ID to indicate tracking was skipped
+        
+        # Original tracking code below (disabled)
         logger.info(f"XLE_TRACK: Attempting to track XLE file: {file_path}")
         logger.info(f"XLE_TRACK: File type: {file_type}, Serial: {serial_number}, Well: {well_number}, Project: {project_name}")
         
@@ -136,12 +146,19 @@ class XLEFileManager:
         """
         Get list of XLE files pending upload to Google Drive.
         
+        TASK 6: OBSOLETE GOOGLE DRIVE XLE TRACKING - DISABLED
+        This functionality has been replaced by the new SMOO XLE file workflow.
+        
         Args:
             project_name: Filter by project name (optional)
             
         Returns:
             List of file records pending upload
         """
+        # TASK 6: Disable obsolete Google Drive XLE tracking
+        logger.info(f"XLE_PENDING: DISABLED - Obsolete Google Drive XLE pending uploads check skipped for project: {project_name}")
+        logger.info("XLE_PENDING: XLE files are now managed through SMOO workflow for shared databases")
+        return []  # Return empty list to indicate no pending uploads
         try:
             with self.db_manager.get_connection() as conn:
                 cursor = conn.cursor()
@@ -309,6 +326,9 @@ class XLEFileManager:
         """
         Upload all pending XLE files for a project.
         
+        TASK 6: OBSOLETE GOOGLE DRIVE XLE TRACKING - DISABLED
+        This functionality has been replaced by the new SMOO XLE file workflow.
+        
         Args:
             project_name: Name of the project
             progress_callback: Progress callback function
@@ -316,6 +336,16 @@ class XLEFileManager:
         Returns:
             Summary of upload results
         """
+        # TASK 6: Disable obsolete Google Drive XLE upload
+        logger.info(f"XLE_UPLOAD_PROJECT: DISABLED - Obsolete Google Drive XLE upload skipped for project: {project_name}")
+        logger.info("XLE_UPLOAD_PROJECT: XLE files are now managed through SMOO workflow for shared databases")
+        
+        if progress_callback:
+            progress_callback(100, "XLE upload disabled - using SMOO workflow")
+        
+        return {'success': 0, 'failed': 0, 'total': 0, 'disabled': True}
+        
+        # Original upload code below (disabled)
         try:
             pending_files = self.get_pending_uploads(project_name)
             

@@ -11,6 +11,15 @@ from .version_manager import VersionManager
 from .xle_file_manager import XLEFileManager
 import uuid
 
+# Import SharedDatabaseXLEManager for SMOO XLE file handling
+try:
+    from .shared_database_xle_manager import SharedDatabaseXLEManager
+except ImportError:
+    # Fallback if import fails
+    SharedDatabaseXLEManager = None
+    logger = logging.getLogger(__name__)
+    logger.warning("SharedDatabaseXLEManager not available - SMOO XLE file push disabled")
+
 logger = logging.getLogger(__name__)
 
 class SharedDriveDbHandler:
@@ -31,6 +40,14 @@ class SharedDriveDbHandler:
         self.draft_manager = DraftManager(self.cache_dir)  # Initialize draft manager
         self.version_manager = VersionManager(self.cache_dir)  # Initialize version manager
         self.xle_manager = None  # Initialize when database manager available
+        
+        # Initialize SharedDatabaseXLEManager for SMOO XLE file handling
+        if SharedDatabaseXLEManager:
+            self.shared_xle_manager = SharedDatabaseXLEManager(self.cache_dir)
+            logger.info("SharedDatabaseXLEManager initialized for SMOO XLE file handling")
+        else:
+            self.shared_xle_manager = None
+            logger.warning("SharedDatabaseXLEManager not available - SMOO XLE file operations disabled")
         
         # Session state tracking for enhanced draft management
         self.session_backups = {}  # {project_name: {"original": path, "last_uploaded": path}}
@@ -473,6 +490,14 @@ class SharedDriveDbHandler:
         self.database_manager = database_manager
         logger.debug("Database manager set for SharedDriveDbHandler")
     
+    def get_cache_dir(self) -> str:
+        """Get the cache directory path for database managers and other components"""
+        return self.cache_dir
+    
+    def get_shared_xle_manager(self):
+        """Get the SharedDatabaseXLEManager instance for XLE file operations"""
+        return self.shared_xle_manager
+    
     def has_draft(self, project_name: str) -> bool:
         """Check if project has a draft (single draft per project system)"""
         try:
@@ -723,7 +748,37 @@ class SharedDriveDbHandler:
             success = self.upload_database(project_name, temp_db_path, create_backup=True)
             
             if progress_callback:
-                progress_callback(70, "Upload complete, saving change tracking...")
+                progress_callback(40, "Database upload complete, moving XLE files to SMOO...")
+            
+            # TASK 4: Move temp XLE files to SMOO structure on database push
+            if success and self.shared_xle_manager:
+                try:
+                    logger.info(f"Moving temp XLE files to SMOO structure for {project_name}")
+                    
+                    # Get SMOO base directory (shared drive root, NOT project path)
+                    # SharedDatabaseXLEManager expects base path and creates Projects/PROJECT/XLE_Files structure
+                    smoo_base_destination = self.get_shared_drive_root()
+                    
+                    # Move temp XLE files to SMOO structure
+                    xle_move_success = self.shared_xle_manager.move_to_smoo(project_name, smoo_base_destination)
+                    
+                    if xle_move_success:
+                        logger.info(f"Successfully moved temp XLE files to SMOO for {project_name}")
+                    else:
+                        logger.warning(f"Failed to move some temp XLE files to SMOO for {project_name}")
+                        # Don't fail the entire save operation for XLE move failures
+                        
+                except Exception as e:
+                    logger.error(f"Error moving XLE files to SMOO for {project_name}: {e}")
+                    # Don't fail the entire save operation for XLE move failures
+            else:
+                if not self.shared_xle_manager:
+                    logger.debug(f"No SharedDatabaseXLEManager available for XLE file operations")
+                elif not success:
+                    logger.debug(f"Database save failed, skipping XLE file operations")
+            
+            if progress_callback:
+                progress_callback(70, "Saving change tracking...")
             
             if success and change_tracker:
                 # Save change tracking info to shared drive changes folder
@@ -1020,6 +1075,23 @@ class SharedDriveDbHandler:
                     os.remove(file_path)
                     logger.info(f"Removed draft {file_type}: {os.path.basename(file_path)}")
                     draft_existed = True
+            
+            # TASK 5: Clean up temp XLE files when draft is discarded
+            if self.shared_xle_manager:
+                try:
+                    logger.info(f"Cleaning up temp XLE files for discarded draft: {project_name}")
+                    cleanup_success = self.shared_xle_manager.cleanup_temp_files(project_name)
+                    
+                    if cleanup_success:
+                        logger.info(f"Successfully cleaned up temp XLE files for {project_name}")
+                    else:
+                        logger.warning(f"Failed to clean up some temp XLE files for {project_name}")
+                        
+                except Exception as e:
+                    logger.error(f"Error cleaning up temp XLE files for {project_name}: {e}")
+                    # Don't fail the entire draft clear operation for XLE cleanup failures
+            else:
+                logger.debug(f"No SharedDatabaseXLEManager available for XLE cleanup")
             
             if draft_existed:
                 logger.info(f"Cleared draft for project {project_name}")

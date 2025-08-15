@@ -778,13 +778,23 @@ class WaterLevelImportDialog(QDialog):
                     # Initialize file organizer using settings handler for proper path
                     db_name = Path(self.water_level_model.db_path).stem if self.water_level_model.db_path else None
                     
-                    # Get settings handler from water_level_model
+                    # Get settings handler and cache directory from water_level_model
                     settings_handler = None
+                    cache_dir = None
                     if hasattr(self.water_level_model, 'db_manager') and self.water_level_model.db_manager:
                         settings_handler = getattr(self.water_level_model.db_manager, 'settings_handler', None)
+                        # Get cache directory from database manager
+                        if hasattr(self.water_level_model.db_manager, 'get_cache_dir'):
+                            cache_dir = self.water_level_model.db_manager.get_cache_dir()
+                        elif hasattr(self.water_level_model.db_manager, 'cache_dir'):
+                            cache_dir = self.water_level_model.db_manager.cache_dir
                     
                     from ..utils.file_organizer import XLEFileOrganizer
-                    file_organizer = XLEFileOrganizer(db_name=db_name, settings_handler=settings_handler)
+                    file_organizer = XLEFileOrganizer(
+                        db_name=db_name, 
+                        settings_handler=settings_handler, 
+                        cache_dir=cache_dir
+                    )
                     
                     # Get location from metadata
                     location = self.metadata['metadata'].location
@@ -801,38 +811,10 @@ class WaterLevelImportDialog(QDialog):
                     if organized_path:
                         logger.info(f"File organized at: {organized_path}")
                         
-                        # Track XLE file for cloud upload if we have a cloud database
-                        try:
-                            if (self.water_level_model.db_manager and 
-                                hasattr(self.water_level_model.db_manager, 'is_cloud_database') and 
-                                self.water_level_model.db_manager.is_cloud_database and
-                                hasattr(self.water_level_model.db_manager, 'cloud_db_handler') and
-                                self.water_level_model.db_manager.cloud_db_handler and
-                                hasattr(self.water_level_model.db_manager.cloud_db_handler, 'xle_manager') and
-                                self.water_level_model.db_manager.cloud_db_handler.xle_manager):
-                                
-                                # Get project name from cloud database manager
-                                project_name = getattr(self.water_level_model.db_manager, 'cloud_project_name', None)
-                                
-                                if project_name:
-                                    # Track the organized XLE file for cloud upload
-                                    file_id = self.water_level_model.db_manager.cloud_db_handler.xle_manager.track_xle_file(
-                                        file_path=str(organized_path),
-                                        file_type='transducer',
-                                        serial_number=serial_number,
-                                        well_number=well_number,
-                                        start_date=start_date.isoformat(),
-                                        end_date=end_date.isoformat(),
-                                        project_name=project_name
-                                    )
-                                    logger.info(f"XLE file tracked for cloud upload (ID: {file_id})")
-                                else:
-                                    logger.warning("Cannot track XLE file - no project name available")
-                            else:
-                                logger.info("Not a cloud database, XLE file tracking skipped")
-                        except Exception as e:
-                            logger.error(f"Error tracking XLE file for cloud upload: {e}")
-                            # Continue even if XLE tracking fails
+                        # XLE file organization complete
+                        # Note: For shared databases (wlm_ prefix), files are stored in temp location
+                        # For local databases, files are stored in permanent imported_xle_files location
+                        logger.info(f"XLE file organization complete: {organized_path}")
                     else:
                         logger.warning("Failed to organize XLE file")
                         
