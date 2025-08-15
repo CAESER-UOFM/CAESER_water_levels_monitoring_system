@@ -3043,10 +3043,14 @@ class MainWindow(QMainWindow):
             if success:
                 QMessageBox.information(
                     self,
-                    "Sync Complete",
-                    "Field data files have been successfully organized!\n\n"
-                    "New XLE files from Google Drive SOLINST have been\n"
-                    "organized into SMOO FIELD_DATA_CONSOLIDATED structure.\n\n"
+                    "Sync Complete - SMOO XLE Workflow",
+                    "Field data files have been successfully organized using the new SMOO XLE workflow!\n\n"
+                    "✅ Files downloaded from Google Drive SOLINST folder\n"
+                    "✅ Metadata extracted (device type, serial numbers, locations, dates)\n"
+                    "✅ Organized into proper SMOO structure:\n"
+                    "   • Barologgers → barologgers/{serial_number}/\n"
+                    "   • Transducers → transducers/{well_number}/\n"
+                    "✅ Standardized filenames with location and date ranges\n\n"
                     "You can now run 'Sync Barologger Files' or 'Sync Water Level Files'\n"
                     "to process the organized data into your database."
                 )

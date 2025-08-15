@@ -14,11 +14,13 @@ import os
 import shutil
 import logging
 import tempfile
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, List, Callable
 from googleapiclient.http import MediaIoBaseDownload
 from ...config.paths import DefaultPaths
+from ..utils.file_organizer import XLEFileOrganizer
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +45,17 @@ class HybridFieldDataConsolidator:
         self.smoo_root = self.settings_handler.get_setting("shared_drive_root", DefaultPaths.SHARED_DRIVE_BASE)
         self.consolidated_folder = os.path.join(self.smoo_root, "FIELD_DATA_CONSOLIDATED")
         
+        # Initialize XLE file organizer for proper organization
+        self.xle_organizer = XLEFileOrganizer(
+            app_root_dir=Path(self.consolidated_folder),
+            db_name="FIELD_DATA_CONSOLIDATED",  # Use as project name
+            settings_handler=settings_handler
+        )
+        
         logger.info(f"Hybrid Consolidator initialized:")
         logger.info(f"  Google Drive SOLINST ID: {self.solinst_folder_id}")
         logger.info(f"  SMOO Consolidated: {self.consolidated_folder}")
+        logger.info(f"  Using new SMOO XLE workflow for organization")
     
     def check_access(self) -> bool:
         """Check if both Google Drive and SMOO are accessible"""
@@ -122,50 +132,118 @@ class HybridFieldDataConsolidator:
     
     def extract_xle_metadata(self, file_path: str) -> Dict:
         """
-        Extract basic metadata from XLE file for organization
+        Extract comprehensive metadata from XLE file using proper XML parsing
         
         Args:
             file_path: Path to XLE file
             
         Returns:
-            Dictionary with extracted metadata
+            Dictionary with extracted metadata including dates, device info, etc.
         """
         metadata = {
             'serial_number': 'unknown',
             'location': 'unknown',  
             'start_date': None,
             'end_date': None,
-            'instrument_type': 'unknown'
+            'instrument_type': 'levellogger',  # Default to levellogger
+            'well_number': None,
+            'device_type': 'transducer'  # Default for XLEFileOrganizer
         }
         
         try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                content = f.read(1024)  # Read first 1KB for metadata
+            # Parse XML properly
+            tree = ET.parse(file_path)
+            root = tree.getroot()
+            
+            # Extract instrument info
+            instrument_info = root.find('.//Instrument_info')
+            if instrument_info is not None:
+                # Serial number
+                serial_elem = instrument_info.find('Serial_number')
+                if serial_elem is not None and serial_elem.text:
+                    metadata['serial_number'] = serial_elem.text.strip()
                 
-                # Extract serial number
-                if 'Serial_number=' in content:
-                    serial_line = [line for line in content.split('\n') if 'Serial_number=' in line]
-                    if serial_line:
-                        metadata['serial_number'] = serial_line[0].split('=')[-1].strip()
+                # Location  
+                location_elem = instrument_info.find('Location')
+                if location_elem is not None and location_elem.text:
+                    metadata['location'] = location_elem.text.strip()
                 
-                # Extract location
-                if 'Location=' in content:
-                    location_line = [line for line in content.split('\n') if 'Location=' in line]
-                    if location_line:
-                        metadata['location'] = location_line[0].split('=')[-1].strip()
-                
-                # Determine instrument type from filename or content
-                filename = os.path.basename(file_path).lower()
-                if any(keyword in filename for keyword in ['baro', 'bar']):
-                    metadata['instrument_type'] = 'barologger'
-                elif any(keyword in filename for keyword in ['level', 'lev', 'wl']):
-                    metadata['instrument_type'] = 'levellogger'
+                # Model to determine device type
+                model_elem = instrument_info.find('Model')
+                if model_elem is not None and model_elem.text:
+                    model = model_elem.text.lower()
+                    if 'baro' in model:
+                        metadata['instrument_type'] = 'barologger'
+                        metadata['device_type'] = 'barologger'
+                    else:
+                        metadata['instrument_type'] = 'levellogger' 
+                        metadata['device_type'] = 'transducer'
+            
+            # Extract date range from data
+            data_section = root.find('.//Data')
+            if data_section is not None:
+                log_entries = data_section.findall('.//Log')
+                if log_entries:
+                    try:
+                        # Get first and last data points
+                        first_log = log_entries[0]
+                        last_log = log_entries[-1]
+                        
+                        # Parse start date
+                        first_date = first_log.find('Date')
+                        first_time = first_log.find('Time') 
+                        if first_date is not None and first_time is not None:
+                            date_str = f"{first_date.text} {first_time.text}"
+                            metadata['start_date'] = datetime.strptime(date_str, "%Y/%m/%d %H:%M:%S")
+                        
+                        # Parse end date
+                        last_date = last_log.find('Date')
+                        last_time = last_log.find('Time')
+                        if last_date is not None and last_time is not None:
+                            date_str = f"{last_date.text} {last_time.text}"
+                            metadata['end_date'] = datetime.strptime(date_str, "%Y/%m/%d %H:%M:%S")
+                            
+                    except Exception as date_error:
+                        logger.warning(f"Could not parse dates from XLE file: {date_error}")
+            
+            # For barologgers, use serial number; for transducers, try to extract well info
+            if metadata['device_type'] == 'transducer':
+                # Try to extract well number from location
+                location = metadata['location'].upper()
+                if 'WELL' in location or 'W-' in location or 'MW' in location:
+                    # Extract well identifier
+                    import re
+                    well_match = re.search(r'(WELL[_\s-]*\d+|W-?\d+|MW[_\s-]*\d+)', location)
+                    if well_match:
+                        metadata['well_number'] = well_match.group(1).replace(' ', '_').replace('-', '_')
+                    else:
+                        metadata['well_number'] = location.replace(' ', '_')[:20]  # Fallback
                 else:
-                    metadata['instrument_type'] = 'levellogger'  # Default
-        
+                    metadata['well_number'] = location.replace(' ', '_')[:20]  # Use location as well ID
+            
         except Exception as e:
             logger.error(f"Error extracting metadata from {file_path}: {e}")
+            # Try fallback text parsing
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read(2048)  # Read more content for fallback
+                    
+                    # Basic serial number extraction
+                    if 'Serial_number=' in content:
+                        serial_line = [line for line in content.split('\n') if 'Serial_number=' in line]
+                        if serial_line:
+                            metadata['serial_number'] = serial_line[0].split('=')[-1].strip()
+                    
+                    # Basic location extraction
+                    if 'Location=' in content:
+                        location_line = [line for line in content.split('\n') if 'Location=' in line]
+                        if location_line:
+                            metadata['location'] = location_line[0].split('=')[-1].strip()
+                            
+            except Exception as fallback_error:
+                logger.error(f"Fallback metadata extraction also failed: {fallback_error}")
         
+        logger.debug(f"Extracted metadata for {os.path.basename(file_path)}: {metadata}")
         return metadata
     
     def organize_file_by_date(self, file_path: str, metadata: Dict) -> str:
@@ -239,36 +317,57 @@ class HybridFieldDataConsolidator:
             if progress_callback:
                 progress_callback(f"Organizing {filename}...", 50)
             
-            # Extract metadata for organization
+            # Extract comprehensive metadata for proper organization
             metadata = self.extract_xle_metadata(temp_path)
             
-            # Determine target folder
-            target_folder = self.organize_file_by_date(temp_path, metadata)
-            target_path = os.path.join(target_folder, filename)
+            logger.info(f"FIELD_SYNC: Organizing {filename} using SMOO XLE workflow")
+            logger.info(f"FIELD_SYNC: Device type: {metadata['device_type']}, Serial: {metadata['serial_number']}, Location: {metadata['location']}")
             
-            # Check if file already exists in SMOO target
-            if os.path.exists(target_path):
-                # Compare file sizes to see if it's the same file
-                target_size = os.path.getsize(target_path)
+            # Use XLEFileOrganizer for proper organization with SMOO structure
+            if metadata['device_type'] == 'barologger':
+                target_path = self.xle_organizer.organize_barologger_file(
+                    Path(temp_path),
+                    metadata['serial_number'],
+                    metadata['location'],
+                    metadata['start_date'] or datetime.now(),
+                    metadata['end_date'] or datetime.now()
+                )
+            else:  # transducer
+                well_number = metadata['well_number'] or metadata['location']
+                target_path = self.xle_organizer.organize_transducer_file(
+                    Path(temp_path),
+                    metadata['serial_number'],
+                    metadata['location'],
+                    metadata['start_date'] or datetime.now(),
+                    metadata['end_date'] or datetime.now(),
+                    well_number
+                )
+            
+            if target_path and target_path.exists():
+                logger.info(f"FIELD_SYNC: Successfully organized to SMOO structure: {target_path}")
+                if progress_callback:
+                    progress_callback(f"Organized: {filename}", 75)
+            else:
+                # Fallback to simple copy if XLE organizer fails
+                logger.warning(f"FIELD_SYNC: XLE organizer failed, using fallback organization")
+                fallback_folder = self.organize_file_by_date(temp_path, metadata)
+                target_path = os.path.join(fallback_folder, filename)
                 
-                if file_size == target_size:
-                    logger.info(f"File already consolidated: {filename}")
-                    os.remove(temp_path)  # Clean up temp file
-                    if progress_callback:
-                        progress_callback(f"Already exists: {filename}", 100)
-                    return True
-                else:
-                    # Create unique name for different file
-                    timestamp = datetime.now().strftime("%H%M%S")
-                    name, ext = os.path.splitext(filename)
-                    target_path = os.path.join(target_folder, f"{name}_{timestamp}{ext}")
-            
-            if progress_callback:
-                progress_callback(f"Saving {filename}...", 75)
-            
-            # Move file from temp to SMOO target location
-            logger.info(f"Consolidating: {filename} -> {os.path.relpath(target_path, self.consolidated_folder)}")
-            shutil.move(temp_path, target_path)
+                # Check if file already exists
+                if os.path.exists(target_path):
+                    target_size = os.path.getsize(target_path)
+                    if file_size == target_size:
+                        logger.info(f"File already consolidated: {filename}")
+                        os.remove(temp_path)
+                        if progress_callback:
+                            progress_callback(f"Already exists: {filename}", 100)
+                        return True
+                
+                if progress_callback:
+                    progress_callback(f"Saving {filename}...", 75)
+                
+                shutil.move(temp_path, target_path)
+                target_path = Path(target_path)
             
             if progress_callback:
                 progress_callback(f"Consolidated: {filename}", 100)
