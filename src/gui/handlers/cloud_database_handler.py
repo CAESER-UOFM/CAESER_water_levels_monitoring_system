@@ -117,6 +117,9 @@ class CloudDatabaseHandler:
             
             # Check if both metadata and database files exist
             if not (os.path.exists(working_metadata_path) and os.path.exists(working_db_path)):
+                logger.debug(f"VERSION_DEBUG: Working files missing for {project_name}. "
+                           f"Metadata: {os.path.exists(working_metadata_path)}, "
+                           f"DB: {os.path.exists(working_db_path)}")
                 return False
             
             # Read working database metadata
@@ -127,9 +130,12 @@ class CloudDatabaseHandler:
             working_time = working_metadata.get('modifiedTime', '')
             is_valid = working_time == cloud_modified_time
             
+            logger.info(f"VERSION_DEBUG: Comparing times for {project_name}: "
+                       f"Working='{working_time}', Cloud='{cloud_modified_time}', Valid={is_valid}")
+            
             if not is_valid:
                 logger.warning(f"Working database for {project_name} is outdated. "
-                             f"Local: {working_time}, Cloud: {cloud_modified_time}")
+                             f"Local: '{working_time}', Cloud: '{cloud_modified_time}'")
             
             return is_valid
             
@@ -1193,13 +1199,28 @@ class CloudDatabaseHandler:
                     except:
                         diff_minutes = 0
                     
+                    # Check if times are actually the same (should return 'current', not 'outdated')
+                    if diff_minutes == 0 and local_time == cloud_version_time:
+                        return {
+                            'status': 'current',
+                            'local_time': local_time,
+                            'cloud_time': cloud_version_time,
+                            'time_diff': 0,
+                            'needs_download': False,
+                            'message': '✅ Working with latest version',
+                            'local_db_exists': True,
+                            'file_size_mb': round(file_size, 2),
+                            'db_type': 'working',
+                            'working_db_path': working_db_path
+                        }
+                    
                     return {
                         'status': 'outdated',
                         'local_time': local_time,
                         'cloud_time': cloud_version_time,
-                        'time_diff': max(diff_minutes, 1),  # At least 1 minute difference
+                        'time_diff': max(abs(diff_minutes), 1),  # At least 1 minute difference, use abs for proper comparison
                         'needs_download': True,
-                        'message': '⚠️ Your working copy is outdated - cloud version is newer',
+                        'message': '⚠️ Your working copy is outdated - shared drive has newer version',
                         'local_db_exists': True,
                         'file_size_mb': round(file_size, 2),
                         'db_type': 'working_outdated',
