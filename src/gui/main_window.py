@@ -1480,12 +1480,12 @@ class MainWindow(QMainWindow):
                 QMessageBox.information(self, "Information", "This feature is only available for cloud databases.")
                 return
             
-            if not hasattr(self, 'change_tracker') or not self.change_tracker:
+            if not hasattr(self.db_manager, 'change_tracker') or not self.db_manager.change_tracker:
                 QMessageBox.warning(self, "Warning", "Change tracking is not available.")
                 return
             
             # Check if there are any changes to compare
-            if not self.change_tracker.changes:
+            if not self.db_manager.change_tracker.changes:
                 QMessageBox.information(self, "No Changes", "No local changes detected to compare.")
                 return
             
@@ -1499,25 +1499,18 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "Warning", "Please log in first.")
                 return
             
-            # Open the comparison dialog - TEMPORARILY DISABLED
-            # dialog = DatabaseComparisonDialog(
-            #     self.db_manager,
-            #     self.change_tracker,
-            #     self.cloud_db_handler,
-            #     self.user_auth_service,
-            #     self
-            # )
-            # 
-            # # Show dialog
-            # result = dialog.exec_()
-            # 
-            # # If user accepted changes in the dialog, we could trigger save here
-            # if result == QDialog.Accepted:
+            # Open the comparison dialog
+            from ..dialogs.database_comparison_dialog import DatabaseComparisonDialog
+            dialog = DatabaseComparisonDialog(
+                self.db_manager,
+                self.db_manager.change_tracker,
+                self.cloud_db_handler,
+                self.user_auth_service,
+                self
+            )
             
-            # Temporary workaround - show message
-            QMessageBox.information(self, "Feature Temporarily Disabled", 
-                                  "Database comparison feature is temporarily disabled.")
-            return
+            # Show dialog
+            dialog.exec_()
                 
         except Exception as e:
             logger.error(f"Error opening comparison dialog: {e}")
