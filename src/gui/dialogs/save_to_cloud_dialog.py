@@ -37,7 +37,7 @@ class SaveToCloudDialog(QDialog):
         
     def setup_ui(self):
         """Setup elegant Windows-optimized dialog UI"""
-        self.setWindowTitle(f"💾 Save to SMOO - {self.project_name}")
+        self.setWindowTitle(f"💾 Push to SMOO - {self.project_name}")
         self.setMinimumSize(900, 700)
         self.setMaximumSize(1200, 900)
         
@@ -62,7 +62,7 @@ class SaveToCloudDialog(QDialog):
         
         # Title with icon
         title_layout = QHBoxLayout()
-        title_label = QLabel("☁️ Save Changes to SMOO")
+        title_label = QLabel("☁️ Push Changes to SMOO")
         title_label.setFont(QFont("Segoe UI", 16, QFont.Bold))
         title_label.setStyleSheet("color: #1565C0; margin: 10px;")
         title_layout.addWidget(title_label)
@@ -417,7 +417,7 @@ class SaveToCloudDialog(QDialog):
         button_layout.addWidget(cancel_btn)
         
         # Save button
-        save_btn = QPushButton("💾 Save to SMOO")
+        save_btn = QPushButton("💾 Push to SMOO")
         save_btn.setStyleSheet("""
             QPushButton {
                 background-color: #4CAF50;
@@ -445,8 +445,8 @@ class SaveToCloudDialog(QDialog):
     def _show_help(self):
         """Show help information"""
         from PyQt5.QtWidgets import QMessageBox
-        QMessageBox.information(self, "Help - Save to SMOO", 
-            """💡 <b>Save to SMOO Help</b><br><br>
+        QMessageBox.information(self, "Help - Push to SMOO", 
+            """💡 <b>Push to SMOO Help</b><br><br>
             <b>📊 Changes Analysis:</b><br>
             • <b>Summary:</b> Overview of all changes with statistics<br>
             • <b>Details:</b> Complete list of individual changes<br>
@@ -562,7 +562,7 @@ class SaveToCloudDialog(QDialog):
             QMessageBox.warning(
                 self,
                 "Description Required",
-                "Please provide a description of your changes before saving to SMOO."
+                "Please provide a description of your changes before pushing to SMOO."
             )
             self.change_text.setFocus()
             return

@@ -460,22 +460,24 @@ class MainWindow(QMainWindow):
         self.reload_db_btn.setEnabled(False)  # Initially disabled until a database is selected
         self._update_reload_button_style()
         
-        # Add Save to SMOO button (initially hidden)
-        self.save_cloud_btn = QPushButton("Save to SMOO")
+        # Add Push to SMOO button (initially hidden and disabled)
+        self.save_cloud_btn = QPushButton("Push to SMOO")
+        # Initial disabled styling - will be updated by _update_push_to_smoo_button()
         self.save_cloud_btn.setStyleSheet("""
-            background-color: #2E7D32;
-            color: white;
-            border: 1px solid #1B5E20;
+            background-color: #E8E8E8;
+            color: #9E9E9E;
+            border: 1px solid #D0D0D0;
             border-radius: 8px;
             padding: 10px 20px;
-            font-weight: bold;
+            font-weight: normal;
             font-size: 13px;
             min-height: 20px;
         """)
         self.save_cloud_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.save_cloud_btn.clicked.connect(self._save_to_cloud)
-        self.save_cloud_btn.setToolTip("Save changes to the cloud database")
+        self.save_cloud_btn.setToolTip("Push changes to the cloud database")
         self.save_cloud_btn.setVisible(False)
+        self.save_cloud_btn.setEnabled(False)  # Initially disabled
         
         
         # Add Create Local Copy button (initially hidden)
@@ -1277,7 +1279,7 @@ class MainWindow(QMainWindow):
         if prefer_draft and has_draft:
             display_name = f"{project_name} (Draft)"
             # Update UI to show draft state with modifications
-            self.save_cloud_btn.setEnabled(True)
+            self._update_push_to_smoo_button(enabled=True)
             self.cloud_mode_label.setText(f"SMOO: {project_name} (Draft - Has Changes)")
         else:
             display_name = f"{project_name} (Cloud)"
@@ -1387,7 +1389,7 @@ class MainWindow(QMainWindow):
         """Update UI elements for cloud mode"""
         if is_cloud:
             self.save_cloud_btn.setVisible(True)
-            self.save_cloud_btn.setEnabled(False)  # Initially disabled
+            self._update_push_to_smoo_button(enabled=False)  # Initially disabled
             self.create_local_copy_btn.setVisible(True)
             self.create_local_copy_btn.setEnabled(True)  # Always enabled for cloud databases
             self.cloud_mode_label.setText(f"SMOO: {project_name}")
@@ -1618,7 +1620,7 @@ class MainWindow(QMainWindow):
             
             # Update UI
             self.db_manager.is_cloud_modified = False
-            self.save_cloud_btn.setEnabled(False)
+            self._update_push_to_smoo_button(enabled=False)
             self.cloud_mode_label.setText(f"SMOO: {self.db_manager.cloud_project_name}")
             
             # DEBUG: Verify database state after upload
@@ -4336,13 +4338,45 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
             logger.error(f"Error opening credentials setup: {e}")
             QMessageBox.critical(self, "Error", f"Failed to open credentials setup: {str(e)}")
 
+    def _update_push_to_smoo_button(self, enabled=True):
+        """Update the Push to SMOO button styling based on enabled/disabled state."""
+        if not hasattr(self, 'save_cloud_btn'):
+            return
+            
+        self.save_cloud_btn.setEnabled(enabled)
+        
+        if enabled:
+            # Enabled style - normal green button
+            self.save_cloud_btn.setStyleSheet("""
+                background-color: #2E7D32;
+                color: white;
+                border: 1px solid #1B5E20;
+                border-radius: 8px;
+                padding: 10px 20px;
+                font-weight: bold;
+                font-size: 13px;
+                min-height: 20px;
+            """)
+        else:
+            # Disabled style - pale/grayed out
+            self.save_cloud_btn.setStyleSheet("""
+                background-color: #E8E8E8;
+                color: #9E9E9E;
+                border: 1px solid #D0D0D0;
+                border-radius: 8px;
+                padding: 10px 20px;
+                font-weight: normal;
+                font-size: 13px;
+                min-height: 20px;
+            """)
+
     def mark_database_modified(self):
         """Mark the current database as having unsaved changes."""
         if self.db_manager and self.db_manager.current_db:
             # Handle cloud database modifications
             if self.db_manager.is_cloud_database:
                 self.db_manager.is_cloud_modified = True
-                self.save_cloud_btn.setEnabled(True)
+                self._update_push_to_smoo_button(enabled=True)
                 self.cloud_mode_label.setText(f"SMOO: {self.db_manager.cloud_project_name} (MODIFIED)")
             elif self.db_manager.is_google_drive_db:
                 self.db_manager._modified_since_sync = True
