@@ -502,6 +502,10 @@ class WaterLevelTab(QWidget):
         bottom_grid.addWidget(transducer_group, 1, 0)
         bottom_grid.addWidget(manual_group, 2, 0)
         
+        # DEBUG: Log grid layout information
+        logger.debug(f"BOTTOM_GRID: Telemetry at (0,0), Transducer at (1,0), Manual at (2,0)")
+        logger.debug(f"BOTTOM_GRID: spacing={bottom_grid.spacing()}, margins={bottom_grid.contentsMargins()}")
+        
         # Add logo to bottom-right position (aligned to bottom of the grid)
         bottom_grid.addWidget(self.logo_area, 2, 1, 1, 1, Qt.AlignBottom)  # Row 2 (bottom), Column 1, aligned to bottom
         
@@ -2706,8 +2710,13 @@ class WaterLevelTab(QWidget):
         # Add button layout to main layout
         layout.addLayout(btn_layout)
         
-        # Set a reasonable maximum height for better appearance
+        # Set consistent dimensions to match other sections exactly
         group.setMaximumHeight(50)  # Reduced from 85 to 50 for more compact design
+        group.setMinimumHeight(50)  # Force exact height match
+        group.setFixedHeight(50)    # Ensure no height variation
+        
+        # DEBUG: Log transducer panel dimensions
+        logger.debug(f"TRANSDUCER_PANEL: height={group.height()}, sizeHint={group.sizeHint()}, minimumSizeHint={group.minimumSizeHint()}")
         
         return group
     
@@ -2781,8 +2790,13 @@ class WaterLevelTab(QWidget):
         # Add button layout to main layout
         layout.addLayout(btn_layout)
         
-        # Set a reasonable maximum height for better appearance
+        # Set consistent dimensions to match other sections exactly
         group.setMaximumHeight(50)  # Reduced from 85 to 50 for more compact design
+        group.setMinimumHeight(50)  # Force exact height match
+        group.setFixedHeight(50)    # Ensure no height variation
+        
+        # DEBUG: Log telemetry panel dimensions
+        logger.debug(f"TELEMETRY_PANEL: height={group.height()}, sizeHint={group.sizeHint()}, minimumSizeHint={group.minimumSizeHint()}")
         
         return group
     
@@ -2811,8 +2825,8 @@ class WaterLevelTab(QWidget):
         
         # Create a vertical layout with a single row of buttons
         layout = QVBoxLayout(group)
-        layout.setContentsMargins(2, 4, 2, 2)  # Further reduced margins
-        layout.setSpacing(1)  # Minimal spacing
+        layout.setContentsMargins(2, 4, 2, 2)  # Match other sections exactly
+        layout.setSpacing(1)  # Match other sections exactly
         
         # Create button row
         btn_layout = QHBoxLayout()
@@ -2918,8 +2932,14 @@ class WaterLevelTab(QWidget):
         # Add button layout to main layout
         layout.addLayout(btn_layout)
         
-        # Set a reasonable maximum height for better appearance
+        # Set consistent dimensions to match other sections exactly
         group.setMaximumHeight(50)  # Reduced from 85 to 50 for more compact design
+        group.setMinimumHeight(50)  # Force exact height match
+        group.setFixedHeight(50)    # Ensure no height variation
+        
+        # DEBUG: Log manual panel dimensions
+        logger.debug(f"MANUAL_PANEL: height={group.height()}, sizeHint={group.sizeHint()}, minimumSizeHint={group.minimumSizeHint()}")
+        logger.debug(f"MANUAL_PANEL: Button count=3, Layout margins={layout.contentsMargins()}, Layout spacing={layout.spacing()}")
         
         return group
     
