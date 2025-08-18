@@ -111,7 +111,11 @@ class HybridFieldDataConsolidator:
         try:
             if os.path.exists(self.sync_timestamp_file):
                 with open(self.sync_timestamp_file, 'r') as f:
-                    data = json.load(f)
+                    content = f.read().strip()
+                    if not content:
+                        logger.warning(f"Timestamp file is empty: {self.sync_timestamp_file}")
+                        return None
+                    data = json.loads(content)
                     timestamp_str = data.get('last_sync_timestamp')
                     if timestamp_str:
                         # Parse ISO format timestamp
@@ -119,6 +123,14 @@ class HybridFieldDataConsolidator:
             return None
         except Exception as e:
             logger.warning(f"Could not read last sync timestamp: {e}")
+            logger.warning(f"Timestamp file path: {self.sync_timestamp_file}")
+            # Try to read raw content for debugging
+            try:
+                with open(self.sync_timestamp_file, 'r') as f:
+                    raw_content = f.read()
+                    logger.warning(f"Raw timestamp file content (first 100 chars): '{raw_content[:100]}'")
+            except:
+                pass
             return None
     
     def save_sync_timestamp(self, timestamp: datetime = None) -> bool:
@@ -437,6 +449,10 @@ class HybridFieldDataConsolidator:
             logger.info(f"FIELD_SYNC: Organizing {filename} using SMOO XLE workflow")
             logger.info(f"FIELD_SYNC: Device type: {metadata['device_type']}, Serial: {metadata['serial_number']}, Location: {metadata['location']}")
             
+            # Also report through progress callback for visibility
+            if progress_callback:
+                progress_callback(f"Metadata: {metadata['device_type']} | {metadata['serial_number']} | {metadata['location']}", 52)
+            
             # Use XLEFileOrganizer for proper organization with SMOO structure
             if metadata['device_type'] == 'barologger':
                 target_path = self.xle_organizer.organize_barologger_file(
@@ -460,12 +476,15 @@ class HybridFieldDataConsolidator:
             if target_path and target_path.exists():
                 logger.info(f"FIELD_SYNC: Successfully organized to SMOO structure: {target_path}")
                 if progress_callback:
-                    progress_callback(f"Organized: {filename}", 75)
+                    progress_callback(f"✅ Saved to: {str(target_path)}", 75)
             else:
                 # Fallback to simple copy if XLE organizer fails
                 logger.warning(f"FIELD_SYNC: XLE organizer failed, using fallback organization")
                 fallback_folder = self.organize_file_by_date(temp_path, metadata)
                 target_path = os.path.join(fallback_folder, filename)
+                
+                if progress_callback:
+                    progress_callback(f"⚠️ Fallback to: {fallback_folder}", 73)
                 
                 # Check if file already exists
                 if os.path.exists(target_path):
@@ -481,10 +500,14 @@ class HybridFieldDataConsolidator:
                     progress_callback(f"Saving {filename}...", 75)
                 
                 shutil.move(temp_path, target_path)
+                logger.info(f"FIELD_SYNC: Fallback saved file to: {target_path}")
                 target_path = Path(target_path)
+                if progress_callback:
+                    progress_callback(f"💾 Fallback saved to: {os.path.basename(target_path.parent)}", 90)
             
             if progress_callback:
-                progress_callback(f"Consolidated: {filename}", 100)
+                final_location = str(target_path.parent) if isinstance(target_path, Path) else os.path.dirname(target_path)
+                progress_callback(f"✅ Final: {os.path.basename(final_location)}/{filename}", 100)
             
             return True
             
