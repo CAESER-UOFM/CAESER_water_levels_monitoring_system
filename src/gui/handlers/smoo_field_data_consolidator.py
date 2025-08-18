@@ -382,39 +382,19 @@ class HybridFieldDataConsolidator:
                     except Exception as date_error:
                         logger.warning(f"Could not parse dates from XLE file: {date_error}")
             
-            # Try to extract location from filename if XML location is unknown/empty
-            filename = os.path.basename(file_path)
-            logger.info(f"Processing filename: {filename}")
+            # Log the location extraction result  
             logger.info(f"XML location extracted: '{metadata['location']}'")
             
+            # If XML location is still unknown, log it as an issue but don't try filename hacks
             if metadata['location'] == 'unknown' or not metadata['location'] or metadata['location'].strip() == '':
-                # Extract location from filename patterns
-                import re
-                logger.info("XML location is unknown/empty, trying filename extraction...")
-                
-                # Try patterns like: HA-A012_, _T017_, _PioneerSprings_
-                location_patterns = [
-                    (r'^([A-Z]{2}-[A-Z]\d+)_', 'Well pattern (HA-A012_)'),     # HA-A012_
-                    (r'_([A-Z]\d+)_', 'Transducer pattern (_T017_)'),          # _T017_
-                    (r'_([A-Za-z][A-Za-z0-9]+)_', 'Location pattern (_PioneerSprings_)'),  # _PioneerSprings_
-                    (r'^([A-Za-z0-9-_]+)_', 'General pattern')                 # General pattern
-                ]
-                
-                for pattern, description in location_patterns:
-                    match = re.search(pattern, filename)
-                    if match:
-                        extracted = match.group(1)
-                        metadata['location'] = extracted
-                        logger.info(f"✅ Extracted location using {description}: '{extracted}'")
-                        break
-                else:
-                    logger.warning(f"❌ No location pattern matched for filename: {filename}")
+                logger.warning(f"⚠️ No location found in XML for file: {os.path.basename(file_path)}")
+                logger.warning(f"⚠️ This XLE file may have incomplete metadata")
             else:
                 logger.info(f"✅ Using XML location: '{metadata['location']}'")
             
             # For barologgers, use serial number; for transducers, try to extract well info
             if metadata['device_type'] == 'transducer':
-                # Try to extract well number from location (now potentially from filename)
+                # Try to extract well number from location
                 location = metadata['location'].upper()
                 if 'WELL' in location or 'W-' in location or 'MW' in location:
                     # Extract well identifier
