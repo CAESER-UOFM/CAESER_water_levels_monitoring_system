@@ -168,18 +168,26 @@ class HybridFieldDataConsolidator:
             # Get last sync timestamp for incremental sync
             last_sync = None
             if incremental:
+                logger.info(f"🕒 INCREMENTAL_SYNC: Checking timestamp file: {self.sync_timestamp_file}")
+                logger.info(f"🕒 INCREMENTAL_SYNC: Timestamp file exists: {os.path.exists(self.sync_timestamp_file)}")
+                
                 last_sync = self.get_last_sync_timestamp()
                 if last_sync:
-                    logger.info(f"INCREMENTAL_SYNC: Only syncing files modified after {last_sync.isoformat()}")
+                    logger.info(f"🕒 INCREMENTAL_SYNC: Last sync timestamp: {last_sync.isoformat()}")
+                    logger.info(f"🕒 INCREMENTAL_SYNC: Only syncing files modified after {last_sync.isoformat()}")
                 else:
-                    logger.info("INCREMENTAL_SYNC: No previous sync found, downloading all files")
+                    logger.info("🕒 INCREMENTAL_SYNC: No previous sync found, downloading all files")
+            else:
+                logger.info("🔄 FULL_SYNC: Force full sync requested, downloading all files")
             
             # Set the SOLINST folder ID if not set
             if self.solinst_folder_id:
                 self.drive_service.set_solinst_folder_id(self.solinst_folder_id)
             
             # Use the service account handler's built-in method
+            logger.info("📂 GOOGLE_DRIVE: Scanning SOLINST folder for XLE files...")
             files_found = self.drive_service.list_xle_files()
+            logger.info(f"📂 GOOGLE_DRIVE: Found {len(files_found)} total XLE files in SOLINST folder")
             
             # Convert to format expected by consolidator and filter by timestamp
             consolidated_files = []
@@ -199,7 +207,7 @@ class HybridFieldDataConsolidator:
                 if incremental and last_sync and file_modified:
                     if file_modified <= last_sync:
                         skipped_count += 1
-                        logger.debug(f"INCREMENTAL_SYNC: Skipping {file_info['name']} (not modified since last sync)")
+                        logger.info(f"⏭️ INCREMENTAL_SYNC: Skipping {file_info['name']} (Modified: {file_modified_str}, Last sync: {last_sync.isoformat()})")
                         continue
                 
                 consolidated_file = {
@@ -212,14 +220,23 @@ class HybridFieldDataConsolidator:
                 consolidated_files.append(consolidated_file)
                 
                 if incremental and last_sync:
-                    logger.info(f"INCREMENTAL_SYNC: Will sync {file_info['name']} (Modified: {file_modified_str})")
+                    logger.info(f"✅ INCREMENTAL_SYNC: Will sync {file_info['name']} (Modified: {file_modified_str})")
                 else:
-                    logger.debug(f"Found Google Drive XLE: {file_info['name']} (Modified: {file_modified_str})")
+                    logger.info(f"📄 Found Google Drive XLE: {file_info['name']} (Modified: {file_modified_str})")
             
-            if incremental and skipped_count > 0:
-                logger.info(f"INCREMENTAL_SYNC: Found {len(consolidated_files)} new files, skipped {skipped_count} unchanged files")
+            # Enhanced summary logging
+            total_files = len(files_found)
+            new_files = len(consolidated_files)
+            
+            if incremental and last_sync:
+                logger.info(f"📊 INCREMENTAL_SYNC SUMMARY:")
+                logger.info(f"📊 Total files in Google Drive SOLINST: {total_files}")
+                logger.info(f"📊 Files skipped (not modified since last sync): {skipped_count}")
+                logger.info(f"📊 New/modified files to sync: {new_files}")
+                if skipped_count > 0:
+                    logger.info(f"📊 Last sync was: {last_sync.isoformat()}")
             else:
-                logger.info(f"Found {len(consolidated_files)} XLE files in Google Drive SOLINST")
+                logger.info(f"📊 SYNC SUMMARY: Found {new_files} XLE files in Google Drive SOLINST")
             
             return consolidated_files
             
