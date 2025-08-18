@@ -53,6 +53,7 @@ from .handlers.shared_drive_updater import SharedDriveUpdater
 from .dialogs.feedback_dialog import FeedbackDialog
 from .handlers.version_checker import VersionChecker
 from .dialogs.shared_drive_settings_dialog import SharedDriveSettingsDialog
+from .dialogs.field_data_settings_dialog import FieldDataSettingsDialog
 from .dialogs.unified_credentials_dialog import UnifiedCredentialsDialog
 from .dialogs.draft_selection_dialog import DraftSelectionDialog
 
@@ -2771,6 +2772,11 @@ class MainWindow(QMainWindow):
         service_account_settings_action.triggered.connect(self.setup_service_account)
         settings_menu.addAction(service_account_settings_action)
         
+        # Field Data settings for managing multiple laptop folders
+        field_data_settings_action = QAction("Field Data Settings (Multi-Laptop)", self)
+        field_data_settings_action.triggered.connect(self.open_field_data_settings)
+        settings_menu.addAction(field_data_settings_action)
+        
         # Monet API settings
         monet_settings_action = QAction("Monet API Settings", self)
         monet_settings_action.triggered.connect(self.open_monet_settings)
@@ -4306,6 +4312,28 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
             logger.error(f"Error opening shared drive settings: {e}")
             QMessageBox.critical(self, "Error", 
                                f"Error opening shared drive settings:\n{str(e)}")
+    
+    def open_field_data_settings(self):
+        """Open field data settings dialog for managing multiple laptop folders"""
+        try:
+            # Get Google service if available
+            google_service = None
+            if hasattr(self, 'google_service_account'):
+                google_service = self.google_service_account
+            
+            dialog = FieldDataSettingsDialog(
+                self.settings_handler,
+                google_service,
+                self
+            )
+            
+            if dialog.exec_() == QDialog.Accepted:
+                logger.info("Field data settings updated - multiple laptop folders configured")
+                
+        except Exception as e:
+            logger.error(f"Error opening field data settings: {e}")
+            QMessageBox.critical(self, "Settings Error", 
+                               f"Error opening field data settings:\n{str(e)}")
             
     def _check_credentials_on_startup(self):
         """Check for Google Drive credentials on startup"""
