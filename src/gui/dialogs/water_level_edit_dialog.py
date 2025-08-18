@@ -1570,7 +1570,7 @@ class WaterLevelEditDialog(QDialog):
                 
                 logger.info(f"Starting temperature database update for {num_records} records")
                 
-                # Prepare update data
+                # Prepare update data - UPDATE ORIGINAL TEMPERATURE COLUMN like water levels do
                 update_data = []
                 for index, row in modified_data.iterrows():
                     temperature_corrected = row['temperature_spike_corrected']
@@ -1578,6 +1578,7 @@ class WaterLevelEditDialog(QDialog):
                     timestamp_utc = row['timestamp_utc'].strftime('%Y-%m-%d %H:%M:%S') if isinstance(row['timestamp_utc'], pd.Timestamp) else str(row['timestamp_utc'])
                     well_number = str(row['well_number']).strip()
                     
+                    # MATCH WATER LEVEL PATTERN: Update original temperature column + flag
                     update_data.append((temperature_corrected, spike_flag, well_number, timestamp_utc))
                     
                     # Update progress
@@ -1591,10 +1592,10 @@ class WaterLevelEditDialog(QDialog):
                         QMessageBox.information(self, "Operation Canceled", "Temperature update was canceled.")
                         return
                 
-                # Execute batch update
+                # Execute batch update - MATCH WATER LEVEL PATTERN: Update original column + flag
                 cursor.executemany("""
                     UPDATE water_level_readings 
-                    SET temperature_spike_corrected = ?, temperature_spike_flag = ?
+                    SET temperature = ?, temperature_spike_flag = ?
                     WHERE well_number = ? AND timestamp_utc = ?
                 """, update_data)
                 
