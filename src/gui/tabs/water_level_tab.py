@@ -2824,15 +2824,15 @@ class WaterLevelTab(QWidget):
         update_monet_btn.setMinimumWidth(120)
         update_monet_btn.setStyleSheet("""
             QPushButton {
-                padding: 3px 8px;
+                padding: 4px 12px;
                 border: 1px solid #ccc;
                 border-radius: 6px;
                 background-color: #fff8e1;
                 color: #f57c00;
                 font-weight: 500;
                 font-size: 8pt;
-                min-height: 22px;
-                min-width: 80px;
+                min-height: 24px;
+                min-width: 100px;
             }
             QPushButton:hover {
                 background-color: #ffecb3;
@@ -2854,15 +2854,15 @@ class WaterLevelTab(QWidget):
         add_manual_btn.setMinimumWidth(120)
         add_manual_btn.setStyleSheet("""
             QPushButton {
-                padding: 3px 8px;
+                padding: 4px 12px;
                 border: 1px solid #ccc;
                 border-radius: 6px;
                 background-color: #f3e5f5;
                 color: #7b1fa2;
                 font-weight: 500;
                 font-size: 8pt;
-                min-height: 22px;
-                min-width: 80px;
+                min-height: 24px;
+                min-width: 100px;
             }
             QPushButton:hover {
                 background-color: #e1bee7;
@@ -2884,15 +2884,15 @@ class WaterLevelTab(QWidget):
         import_manual_btn.setMinimumWidth(120)
         import_manual_btn.setStyleSheet("""
             QPushButton {
-                padding: 3px 8px;
+                padding: 4px 12px;
                 border: 1px solid #ccc;
                 border-radius: 6px;
                 background-color: #f3e5f5;
                 color: #7b1fa2;
                 font-weight: 500;
                 font-size: 8pt;
-                min-height: 22px;
-                min-width: 80px;
+                min-height: 24px;
+                min-width: 100px;
             }
             QPushButton:hover {
                 background-color: #e1bee7;
