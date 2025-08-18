@@ -474,12 +474,23 @@ class SaveToCloudDialog(QDialog):
         formatted += "=" * 60 + "\n\n"
         
         for i, change in enumerate(self.change_tracker.changes, 1):
-            change_type = change.get('change_type', 'UNKNOWN')
-            action = change.get('action', 'UNKNOWN')
-            table_name = change.get('table_name', 'unknown_table')
-            description = change.get('description', 'No description')
-            timestamp = change.get('timestamp', 'Unknown time')
-            context = change.get('context', {})
+            # Handle both ChangeRecord objects and dictionaries
+            if hasattr(change, 'change_type'):
+                # ChangeRecord object
+                change_type = change.change_type.value if hasattr(change.change_type, 'value') else str(change.change_type)
+                action = change.action.value if hasattr(change.action, 'value') else str(change.action)
+                table_name = change.table_name
+                description = change.description
+                timestamp = change.timestamp
+                context = change.context
+            else:
+                # Dictionary format (fallback)
+                change_type = change.get('change_type', 'UNKNOWN')
+                action = change.get('action', 'UNKNOWN')
+                table_name = change.get('table_name', 'unknown_table')
+                description = change.get('description', 'No description')
+                timestamp = change.get('timestamp', 'Unknown time')
+                context = change.get('context', {})
             
             # Format timestamp
             try:
@@ -516,7 +527,7 @@ class SaveToCloudDialog(QDialog):
         # Sort changes by timestamp
         sorted_changes = sorted(
             self.change_tracker.changes,
-            key=lambda x: x.get('timestamp', ''),
+            key=lambda x: x.timestamp if hasattr(x, 'timestamp') else x.get('timestamp', ''),
             reverse=True
         )
         
@@ -525,7 +536,15 @@ class SaveToCloudDialog(QDialog):
         
         current_date = None
         for change in sorted_changes:
-            timestamp = change.get('timestamp', 'Unknown time')
+            # Handle both ChangeRecord objects and dictionaries
+            if hasattr(change, 'timestamp'):
+                timestamp = change.timestamp
+                change_type = change.change_type.value if hasattr(change.change_type, 'value') else str(change.change_type)
+                description = change.description
+            else:
+                timestamp = change.get('timestamp', 'Unknown time')
+                change_type = change.get('change_type', 'UNKNOWN')
+                description = change.get('description', 'No description')
             
             try:
                 if timestamp != 'Unknown time':
@@ -544,9 +563,6 @@ class SaveToCloudDialog(QDialog):
                     time_str = timestamp
             except:
                 time_str = str(timestamp)
-                
-            change_type = change.get('change_type', 'UNKNOWN')
-            description = change.get('description', 'No description')
             
             type_icon = "🤖" if change_type == "AUTOMATIC" else "✏️"
             formatted += f"{time_str} {type_icon} {description}\n"
