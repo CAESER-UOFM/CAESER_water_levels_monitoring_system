@@ -15,13 +15,12 @@ import shutil
 import logging
 import tempfile
 import json
-import xml.etree.ElementTree as ET
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Dict, List, Callable
 from googleapiclient.http import MediaIoBaseDownload
 from ...config.paths import DefaultPaths
-from ..utils.file_organizer import XLEFileOrganizer
 
 logger = logging.getLogger(__name__)
 
@@ -46,44 +45,9 @@ class HybridFieldDataConsolidator:
         self.smoo_root = self.settings_handler.get_setting("shared_drive_root", DefaultPaths.SHARED_DRIVE_BASE)
         self.consolidated_folder = os.path.join(self.smoo_root, "FIELD_DATA_CONSOLIDATED")
         
-        # Initialize XLE file organizer for proper organization
-        logger.info(f"Initializing XLEFileOrganizer with SMOO path: {self.consolidated_folder}")
-        
-        # CRITICAL FIX: Override the xle_import_directory setting to use SMOO path
-        # XLEFileOrganizer ignores app_root_dir and uses settings instead
-        original_xle_import_dir = settings_handler.get_setting("xle_import_directory", "")
-        logger.info(f"Original xle_import_directory setting: {original_xle_import_dir}")
-        
-        # Temporarily set the xle_import_directory to SMOO root (not consolidated folder)
-        # This prevents double FIELD_DATA_CONSOLIDATED in the path
-        settings_handler.set_setting("xle_import_directory", self.smoo_root)
-        logger.info(f"Temporarily set xle_import_directory to: {self.smoo_root}")
-        
-        self.xle_organizer = XLEFileOrganizer(
-            app_root_dir=Path(self.consolidated_folder),  # This is ignored, but keep for compatibility
-            db_name="FIELD_DATA_CONSOLIDATED",  # Use as project name
-            settings_handler=settings_handler
-        )
-        
-        # Restore original setting after initialization
-        if original_xle_import_dir:
-            settings_handler.set_setting("xle_import_directory", original_xle_import_dir)
-        else:
-            # Remove the setting if it didn't exist
-            try:
-                settings_handler.remove_setting("xle_import_directory")
-            except:
-                pass  # Ignore if remove method doesn't exist
-        
-        # Debug the actual paths being used
-        logger.info(f"XLEFileOrganizer object attributes: {dir(self.xle_organizer)}")
-        
-        # Check various possible path attributes
-        path_attributes = ['app_root_dir', 'root_dir', 'base_dir', 'imported_xle_files_dir', 'project_dir']
-        for attr in path_attributes:
-            if hasattr(self.xle_organizer, attr):
-                value = getattr(self.xle_organizer, attr)
-                logger.info(f"XLEFileOrganizer.{attr}: {value}")
+        # Field data consolidation organizes files by YYYY-MM date folders
+        # This is SEPARATE from XLE import organization (which uses well/serial folders)
+        logger.info(f"Field data consolidation will organize files by end date in: {self.consolidated_folder}")
         
         # Timestamp tracking for incremental sync
         self.sync_timestamp_file = os.path.join(self.consolidated_folder, ".last_field_sync_timestamp.json")
@@ -91,7 +55,7 @@ class HybridFieldDataConsolidator:
         logger.info(f"Hybrid Consolidator initialized:")
         logger.info(f"  Google Drive SOLINST ID: {self.solinst_folder_id}")
         logger.info(f"  SMOO Consolidated: {self.consolidated_folder}")
-        logger.info(f"  Using new SMOO XLE workflow for organization")
+        logger.info(f"  Using YYYY-MM date-based organization (NOT XLE import structure)")
         logger.info(f"  Timestamp tracking: {self.sync_timestamp_file}")
     
     def check_access(self) -> bool:
@@ -288,184 +252,208 @@ class HybridFieldDataConsolidator:
             logger.error(f"Error scanning Google Drive SOLINST: {e}")
             return []
     
-    def extract_xle_metadata(self, file_path: str) -> Dict:
-        """
-        Extract comprehensive metadata from XLE file using proper XML parsing
-        
-        Args:
-            file_path: Path to XLE file
-            
-        Returns:
-            Dictionary with extracted metadata including dates, device info, etc.
-        """
-        metadata = {
-            'serial_number': 'unknown',
-            'location': 'unknown',  
-            'start_date': None,
-            'end_date': None,
-            'instrument_type': 'levellogger',  # Default to levellogger
-            'well_number': None,
-            'device_type': 'transducer'  # Default for XLEFileOrganizer
-        }
-        
-        try:
-            # Parse XML properly
-            tree = ET.parse(file_path)
-            root = tree.getroot()
-            
-            # Extract instrument info from Instrument_info section
-            instrument_info = root.find('.//Instrument_info')
-            if instrument_info is not None:
-                # Serial number
-                serial_elem = instrument_info.find('Serial_number')
-                if serial_elem is not None and serial_elem.text:
-                    metadata['serial_number'] = serial_elem.text.strip()
-                
-                # Model to determine device type
-                model_elem = instrument_info.find('Model_number')
-                if model_elem is not None and model_elem.text:
-                    model = model_elem.text.lower().strip()
-                    if 'baro' in model:
-                        metadata['instrument_type'] = 'barologger'
-                        metadata['device_type'] = 'barologger'
-                    else:
-                        metadata['instrument_type'] = 'levellogger' 
-                        metadata['device_type'] = 'transducer'
-            
-            # Extract location from Instrument_info_data_header section (CORRECT LOCATION!)
-            data_header = root.find('.//Instrument_info_data_header')
-            if data_header is not None:
-                location_elem = data_header.find('Location')
-                if location_elem is not None and location_elem.text:
-                    metadata['location'] = location_elem.text.strip()
-                    logger.info(f"✅ Found location in data_header: '{metadata['location']}'")
-                
-                # Also extract start/stop times from header (more reliable)
-                start_elem = data_header.find('Start_time')
-                stop_elem = data_header.find('Stop_time')
-                if start_elem is not None and start_elem.text:
-                    try:
-                        metadata['start_date'] = datetime.strptime(start_elem.text.strip(), "%Y/%m/%d %H:%M:%S")
-                    except Exception as e:
-                        logger.warning(f"Could not parse start time: {e}")
-                
-                if stop_elem is not None and stop_elem.text:
-                    try:
-                        metadata['end_date'] = datetime.strptime(stop_elem.text.strip(), "%Y/%m/%d %H:%M:%S")
-                    except Exception as e:
-                        logger.warning(f"Could not parse stop time: {e}")
-            
-            # Extract date range from data
-            data_section = root.find('.//Data')
-            if data_section is not None:
-                log_entries = data_section.findall('.//Log')
-                if log_entries:
-                    try:
-                        # Get first and last data points
-                        first_log = log_entries[0]
-                        last_log = log_entries[-1]
-                        
-                        # Parse start date
-                        first_date = first_log.find('Date')
-                        first_time = first_log.find('Time') 
-                        if first_date is not None and first_time is not None:
-                            date_str = f"{first_date.text} {first_time.text}"
-                            metadata['start_date'] = datetime.strptime(date_str, "%Y/%m/%d %H:%M:%S")
-                        
-                        # Parse end date
-                        last_date = last_log.find('Date')
-                        last_time = last_log.find('Time')
-                        if last_date is not None and last_time is not None:
-                            date_str = f"{last_date.text} {last_time.text}"
-                            metadata['end_date'] = datetime.strptime(date_str, "%Y/%m/%d %H:%M:%S")
-                            
-                    except Exception as date_error:
-                        logger.warning(f"Could not parse dates from XLE file: {date_error}")
-            
-            # Log the location extraction result  
-            logger.info(f"XML location extracted: '{metadata['location']}'")
-            
-            # If XML location is still unknown, log it as an issue but don't try filename hacks
-            if metadata['location'] == 'unknown' or not metadata['location'] or metadata['location'].strip() == '':
-                logger.warning(f"⚠️ No location found in XML for file: {os.path.basename(file_path)}")
-                logger.warning(f"⚠️ This XLE file may have incomplete metadata")
-            else:
-                logger.info(f"✅ Using XML location: '{metadata['location']}'")
-            
-            # For barologgers, use serial number; for transducers, try to extract well info
-            if metadata['device_type'] == 'transducer':
-                # Try to extract well number from location
-                location = metadata['location'].upper()
-                if 'WELL' in location or 'W-' in location or 'MW' in location:
-                    # Extract well identifier
-                    well_match = re.search(r'(WELL[_\s-]*\d+|W-?\d+|MW[_\s-]*\d+)', location)
-                    if well_match:
-                        metadata['well_number'] = well_match.group(1).replace(' ', '_').replace('-', '_')
-                    else:
-                        metadata['well_number'] = location.replace(' ', '_')[:20]  # Fallback
-                elif location != 'UNKNOWN':  # Use the extracted filename location
-                    metadata['well_number'] = location.replace(' ', '_').replace('-', '_')[:20]
-                else:
-                    metadata['well_number'] = location.replace(' ', '_')[:20]  # Use location as well ID
-            
-        except Exception as e:
-            logger.error(f"Error extracting metadata from {file_path}: {e}")
-            # Try fallback text parsing
-            try:
-                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    content = f.read(2048)  # Read more content for fallback
-                    
-                    # Basic serial number extraction
-                    if 'Serial_number=' in content:
-                        serial_line = [line for line in content.split('\n') if 'Serial_number=' in line]
-                        if serial_line:
-                            metadata['serial_number'] = serial_line[0].split('=')[-1].strip()
-                    
-                    # Basic location extraction
-                    if 'Location=' in content:
-                        location_line = [line for line in content.split('\n') if 'Location=' in line]
-                        if location_line:
-                            metadata['location'] = location_line[0].split('=')[-1].strip()
-                            
-            except Exception as fallback_error:
-                logger.error(f"Fallback metadata extraction also failed: {fallback_error}")
-        
-        logger.debug(f"Extracted metadata for {os.path.basename(file_path)}: {metadata}")
-        return metadata
     
-    def organize_file_by_date(self, file_path: str, metadata: Dict) -> str:
+    def get_actual_year_month_from_xle(self, file_path: str) -> str:
         """
-        Determine target folder for file based on date and metadata
+        Read XLE file to determine the correct year-month folder based on actual data end date
+        (Following main branch logic)
         
         Args:
-            file_path: Source file path
-            metadata: Extracted metadata
+            file_path: Path to downloaded XLE file
             
         Returns:
-            Target folder path in consolidated structure
+            Year-month string (YYYY-MM) based on actual data end date
         """
         try:
-            # Get file modification date as fallback
-            file_stat = os.stat(file_path)
-            file_date = datetime.fromtimestamp(file_stat.st_mtime)
+            from ..handlers.solinst_reader import SolinstReader
             
-            # Create folder structure: FIELD_DATA_CONSOLIDATED/YYYY-MM/
-            year_month = file_date.strftime("%Y-%m")
-            target_folder = os.path.join(self.consolidated_folder, year_month)
+            # Read XLE file to get actual data
+            reader = SolinstReader()
+            df, metadata = reader.read_xle(Path(file_path))
             
-            # Ensure target folder exists
-            os.makedirs(target_folder, exist_ok=True)
+            # Get actual last date from data to determine folder
+            if not df.empty and 'timestamp' in df.columns:
+                last_date = df['timestamp'].max()
+                # Use the last date to determine which month folder
+                year_month = last_date.strftime('%Y-%m')
+                logger.info(f"File {os.path.basename(file_path)} belongs in {year_month} folder based on actual data end date")
+                return year_month
+            else:
+                logger.warning(f"No data found in {os.path.basename(file_path)}, using file modification date")
+                # Fallback to file modification date
+                file_stat = os.stat(file_path)
+                file_date = datetime.fromtimestamp(file_stat.st_mtime)
+                return file_date.strftime('%Y-%m')
+                
+        except Exception as e:
+            logger.error(f"Error reading actual dates from {os.path.basename(file_path)}: {e}")
+            # If anything fails, fall back to file modification date
+            try:
+                file_stat = os.stat(file_path)
+                file_date = datetime.fromtimestamp(file_stat.st_mtime)
+                return file_date.strftime('%Y-%m')
+            except Exception as fallback_error:
+                logger.error(f"Even fallback date failed: {fallback_error}")
+                # Ultimate fallback to current month
+                return datetime.now().strftime('%Y-%m')
+    
+    def generate_corrected_filename(self, file_path: str, original_filename: str) -> str:
+        """
+        Generate corrected filename by reading actual XLE data
+        (Following main branch logic)
+        
+        Args:
+            file_path: Path to downloaded XLE file
+            original_filename: Original filename from Google Drive
             
-            logger.debug(f"Target folder for {os.path.basename(file_path)}: {target_folder}")
-            return target_folder
+        Returns:
+            Corrected filename based on actual data
+        """
+        try:
+            from ..handlers.solinst_reader import SolinstReader
+            
+            # Read XLE file to get actual data
+            reader = SolinstReader()
+            df, metadata = reader.read_xle(Path(file_path))
+            
+            # Get actual first and last dates from data
+            if not df.empty and 'timestamp' in df.columns:
+                first_date = df['timestamp'].min()
+                last_date = df['timestamp'].max()
+                
+                # Get location from metadata (not from filename!)
+                location = metadata.location.strip() if metadata.location else 'UNKNOWN'
+                
+                # Remove any problematic characters from location
+                location = location.replace(':', '').replace('/', '_').replace('\\', '_')
+                
+                # Format: Location_YYYY_MM_DD_To_YYYY_MM_DD.xle
+                # Using actual data dates, not the metadata start/stop times
+                new_filename = f"{location}_{first_date.strftime('%Y_%m_%d')}_To_{last_date.strftime('%Y_%m_%d')}.xle"
+                
+                logger.info(f"Generated corrected filename: {new_filename} (original: {original_filename})")
+                logger.debug(f"  Location from metadata: {metadata.location}")
+                logger.debug(f"  Data date range: {first_date} to {last_date}")
+                
+                return new_filename
+            else:
+                logger.warning(f"No data found in {original_filename}, using original name")
+                return original_filename
+                
+        except Exception as e:
+            logger.error(f"Error generating corrected filename for {original_filename}: {e}")
+            # If anything fails, return original filename
+            return original_filename
+    
+    def get_file_metadata_from_local_file(self, file_path: str, filename: str) -> Optional[Dict]:
+        """
+        Get metadata by reading local file (for metadata.json generation)
+        (Following main branch logic)
+        
+        Args:
+            file_path: Path to local XLE file
+            filename: Filename
+            
+        Returns:
+            Metadata dictionary or None if failed
+        """
+        try:
+            from ..handlers.solinst_reader import SolinstReader
+            
+            # Read XLE file directly
+            reader = SolinstReader()
+            df, metadata = reader.read_xle(Path(file_path))
+            
+            if not df.empty and 'timestamp' in df.columns:
+                first_date = df['timestamp'].min()
+                last_date = df['timestamp'].max()
+                
+                return {
+                    'serial_number': str(metadata.serial_number) if metadata.serial_number else 'unknown',
+                    'cae_number': metadata.location.replace(':', '') if metadata.location else 'unknown',
+                    'location': metadata.location if metadata.location else 'unknown',
+                    'device_type': 'barologger' if 'baro' in filename.lower() else 'water_level',
+                    'actual_start_date': first_date.isoformat(),
+                    'actual_end_date': last_date.isoformat()
+                }
+                
+        except Exception as e:
+            logger.error(f"Error reading local file metadata from {filename}: {e}")
+            
+        return None
+    
+    def update_folder_metadata(self, folder_path: str, year_month: str, file_path: str, filename: str) -> bool:
+        """
+        Update or create metadata.json in the specified folder after adding a file
+        (Following main branch logic for SMOO shared drive mode)
+        
+        Args:
+            folder_path: Target folder path
+            year_month: Year-month string
+            file_path: Path to the consolidated file
+            filename: Filename
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Get file info from local file
+            file_size = os.path.getsize(file_path)
+            file_modified = datetime.fromtimestamp(os.path.getmtime(file_path)).isoformat()
+            
+            # Get file metadata by reading the local file
+            file_metadata = self.get_file_metadata_from_local_file(file_path, filename)
+            if not file_metadata:
+                logger.warning(f"Could not extract metadata from {filename}")
+                return False
+            
+            # Load existing metadata or create new
+            metadata_path = os.path.join(folder_path, "metadata.json")
+            if os.path.exists(metadata_path):
+                with open(metadata_path, 'r') as f:
+                    metadata = json.load(f)
+            else:
+                metadata = {
+                    'folder': year_month,
+                    'generated_date': datetime.now().isoformat(),
+                    'files': []
+                }
+            
+            # Create file entry
+            file_entry = {
+                'filename': filename,
+                'shared_drive_file_path': file_path,
+                'serial_number': file_metadata.get('serial_number', 'unknown'),
+                'cae_number': file_metadata.get('cae_number', 'unknown'),
+                'location': file_metadata.get('location', 'unknown'),
+                'device_type': file_metadata.get('device_type', 'unknown'),
+                'actual_start_date': file_metadata.get('actual_start_date', ''),
+                'actual_end_date': file_metadata.get('actual_end_date', ''),
+                'file_size': file_size,
+                'file_modified_time': file_modified,
+                'processed_date': datetime.now().isoformat()
+            }
+            
+            # Remove any existing entry with same filename
+            metadata['files'] = [
+                f for f in metadata['files'] 
+                if f.get('filename') != filename
+            ]
+            
+            # Add the new/updated entry
+            metadata['files'].append(file_entry)
+            metadata['generated_date'] = datetime.now().isoformat()
+            
+            # Write to shared drive
+            with open(metadata_path, 'w') as f:
+                json.dump(metadata, f, indent=2)
+            
+            logger.debug(f"Updated metadata.json in {folder_path}")
+            return True
             
         except Exception as e:
-            logger.error(f"Error determining target folder: {e}")
-            # Fallback to current month
-            current_month = datetime.now().strftime("%Y-%m")
-            fallback_folder = os.path.join(self.consolidated_folder, current_month)
-            os.makedirs(fallback_folder, exist_ok=True)
-            return fallback_folder
+            logger.error(f"Error updating folder metadata in {folder_path}: {e}")
+            return False
     
     def consolidate_file(self, file_info: Dict, progress_callback: Optional[Callable] = None) -> bool:
         """
@@ -504,71 +492,68 @@ class HybridFieldDataConsolidator:
             if progress_callback:
                 progress_callback(f"Organizing {filename}...", 50)
             
-            # Extract comprehensive metadata for proper organization
-            metadata = self.extract_xle_metadata(temp_path)
-            
-            logger.info(f"FIELD_SYNC: Organizing {filename} using SMOO XLE workflow")
-            logger.info(f"FIELD_SYNC: Device type: {metadata['device_type']}, Serial: {metadata['serial_number']}, Location: {metadata['location']}")
-            
-            # Also report through progress callback for visibility
+            # Determine target folder using actual data end date (main branch logic)
             if progress_callback:
-                progress_callback(f"Metadata: {metadata['device_type']} | {metadata['serial_number']} | {metadata['location']}", 52)
+                progress_callback(f"Reading {filename} data to determine correct month folder...", 55)
             
-            # Use XLEFileOrganizer for proper organization with SMOO structure
-            if metadata['device_type'] == 'barologger':
-                target_path = self.xle_organizer.organize_barologger_file(
-                    Path(temp_path),
-                    metadata['serial_number'],
-                    metadata['location'],
-                    metadata['start_date'] or datetime.now(),
-                    metadata['end_date'] or datetime.now()
-                )
-            else:  # transducer
-                well_number = metadata['well_number'] or metadata['location']
-                target_path = self.xle_organizer.organize_transducer_file(
-                    Path(temp_path),
-                    metadata['serial_number'],
-                    metadata['location'],
-                    metadata['start_date'] or datetime.now(),
-                    metadata['end_date'] or datetime.now(),
-                    well_number
-                )
+            actual_year_month = self.get_actual_year_month_from_xle(temp_path)
+            target_folder = os.path.join(self.consolidated_folder, actual_year_month)
             
-            if target_path and target_path.exists():
-                logger.info(f"FIELD_SYNC: Successfully organized to SMOO structure: {target_path}")
-                if progress_callback:
-                    progress_callback(f"✅ Saved to: {str(target_path)}", 75)
-            else:
-                # Fallback to simple copy if XLE organizer fails
-                logger.warning(f"FIELD_SYNC: XLE organizer failed, using fallback organization")
-                fallback_folder = self.organize_file_by_date(temp_path, metadata)
-                target_path = os.path.join(fallback_folder, filename)
+            # Ensure target folder exists
+            os.makedirs(target_folder, exist_ok=True)
+            
+            # Generate corrected filename based on actual data
+            if progress_callback:
+                progress_callback(f"Generating corrected filename for {filename}...", 60)
+            
+            corrected_filename = self.generate_corrected_filename(temp_path, filename)
+            target_path = os.path.join(target_folder, corrected_filename)
+            
+            logger.info(f"FIELD_SYNC: Target folder: {actual_year_month}")
+            logger.info(f"FIELD_SYNC: Corrected filename: {corrected_filename}")
+            
+            if progress_callback:
+                progress_callback(f"Target: {actual_year_month}/{corrected_filename}", 65)
+            
+            # Check if file already exists and is up to date
+            if os.path.exists(target_path):
+                existing_modified = datetime.fromtimestamp(os.path.getmtime(target_path))
+                # Use file info modified time as source reference
+                source_modified = datetime.fromisoformat(file_info['modified_time'].replace('Z', '+00:00')).replace(tzinfo=None)
                 
-                if progress_callback:
-                    progress_callback(f"⚠️ Fallback to: {fallback_folder}", 73)
-                
-                # Check if file already exists
-                if os.path.exists(target_path):
-                    target_size = os.path.getsize(target_path)
-                    if file_size == target_size:
-                        logger.info(f"File already consolidated: {filename}")
-                        os.remove(temp_path)
-                        if progress_callback:
-                            progress_callback(f"Already exists: {filename}", 100)
-                        return True
-                
-                if progress_callback:
-                    progress_callback(f"Saving {filename}...", 75)
-                
-                shutil.move(temp_path, target_path)
-                logger.info(f"FIELD_SYNC: Fallback saved file to: {target_path}")
-                target_path = Path(target_path)
-                if progress_callback:
-                    progress_callback(f"💾 Fallback saved to: {os.path.basename(target_path.parent)}", 90)
+                if source_modified <= existing_modified:
+                    logger.info(f"File {corrected_filename} already up to date in {actual_year_month}")
+                    os.remove(temp_path)
+                    if progress_callback:
+                        progress_callback(f"Already up to date: {corrected_filename}", 100)
+                    return True
+                else:
+                    logger.info(f"Updating existing file {corrected_filename} with newer version")
+            
+            if progress_callback:
+                progress_callback(f"Saving {corrected_filename}...", 75)
+            
+            # Move file to target location
+            shutil.move(temp_path, target_path)
+            logger.info(f"FIELD_SYNC: Saved file to: {target_path}")
+            
+            # Update metadata.json for this month folder
+            if progress_callback:
+                progress_callback(f"Updating metadata for {actual_year_month}...", 85)
+            
+            try:
+                self.update_folder_metadata(target_folder, actual_year_month, target_path, corrected_filename)
+                logger.debug(f"Updated metadata.json in {actual_year_month} folder for {corrected_filename}")
+            except Exception as e:
+                logger.error(f"Failed to update metadata for {actual_year_month}: {e}")
+            
+            target_path = Path(target_path)
+            if progress_callback:
+                progress_callback(f"✅ Consolidated to: {actual_year_month}/{corrected_filename}", 90)
             
             if progress_callback:
                 final_location = str(target_path.parent) if isinstance(target_path, Path) else os.path.dirname(target_path)
-                progress_callback(f"✅ Final: {os.path.basename(final_location)}/{filename}", 100)
+                progress_callback(f"✅ Final: {os.path.basename(final_location)}/{corrected_filename}", 100)
             
             return True
             
@@ -587,6 +572,7 @@ class HybridFieldDataConsolidator:
     def consolidate_field_data(self, progress_callback: Optional[Callable] = None, force_full_sync: bool = False) -> bool:
         """
         Consolidate all field data from Google Drive SOLINST to SMOO organized structure
+        using YYYY-MM date-based folders (following main branch logic)
         
         Args:
             progress_callback: Optional progress callback function (message, percent)
@@ -597,7 +583,7 @@ class HybridFieldDataConsolidator:
         """
         try:
             sync_type = "FULL SYNC" if force_full_sync else "INCREMENTAL SYNC"
-            logger.info(f"Starting hybrid field data consolidation (Google Drive → SMOO) - {sync_type}...")
+            logger.info(f"Starting field data consolidation (Google Drive → SMOO) - {sync_type}...")
             
             if progress_callback:
                 progress_callback("Checking access...", 0)
@@ -625,24 +611,27 @@ class HybridFieldDataConsolidator:
             
             logger.info(f"Found {len(files_to_consolidate)} files to consolidate from Google Drive")
             
-            # Consolidate each file
+            # Consolidate each file and track monthly folders for metadata
             successful_count = 0
             total_files = len(files_to_consolidate)
+            monthly_folders = set()  # Track which month folders were updated
             
             for i, file_info in enumerate(files_to_consolidate):
-                # Calculate progress (10% for scanning, 90% for processing)
-                base_progress = 10 + int((i / total_files) * 90)
+                # Calculate progress (10% for scanning, 85% for processing, 5% for metadata)
+                base_progress = 10 + int((i / total_files) * 85)
                 
                 def file_progress_callback(message, percent):
                     if progress_callback:
                         # Map file progress to overall progress
-                        file_range = 90 / total_files  # Each file gets this % range
+                        file_range = 85 / total_files  # Each file gets this % range
                         overall_progress = base_progress + int((percent / 100) * file_range)
-                        progress_callback(message, min(overall_progress, 99))
+                        progress_callback(message, min(overall_progress, 94))
                 
                 success = self.consolidate_file(file_info, file_progress_callback)
                 if success:
                     successful_count += 1
+                    # Track which month folder this file went to for metadata updates
+                    # (this is handled within consolidate_file via update_folder_metadata)
             
             logger.info(f"Consolidation complete: {successful_count}/{total_files} files processed successfully")
             
@@ -668,9 +657,9 @@ class HybridFieldDataConsolidator:
             
             if progress_callback:
                 if successful_count > 0:
-                    progress_callback(f"Complete: {successful_count}/{total_files} files consolidated (incremental sync)", 100)
+                    progress_callback(f"Complete: {successful_count}/{total_files} files consolidated with metadata", 100)
                 else:
-                    progress_callback(f"Complete: No files needed consolidation (incremental sync)", 100)
+                    progress_callback(f"Complete: No files needed consolidation", 100)
             
             return successful_count > 0 or total_files == 0  # Success if files processed or no files needed
             
