@@ -477,22 +477,6 @@ class MainWindow(QMainWindow):
         self.save_cloud_btn.setToolTip("Save changes to the cloud database")
         self.save_cloud_btn.setVisible(False)
         
-        # Add Compare Changes button (initially hidden)
-        self.compare_changes_btn = QPushButton("Compare Changes")
-        self.compare_changes_btn.setStyleSheet("""
-            background-color: #2196F3;
-            color: white;
-            border: 1px solid #1976D2;
-            border-radius: 8px;
-            padding: 10px 20px;
-            font-weight: bold;
-            font-size: 13px;
-            min-height: 20px;
-        """)
-        self.compare_changes_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.compare_changes_btn.clicked.connect(self._compare_changes)
-        self.compare_changes_btn.setToolTip("Compare local changes against cloud database")
-        self.compare_changes_btn.setVisible(False)
         
         # Add Create Local Copy button (initially hidden)
         self.create_local_copy_btn = QPushButton("Create Local Copy")
@@ -516,7 +500,6 @@ class MainWindow(QMainWindow):
         db_layout.addWidget(self.reload_db_btn)
         db_layout.addWidget(self.new_db_btn)
         db_layout.addWidget(self.save_cloud_btn)
-        db_layout.addWidget(self.compare_changes_btn)
         db_layout.addWidget(self.create_local_copy_btn)
 
         main_layout.addLayout(db_layout)
@@ -1406,14 +1389,11 @@ class MainWindow(QMainWindow):
         if is_cloud:
             self.save_cloud_btn.setVisible(True)
             self.save_cloud_btn.setEnabled(False)  # Initially disabled
-            self.compare_changes_btn.setVisible(True)
-            self.compare_changes_btn.setEnabled(False)  # Initially disabled
             self.create_local_copy_btn.setVisible(True)
             self.create_local_copy_btn.setEnabled(True)  # Always enabled for cloud databases
             self.cloud_mode_label.setText(f"SMOO: {project_name}")
         else:
             self.save_cloud_btn.setVisible(False)
-            self.compare_changes_btn.setVisible(False)
             self.create_local_copy_btn.setVisible(False)
             self.cloud_mode_label.setText("")
                     
@@ -1473,49 +1453,6 @@ class MainWindow(QMainWindow):
         if "QTabBar::tab:disabled" not in current_style:
             self.tab_widget.setStyleSheet(current_style + runs_tab_style)
     
-    def _compare_changes(self):
-        """Open the database comparison dialog"""
-        try:
-            if not self.db_manager.is_cloud_database:
-                QMessageBox.information(self, "Information", "This feature is only available for cloud databases.")
-                return
-            
-            if not hasattr(self.db_manager, 'change_tracker') or not self.db_manager.change_tracker:
-                QMessageBox.warning(self, "Warning", "Change tracking is not available.")
-                return
-            
-            # Check if there are any changes to compare
-            if not self.db_manager.change_tracker.changes:
-                QMessageBox.information(self, "No Changes", "No local changes detected to compare.")
-                return
-            
-            # Check if we have cloud database handler
-            if not hasattr(self, 'cloud_db_handler') or not self.cloud_db_handler:
-                QMessageBox.warning(self, "Warning", "Cloud database handler is not available.")
-                return
-            
-            # Check if user is authenticated
-            if not hasattr(self, 'user_auth_service') or not self.user_auth_service.current_user:
-                QMessageBox.warning(self, "Warning", "Please log in first.")
-                return
-            
-            # Open the comparison dialog
-            from ..dialogs.database_comparison_dialog import DatabaseComparisonDialog
-            dialog = DatabaseComparisonDialog(
-                self.db_manager,
-                self.db_manager.change_tracker,
-                self.cloud_db_handler,
-                self.user_auth_service,
-                self
-            )
-            
-            # Show dialog
-            dialog.exec_()
-                
-        except Exception as e:
-            logger.error(f"Error opening comparison dialog: {e}")
-            QMessageBox.critical(self, "Error", f"Failed to open comparison dialog: {str(e)}")
-            
     def _save_to_cloud(self) -> bool:
         """Save changes to cloud database"""
         if not self.db_manager.is_cloud_database:
