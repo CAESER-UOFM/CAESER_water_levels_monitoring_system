@@ -313,7 +313,7 @@ class HybridFieldDataConsolidator:
             tree = ET.parse(file_path)
             root = tree.getroot()
             
-            # Extract instrument info
+            # Extract instrument info from Instrument_info section
             instrument_info = root.find('.//Instrument_info')
             if instrument_info is not None:
                 # Serial number
@@ -321,21 +321,39 @@ class HybridFieldDataConsolidator:
                 if serial_elem is not None and serial_elem.text:
                     metadata['serial_number'] = serial_elem.text.strip()
                 
-                # Location  
-                location_elem = instrument_info.find('Location')
-                if location_elem is not None and location_elem.text:
-                    metadata['location'] = location_elem.text.strip()
-                
                 # Model to determine device type
-                model_elem = instrument_info.find('Model')
+                model_elem = instrument_info.find('Model_number')
                 if model_elem is not None and model_elem.text:
-                    model = model_elem.text.lower()
+                    model = model_elem.text.lower().strip()
                     if 'baro' in model:
                         metadata['instrument_type'] = 'barologger'
                         metadata['device_type'] = 'barologger'
                     else:
                         metadata['instrument_type'] = 'levellogger' 
                         metadata['device_type'] = 'transducer'
+            
+            # Extract location from Instrument_info_data_header section (CORRECT LOCATION!)
+            data_header = root.find('.//Instrument_info_data_header')
+            if data_header is not None:
+                location_elem = data_header.find('Location')
+                if location_elem is not None and location_elem.text:
+                    metadata['location'] = location_elem.text.strip()
+                    logger.info(f"✅ Found location in data_header: '{metadata['location']}'")
+                
+                # Also extract start/stop times from header (more reliable)
+                start_elem = data_header.find('Start_time')
+                stop_elem = data_header.find('Stop_time')
+                if start_elem is not None and start_elem.text:
+                    try:
+                        metadata['start_date'] = datetime.strptime(start_elem.text.strip(), "%Y/%m/%d %H:%M:%S")
+                    except Exception as e:
+                        logger.warning(f"Could not parse start time: {e}")
+                
+                if stop_elem is not None and stop_elem.text:
+                    try:
+                        metadata['end_date'] = datetime.strptime(stop_elem.text.strip(), "%Y/%m/%d %H:%M:%S")
+                    except Exception as e:
+                        logger.warning(f"Could not parse stop time: {e}")
             
             # Extract date range from data
             data_section = root.find('.//Data')
