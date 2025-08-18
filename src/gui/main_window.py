@@ -3047,6 +3047,13 @@ class MainWindow(QMainWindow):
             def progress_callback(message, percent):
                 # Enhanced progress callback with logging
                 logger.info(f"📊 FIELD_SYNC: {message} ({percent}%)")
+                
+                # Also log what the consolidator is doing internally
+                if "Scanning Google Drive" in message:
+                    logger.info("🔍 FIELD_SYNC: About to call consolidator scan method...")
+                elif "No new files" in message:
+                    logger.info("🔍 FIELD_SYNC: Consolidator reported no new files - checking why...")
+                    
                 progress_dialog.setLabelText(message)
                 progress_dialog.setValue(percent)
                 QApplication.processEvents()
@@ -3063,8 +3070,55 @@ class MainWindow(QMainWindow):
             consolidator_time = time.time() - consolidator_start
             logger.info(f"✅ FIELD_SYNC: Consolidator created ({consolidator_time:.2f}s)")
             
-            # Run consolidation
+            # Check timestamp file before consolidation for debugging
             logger.info("🔄 FIELD_SYNC: Starting file consolidation process...")
+            
+            # Debug timestamp file information
+            import json
+            from datetime import timezone
+            timestamp_file = os.path.join(smoo_root, "FIELD_DATA_CONSOLIDATED", ".last_field_sync_timestamp.json")
+            logger.info(f"🕒 FIELD_SYNC: Checking timestamp file: {timestamp_file}")
+            logger.info(f"🕒 FIELD_SYNC: Timestamp file exists: {os.path.exists(timestamp_file)}")
+            
+            if os.path.exists(timestamp_file):
+                try:
+                    with open(timestamp_file, 'r') as f:
+                        timestamp_data = json.load(f)
+                    last_sync_str = timestamp_data.get('last_sync_timestamp', 'Unknown')
+                    sync_completed_str = timestamp_data.get('sync_completed_at', 'Unknown') 
+                    logger.info(f"🕒 FIELD_SYNC: Last sync timestamp: {last_sync_str}")
+                    logger.info(f"🕒 FIELD_SYNC: Sync completed at: {sync_completed_str}")
+                    
+                    # Parse and show time difference
+                    if last_sync_str != 'Unknown':
+                        try:
+                            last_sync = datetime.fromisoformat(last_sync_str.replace('Z', '+00:00'))
+                            current_time = datetime.now(timezone.utc)
+                            time_since = current_time - last_sync
+                            logger.info(f"🕒 FIELD_SYNC: Time since last sync: {time_since}")
+                        except Exception as e:
+                            logger.warning(f"🕒 FIELD_SYNC: Could not parse timestamp: {e}")
+                except Exception as e:
+                    logger.error(f"🕒 FIELD_SYNC: Error reading timestamp file: {e}")
+            else:
+                logger.info("🕒 FIELD_SYNC: No previous sync found - this will be a full sync")
+            
+            # Test consolidator logging by calling a method directly
+            logger.info("🧪 FIELD_SYNC: Testing consolidator access check...")
+            access_ok = consolidator.check_access()
+            logger.info(f"🧪 FIELD_SYNC: Consolidator access check result: {access_ok}")
+            
+            # Test getting last sync timestamp directly
+            logger.info("🧪 FIELD_SYNC: Testing consolidator timestamp method...")
+            try:
+                last_sync = consolidator.get_last_sync_timestamp()
+                if last_sync:
+                    logger.info(f"🧪 FIELD_SYNC: Consolidator found last sync: {last_sync.isoformat()}")
+                else:
+                    logger.info("🧪 FIELD_SYNC: Consolidator found no previous sync timestamp")
+            except Exception as e:
+                logger.error(f"🧪 FIELD_SYNC: Error testing consolidator timestamp: {e}")
+            
             consolidation_start = time.time()
             
             success = consolidator.consolidate_field_data(progress_callback)
