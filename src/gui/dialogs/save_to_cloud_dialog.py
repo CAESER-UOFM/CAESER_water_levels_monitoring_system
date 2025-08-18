@@ -162,32 +162,35 @@ class SaveToCloudDialog(QDialog):
         """)
         
     def _create_info_card(self, title, value, color):
-        """Create an elegant info card"""
+        """Create a compact info card with single line"""
         card = QFrame()
         card.setStyleSheet(f"""
             QFrame {{
                 background-color: #F8F9FA;
                 border: 2px solid {color};
                 border-radius: 8px;
-                padding: 12px;
+                padding: 8px 12px;
                 margin: 2px;
             }}
         """)
         
-        layout = QVBoxLayout(card)
-        layout.setSpacing(4)
+        # Use horizontal layout for single line
+        layout = QHBoxLayout(card)
+        layout.setSpacing(8)
+        layout.setContentsMargins(4, 4, 4, 4)
         
         title_label = QLabel(title)
-        title_label.setFont(QFont("Segoe UI", 9, QFont.Bold))
+        title_label.setFont(QFont("Segoe UI", 10, QFont.Bold))
         title_label.setStyleSheet(f"color: {color};")
         
         value_label = QLabel(value)
         value_label.setFont(QFont("Segoe UI", 11))
-        value_label.setStyleSheet("color: #424242;")
+        value_label.setStyleSheet("color: #424242; font-weight: bold;")
         value_label.setWordWrap(True)
         
         layout.addWidget(title_label)
         layout.addWidget(value_label)
+        layout.addStretch()  # Push content to left
         
         return card
         
@@ -262,15 +265,15 @@ class SaveToCloudDialog(QDialog):
         layout.addWidget(highlight_label)
         
         highlight_text = QTextEdit()
-        highlight_text.setMaximumHeight(120)
+        highlight_text.setMaximumHeight(80)  # Reduced from 120 to make more compact
         highlight_text.setStyleSheet("""
             QTextEdit {
                 background-color: #F8F9FA;
                 border: 2px solid #E9ECEF;
                 border-radius: 8px;
-                padding: 12px;
+                padding: 8px;
                 font-size: 11px;
-                line-height: 1.4;
+                line-height: 1.2;
             }
             QTextEdit:focus {
                 border-color: #4CAF50;
@@ -284,33 +287,34 @@ class SaveToCloudDialog(QDialog):
         return widget
         
     def _create_stat_card(self, title, value, color):
-        """Create a statistics card"""
+        """Create a compact horizontal statistics card"""
         card = QFrame()
         card.setStyleSheet(f"""
             QFrame {{
-                background-color: white;
-                border-left: 4px solid {color};
+                background-color: #F8F9FA;
+                border: 2px solid {color};
                 border-radius: 6px;
-                padding: 12px;
-                margin: 4px;
+                padding: 6px 10px;
+                margin: 2px;
             }}
         """)
         
-        layout = QVBoxLayout(card)
-        layout.setAlignment(Qt.AlignCenter)
+        # Use horizontal layout for more compact design
+        layout = QHBoxLayout(card)
+        layout.setSpacing(8)
+        layout.setContentsMargins(4, 4, 4, 4)
         
         value_label = QLabel(value)
-        value_label.setFont(QFont("Segoe UI", 18, QFont.Bold))
+        value_label.setFont(QFont("Segoe UI", 14, QFont.Bold))
         value_label.setStyleSheet(f"color: {color};")
-        value_label.setAlignment(Qt.AlignCenter)
         
         title_label = QLabel(title)
-        title_label.setFont(QFont("Segoe UI", 9))
+        title_label.setFont(QFont("Segoe UI", 10))
         title_label.setStyleSheet("color: #666;")
-        title_label.setAlignment(Qt.AlignCenter)
         
         layout.addWidget(value_label)
         layout.addWidget(title_label)
+        layout.addStretch()
         
         return card
         
