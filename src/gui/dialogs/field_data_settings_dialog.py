@@ -1,16 +1,18 @@
 """
-Field Data Settings Dialog
-Configure multiple field laptop Google Drive folders for data consolidation
+Google Drive Settings Dialog (Field Data)
+Configure service account authentication and multiple field laptop folders
 """
 
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, 
     QPushButton, QMessageBox, QGroupBox, QTextEdit, QScrollArea,
-    QWidget, QGridLayout, QFrame
+    QWidget, QGridLayout, QFrame, QFileDialog, QTabWidget
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFont
 import logging
+import os
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -116,8 +118,8 @@ class FieldLaptopWidget(QWidget):
         return bool(config['name'] and config['folder_id'])
 
 
-class FieldDataSettingsDialog(QDialog):
-    """Dialog for configuring field laptop Google Drive folders"""
+class GoogleDriveFieldDataDialog(QDialog):
+    """Dialog for configuring Google Drive service account and field laptop folders"""
     
     def __init__(self, settings_handler, google_service=None, parent=None):
         super().__init__(parent)
@@ -129,15 +131,15 @@ class FieldDataSettingsDialog(QDialog):
         self.load_settings()
     
     def setup_ui(self):
-        """Set up the dialog UI"""
-        self.setWindowTitle("Field Data Settings")
-        self.setMinimumSize(800, 600)
+        """Set up the dialog UI with tabs for service account and field laptops"""
+        self.setWindowTitle("Google Drive Settings (Field Data)")
+        self.setMinimumSize(900, 700)
         self.setModal(True)
         
         layout = QVBoxLayout(self)
         
         # Title
-        title_label = QLabel("Field Laptop Configuration")
+        title_label = QLabel("Google Drive Field Data Configuration")
         title_font = QFont()
         title_font.setPointSize(14)
         title_font.setBold(True)
@@ -147,12 +149,104 @@ class FieldDataSettingsDialog(QDialog):
         
         # Description
         desc_label = QLabel(
-            "Configure Google Drive folders for multiple field laptops.\n"
-            "Each laptop's SOLINST folder will be scanned for XLE data files."
+            "Configure Google Drive service account authentication and field laptop folders.\n"
+            "Downloads XLE files from multiple field laptops and organizes them in SMOO."
         )
         desc_label.setAlignment(Qt.AlignCenter)
         desc_label.setStyleSheet("color: #666; margin: 10px;")
         layout.addWidget(desc_label)
+        
+        # Create tab widget
+        self.tab_widget = QTabWidget()
+        layout.addWidget(self.tab_widget)
+        
+        # Setup tabs
+        self.setup_service_account_tab()
+        self.setup_field_laptops_tab()
+        
+        # Buttons
+        self.setup_buttons(layout)
+    
+    def setup_service_account_tab(self):
+        """Setup the Service Account configuration tab"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        
+        # Instructions
+        instructions_group = QGroupBox("Service Account Setup")
+        instructions_layout = QVBoxLayout(instructions_group)
+        
+        instructions = QLabel(
+            "Service Account authentication for XLE file synchronization:\n\n"
+            "• Downloads XLE files from Google Drive SOLINST folders\n"
+            "• Organizes files in SMOO FIELD_DATA_CONSOLIDATED by date\n"
+            "• No OAuth required - uses service account key\n"
+            "• Supports multiple field laptop folders simultaneously\n\n"
+            "Select your service account JSON key file:"
+        )
+        instructions.setWordWrap(True)
+        instructions_layout.addWidget(instructions)
+        layout.addWidget(instructions_group)
+        
+        # File selection group
+        file_group = QGroupBox("Service Account Key File")
+        file_layout = QVBoxLayout(file_group)
+        
+        # File path input
+        file_input_layout = QHBoxLayout()
+        self.service_file_edit = QLineEdit()
+        self.service_file_edit.setPlaceholderText("Path to service account JSON file...")
+        
+        browse_btn = QPushButton("Browse...")
+        browse_btn.clicked.connect(self.browse_service_account_file)
+        browse_btn.setMaximumWidth(80)
+        
+        file_input_layout.addWidget(QLabel("File Path:"))
+        file_input_layout.addWidget(self.service_file_edit)
+        file_input_layout.addWidget(browse_btn)
+        file_layout.addLayout(file_input_layout)
+        
+        # Test button
+        test_layout = QHBoxLayout()
+        self.test_service_btn = QPushButton("🔍 Test Connection")
+        self.test_service_btn.clicked.connect(self.test_service_account)
+        self.test_service_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #17a2b8;
+                color: white;
+                font-weight: bold;
+                border-radius: 4px;
+                padding: 8px 16px;
+            }
+            QPushButton:hover {
+                background-color: #138496;
+            }
+        """)
+        test_layout.addWidget(self.test_service_btn)
+        test_layout.addStretch()
+        file_layout.addLayout(test_layout)
+        
+        layout.addWidget(file_group)
+        
+        # Status area
+        status_group = QGroupBox("Connection Status")
+        status_layout = QVBoxLayout(status_group)
+        
+        self.service_status_area = QTextEdit()
+        self.service_status_area.setMaximumHeight(120)
+        self.service_status_area.setPlaceholderText("Connection status will appear here...")
+        self.service_status_area.setReadOnly(True)
+        status_layout.addWidget(self.service_status_area)
+        
+        layout.addWidget(status_group)
+        layout.addStretch()
+        
+        self.tab_widget.addTab(tab, "🔐 Service Account")
+    
+    def setup_field_laptops_tab(self):
+        """Setup the Field Laptops configuration tab"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
         
         # Field Laptops Group
         laptops_group = QGroupBox("Field Laptop Folders")
@@ -218,7 +312,7 @@ class FieldDataSettingsDialog(QDialog):
         info_layout = QVBoxLayout(info_group)
         
         info_text = QTextEdit()
-        info_text.setMaximumHeight(120)
+        info_text.setMaximumHeight(100)
         info_text.setReadOnly(True)
         info_text.setPlainText(
             "1. Add each field laptop by specifying a name and Google Drive folder ID\n"
@@ -231,7 +325,10 @@ class FieldDataSettingsDialog(QDialog):
         
         layout.addWidget(info_group)
         
-        # Buttons
+        self.tab_widget.addTab(tab, "📁 Field Laptops")
+    
+    def setup_buttons(self, layout):
+        """Setup dialog buttons"""
         button_layout = QHBoxLayout()
         
         self.save_button = QPushButton("💾 Save Settings")
@@ -270,9 +367,83 @@ class FieldDataSettingsDialog(QDialog):
         
         layout.addLayout(button_layout)
     
-    def load_settings(self):
-        """Load current field laptop settings"""
+    # Service Account Methods
+    def browse_service_account_file(self):
+        """Browse for service account JSON file"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Service Account JSON File",
+            "",
+            "JSON Files (*.json);;All Files (*)"
+        )
+        if file_path:
+            self.service_file_edit.setText(file_path)
+    
+    def test_service_account(self):
+        """Test service account connection"""
         try:
+            file_path = self.service_file_edit.text().strip()
+            if not file_path:
+                self.service_status_area.setText("❌ Please select a service account file first")
+                return
+            
+            if not os.path.exists(file_path):
+                self.service_status_area.setText(f"❌ File not found: {file_path}")
+                return
+            
+            self.service_status_area.setText("🔄 Testing service account connection...")
+            
+            # Test the service account
+            from ...handlers.google_service_account import GoogleServiceAccountHandler
+            
+            # Temporarily save the file path to test it
+            original_path = self.settings_handler.get_setting("service_account_key_file", "")
+            self.settings_handler.set_setting("service_account_key_file", file_path)
+            
+            try:
+                test_service = GoogleServiceAccountHandler(self.settings_handler)
+                if test_service.authenticate():
+                    # Test basic drive access
+                    projects = test_service.service.files().list(
+                        q="mimeType='application/vnd.google-apps.folder'",
+                        pageSize=1
+                    ).execute()
+                    
+                    self.service_status_area.setText(
+                        "✅ Service account connection successful!\n"
+                        f"✅ File: {os.path.basename(file_path)}\n"
+                        f"✅ Google Drive API access confirmed\n"
+                        f"✅ Ready to scan field laptop folders"
+                    )
+                    self.google_service = test_service  # Update the service instance
+                else:
+                    self.service_status_area.setText("❌ Authentication failed - check your service account file")
+            except Exception as auth_error:
+                self.service_status_area.setText(f"❌ Authentication error: {str(auth_error)}")
+            finally:
+                # Restore original path if test failed
+                if not hasattr(self, 'google_service') or not self.google_service:
+                    self.settings_handler.set_setting("service_account_key_file", original_path)
+                
+        except Exception as e:
+            logger.error(f"Error testing service account: {e}")
+            self.service_status_area.setText(f"❌ Error testing connection: {str(e)}")
+    
+    def load_settings(self):
+        """Load current service account and field laptop settings"""
+        try:
+            # Load service account settings
+            service_account_path = self.settings_handler.get_setting("service_account_key_file", "")
+            self.service_file_edit.setText(service_account_path)
+            
+            if service_account_path and os.path.exists(service_account_path):
+                self.service_status_area.setText(
+                    f"✅ Configured: {os.path.basename(service_account_path)}\n"
+                    "Click 'Test Connection' to verify access"
+                )
+            else:
+                self.service_status_area.setText("No service account configured")
+            
             # Load existing laptop configurations
             laptop_configs = [
                 ("Laptop_1", "google_drive_laptop_1_folder_id"),
@@ -376,8 +547,27 @@ class FieldDataSettingsDialog(QDialog):
                 laptop_widget.test_folder_access()
     
     def save_settings(self):
-        """Save field laptop settings"""
+        """Save service account and field laptop settings"""
         try:
+            # Validate and save service account settings
+            service_account_path = self.service_file_edit.text().strip()
+            if service_account_path:
+                if not os.path.exists(service_account_path):
+                    reply = QMessageBox.question(
+                        self,
+                        "Service Account File Not Found",
+                        f"The service account file '{service_account_path}' does not exist.\n\n"
+                        "Save anyway? (You can update it later when the file is available)",
+                        QMessageBox.Yes | QMessageBox.No,
+                        QMessageBox.No
+                    )
+                    if reply != QMessageBox.Yes:
+                        return
+                
+                # Save service account path
+                self.settings_handler.set_setting("service_account_key_file", service_account_path)
+                logger.info(f"Saved service account path: {service_account_path}")
+            
             # Validate all laptop configurations
             valid_laptops = []
             for laptop_widget in self.laptop_widgets:
@@ -395,12 +585,16 @@ class FieldDataSettingsDialog(QDialog):
                     return
             
             if not valid_laptops:
-                QMessageBox.warning(
+                reply = QMessageBox.question(
                     self,
                     "No Laptops Configured",
-                    "At least one field laptop must be configured."
+                    "No field laptops are configured. This will disable multi-folder scanning.\n\n"
+                    "Continue anyway?",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No
                 )
-                return
+                if reply != QMessageBox.Yes:
+                    return
             
             # Check for duplicate names
             names = [laptop['name'] for laptop in valid_laptops]
@@ -422,14 +616,23 @@ class FieldDataSettingsDialog(QDialog):
                 self.settings_handler.set_setting(setting_key, laptop['folder_id'])
                 logger.info(f"Saved {laptop['name']} -> {setting_key}: {laptop['folder_id']}")
             
+            # Success message
+            service_msg = f"✅ Service Account: {'Configured' if service_account_path else 'Not configured'}"
+            laptops_msg = f"✅ Field Laptops: {len(valid_laptops)} configured"
+            
             QMessageBox.information(
                 self,
                 "Settings Saved",
-                f"Field laptop settings have been saved successfully!\n"
-                f"Configured {len(valid_laptops)} field laptops."
+                f"Google Drive field data settings saved successfully!\n\n"
+                f"{service_msg}\n"
+                f"{laptops_msg}"
             )
             self.accept()
             
         except Exception as e:
             logger.error(f"Error saving settings: {e}")
             QMessageBox.critical(self, "Error", f"Error saving settings:\n{str(e)}")
+
+
+# For backward compatibility, create an alias
+FieldDataSettingsDialog = GoogleDriveFieldDataDialog

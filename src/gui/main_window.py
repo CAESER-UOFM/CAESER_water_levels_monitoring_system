@@ -53,7 +53,7 @@ from .handlers.shared_drive_updater import SharedDriveUpdater
 from .dialogs.feedback_dialog import FeedbackDialog
 from .handlers.version_checker import VersionChecker
 from .dialogs.shared_drive_settings_dialog import SharedDriveSettingsDialog
-from .dialogs.field_data_settings_dialog import FieldDataSettingsDialog
+from .dialogs.field_data_settings_dialog import GoogleDriveFieldDataDialog
 from .dialogs.unified_credentials_dialog import UnifiedCredentialsDialog
 from .dialogs.draft_selection_dialog import DraftSelectionDialog
 
@@ -2767,15 +2767,10 @@ class MainWindow(QMainWindow):
         database_folder_action.triggered.connect(self.open_database_folder_settings)
         settings_menu.addAction(database_folder_action)
         
-        # Service Account setup for XLE file sync
-        service_account_settings_action = QAction("Service Account Setup (XLE Sync)", self)
-        service_account_settings_action.triggered.connect(self.setup_service_account)
-        settings_menu.addAction(service_account_settings_action)
-        
-        # Field Data settings for managing multiple laptop folders
-        field_data_settings_action = QAction("Field Data Settings (Multi-Laptop)", self)
-        field_data_settings_action.triggered.connect(self.open_field_data_settings)
-        settings_menu.addAction(field_data_settings_action)
+        # Google Drive settings for field data (combines service account + laptop folders)
+        google_drive_field_data_action = QAction("Google Drive Settings (Field Data)", self)
+        google_drive_field_data_action.triggered.connect(self.open_google_drive_field_data_settings)
+        settings_menu.addAction(google_drive_field_data_action)
         
         # Monet API settings
         monet_settings_action = QAction("Monet API Settings", self)
@@ -4313,27 +4308,27 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
             QMessageBox.critical(self, "Error", 
                                f"Error opening shared drive settings:\n{str(e)}")
     
-    def open_field_data_settings(self):
-        """Open field data settings dialog for managing multiple laptop folders"""
+    def open_google_drive_field_data_settings(self):
+        """Open Google Drive field data settings dialog (service account + laptop folders)"""
         try:
             # Get Google service if available
             google_service = None
             if hasattr(self, 'google_service_account'):
                 google_service = self.google_service_account
             
-            dialog = FieldDataSettingsDialog(
+            dialog = GoogleDriveFieldDataDialog(
                 self.settings_handler,
                 google_service,
                 self
             )
             
             if dialog.exec_() == QDialog.Accepted:
-                logger.info("Field data settings updated - multiple laptop folders configured")
+                logger.info("Google Drive field data settings updated - service account and laptop folders configured")
                 
         except Exception as e:
-            logger.error(f"Error opening field data settings: {e}")
+            logger.error(f"Error opening Google Drive field data settings: {e}")
             QMessageBox.critical(self, "Settings Error", 
-                               f"Error opening field data settings:\n{str(e)}")
+                               f"Error opening Google Drive field data settings:\n{str(e)}")
             
     def _check_credentials_on_startup(self):
         """Check for Google Drive credentials on startup"""
@@ -4345,119 +4340,9 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
         except Exception as e:
             logger.error(f"Error checking credentials: {e}")
             
-    def setup_service_account(self):
-        """Open service account setup dialog for XLE file sync to SMOO"""
-        from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFileDialog, QLineEdit, QTextEdit
-        
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Service Account Setup")
-        dialog.setMinimumSize(500, 400)
-        
-        layout = QVBoxLayout(dialog)
-        
-        # Instructions
-        instructions = QLabel(
-            "Service Account Setup for XLE file synchronization:\n\n"
-            "• Downloads XLE files from Google Drive SOLINST folder\n"
-            "• Organizes files in SMOO FIELD_DATA_CONSOLIDATED\n"
-            "• No OAuth required - uses service account key\n\n"
-            "Please select your service account JSON key file:"
-        )
-        instructions.setWordWrap(True)
-        layout.addWidget(instructions)
-        
-        # File selection
-        file_layout = QHBoxLayout()
-        self.service_file_edit = QLineEdit()
-        current_path = self.settings_handler.get_setting("service_account_key_file", "")
-        self.service_file_edit.setText(current_path)
-        self.service_file_edit.setPlaceholderText("Path to service account JSON file...")
-        
-        browse_btn = QPushButton("Browse...")
-        browse_btn.clicked.connect(self._browse_service_account_file)
-        
-        file_layout.addWidget(self.service_file_edit)
-        file_layout.addWidget(browse_btn)
-        layout.addLayout(file_layout)
-        
-        # Test button
-        test_btn = QPushButton("Test Connection")
-        test_btn.clicked.connect(self._test_service_account)
-        layout.addWidget(test_btn)
-        
-        # Status area
-        self.service_status_area = QTextEdit()
-        self.service_status_area.setMaximumHeight(100)
-        self.service_status_area.setPlaceholderText("Connection status will appear here...")
-        layout.addWidget(self.service_status_area)
-        
-        # Buttons
-        button_layout = QHBoxLayout()
-        save_btn = QPushButton("Save")
-        save_btn.clicked.connect(lambda: self._save_service_account_settings(dialog))
-        cancel_btn = QPushButton("Cancel")
-        cancel_btn.clicked.connect(dialog.reject)
-        
-        button_layout.addWidget(save_btn)
-        button_layout.addWidget(cancel_btn)
-        layout.addLayout(button_layout)
-        
-        dialog.exec_()
-    
-    def _browse_service_account_file(self):
-        """Browse for service account file"""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Select Service Account JSON File",
-            "",
-            "JSON Files (*.json);;All Files (*)"
-        )
-        if file_path:
-            self.service_file_edit.setText(file_path)
-    
-    def _test_service_account(self):
-        """Test service account connection"""
-        try:
-            file_path = self.service_file_edit.text().strip()
-            if not file_path:
-                self.service_status_area.setText("❌ Please select a service account file first")
-                return
-            
-            self.service_status_area.setText("🔄 Testing connection...")
-            
-            # Test the service account
-            from .handlers.google_service_account import GoogleServiceAccountHandler
-            handler = GoogleServiceAccountHandler(self.settings_handler)
-            
-            if handler.authenticate(file_path):
-                self.service_status_area.setText("✅ Connection successful!\nService account authenticated with Google Drive API.")
-            else:
-                self.service_status_area.setText("❌ Connection failed.\nPlease check the service account file and try again.")
-                
-        except Exception as e:
-            self.service_status_area.setText(f"❌ Error testing connection:\n{str(e)}")
-    
-    def _save_service_account_settings(self, dialog):
-        """Save service account settings"""
-        try:
-            file_path = self.service_file_edit.text().strip()
-            if not file_path:
-                QMessageBox.warning(self, "Warning", "Please select a service account file")
-                return
-            
-            # Validate file exists
-            if not os.path.exists(file_path):
-                QMessageBox.warning(self, "Warning", "Service account file not found")
-                return
-            
-            # Save to settings
-            self.settings_handler.set_setting("service_account_key_file", file_path)
-            
-            QMessageBox.information(self, "Success", "Service account settings saved!")
-            dialog.accept()
-            
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save settings: {str(e)}")
+    # NOTE: Service Account Setup methods removed - now handled by GoogleDriveFieldDataDialog
+    # The Google Drive Settings (Field Data) dialog combines both service account setup
+    # and field laptop folder management in a single tabbed interface.
     
     def setup_credentials(self):
         """Open unified credentials setup dialog manually"""
