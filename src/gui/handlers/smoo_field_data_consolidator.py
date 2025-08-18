@@ -47,17 +47,42 @@ class HybridFieldDataConsolidator:
         self.consolidated_folder = os.path.join(self.smoo_root, "FIELD_DATA_CONSOLIDATED")
         
         # Initialize XLE file organizer for proper organization
-        logger.info(f"Initializing XLEFileOrganizer with path: {self.consolidated_folder}")
+        logger.info(f"Initializing XLEFileOrganizer with SMOO path: {self.consolidated_folder}")
+        
+        # CRITICAL FIX: Override the xle_import_directory setting to use SMOO path
+        # XLEFileOrganizer ignores app_root_dir and uses settings instead
+        original_xle_import_dir = settings_handler.get_setting("xle_import_directory", "")
+        logger.info(f"Original xle_import_directory setting: {original_xle_import_dir}")
+        
+        # Temporarily set the xle_import_directory to our SMOO consolidated folder
+        settings_handler.set_setting("xle_import_directory", self.consolidated_folder)
+        logger.info(f"Temporarily set xle_import_directory to: {self.consolidated_folder}")
+        
         self.xle_organizer = XLEFileOrganizer(
-            app_root_dir=Path(self.consolidated_folder),
+            app_root_dir=Path(self.consolidated_folder),  # This is ignored, but keep for compatibility
             db_name="FIELD_DATA_CONSOLIDATED",  # Use as project name
             settings_handler=settings_handler
         )
         
+        # Restore original setting after initialization
+        if original_xle_import_dir:
+            settings_handler.set_setting("xle_import_directory", original_xle_import_dir)
+        else:
+            # Remove the setting if it didn't exist
+            try:
+                settings_handler.remove_setting("xle_import_directory")
+            except:
+                pass  # Ignore if remove method doesn't exist
+        
         # Debug the actual paths being used
-        logger.info(f"XLEFileOrganizer root path: {self.xle_organizer.app_root_dir}")
-        if hasattr(self.xle_organizer, 'imported_xle_files_dir'):
-            logger.info(f"XLEFileOrganizer imported_xle_files_dir: {self.xle_organizer.imported_xle_files_dir}")
+        logger.info(f"XLEFileOrganizer object attributes: {dir(self.xle_organizer)}")
+        
+        # Check various possible path attributes
+        path_attributes = ['app_root_dir', 'root_dir', 'base_dir', 'imported_xle_files_dir', 'project_dir']
+        for attr in path_attributes:
+            if hasattr(self.xle_organizer, attr):
+                value = getattr(self.xle_organizer, attr)
+                logger.info(f"XLEFileOrganizer.{attr}: {value}")
         
         # Timestamp tracking for incremental sync
         self.sync_timestamp_file = os.path.join(self.consolidated_folder, ".last_field_sync_timestamp.json")
