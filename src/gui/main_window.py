@@ -2786,6 +2786,11 @@ class MainWindow(QMainWindow):
         turso_settings_action = QAction("Turso Database Settings", self)
         turso_settings_action.triggered.connect(self.open_turso_settings)
         settings_menu.addAction(turso_settings_action)
+        
+        # Shared drive settings
+        shared_drive_settings_action = QAction("Shared Drive Settings", self)
+        shared_drive_settings_action.triggered.connect(self.open_shared_drive_settings)
+        settings_menu.addAction(shared_drive_settings_action)
 
         # Add Auto Sync menu
         auto_sync_menu = menu_bar.addMenu("Auto Sync")
@@ -2881,11 +2886,6 @@ class MainWindow(QMainWindow):
         check_shared_updates_action = QAction("Check Shared Drive Updates", self)
         check_shared_updates_action.triggered.connect(self.check_for_shared_updates)
         update_menu.addAction(check_shared_updates_action)
-        
-        # Shared drive settings action
-        shared_drive_settings_action = QAction("Shared Drive Settings", self)
-        shared_drive_settings_action.triggered.connect(self.open_shared_drive_settings)
-        update_menu.addAction(shared_drive_settings_action)
     
     def edit_user_credentials(self, username):
         """Open a dialog to edit user credentials"""
