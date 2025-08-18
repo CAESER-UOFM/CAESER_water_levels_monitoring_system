@@ -47,11 +47,17 @@ class HybridFieldDataConsolidator:
         self.consolidated_folder = os.path.join(self.smoo_root, "FIELD_DATA_CONSOLIDATED")
         
         # Initialize XLE file organizer for proper organization
+        logger.info(f"Initializing XLEFileOrganizer with path: {self.consolidated_folder}")
         self.xle_organizer = XLEFileOrganizer(
             app_root_dir=Path(self.consolidated_folder),
             db_name="FIELD_DATA_CONSOLIDATED",  # Use as project name
             settings_handler=settings_handler
         )
+        
+        # Debug the actual paths being used
+        logger.info(f"XLEFileOrganizer root path: {self.xle_organizer.app_root_dir}")
+        if hasattr(self.xle_organizer, 'imported_xle_files_dir'):
+            logger.info(f"XLEFileOrganizer imported_xle_files_dir: {self.xle_organizer.imported_xle_files_dir}")
         
         # Timestamp tracking for incremental sync
         self.sync_timestamp_file = os.path.join(self.consolidated_folder, ".last_field_sync_timestamp.json")
@@ -332,18 +338,39 @@ class HybridFieldDataConsolidator:
                     except Exception as date_error:
                         logger.warning(f"Could not parse dates from XLE file: {date_error}")
             
+            # Try to extract location from filename if XML location is unknown/empty
+            filename = os.path.basename(file_path)
+            if metadata['location'] == 'unknown' or not metadata['location']:
+                # Extract location from filename patterns
+                import re
+                # Try patterns like: HA-A012_, _T017_, _PioneerSprings_
+                location_patterns = [
+                    r'^([A-Z]{2}-[A-Z]\d+)_',  # HA-A012_
+                    r'_([A-Z]\d+)_',           # _T017_
+                    r'_([A-Za-z]+)_',          # _PioneerSprings_
+                    r'^([A-Za-z0-9-_]+)_'      # General pattern
+                ]
+                
+                for pattern in location_patterns:
+                    match = re.search(pattern, filename)
+                    if match:
+                        metadata['location'] = match.group(1)
+                        logger.info(f"Extracted location from filename: {metadata['location']}")
+                        break
+            
             # For barologgers, use serial number; for transducers, try to extract well info
             if metadata['device_type'] == 'transducer':
-                # Try to extract well number from location
+                # Try to extract well number from location (now potentially from filename)
                 location = metadata['location'].upper()
                 if 'WELL' in location or 'W-' in location or 'MW' in location:
                     # Extract well identifier
-                    import re
                     well_match = re.search(r'(WELL[_\s-]*\d+|W-?\d+|MW[_\s-]*\d+)', location)
                     if well_match:
                         metadata['well_number'] = well_match.group(1).replace(' ', '_').replace('-', '_')
                     else:
                         metadata['well_number'] = location.replace(' ', '_')[:20]  # Fallback
+                elif location != 'UNKNOWN':  # Use the extracted filename location
+                    metadata['well_number'] = location.replace(' ', '_').replace('-', '_')[:20]
                 else:
                     metadata['well_number'] = location.replace(' ', '_')[:20]  # Use location as well ID
             
