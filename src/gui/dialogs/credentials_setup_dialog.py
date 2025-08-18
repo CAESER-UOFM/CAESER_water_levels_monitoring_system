@@ -19,7 +19,7 @@ class CredentialsSetupDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Google API Credentials Setup")
-        self.setMinimumSize(600, 500)
+        self.setMinimumSize(750, 600)
         self.setModal(True)
         
         # Get the config directory
@@ -108,19 +108,23 @@ Contact the repository owner to request access.</i>
         
         # Folder selection
         folder_layout = QHBoxLayout()
+        folder_layout.setSpacing(10)
         
         self.folder_path_label = QLabel("No folder selected")
         self.folder_path_label.setStyleSheet("border: 1px solid #ccc; padding: 8px; background: #f9f9f9;")
         folder_layout.addWidget(self.folder_path_label)
         
-        select_folder_btn = QPushButton("📁 Select Downloaded Folder")
+        select_folder_btn = QPushButton("📁 Select Folder")
+        select_folder_btn.setToolTip("Select the folder where you downloaded the credential files")
         select_folder_btn.clicked.connect(self.select_credentials_folder)
+        select_folder_btn.setMinimumWidth(150)
         folder_layout.addWidget(select_folder_btn)
         
         layout.addLayout(folder_layout)
         
         # Alternative: Direct file selection
         direct_layout = QHBoxLayout()
+        direct_layout.setSpacing(10)
         direct_layout.addWidget(QLabel("Or select files directly:"))
         
         select_files_btn = QPushButton("Select Downloaded Files")
@@ -161,12 +165,15 @@ You need to select two files:<br>
         service_layout.addWidget(service_info)
         
         service_file_layout = QHBoxLayout()
+        service_file_layout.setSpacing(10)
         self.service_file_label = QLabel("No file selected")
         self.service_file_label.setStyleSheet("border: 1px solid #ccc; padding: 8px; background: #f9f9f9;")
         service_file_layout.addWidget(self.service_file_label)
         
-        select_service_btn = QPushButton("Select Service Account File")
+        select_service_btn = QPushButton("Select Service File")
+        select_service_btn.setToolTip("Select the Service Account JSON file")
         select_service_btn.clicked.connect(self.select_service_account_file)
+        select_service_btn.setMinimumWidth(150)
         service_file_layout.addWidget(select_service_btn)
         
         service_layout.addLayout(service_file_layout)
@@ -181,12 +188,15 @@ You need to select two files:<br>
         oauth_layout.addWidget(oauth_info)
         
         oauth_file_layout = QHBoxLayout()
+        oauth_file_layout.setSpacing(10)
         self.oauth_file_label = QLabel("No file selected")
         self.oauth_file_label.setStyleSheet("border: 1px solid #ccc; padding: 8px; background: #f9f9f9;")
         oauth_file_layout.addWidget(self.oauth_file_label)
         
-        select_oauth_btn = QPushButton("Select OAuth Client File")
+        select_oauth_btn = QPushButton("Select OAuth File")
+        select_oauth_btn.setToolTip("Select the OAuth Client Secret JSON file")
         select_oauth_btn.clicked.connect(self.select_oauth_client_file)
+        select_oauth_btn.setMinimumWidth(150)
         oauth_file_layout.addWidget(select_oauth_btn)
         
         oauth_layout.addLayout(oauth_file_layout)

@@ -27,7 +27,7 @@ class UnifiedCredentialsDialog(QDialog):
         self.settings_handler = settings_handler
         self.drive_service = GoogleDriveService.get_instance(settings_handler)
         self.setWindowTitle("Google Drive Setup")
-        self.setMinimumSize(700, 600)
+        self.setMinimumSize(800, 650)
         self.setModal(True)
         
         # Get the config directory
@@ -81,17 +81,20 @@ OAuth authentication is used to securely connect to your Google Drive account.
         
         self.test_btn = QPushButton("Test Connection")
         self.test_btn.clicked.connect(self.test_connection)
+        self.test_btn.setMinimumWidth(130)
         button_layout.addWidget(self.test_btn)
         
         button_layout.addStretch()
         
         self.save_btn = QPushButton("Save & Apply")
         self.save_btn.clicked.connect(self.save_and_apply)
+        self.save_btn.setMinimumWidth(120)
         self.save_btn.setStyleSheet("QPushButton { background-color: #3498db; color: white; font-weight: bold; padding: 8px; }")
         button_layout.addWidget(self.save_btn)
         
         self.cancel_btn = QPushButton("Cancel")
         self.cancel_btn.clicked.connect(self.reject)
+        self.cancel_btn.setMinimumWidth(80)
         button_layout.addWidget(self.cancel_btn)
         
         layout.addLayout(button_layout)
@@ -107,6 +110,7 @@ OAuth authentication is used to securely connect to your Google Drive account.
         
         # Status display
         status_layout = QHBoxLayout()
+        status_layout.setSpacing(10)
         status_label = QLabel("Status:")
         self.status_display = QLabel("Checking...")
         self.status_display.setStyleSheet("font-weight: bold;")
@@ -117,6 +121,7 @@ OAuth authentication is used to securely connect to your Google Drive account.
         
         # User display (if authenticated)
         user_layout = QHBoxLayout()
+        user_layout.setSpacing(10)
         user_label = QLabel("Account:")
         self.user_display = QLabel("Not connected")
         user_layout.addWidget(user_label)
@@ -126,11 +131,14 @@ OAuth authentication is used to securely connect to your Google Drive account.
         
         # Connection buttons
         button_layout = QHBoxLayout()
+        button_layout.setSpacing(10)
         self.connect_btn = QPushButton("Connect to Google Drive")
         self.connect_btn.clicked.connect(self.connect_to_drive)
+        self.connect_btn.setMinimumWidth(180)
         
         self.disconnect_btn = QPushButton("Disconnect")
         self.disconnect_btn.clicked.connect(self.disconnect_from_drive)
+        self.disconnect_btn.setMinimumWidth(100)
         
         button_layout.addWidget(self.connect_btn)
         button_layout.addWidget(self.disconnect_btn)
@@ -177,6 +185,7 @@ OAuth authentication is used to securely connect to your Google Drive account.
         
         # Main Folder ID
         main_folder_layout = QHBoxLayout()
+        main_folder_layout.setSpacing(10)
         main_folder_label = QLabel("Main Folder ID:")
         self.folder_id = QLineEdit()
         self.folder_id.setPlaceholderText("Google Drive Folder ID for Data")
@@ -191,6 +200,7 @@ OAuth authentication is used to securely connect to your Google Drive account.
         
         # XLE Files Folder ID
         xle_folder_layout = QHBoxLayout()
+        xle_folder_layout.setSpacing(10)
         xle_folder_label = QLabel("XLE Files Folder ID:")
         self.xle_folder_id = QLineEdit()
         self.xle_folder_id.setPlaceholderText("Google Drive Folder ID for XLE Files")
@@ -205,6 +215,7 @@ OAuth authentication is used to securely connect to your Google Drive account.
         
         # Projects Folder ID
         projects_folder_layout = QHBoxLayout()
+        projects_folder_layout.setSpacing(10)
         projects_folder_label = QLabel("Projects Folder ID:")
         self.projects_folder_id = QLineEdit()
         self.projects_folder_id.setPlaceholderText("Google Drive Folder ID for Projects")
