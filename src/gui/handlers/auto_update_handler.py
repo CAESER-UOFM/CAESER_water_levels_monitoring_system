@@ -1044,57 +1044,37 @@ class AutoUpdateHandler:
             if success:
                 logger.info(f"AUTO_SYNC_DEBUG: Successfully processed water level folder with {len(downloaded_files)} files")
                 
-                # Organize XLE files using the same pattern as barologgers
-                for well_number in selected_wells:
-                    well_data = wells_found[well_number]
-                    if well_data.get('has_been_processed', False):
-                        # Use water level model and settings handler to create file organizer (same as barologgers)
-                        from ..utils.file_organizer import XLEFileOrganizer
-                        db_name = Path(water_tab.water_level_model.db_path).stem if water_tab.water_level_model.db_path else None
-                        file_organizer = XLEFileOrganizer(db_name=db_name, settings_handler=self.settings_handler)
+                # Preserve XLE files using same method as barologgers (consistent approach)
+                for file_data in downloaded_files:
+                    file_info = file_data['info']
+                    temp_file_path = file_data['path']
+                    
+                    # Find the matching well number for this CAE number
+                    matching_well_number = None
+                    for well_number in selected_wells:
+                        well_data = wells_found[well_number]
+                        if (well_data.get('has_been_processed', False) and 
+                            'well_info' in well_data and
+                            file_info['cae_number'] == well_data['well_info']['cae_number']):
+                            matching_well_number = well_number
+                            break
+                    
+                    if matching_well_number:
+                        # Preserve XLE file using well_number as identifier (consistent with folder structure)
+                        preserved_file_path = self._preserve_autosync_xle_file(
+                            temp_file_path, file_info['name'], matching_well_number, file_type="water_level"
+                        )
                         
-                        # Organize each file for this well (same pattern as barologger auto-sync)
-                        for file_data in downloaded_files:
-                            file_info = file_data['info']
-                            temp_file_path = file_data['path']
-                            
-                            # Only organize files that match this well's CAE number
-                            if file_info['cae_number'] == well_data['well_info']['cae_number']:
-                                try:
-                                    # Get metadata from the processed data
-                                    metadata = well_data.get('metadata')
-                                    if metadata:
-                                        start_date = metadata.start_time
-                                        end_date = metadata.stop_time
-                                    else:
-                                        # Fallback - get dates from processed data
-                                        processed_data = well_data.get('processed_data')
-                                        if processed_data is not None and not processed_data.empty:
-                                            start_date = processed_data['timestamp_utc'].min()
-                                            end_date = processed_data['timestamp_utc'].max()
-                                        else:
-                                            continue
-                                    
-                                    # Organize using transducer file method (well_number for folder)
-                                    organized_path = file_organizer.organize_transducer_file(
-                                        Path(temp_file_path),
-                                        metadata.serial_number,
-                                        file_info['cae_number'], 
-                                        start_date,
-                                        end_date,
-                                        well_number  # Use well_number for folder name
-                                    )
-                                    
-                                    if organized_path:
-                                        logger.info(f"Organized water level file: {organized_path}")
-                                        # Track XLE file for cloud upload
-                                        self._track_autosync_xle_file(
-                                            str(organized_path), file_info['cae_number'], file_info['name']
-                                        )
-                                    
-                                except Exception as e:
-                                    logger.error(f"Error organizing water level file {file_info['name']}: {e}")
-                        break  # Only process files once
+                        if preserved_file_path:
+                            logger.info(f"AUTO_SYNC_XLE: Preserved water level file: {preserved_file_path}")
+                            # Track XLE file for cloud upload
+                            self._track_autosync_xle_file(
+                                preserved_file_path, file_info['cae_number'], file_info['name']
+                            )
+                        else:
+                            logger.error(f"AUTO_SYNC_XLE: Failed to preserve water level file: {file_info['name']}")
+                    else:
+                        logger.warning(f"AUTO_SYNC_XLE: No matching well found for CAE {file_info['cae_number']} in file {file_info['name']}")
                 
                 return len(downloaded_files)
             else:
@@ -1144,6 +1124,8 @@ class AutoUpdateHandler:
     def _preserve_autosync_xle_file(self, temp_file_path, original_filename, identifier, file_type="barologger"):
         """
         Preserve autosync XLE file in the imported_xle_files directory structure.
+        For shared databases (S: drive), saves to S: drive imported_xle_files folder.
+        For local databases, saves to local imported_xle_files folder.
         
         Args:
             temp_file_path: Path to temporary file
@@ -1154,9 +1136,40 @@ class AutoUpdateHandler:
         Returns the preserved file path or None if failed.
         """
         try:
-            # Get XLE import directory from settings
-            app_dir = Path(__file__).parent.parent.parent.parent
-            xle_import_base = Path(self.settings_handler.get_setting("xle_import_directory", str(app_dir / "imported_xle_files")))
+            # Determine if we're working with a shared database (S: drive)
+            is_shared_database = False
+            if self.db_manager.current_db:
+                db_path = Path(self.db_manager.current_db)
+                # Check if database is on S: drive (Windows) or shared drive path
+                if str(db_path).startswith('S:') or 'shared_drive' in str(db_path).lower():
+                    is_shared_database = True
+                    logger.info(f"AUTO_SYNC_XLE: Detected shared database: {db_path}")
+                else:
+                    logger.info(f"AUTO_SYNC_XLE: Detected local database: {db_path}")
+            
+            # Get XLE import directory based on database type
+            if is_shared_database:
+                # For shared databases, use S: drive imported_xle_files
+                shared_drive_root = self.settings_handler.get_setting("shared_drive_root", "")
+                if shared_drive_root:
+                    xle_import_base = Path(shared_drive_root) / "imported_xle_files"
+                    logger.info(f"AUTO_SYNC_XLE: Using shared drive XLE import path: {xle_import_base}")
+                else:
+                    # Fallback: try to construct S: drive path from database location
+                    db_path = Path(self.db_manager.current_db)
+                    if str(db_path).startswith('S:'):
+                        # Extract base S: drive path and add imported_xle_files
+                        s_drive_base = "S:/Water_Projects/CAESER/Water_Data_Series/Water_levels_monitoring_system"
+                        xle_import_base = Path(s_drive_base) / "imported_xle_files"
+                        logger.warning(f"AUTO_SYNC_XLE: Using fallback S: drive path: {xle_import_base}")
+                    else:
+                        logger.error("AUTO_SYNC_XLE: Cannot determine S: drive path for shared database")
+                        return None
+            else:
+                # For local databases, use local imported_xle_files directory
+                app_dir = Path(__file__).parent.parent.parent.parent
+                xle_import_base = Path(self.settings_handler.get_setting("xle_import_directory", str(app_dir / "imported_xle_files")))
+                logger.info(f"AUTO_SYNC_XLE: Using local XLE import path: {xle_import_base}")
             
             # Get project/database name for organization
             project_name = None
@@ -1179,17 +1192,20 @@ class AutoUpdateHandler:
             else:
                 target_dir = xle_import_base / folder_type / safe_identifier
             
+            # Create directory if it doesn't exist
             target_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"AUTO_SYNC_XLE: Created/verified directory: {target_dir}")
             
             # Copy file to target directory
             target_file_path = target_dir / original_filename
             shutil.copy2(temp_file_path, target_file_path)
             
-            logger.info(f"Preserved autosync XLE file: {target_file_path}")
+            logger.info(f"AUTO_SYNC_XLE: Preserved XLE file: {target_file_path}")
+            logger.info(f"AUTO_SYNC_XLE: File location: {'S: DRIVE (shared)' if is_shared_database else 'LOCAL DRIVE'}")
             return str(target_file_path)
             
         except Exception as e:
-            logger.error(f"Error preserving autosync XLE file {original_filename}: {e}")
+            logger.error(f"AUTO_SYNC_XLE: Error preserving XLE file {original_filename}: {e}")
             return None
     
     def _track_autosync_xle_file(self, file_path, serial_number, original_filename):

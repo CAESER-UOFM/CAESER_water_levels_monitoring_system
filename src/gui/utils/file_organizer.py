@@ -27,27 +27,40 @@ class XLEFileOrganizer:
             settings_handler: Settings handler to get XLE import directory
             cache_dir: Cache directory for shared database temp storage
         """
-        # Get XLE import directory from settings, fallback to old behavior if not available
-        if settings_handler:
-            # Use app directory instead of current working directory as fallback
-            app_dir = Path(__file__).parent.parent.parent.parent
-            xle_import_base = Path(settings_handler.get_setting("xle_import_directory", str(app_dir / "imported_xle_files")))
-            logger.debug(f"DEBUG: XLEFileOrganizer using settings xle_import_base: {xle_import_base}")
-        else:
-            # Fallback to app directory instead of current working directory
-            app_dir = Path(__file__).parent.parent.parent.parent
-            xle_import_base = app_dir / "imported_xle_files"
-            logger.warning(f"DEBUG: XLEFileOrganizer no settings_handler, using app_dir fallback: {xle_import_base}")
-            if app_root_dir:
-                logger.warning("XLEFileOrganizer: app_root_dir parameter is deprecated, use settings_handler instead")
-                xle_import_base = app_root_dir / "imported_xle_files"
-        
+        # Detect if this is a shared database (wlm_ prefix indicates working copy)
         self.db_name = db_name
         self.cache_dir = cache_dir
-        logger.debug(f"DEBUG: XLEFileOrganizer db_name: {repr(db_name)}")
-        
-        # Detect if this is a shared database (wlm_ prefix indicates working copy)
         self.is_shared_database = db_name and db_name.startswith('wlm_')
+        logger.debug(f"DEBUG: XLEFileOrganizer db_name: {repr(db_name)}")
+        logger.debug(f"DEBUG: XLEFileOrganizer is_shared_database: {self.is_shared_database}")
+        
+        # Get XLE import directory - different logic for shared vs local databases
+        if self.is_shared_database and settings_handler:
+            # For shared databases, use S: drive imported_xle_files folder
+            shared_drive_root = settings_handler.get_setting("shared_drive_root", "")
+            if shared_drive_root:
+                xle_import_base = Path(shared_drive_root) / "imported_xle_files"
+                logger.info(f"XLE_ORGANIZER: Using S: drive path for shared database: {xle_import_base}")
+            else:
+                # Fallback: use hardcoded S: drive path
+                s_drive_base = "S:/Water_Projects/CAESER/Water_Data_Series/Water_levels_monitoring_system"
+                xle_import_base = Path(s_drive_base) / "imported_xle_files"
+                logger.warning(f"XLE_ORGANIZER: Using fallback S: drive path: {xle_import_base}")
+        else:
+            # For local databases, use local imported_xle_files directory from settings
+            if settings_handler:
+                # Use app directory instead of current working directory as fallback
+                app_dir = Path(__file__).parent.parent.parent.parent
+                xle_import_base = Path(settings_handler.get_setting("xle_import_directory", str(app_dir / "imported_xle_files")))
+                logger.debug(f"XLE_ORGANIZER: Using local settings path: {xle_import_base}")
+            else:
+                # Fallback to app directory instead of current working directory
+                app_dir = Path(__file__).parent.parent.parent.parent
+                xle_import_base = app_dir / "imported_xle_files"
+                logger.warning(f"XLE_ORGANIZER: No settings_handler, using app_dir fallback: {xle_import_base}")
+                if app_root_dir:
+                    logger.warning("XLEFileOrganizer: app_root_dir parameter is deprecated, use settings_handler instead")
+                    xle_import_base = app_root_dir / "imported_xle_files"
         
         if self.is_shared_database:
             # Extract project name from wlm_ prefix
