@@ -136,12 +136,12 @@ class SaveToCloudDialog(QDialog):
                 background-color: #E8F5E8;
             }
             QTextEdit {
-                border: 2px solid #E0E0E0;
+                border: 2px solid #E9ECEF;
                 border-radius: 8px;
-                padding: 10px;
+                padding: 12px;
                 font-size: 11px;
                 line-height: 1.4;
-                background-color: white;
+                background-color: #F8F9FA;
             }
             QTextEdit:focus {
                 border-color: #2196F3;
@@ -166,10 +166,10 @@ class SaveToCloudDialog(QDialog):
         card = QFrame()
         card.setStyleSheet(f"""
             QFrame {{
-                background-color: white;
-                border: 1px solid {color};
+                background-color: #F8F9FA;
+                border: 2px solid {color};
                 border-radius: 8px;
-                padding: 10px;
+                padding: 12px;
                 margin: 2px;
             }}
         """)
@@ -263,6 +263,19 @@ class SaveToCloudDialog(QDialog):
         
         highlight_text = QTextEdit()
         highlight_text.setMaximumHeight(120)
+        highlight_text.setStyleSheet("""
+            QTextEdit {
+                background-color: #F8F9FA;
+                border: 2px solid #E9ECEF;
+                border-radius: 8px;
+                padding: 12px;
+                font-size: 11px;
+                line-height: 1.4;
+            }
+            QTextEdit:focus {
+                border-color: #4CAF50;
+            }
+        """)
         highlight_content = self.change_tracker.get_manual_changes_description() or "No manual changes detected"
         highlight_text.setPlainText(highlight_content)
         highlight_text.setReadOnly(True)
@@ -351,6 +364,19 @@ class SaveToCloudDialog(QDialog):
         
         # Text area with smart placeholder
         self.change_text = QTextEdit()
+        self.change_text.setStyleSheet("""
+            QTextEdit {
+                background-color: #F8F9FA;
+                border: 2px solid #E9ECEF;
+                border-radius: 8px;
+                padding: 12px;
+                font-size: 11px;
+                line-height: 1.4;
+            }
+            QTextEdit:focus {
+                border-color: #2196F3;
+            }
+        """)
         if self.existing_description:
             self.change_text.setPlainText(self.existing_description)
         else:
