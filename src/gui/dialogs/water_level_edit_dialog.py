@@ -1870,6 +1870,11 @@ class WaterLevelEditDialog(QDialog):
         except TypeError:
             pass
         self.spike_helper.reset_btn.clicked.connect(self.clear_spike_selection)
+        
+        # Position dialog in upper left corner of parent dialog to avoid covering data
+        parent_geometry = self.geometry()
+        self.spike_helper.move(parent_geometry.x() + 20, parent_geometry.y() + 50)
+        
         self.spike_helper.show()
 
     def start_spike_point_selection(self, helper_dialog):
@@ -2264,6 +2269,11 @@ class WaterLevelEditDialog(QDialog):
         self.compensation_helper.parametersChanged.connect(self.preview_compensation)
         self.compensation_helper.apply_btn.clicked.connect(self.apply_compensation_changes)
         self.compensation_helper.reset_btn.clicked.connect(self.reset_compensation)
+        
+        # Position dialog in upper left corner of parent dialog to avoid covering data
+        parent_geometry = self.geometry()
+        self.compensation_helper.move(parent_geometry.x() + 20, parent_geometry.y() + 50)
+        
         self.compensation_helper.show()
 
     def adjust_baseline(self):
@@ -2274,6 +2284,10 @@ class WaterLevelEditDialog(QDialog):
         self.baseline_helper.apply_btn.clicked.connect(self.apply_baseline_changes)
         self.baseline_helper.reset_btn.clicked.connect(self.reset_baseline)
         logger.debug("Baseline helper buttons connected")
+        
+        # Position dialog in upper left corner of parent dialog to avoid covering data
+        parent_geometry = self.geometry()
+        self.baseline_helper.move(parent_geometry.x() + 20, parent_geometry.y() + 50)
         self.baseline_helper.show()
 
     def preview_compensation(self, params):
