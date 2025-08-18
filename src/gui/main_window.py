@@ -1278,7 +1278,6 @@ class MainWindow(QMainWindow):
             display_name = f"{project_name} (Draft)"
             # Update UI to show draft state with modifications
             self.save_cloud_btn.setEnabled(True)
-            self.compare_changes_btn.setEnabled(True)
             self.cloud_mode_label.setText(f"SMOO: {project_name} (Draft - Has Changes)")
         else:
             display_name = f"{project_name} (Cloud)"
@@ -1620,7 +1619,6 @@ class MainWindow(QMainWindow):
             # Update UI
             self.db_manager.is_cloud_modified = False
             self.save_cloud_btn.setEnabled(False)
-            self.compare_changes_btn.setEnabled(False)
             self.cloud_mode_label.setText(f"SMOO: {self.db_manager.cloud_project_name}")
             
             # DEBUG: Verify database state after upload
@@ -4345,7 +4343,6 @@ Click 'Check for Updates' in the Update menu to manually check for newer version
             if self.db_manager.is_cloud_database:
                 self.db_manager.is_cloud_modified = True
                 self.save_cloud_btn.setEnabled(True)
-                self.compare_changes_btn.setEnabled(True)
                 self.cloud_mode_label.setText(f"SMOO: {self.db_manager.cloud_project_name} (MODIFIED)")
             elif self.db_manager.is_google_drive_db:
                 self.db_manager._modified_since_sync = True
