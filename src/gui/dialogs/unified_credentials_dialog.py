@@ -230,6 +230,68 @@ OAuth authentication is used to securely connect to your Google Drive account.
         
         layout.addWidget(folder_group)
         
+        # Field Laptops Folder Configuration Group
+        field_group = QGroupBox("Field Laptop Folders (Pre-configured)")
+        field_layout = QVBoxLayout(field_group)
+        
+        # Field laptops info
+        field_info = QLabel(
+            "The following field laptop folders are pre-configured for data collection:\n"
+            "• Laptop 1: SOLINST data collection folder\n"
+            "• Laptop 2: Secondary field data folder\n"
+            "• Laptop 3: Backup field data folder"
+        )
+        field_info.setWordWrap(True)
+        field_info.setStyleSheet("color: #555; font-style: italic;")
+        field_layout.addWidget(field_info)
+        
+        # Field Laptop 1
+        field1_layout = QHBoxLayout()
+        field1_layout.setSpacing(10)
+        field1_label = QLabel("Laptop 1 Folder ID:")
+        self.field1_folder_id = QLineEdit()
+        self.field1_folder_id.setPlaceholderText("Field Laptop 1 Folder ID")
+        self.field1_folder_id.setReadOnly(True)
+        self.field1_folder_id.setStyleSheet("background-color: #f0f0f0;")
+        field1_layout.addWidget(field1_label)
+        field1_layout.addWidget(self.field1_folder_id, 1)
+        field_layout.addLayout(field1_layout)
+        
+        # Field Laptop 2
+        field2_layout = QHBoxLayout()
+        field2_layout.setSpacing(10)
+        field2_label = QLabel("Laptop 2 Folder ID:")
+        self.field2_folder_id = QLineEdit()
+        self.field2_folder_id.setPlaceholderText("Field Laptop 2 Folder ID")
+        self.field2_folder_id.setReadOnly(True)
+        self.field2_folder_id.setStyleSheet("background-color: #f0f0f0;")
+        field2_layout.addWidget(field2_label)
+        field2_layout.addWidget(self.field2_folder_id, 1)
+        field_layout.addLayout(field2_layout)
+        
+        # Field Laptop 3
+        field3_layout = QHBoxLayout()
+        field3_layout.setSpacing(10)
+        field3_label = QLabel("Laptop 3 Folder ID:")
+        self.field3_folder_id = QLineEdit()
+        self.field3_folder_id.setPlaceholderText("Field Laptop 3 Folder ID")
+        self.field3_folder_id.setReadOnly(True)
+        self.field3_folder_id.setStyleSheet("background-color: #f0f0f0;")
+        field3_layout.addWidget(field3_label)
+        field3_layout.addWidget(self.field3_folder_id, 1)
+        field_layout.addLayout(field3_layout)
+        
+        # Field laptops note
+        field_note = QLabel(
+            "Note: These field laptop folders are managed in the Field Data Settings dialog. "
+            "They are shown here for reference only."
+        )
+        field_note.setWordWrap(True)
+        field_note.setStyleSheet("color: #666; font-style: italic; font-size: 10px;")
+        field_layout.addWidget(field_note)
+        
+        layout.addWidget(field_group)
+        
         # Folder ID Help
         help_group = QGroupBox("How to Find Folder IDs")
         help_layout = QVBoxLayout(help_group)
@@ -451,6 +513,17 @@ Folder ID: <b>1vGoxkS-HQ0n0u0ToNcYL_wJGZ02RDhAK</b>
         )
         self.projects_folder_id.setText(
             self.settings_handler.get_setting("google_drive_projects_folder_id", "1JjiXRblLAf6rdhiOzrAaYik8bjNpBc9s")
+        )
+        
+        # Load field laptop folder IDs (read-only display)
+        self.field1_folder_id.setText(
+            self.settings_handler.get_setting("google_drive_laptop_1_folder_id", "1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW")
+        )
+        self.field2_folder_id.setText(
+            self.settings_handler.get_setting("google_drive_laptop_2_folder_id", "1JaBHPHdImlxkVxB24eOW8Z83zPK2unSz")
+        )
+        self.field3_folder_id.setText(
+            self.settings_handler.get_setting("google_drive_laptop_3_folder_id", "1jnuWTCWdW_HTTnoxr2zOge_gkvEGd19T")
         )
     
     def save_and_apply(self):

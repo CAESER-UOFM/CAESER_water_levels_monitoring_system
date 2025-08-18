@@ -30,39 +30,55 @@ class FieldLaptopWidget(QWidget):
     def setup_ui(self):
         """Set up the laptop widget UI"""
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setContentsMargins(8, 8, 8, 8)  # Better margins for Windows
+        layout.setSpacing(8)
         
-        # Laptop name input
+        # Laptop name input with label
+        name_label = QLabel("Name:")
+        name_label.setMinimumWidth(50)
+        layout.addWidget(name_label)
+        
         self.name_input = QLineEdit(self.laptop_name)
         self.name_input.setPlaceholderText("e.g., Laptop_1")
-        self.name_input.setMaximumWidth(100)
-        layout.addWidget(QLabel("Name:"))
+        self.name_input.setMinimumWidth(80)
+        self.name_input.setMaximumWidth(120)  # Increased for better visibility
         layout.addWidget(self.name_input)
         
-        # Folder ID input
+        # Folder ID input with label  
+        folder_label = QLabel("Folder ID:")
+        folder_label.setMinimumWidth(60)
+        layout.addWidget(folder_label)
+        
         self.folder_input = QLineEdit(self.folder_id)
         self.folder_input.setPlaceholderText("Google Drive Folder ID")
-        layout.addWidget(QLabel("Folder ID:"))
+        self.folder_input.setMinimumWidth(200)  # Ensure adequate space for folder IDs
         layout.addWidget(self.folder_input)
         
         # Test button
         self.test_button = QPushButton("🔍 Test")
         self.test_button.clicked.connect(self.test_folder_access)
-        self.test_button.setMaximumWidth(60)
+        self.test_button.setMinimumWidth(70)
+        self.test_button.setMaximumWidth(80)
         layout.addWidget(self.test_button)
         
         # Status label
         self.status_label = QLabel("Not tested")
-        self.status_label.setStyleSheet("color: #666;")
-        self.status_label.setMaximumWidth(100)
+        self.status_label.setStyleSheet("color: #666; font-size: 10px;")
+        self.status_label.setMinimumWidth(80)
+        self.status_label.setMaximumWidth(120)
+        self.status_label.setWordWrap(True)  # Allow text wrapping on small screens
         layout.addWidget(self.status_label)
         
         # Remove button
         self.remove_button = QPushButton("❌")
         self.remove_button.clicked.connect(lambda: self.remove_requested.emit(self))
-        self.remove_button.setMaximumWidth(30)
+        self.remove_button.setMinimumWidth(35)
+        self.remove_button.setMaximumWidth(40)
         self.remove_button.setToolTip("Remove this field laptop")
         layout.addWidget(self.remove_button)
+        
+        # Set minimum height for the widget
+        self.setMinimumHeight(40)
     
     def test_folder_access(self):
         """Test access to this folder using Google Drive service"""
@@ -247,20 +263,24 @@ class GoogleDriveFieldDataDialog(QDialog):
         """Setup the Field Laptops configuration tab"""
         tab = QWidget()
         layout = QVBoxLayout(tab)
+        layout.setSpacing(10)  # Add spacing for better Windows rendering
         
         # Field Laptops Group
         laptops_group = QGroupBox("Field Laptop Folders")
         laptops_layout = QVBoxLayout(laptops_group)
+        laptops_layout.setSpacing(8)
         
         # Scroll area for laptop widgets
         self.scroll_area = QScrollArea()
+        self.scroll_area.setFrameStyle(QFrame.StyledPanel)  # Better frame visibility on Windows
         self.scroll_widget = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_widget)
+        self.scroll_layout.setSpacing(5)
         self.scroll_layout.addStretch()  # Push content to top
         
         self.scroll_area.setWidget(self.scroll_widget)
         self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setMinimumHeight(200)
+        self.scroll_area.setMinimumHeight(250)  # Increased height for better visibility
         
         laptops_layout.addWidget(self.scroll_area)
         
@@ -444,23 +464,27 @@ class GoogleDriveFieldDataDialog(QDialog):
             else:
                 self.service_status_area.setText("No service account configured")
             
-            # Load existing laptop configurations
+            # Load existing laptop configurations with default folder IDs
             laptop_configs = [
-                ("Laptop_1", "google_drive_laptop_1_folder_id"),
-                ("Laptop_2", "google_drive_laptop_2_folder_id"), 
-                ("Laptop_3", "google_drive_laptop_3_folder_id"),
-                ("Laptop_4", "google_drive_laptop_4_folder_id"),
-                ("Laptop_5", "google_drive_laptop_5_folder_id")
+                ("Laptop_1", "google_drive_laptop_1_folder_id", "1-0UspcEy9NJjFzMHk7egilqKh-FwhVJW"),
+                ("Laptop_2", "google_drive_laptop_2_folder_id", "1JaBHPHdImlxkVxB24eOW8Z83zPK2unSz"), 
+                ("Laptop_3", "google_drive_laptop_3_folder_id", "1jnuWTCWdW_HTTnoxr2zOge_gkvEGd19T"),
+                ("Laptop_4", "google_drive_laptop_4_folder_id", ""),
+                ("Laptop_5", "google_drive_laptop_5_folder_id", "")
             ]
             
-            for laptop_name, setting_key in laptop_configs:
-                folder_id = self.settings_handler.get_setting(setting_key, "")
-                if folder_id:
+            # Always load the first 3 laptops with default folder IDs pre-populated
+            for i, (laptop_name, setting_key, default_folder_id) in enumerate(laptop_configs[:3]):  # Only first 3
+                folder_id = self.settings_handler.get_setting(setting_key, default_folder_id)
+                self.add_laptop(laptop_name, folder_id)
+            
+            # Load additional laptops (4+) only if they have configured folder IDs
+            for laptop_name, setting_key, default_folder_id in laptop_configs[3:]:  # Laptops 4+
+                folder_id = self.settings_handler.get_setting(setting_key, default_folder_id)
+                if folder_id:  # Only add if configured
                     self.add_laptop(laptop_name, folder_id)
             
-            # If no laptops configured, add a default empty one
-            if not self.laptop_widgets:
-                self.add_laptop("Laptop_1", "")
+            logger.info(f"Loaded {len(self.laptop_widgets)} field laptop configurations")
                 
         except Exception as e:
             logger.error(f"Error loading settings: {e}")
