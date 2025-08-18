@@ -2985,14 +2985,25 @@ class MainWindow(QMainWindow):
     
     def sync_field_data_files_only(self):
         """Sync field data files only - organize XLE files from Google Drive to SMOO without database updates"""
+        import time
+        import traceback
+        from datetime import datetime
+        
+        start_time = time.time()
         try:
-            logger.info("Starting field data files sync only...")
+            logger.info("🚀 FIELD_SYNC: Starting field data files sync only...")
+            logger.info(f"🚀 FIELD_SYNC: Process started at {datetime.now().isoformat()}")
             
             # Create and authenticate Google Drive service account
+            logger.info("🔐 FIELD_SYNC: Initializing Google Drive service account...")
             from .handlers.google_service_account import GoogleServiceAccountHandler
             google_service = GoogleServiceAccountHandler(self.settings_handler)
             
+            logger.info("🔐 FIELD_SYNC: Attempting authentication...")
+            auth_start = time.time()
             if not google_service.authenticate():
+                auth_time = time.time() - auth_start
+                logger.error(f"❌ FIELD_SYNC: Google Drive authentication FAILED after {auth_time:.2f}s")
                 QMessageBox.warning(
                     self,
                     "Google Drive Service Required",
@@ -3001,9 +3012,16 @@ class MainWindow(QMainWindow):
                 )
                 return
             
+            auth_time = time.time() - auth_start
+            logger.info(f"✅ FIELD_SYNC: Google Drive authentication SUCCESS ({auth_time:.2f}s)")
+            
             # Check if SMOO is accessible
+            logger.info("📁 FIELD_SYNC: Checking SMOO shared drive access...")
             smoo_root = self.settings_handler.get_setting("shared_drive_root", "")
+            logger.info(f"📁 FIELD_SYNC: SMOO root path: {smoo_root}")
+            
             if not smoo_root or not os.path.exists(smoo_root):
+                logger.error(f"❌ FIELD_SYNC: SMOO access FAILED - Path not accessible: {smoo_root}")
                 QMessageBox.warning(
                     self,
                     "SMOO Access Required", 
@@ -3012,7 +3030,10 @@ class MainWindow(QMainWindow):
                 )
                 return
             
+            logger.info("✅ FIELD_SYNC: SMOO access confirmed")
+            
             # Create progress dialog
+            logger.info("🎨 FIELD_SYNC: Creating progress dialog...")
             from PyQt5.QtWidgets import QProgressDialog
             from PyQt5.QtCore import Qt
             progress_dialog = QProgressDialog("Initializing field data sync...", None, 0, 100, self)
@@ -3024,23 +3045,39 @@ class MainWindow(QMainWindow):
             progress_dialog.show()
             
             def progress_callback(message, percent):
+                # Enhanced progress callback with logging
+                logger.info(f"📊 FIELD_SYNC: {message} ({percent}%)")
                 progress_dialog.setLabelText(message)
                 progress_dialog.setValue(percent)
                 QApplication.processEvents()
             
             # Create hybrid consolidator
+            logger.info("🔧 FIELD_SYNC: Creating HybridFieldDataConsolidator...")
+            consolidator_start = time.time()
             from .handlers.smoo_field_data_consolidator import HybridFieldDataConsolidator
             consolidator = HybridFieldDataConsolidator(
                 google_service, 
                 self.settings_handler
             )
             
+            consolidator_time = time.time() - consolidator_start
+            logger.info(f"✅ FIELD_SYNC: Consolidator created ({consolidator_time:.2f}s)")
+            
             # Run consolidation
+            logger.info("🔄 FIELD_SYNC: Starting file consolidation process...")
+            consolidation_start = time.time()
+            
             success = consolidator.consolidate_field_data(progress_callback)
             
+            consolidation_time = time.time() - consolidation_start
+            total_time = time.time() - start_time
+            
             progress_dialog.close()
+            logger.info("🎨 FIELD_SYNC: Progress dialog closed")
             
             if success:
+                logger.info(f"✅ FIELD_SYNC: Consolidation SUCCESS ({consolidation_time:.2f}s)")
+                logger.info(f"🎉 FIELD_SYNC: Total process time: {total_time:.2f}s")
                 QMessageBox.information(
                     self,
                     "Sync Complete - SMOO XLE Workflow with Incremental Sync",
@@ -3058,6 +3095,8 @@ class MainWindow(QMainWindow):
                     "to process the organized data into your database."
                 )
             else:
+                logger.error(f"❌ FIELD_SYNC: Consolidation FAILED ({consolidation_time:.2f}s)")
+                logger.error(f"💥 FIELD_SYNC: Total process time: {total_time:.2f}s")
                 QMessageBox.warning(
                     self,
                     "Sync Failed",
@@ -3066,7 +3105,19 @@ class MainWindow(QMainWindow):
                 )
                 
         except Exception as e:
-            logger.error(f"Error in field data files sync: {e}")
+            total_time = time.time() - start_time if 'start_time' in locals() else 0
+            logger.error(f"💥 FIELD_SYNC: CRITICAL ERROR after {total_time:.2f}s: {e}")
+            logger.error(f"💥 FIELD_SYNC: Exception type: {type(e).__name__}")
+            logger.error(f"💥 FIELD_SYNC: Stack trace: {traceback.format_exc()}")
+            
+            # Clean up progress dialog if it exists
+            if 'progress_dialog' in locals():
+                try:
+                    progress_dialog.close()
+                    logger.info("🎨 FIELD_SYNC: Progress dialog closed (exception cleanup)")
+                except:
+                    pass
+            
             QMessageBox.critical(
                 self,
                 "Sync Error",
