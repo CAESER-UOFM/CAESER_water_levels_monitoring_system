@@ -38,7 +38,10 @@ class HybridFieldDataConsolidator:
         self.drive_service = drive_service
         self.settings_handler = settings_handler
         
-        # Google Drive source (SOLINST folder)
+        # Google Drive sources (Multiple field laptop SOLINST folders)
+        self.field_laptop_folders = self._get_field_laptop_folders()
+        
+        # Legacy single folder support (for backward compatibility)
         self.solinst_folder_id = self.settings_handler.get_setting("google_drive_solinst_folder_id", "")
         
         # SMOO target (FIELD_DATA_CONSOLIDATED)
@@ -52,8 +55,15 @@ class HybridFieldDataConsolidator:
         # Timestamp tracking for incremental sync
         self.sync_timestamp_file = os.path.join(self.consolidated_folder, ".last_field_sync_timestamp.json")
         
-        logger.info(f"Hybrid Consolidator initialized:")
-        logger.info(f"  Google Drive SOLINST ID: {self.solinst_folder_id}")
+        logger.info(f"Multi-Folder Field Data Consolidator initialized:")
+        if self.field_laptop_folders:
+            logger.info(f"  Found {len(self.field_laptop_folders)} field laptop folders:")
+            for laptop_name, folder_id in self.field_laptop_folders.items():
+                logger.info(f"    {laptop_name}: {folder_id}")
+        elif self.solinst_folder_id:
+            logger.info(f"  Legacy single folder mode: {self.solinst_folder_id}")
+        else:
+            logger.warning("  No field laptop folders configured!")
         logger.info(f"  SMOO Consolidated: {self.consolidated_folder}")
         logger.info(f"  Using YYYY-MM date-based organization (NOT XLE import structure)")
         logger.info(f"  Timestamp tracking: {self.sync_timestamp_file}")
@@ -162,15 +172,39 @@ class HybridFieldDataConsolidator:
             logger.error(f"Could not save sync timestamp: {e}")
             return False
     
+    def _get_field_laptop_folders(self) -> Dict[str, str]:
+        """
+        Get field laptop folder configurations from settings
+        
+        Returns:
+            Dictionary mapping laptop names to folder IDs
+        """
+        field_folders = {}
+        
+        # Check for individual laptop folder settings
+        laptop_configs = [
+            ("Laptop_1", "google_drive_laptop_1_folder_id"),
+            ("Laptop_2", "google_drive_laptop_2_folder_id"), 
+            ("Laptop_3", "google_drive_laptop_3_folder_id")
+        ]
+        
+        for laptop_name, setting_key in laptop_configs:
+            folder_id = self.settings_handler.get_setting(setting_key, "")
+            if folder_id:
+                field_folders[laptop_name] = folder_id
+                logger.debug(f"Found {laptop_name} folder: {folder_id}")
+        
+        return field_folders
+    
     def scan_google_drive_solinst(self, incremental: bool = True) -> List[Dict]:
         """
-        Scan Google Drive SOLINST folder for XLE files with optional incremental filtering
+        Scan Google Drive SOLINST folders (multiple field laptops) for XLE files with optional incremental filtering
         
         Args:
             incremental: If True, only return files newer than last sync
         
         Returns:
-            List of file info dictionaries
+            List of file info dictionaries with laptop source information
         """
         try:
             # Get last sync timestamp for incremental sync
@@ -188,20 +222,54 @@ class HybridFieldDataConsolidator:
             else:
                 logger.info("🔄 FULL_SYNC: Force full sync requested, downloading all files")
             
-            # Set the SOLINST folder ID if not set
-            if self.solinst_folder_id:
-                self.drive_service.set_solinst_folder_id(self.solinst_folder_id)
+            # Determine which folders to scan
+            folders_to_scan = []
             
-            # Use the service account handler's built-in method
-            logger.info("📂 GOOGLE_DRIVE: Scanning SOLINST folder for XLE files...")
-            files_found = self.drive_service.list_xle_files()
-            logger.info(f"📂 GOOGLE_DRIVE: Found {len(files_found)} total XLE files in SOLINST folder")
+            if self.field_laptop_folders:
+                # Multi-folder mode: scan all configured laptop folders
+                logger.info(f"📂 MULTI_FOLDER: Scanning {len(self.field_laptop_folders)} field laptop folders...")
+                for laptop_name, folder_id in self.field_laptop_folders.items():
+                    folders_to_scan.append((laptop_name, folder_id))
+            elif self.solinst_folder_id:
+                # Legacy single folder mode
+                logger.info("📂 LEGACY_MODE: Scanning single SOLINST folder...")
+                folders_to_scan.append(("Legacy_SOLINST", self.solinst_folder_id))
+            else:
+                logger.error("❌ No field laptop folders configured!")
+                return []
+            
+            # Scan each folder and collect files
+            all_files = []
+            
+            for laptop_name, folder_id in folders_to_scan:
+                logger.info(f"📂 SCANNING: {laptop_name} (ID: {folder_id})...")
+                
+                try:
+                    # Set the folder ID for this scan
+                    self.drive_service.set_solinst_folder_id(folder_id)
+                    
+                    # Scan this specific folder
+                    files_found = self.drive_service.list_xle_files()
+                    logger.info(f"📂 {laptop_name}: Found {len(files_found)} XLE files")
+                    
+                    # Add laptop source information to each file
+                    for file_info in files_found:
+                        file_info['source_laptop'] = laptop_name
+                        file_info['source_folder_id'] = folder_id
+                    
+                    all_files.extend(files_found)
+                    
+                except Exception as folder_error:
+                    logger.error(f"❌ Error scanning {laptop_name}: {folder_error}")
+                    continue
+            
+            logger.info(f"📂 TOTAL: Found {len(all_files)} XLE files across all field laptop folders")
             
             # Convert to format expected by consolidator and filter by timestamp
             consolidated_files = []
             skipped_count = 0
             
-            for file_info in files_found:
+            for file_info in all_files:
                 # Parse file modification time
                 file_modified_str = file_info['modifiedTime']
                 try:
@@ -223,7 +291,9 @@ class HybridFieldDataConsolidator:
                     'name': file_info['name'], 
                     'size': int(file_info.get('size', 0)),
                     'modified_time': file_modified_str,
-                    'modified_datetime': file_modified
+                    'modified_datetime': file_modified,
+                    'source_laptop': file_info.get('source_laptop', 'Unknown'),
+                    'source_folder_id': file_info.get('source_folder_id', '')
                 }
                 consolidated_files.append(consolidated_file)
                 
@@ -382,7 +452,7 @@ class HybridFieldDataConsolidator:
             
         return None
     
-    def update_folder_metadata(self, folder_path: str, year_month: str, file_path: str, filename: str) -> bool:
+    def update_folder_metadata(self, folder_path: str, year_month: str, file_path: str, filename: str, laptop_source: str = "Unknown") -> bool:
         """
         Update or create metadata.json in the specified folder after adding a file
         (Following main branch logic for SMOO shared drive mode)
@@ -423,6 +493,7 @@ class HybridFieldDataConsolidator:
             file_entry = {
                 'filename': filename,
                 'shared_drive_file_path': file_path,
+                'source_laptop': laptop_source,
                 'serial_number': file_metadata.get('serial_number', 'unknown'),
                 'cae_number': file_metadata.get('cae_number', 'unknown'),
                 'location': file_metadata.get('location', 'unknown'),
@@ -470,9 +541,10 @@ class HybridFieldDataConsolidator:
             file_id = file_info['id']
             filename = file_info['name']
             file_size = file_info['size']
+            laptop_source = file_info.get('source_laptop', 'Unknown_Laptop')
             
             if progress_callback:
-                progress_callback(f"Downloading {filename}...", 0)
+                progress_callback(f"[{laptop_source}] Downloading {filename}...", 0)
             
             # Download file from Google Drive to temp location
             service = self.drive_service.service
@@ -485,7 +557,7 @@ class HybridFieldDataConsolidator:
                     status, done = downloader.next_chunk()
                     if progress_callback and status:
                         progress = int(status.progress() * 50)  # First 50% for download
-                        progress_callback(f"Downloading {filename}...", progress)
+                        progress_callback(f"[{laptop_source}] Downloading {filename}...", progress)
                 
                 temp_path = temp_file.name
             
@@ -494,7 +566,7 @@ class HybridFieldDataConsolidator:
             
             # Determine target folder using actual data end date (main branch logic)
             if progress_callback:
-                progress_callback(f"Reading {filename} data to determine correct month folder...", 55)
+                progress_callback(f"[{laptop_source}] Reading {filename} data to determine correct month folder...", 55)
             
             actual_year_month = self.get_actual_year_month_from_xle(temp_path)
             target_folder = os.path.join(self.consolidated_folder, actual_year_month)
@@ -504,7 +576,7 @@ class HybridFieldDataConsolidator:
             
             # Generate corrected filename based on actual data
             if progress_callback:
-                progress_callback(f"Generating corrected filename for {filename}...", 60)
+                progress_callback(f"[{laptop_source}] Generating corrected filename for {filename}...", 60)
             
             corrected_filename = self.generate_corrected_filename(temp_path, filename)
             target_path = os.path.join(target_folder, corrected_filename)
@@ -513,7 +585,7 @@ class HybridFieldDataConsolidator:
             logger.info(f"FIELD_SYNC: Corrected filename: {corrected_filename}")
             
             if progress_callback:
-                progress_callback(f"Target: {actual_year_month}/{corrected_filename}", 65)
+                progress_callback(f"[{laptop_source}] Target: {actual_year_month}/{corrected_filename}", 65)
             
             # Check if file already exists and is up to date
             if os.path.exists(target_path):
@@ -525,13 +597,13 @@ class HybridFieldDataConsolidator:
                     logger.info(f"File {corrected_filename} already up to date in {actual_year_month}")
                     os.remove(temp_path)
                     if progress_callback:
-                        progress_callback(f"Already up to date: {corrected_filename}", 100)
+                        progress_callback(f"[{laptop_source}] Already up to date: {corrected_filename}", 100)
                     return True
                 else:
-                    logger.info(f"Updating existing file {corrected_filename} with newer version")
+                    logger.info(f"[{laptop_source}] Updating existing file {corrected_filename} with newer version")
             
             if progress_callback:
-                progress_callback(f"Saving {corrected_filename}...", 75)
+                progress_callback(f"[{laptop_source}] Saving {corrected_filename}...", 75)
             
             # Move file to target location
             shutil.move(temp_path, target_path)
@@ -539,21 +611,21 @@ class HybridFieldDataConsolidator:
             
             # Update metadata.json for this month folder
             if progress_callback:
-                progress_callback(f"Updating metadata for {actual_year_month}...", 85)
+                progress_callback(f"[{laptop_source}] Updating metadata for {actual_year_month}...", 85)
             
             try:
-                self.update_folder_metadata(target_folder, actual_year_month, target_path, corrected_filename)
+                self.update_folder_metadata(target_folder, actual_year_month, target_path, corrected_filename, laptop_source)
                 logger.debug(f"Updated metadata.json in {actual_year_month} folder for {corrected_filename}")
             except Exception as e:
                 logger.error(f"Failed to update metadata for {actual_year_month}: {e}")
             
             target_path = Path(target_path)
             if progress_callback:
-                progress_callback(f"✅ Consolidated to: {actual_year_month}/{corrected_filename}", 90)
+                progress_callback(f"[{laptop_source}] ✅ Consolidated to: {actual_year_month}/{corrected_filename}", 90)
             
             if progress_callback:
                 final_location = str(target_path.parent) if isinstance(target_path, Path) else os.path.dirname(target_path)
-                progress_callback(f"✅ Final: {os.path.basename(final_location)}/{corrected_filename}", 100)
+                progress_callback(f"[{laptop_source}] ✅ Final: {os.path.basename(final_location)}/{corrected_filename}", 100)
             
             return True
             
