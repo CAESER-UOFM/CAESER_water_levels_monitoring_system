@@ -54,9 +54,10 @@ class HybridFieldDataConsolidator:
         original_xle_import_dir = settings_handler.get_setting("xle_import_directory", "")
         logger.info(f"Original xle_import_directory setting: {original_xle_import_dir}")
         
-        # Temporarily set the xle_import_directory to our SMOO consolidated folder
-        settings_handler.set_setting("xle_import_directory", self.consolidated_folder)
-        logger.info(f"Temporarily set xle_import_directory to: {self.consolidated_folder}")
+        # Temporarily set the xle_import_directory to SMOO root (not consolidated folder)
+        # This prevents double FIELD_DATA_CONSOLIDATED in the path
+        settings_handler.set_setting("xle_import_directory", self.smoo_root)
+        logger.info(f"Temporarily set xle_import_directory to: {self.smoo_root}")
         
         self.xle_organizer = XLEFileOrganizer(
             app_root_dir=Path(self.consolidated_folder),  # This is ignored, but keep for compatibility
@@ -365,23 +366,33 @@ class HybridFieldDataConsolidator:
             
             # Try to extract location from filename if XML location is unknown/empty
             filename = os.path.basename(file_path)
-            if metadata['location'] == 'unknown' or not metadata['location']:
+            logger.info(f"Processing filename: {filename}")
+            logger.info(f"XML location extracted: '{metadata['location']}'")
+            
+            if metadata['location'] == 'unknown' or not metadata['location'] or metadata['location'].strip() == '':
                 # Extract location from filename patterns
                 import re
+                logger.info("XML location is unknown/empty, trying filename extraction...")
+                
                 # Try patterns like: HA-A012_, _T017_, _PioneerSprings_
                 location_patterns = [
-                    r'^([A-Z]{2}-[A-Z]\d+)_',  # HA-A012_
-                    r'_([A-Z]\d+)_',           # _T017_
-                    r'_([A-Za-z]+)_',          # _PioneerSprings_
-                    r'^([A-Za-z0-9-_]+)_'      # General pattern
+                    (r'^([A-Z]{2}-[A-Z]\d+)_', 'Well pattern (HA-A012_)'),     # HA-A012_
+                    (r'_([A-Z]\d+)_', 'Transducer pattern (_T017_)'),          # _T017_
+                    (r'_([A-Za-z][A-Za-z0-9]+)_', 'Location pattern (_PioneerSprings_)'),  # _PioneerSprings_
+                    (r'^([A-Za-z0-9-_]+)_', 'General pattern')                 # General pattern
                 ]
                 
-                for pattern in location_patterns:
+                for pattern, description in location_patterns:
                     match = re.search(pattern, filename)
                     if match:
-                        metadata['location'] = match.group(1)
-                        logger.info(f"Extracted location from filename: {metadata['location']}")
+                        extracted = match.group(1)
+                        metadata['location'] = extracted
+                        logger.info(f"✅ Extracted location using {description}: '{extracted}'")
                         break
+                else:
+                    logger.warning(f"❌ No location pattern matched for filename: {filename}")
+            else:
+                logger.info(f"✅ Using XML location: '{metadata['location']}'")
             
             # For barologgers, use serial number; for transducers, try to extract well info
             if metadata['device_type'] == 'transducer':
