@@ -87,10 +87,8 @@ class WaterLevelEditDialog(QDialog):
             if 'level_flag_baro_mod' not in self.plot_data.columns:
                 self.plot_data['level_flag_baro_mod'] = self.plot_data['level_flag'] if 'level_flag' in self.plot_data.columns else 'standard'
             
-            # Add temperature tracking columns
+            # Add temperature flag column (temperature corrections stored in original column like water levels)
             if 'temperature' in self.plot_data.columns:
-                if 'temperature_spike_corrected' not in self.plot_data.columns:
-                    self.plot_data['temperature_spike_corrected'] = self.plot_data['temperature'].copy()
                 if 'temperature_spike_flag' not in self.plot_data.columns:
                     self.plot_data['temperature_spike_flag'] = 'none'
         
@@ -1175,42 +1173,16 @@ class WaterLevelEditDialog(QDialog):
                         y_label = 'Temperature (°C)'
                         data_type_label = 'Temperature'
                         
-                        # Always plot the original temperature line first
+                        # Plot temperature line (corrections stored directly in temperature column like water levels)
                         if 'temperature' in well_data.columns:
-                            original_line, = self.ax.plot(well_data['timestamp_utc'], 
+                            temp_line, = self.ax.plot(well_data['timestamp_utc'], 
                                            well_data['temperature'], 
-                                           '-', color='lightcoral', label=f'Well {well} (Original Temperature)',
-                                           alpha=0.6,
-                                           zorder=2,
+                                           '-', color='red', label=f'Well {well} (Temperature)',
+                                           alpha=0.8,
+                                           zorder=3,
+                                           linewidth=2,
                                            picker=5)
-                            self.scatter_plots.append((original_line, well_data))
-                        
-                        # Plot the corrected temperature line if it exists and differs from original
-                        if 'temperature_spike_corrected' in well_data.columns:
-                            # Check if there are any actual corrections (different from original)
-                            has_corrections = False
-                            if 'temperature_spike_flag' in well_data.columns:
-                                has_corrections = (well_data['temperature_spike_flag'] != 'none').any()
-                            
-                            if has_corrections:
-                                corrected_line, = self.ax.plot(well_data['timestamp_utc'], 
-                                               well_data['temperature_spike_corrected'], 
-                                               '-', color='red', label=f'Well {well} (Spike Corrected)',
-                                               alpha=0.8,
-                                               zorder=3,
-                                               linewidth=2,
-                                               picker=5)
-                                self.scatter_plots.append((corrected_line, well_data))
-                            else:
-                                # If no corrections, just use the original line with standard styling
-                                if 'temperature' not in well_data.columns:
-                                    line, = self.ax.plot(well_data['timestamp_utc'], 
-                                                   well_data['temperature_spike_corrected'], 
-                                                   '-', color='red', label=f'Well {well} (Temperature)',
-                                                   alpha=0.7,
-                                                   zorder=3,
-                                                   picker=5)
-                                    self.scatter_plots.append((line, well_data))
+                            self.scatter_plots.append((temp_line, well_data))
                     else:
                         # Use water_level_master_corrected for display if it exists, otherwise fall back to corrected level
                         display_column = 'water_level_master_corrected' if 'water_level_master_corrected' in well_data.columns else 'water_level_level_corrected'
@@ -1573,7 +1545,7 @@ class WaterLevelEditDialog(QDialog):
                 # Prepare update data - UPDATE ORIGINAL TEMPERATURE COLUMN like water levels do
                 update_data = []
                 for index, row in modified_data.iterrows():
-                    temperature_corrected = row['temperature_spike_corrected']
+                    temperature_corrected = row['temperature']  # Corrections now stored directly in temperature column
                     spike_flag = row['temperature_spike_flag']
                     timestamp_utc = row['timestamp_utc'].strftime('%Y-%m-%d %H:%M:%S') if isinstance(row['timestamp_utc'], pd.Timestamp) else str(row['timestamp_utc'])
                     well_number = str(row['well_number']).strip()
@@ -2095,7 +2067,7 @@ class WaterLevelEditDialog(QDialog):
             
             # Determine which columns to work with based on data type
             if self.data_type == 'temperature':
-                corrected_column = 'temperature_spike_corrected'
+                corrected_column = 'temperature'  # Store corrections directly in original column like water levels
                 flag_column = 'temperature_spike_flag'
                 data_type_label = 'temperature'
             else:
