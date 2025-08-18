@@ -177,8 +177,10 @@ class WaterLevelPlotHandler:
                         all_gaps.extend(gaps)
                     
                     if self.show_temperature:
+                        # TEMPERATURE_FIX: Use corrected temperature if available, fallback to original
+                        temp_column = 'temperature_spike_corrected' if 'temperature_spike_corrected' in df.columns else 'temperature'
                         line, = self.ax.plot(
-                            df['timestamp_utc'], df['temperature'],
+                            df['timestamp_utc'], df[temp_column],
                             color=color, label=f"{well_number}", linewidth=1.5
                         )
                     else:
@@ -370,7 +372,8 @@ class WaterLevelPlotHandler:
                 
                 # Use appropriate y-axis data
                 if self.show_temperature:
-                    y_value = point_data.get('temperature', 0)
+                    # TEMPERATURE_FIX: Use corrected temperature if available, fallback to original
+                    y_value = point_data.get('temperature_spike_corrected', point_data.get('temperature', 0))
                 else:
                     y_value = point_data.get('water_level', 0)
                     
@@ -421,7 +424,8 @@ class WaterLevelPlotHandler:
                 else:
                     time_str = closest_point['timestamp_utc'].strftime('%Y-%m-%d %H:%M:%S')
                     if self.show_temperature:
-                        level_val = closest_point.get('temperature', 0)
+                        # TEMPERATURE_FIX: Use corrected temperature if available, fallback to original
+                        level_val = closest_point.get('temperature_spike_corrected', closest_point.get('temperature', 0))
                         display_time = closest_point['timestamp_utc']
                     else:
                         level_val = closest_point['water_level']
@@ -683,6 +687,16 @@ class WaterLevelPlotHandler:
                 
                 if 'water_level_spike_corrected' not in transducer_data.columns:
                     transducer_data['water_level_spike_corrected'] = transducer_data['water_level']
+                
+                # TEMPERATURE_FIX: Add temperature correction columns handling
+                if 'temperature_spike_corrected' not in transducer_data.columns:
+                    if 'temperature' in transducer_data.columns:
+                        transducer_data['temperature_spike_corrected'] = transducer_data['temperature']
+                    else:
+                        transducer_data['temperature_spike_corrected'] = None
+                        
+                if 'temperature_spike_flag' not in transducer_data.columns:
+                    transducer_data['temperature_spike_flag'] = 'none'
                 
                 # For compatibility with existing code
                 if 'corrected_water_level_level' not in transducer_data.columns:
