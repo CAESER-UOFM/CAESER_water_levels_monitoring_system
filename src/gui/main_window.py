@@ -3745,7 +3745,9 @@ class MainWindow(QMainWindow):
         
     def _add_water_level_tab(self):
         """Add the water level tab"""
+        logger.info("MAIN_WINDOW: Creating Water Level tab - about to instantiate WaterLevelTab")
         tab = WaterLevelTab(self.db_manager)
+        logger.info("MAIN_WINDOW: Water Level tab created successfully, adding to tab widget")
         self._tabs["water_level"] = tab
         self.tab_widget.addTab(tab, "Water Levels")
         
