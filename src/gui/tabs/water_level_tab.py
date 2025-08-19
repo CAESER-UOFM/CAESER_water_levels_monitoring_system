@@ -110,6 +110,7 @@ class CenteredIconTable(QTableWidget):
 class WaterLevelTab(QWidget):
     def __init__(self, db_manager, parent=None):
         super().__init__(parent)
+        logger.info("=== WATER_LEVEL_TAB VERSION: temperature-edit-fix-2025-08-19-v3 ===")
         logger.info("WATER_LEVEL_TAB: Starting __init__ - tab construction beginning")
         # Initialize core attributes first
         self.db_manager = db_manager
@@ -2719,8 +2720,10 @@ class WaterLevelTab(QWidget):
         group.setMinimumHeight(50)  # Force exact height match
         group.setFixedHeight(50)    # Ensure no height variation
         
-        # DEBUG: Log transducer panel dimensions
+        # DEBUG: Log transducer panel dimensions and button layout
         logger.info(f"TRANSDUCER_PANEL: height={group.height()}, sizeHint={group.sizeHint()}, minimumSizeHint={group.minimumSizeHint()}")
+        logger.info(f"TRANSDUCER_PANEL: Button count=2, Button layout margins={btn_layout.contentsMargins()}, Button layout spacing={btn_layout.spacing()}")
+        logger.info(f"TRANSDUCER_PANEL: Button widths - SingleFile:{import_file_btn.width()}, Folder:{import_folder_btn.width()}")
         
         return group
     
@@ -2941,9 +2944,11 @@ class WaterLevelTab(QWidget):
         group.setMinimumHeight(50)  # Force exact height match
         group.setFixedHeight(50)    # Ensure no height variation
         
-        # DEBUG: Log manual panel dimensions
+        # DEBUG: Log manual panel dimensions and button layout
         logger.info(f"MANUAL_PANEL: height={group.height()}, sizeHint={group.sizeHint()}, minimumSizeHint={group.minimumSizeHint()}")
         logger.info(f"MANUAL_PANEL: Button count=3, Layout margins={layout.contentsMargins()}, Layout spacing={layout.spacing()}")
+        logger.info(f"MANUAL_PANEL: Button layout margins={btn_layout.contentsMargins()}, Button layout spacing={btn_layout.spacing()}")
+        logger.info(f"MANUAL_PANEL: Button widths - Monet:{update_monet_btn.width()}, Manual:{add_manual_btn.width()}, CSV:{import_manual_btn.width()}")
         
         return group
     
