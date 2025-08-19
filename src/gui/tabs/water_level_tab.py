@@ -110,6 +110,7 @@ class CenteredIconTable(QTableWidget):
 class WaterLevelTab(QWidget):
     def __init__(self, db_manager, parent=None):
         super().__init__(parent)
+        logger.info("WATER_LEVEL_TAB: Starting __init__ - tab construction beginning")
         # Initialize core attributes first
         self.db_manager = db_manager
         self.current_dir = Path(__file__).parent.parent.parent.parent
@@ -146,7 +147,9 @@ class WaterLevelTab(QWidget):
         # Setup UI and tables
         self.setup_wells_table()
         self.setup_transducers_table()
+        logger.info("WATER_LEVEL_TAB: About to call setup_ui() - panels should be created next")
         self.setup_ui()
+        logger.info("WATER_LEVEL_TAB: Finished setup_ui() - panels should now be created")
 
         # Load initial data if database is already open
         if db_manager and hasattr(db_manager, 'current_db'):
