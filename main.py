@@ -46,6 +46,9 @@ logging.getLogger('src.database.models.water_level').setLevel(logging.INFO)
 # Enable INFO level logging for dialog debugging  
 logging.getLogger('src.gui.dialogs.water_level_edit_dialog').setLevel(logging.INFO)
 
+# Enable INFO level logging for tab debugging (panel alignment)
+logging.getLogger('src.gui.tabs.water_level_tab').setLevel(logging.INFO)
+
 # Suppress noisy third-party libraries
 logging.getLogger('PyQt5').setLevel(logging.ERROR)
 logging.getLogger('matplotlib').setLevel(logging.ERROR)
