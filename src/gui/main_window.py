@@ -3746,10 +3746,18 @@ class MainWindow(QMainWindow):
     def _add_water_level_tab(self):
         """Add the water level tab"""
         logger.info("MAIN_WINDOW: Creating Water Level tab - about to instantiate WaterLevelTab")
-        tab = WaterLevelTab(self.db_manager)
-        logger.info("MAIN_WINDOW: Water Level tab created successfully, adding to tab widget")
-        self._tabs["water_level"] = tab
-        self.tab_widget.addTab(tab, "Water Levels")
+        try:
+            tab = WaterLevelTab(self.db_manager)
+            logger.info("MAIN_WINDOW: Water Level tab created successfully, adding to tab widget")
+            self._tabs["water_level"] = tab
+            self.tab_widget.addTab(tab, "Water Levels")
+        except Exception as e:
+            logger.error(f"MAIN_WINDOW: ERROR creating Water Level tab: {e}", exc_info=True)
+            # Create a placeholder tab so the application doesn't crash
+            from PyQt5.QtWidgets import QLabel
+            placeholder = QLabel(f"Error creating Water Level tab: {e}")
+            self._tabs["water_level"] = placeholder
+            self.tab_widget.addTab(placeholder, "Water Levels")
         
     def _add_recharge_tab(self):
         """Add the recharge tab"""
