@@ -265,6 +265,7 @@ class WaterLevelTab(QWidget):
     
     def setup_ui(self):
         """Setup the main UI layout"""
+        logger.info("WATER_LEVEL_TAB: Starting setup_ui() - creating bottom panels")
         main_layout = QGridLayout(self)
         main_layout.setSpacing(3)  # Further reduced from 5 to 3
         main_layout.setContentsMargins(3, 3, 3, 3)  # Reduced margins
@@ -503,8 +504,8 @@ class WaterLevelTab(QWidget):
         bottom_grid.addWidget(manual_group, 2, 0)
         
         # DEBUG: Log grid layout information
-        logger.debug(f"BOTTOM_GRID: Telemetry at (0,0), Transducer at (1,0), Manual at (2,0)")
-        logger.debug(f"BOTTOM_GRID: spacing={bottom_grid.spacing()}, margins={bottom_grid.contentsMargins()}")
+        logger.info(f"BOTTOM_GRID: Telemetry at (0,0), Transducer at (1,0), Manual at (2,0)")
+        logger.info(f"BOTTOM_GRID: spacing={bottom_grid.spacing()}, margins={bottom_grid.contentsMargins()}")
         
         # Add logo to bottom-right position (aligned to bottom of the grid)
         bottom_grid.addWidget(self.logo_area, 2, 1, 1, 1, Qt.AlignBottom)  # Row 2 (bottom), Column 1, aligned to bottom
@@ -2716,7 +2717,7 @@ class WaterLevelTab(QWidget):
         group.setFixedHeight(50)    # Ensure no height variation
         
         # DEBUG: Log transducer panel dimensions
-        logger.debug(f"TRANSDUCER_PANEL: height={group.height()}, sizeHint={group.sizeHint()}, minimumSizeHint={group.minimumSizeHint()}")
+        logger.info(f"TRANSDUCER_PANEL: height={group.height()}, sizeHint={group.sizeHint()}, minimumSizeHint={group.minimumSizeHint()}")
         
         return group
     
@@ -2796,7 +2797,7 @@ class WaterLevelTab(QWidget):
         group.setFixedHeight(50)    # Ensure no height variation
         
         # DEBUG: Log telemetry panel dimensions
-        logger.debug(f"TELEMETRY_PANEL: height={group.height()}, sizeHint={group.sizeHint()}, minimumSizeHint={group.minimumSizeHint()}")
+        logger.info(f"TELEMETRY_PANEL: height={group.height()}, sizeHint={group.sizeHint()}, minimumSizeHint={group.minimumSizeHint()}")
         
         return group
     
@@ -2938,8 +2939,8 @@ class WaterLevelTab(QWidget):
         group.setFixedHeight(50)    # Ensure no height variation
         
         # DEBUG: Log manual panel dimensions
-        logger.debug(f"MANUAL_PANEL: height={group.height()}, sizeHint={group.sizeHint()}, minimumSizeHint={group.minimumSizeHint()}")
-        logger.debug(f"MANUAL_PANEL: Button count=3, Layout margins={layout.contentsMargins()}, Layout spacing={layout.spacing()}")
+        logger.info(f"MANUAL_PANEL: height={group.height()}, sizeHint={group.sizeHint()}, minimumSizeHint={group.minimumSizeHint()}")
+        logger.info(f"MANUAL_PANEL: Button count=3, Layout margins={layout.contentsMargins()}, Layout spacing={layout.spacing()}")
         
         return group
     
