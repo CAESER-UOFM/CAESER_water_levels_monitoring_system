@@ -24,6 +24,10 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 
+# Set the console handler to INFO level so configured loggers can show INFO messages
+console_handler = logging.getLogger().handlers[0]  # Get the StreamHandler we just created
+console_handler.setLevel(logging.INFO)
+
 # Allow INFO level for main application startup
 logging.getLogger('__main__').setLevel(logging.INFO)
 logging.getLogger('src.gui.handlers.settings_handler').setLevel(logging.INFO)

@@ -110,7 +110,6 @@ class CenteredIconTable(QTableWidget):
 class WaterLevelTab(QWidget):
     def __init__(self, db_manager, parent=None):
         super().__init__(parent)
-        print("DEBUG: WaterLevelTab.__init__ REACHED!")  # Force print to bypass logging issues
         logger.info("=== WATER_LEVEL_TAB VERSION: temperature-edit-fix-2025-08-19-v4 ===")
         logger.info("WATER_LEVEL_TAB: Starting __init__ - tab construction beginning")
         # Initialize core attributes first
@@ -2617,7 +2616,6 @@ class WaterLevelTab(QWidget):
             
     def create_compact_transducer_panel(self):
         """Create a compact transducer data panel with buttons in a single row"""
-        print("DEBUG: create_compact_transducer_panel CALLED!")
         logger.info("TRANSDUCER_PANEL: Creating transducer panel")
         group = QGroupBox("Transducer Data")
         group.setMaximumHeight(50)  # Reduced from 70 to 50 for more compact design
@@ -2732,7 +2730,6 @@ class WaterLevelTab(QWidget):
     
     def create_compact_telemetry_panel(self):
         """Create a compact telemetry data panel with buttons in a single row"""
-        print("DEBUG: create_compact_telemetry_panel CALLED!")
         logger.info("TELEMETRY_PANEL: Creating telemetry panel")
         group = QGroupBox("Telemetry Data")
         group.setMaximumHeight(50)  # Reduced from 70 to 50 for more compact design
@@ -2814,7 +2811,6 @@ class WaterLevelTab(QWidget):
     
     def create_compact_manual_panel(self):
         """Create a compact manual readings panel with buttons in a single row"""
-        print("DEBUG: create_compact_manual_panel CALLED!")
         logger.info("MANUAL_PANEL: Creating manual panel")
         group = QGroupBox("Manual Readings")
         group.setMaximumHeight(50)  # Reduced from 70 to 50 for more compact design
