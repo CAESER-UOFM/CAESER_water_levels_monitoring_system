@@ -2649,70 +2649,13 @@ class WaterLevelTab(QWidget):
         layout.setContentsMargins(2, 4, 2, 2)  # Further reduced margins
         layout.setSpacing(1)  # Minimal spacing
         
-        # Create buttons row
+        # Create button row with standard spacing
         btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(2)  # Minimal spacing between buttons
+        btn_layout.setSpacing(8)  # Consistent spacing between buttons
         
-        # Create buttons with icons
-        import_file_btn = QPushButton("📄 Import Single File")
-        import_file_btn.clicked.connect(self.import_single_file)
-        import_file_btn.setMinimumWidth(120)
-        import_file_btn.setStyleSheet("""
-            QPushButton {
-                padding: 4px 12px;
-                border: 1px solid #ccc;
-                border-radius: 6px;
-                background-color: #e7f3ff;
-                color: #0d47a1;
-                font-weight: 500;
-                font-size: 8pt;
-                min-height: 24px;
-                min-width: 100px;
-            }
-            QPushButton:hover {
-                background-color: #bbdefb;
-                border-color: #1976d2;
-            }
-            QPushButton:pressed {
-                background-color: #90caf9;
-                border-color: #1565c0;
-            }
-            QPushButton:disabled {
-                background-color: #f8f9fa;
-                color: #6c757d;
-                border-color: #dee2e6;
-            }
-        """)
-        
-        import_folder_btn = QPushButton("📁 Import Folder")
-        import_folder_btn.clicked.connect(self.import_folder)
-        import_folder_btn.setMinimumWidth(120)
-        import_folder_btn.setStyleSheet("""
-            QPushButton {
-                padding: 4px 12px;
-                border: 1px solid #ccc;
-                border-radius: 6px;
-                background-color: #e7f3ff;
-                color: #0d47a1;
-                font-weight: 500;
-                font-size: 8pt;
-                min-height: 24px;
-                min-width: 100px;
-            }
-            QPushButton:hover {
-                background-color: #bbdefb;
-                border-color: #1976d2;
-            }
-            QPushButton:pressed {
-                background-color: #90caf9;
-                border-color: #1565c0;
-            }
-            QPushButton:disabled {
-                background-color: #f8f9fa;
-                color: #6c757d;
-                border-color: #dee2e6;
-            }
-        """)
+        # Create standardized buttons with different color schemes for visual distinction
+        import_file_btn = self._create_standard_button("📄 Import Single File", "blue", self.import_single_file)
+        import_folder_btn = self._create_standard_button("📁 Import Folder", "blue", self.import_folder)
         
         # Add buttons to the horizontal layout
         btn_layout.addWidget(import_file_btn)
@@ -2726,11 +2669,6 @@ class WaterLevelTab(QWidget):
         group.setMaximumHeight(50)  # Reduced from 85 to 50 for more compact design
         group.setMinimumHeight(50)  # Force exact height match
         group.setFixedHeight(50)    # Ensure no height variation
-        
-        # DEBUG: Log transducer panel dimensions and button layout
-        logger.info(f"TRANSDUCER_PANEL: height={group.height()}, sizeHint={group.sizeHint()}, minimumSizeHint={group.minimumSizeHint()}")
-        logger.info(f"TRANSDUCER_PANEL: Button count=2, Button layout margins={btn_layout.contentsMargins()}, Button layout spacing={btn_layout.spacing()}")
-        logger.info(f"TRANSDUCER_PANEL: Button widths - SingleFile:{import_file_btn.width()}, Folder:{import_folder_btn.width()}")
         
         return group
     
@@ -2763,59 +2701,16 @@ class WaterLevelTab(QWidget):
         layout.setContentsMargins(2, 4, 2, 2)  # Further reduced margins
         layout.setSpacing(1)  # Minimal spacing
         
-        # Create button row
+        # Create button row with standard spacing
         btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(2)  # Minimal spacing between buttons
+        btn_layout.setSpacing(8)  # Consistent spacing between buttons
         
-        # Create button 
-        update_telemetry_btn = QPushButton("📡 Update Telemetry")
-        update_telemetry_btn.clicked.connect(self.update_telemetry_data)
-        update_telemetry_btn.setMinimumWidth(120)
-        update_telemetry_btn.setStyleSheet("""
-            QPushButton {
-                padding: 4px 12px;
-                border: 1px solid #ccc;
-                border-radius: 6px;
-                background-color: #f1f8e9;
-                color: #388e3c;
-                font-weight: 500;
-                font-size: 8pt;
-                min-height: 24px;
-                min-width: 100px;
-            }
-            QPushButton:hover {
-                background-color: #c8e6c9;
-                border-color: #4caf50;
-            }
-            QPushButton:pressed {
-                background-color: #a5d6a7;
-                border-color: #2e7d32;
-            }
-            QPushButton:disabled {
-                background-color: #f8f9fa;
-                color: #6c757d;
-                border-color: #dee2e6;
-            }
-        """)
+        # Create standardized button
+        update_telemetry_btn = self._create_standard_button("📡 Update Telemetry", "green", self.update_telemetry_data)
         
         # Add button to layout
         btn_layout.addWidget(update_telemetry_btn)
         btn_layout.addStretch()
-        
-        # Windows-specific fix: Force exact dimensions to override platform rendering differences
-        import sys
-        if sys.platform.startswith('win'):
-            logger.info("TELEMETRY_PANEL: Applying Windows-specific button size fixes")
-            update_telemetry_btn.setFixedHeight(28)  # Force exact height
-            update_telemetry_btn.setMinimumWidth(120)  # Force consistent minimum width
-            current_style = update_telemetry_btn.styleSheet()
-            update_telemetry_btn.setStyleSheet(current_style + """
-                QPushButton {
-                    margin: 0px;
-                    border-width: 1px;
-                    text-align: center;
-                }
-            """)
         
         # Add button layout to main layout
         layout.addLayout(btn_layout)
@@ -2858,123 +2753,20 @@ class WaterLevelTab(QWidget):
         layout.setContentsMargins(2, 4, 2, 2)  # Match other sections exactly
         layout.setSpacing(1)  # Match other sections exactly
         
-        # Create button row
+        # Create button row with standard spacing
         btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(2)  # Minimal spacing between buttons
+        btn_layout.setSpacing(8)  # Consistent spacing between buttons
         
-        # Create buttons
-        update_monet_btn = QPushButton("🌐 Update Monet Data")
-        update_monet_btn.clicked.connect(self.update_monet_data)
-        update_monet_btn.setMinimumWidth(120)
-        update_monet_btn.setStyleSheet("""
-            QPushButton {
-                padding: 4px 12px;
-                border: 1px solid #ccc;
-                border-radius: 6px;
-                background-color: #fff8e1;
-                color: #f57c00;
-                font-weight: 500;
-                font-size: 8pt;
-                min-height: 24px;
-                min-width: 100px;
-            }
-            QPushButton:hover {
-                background-color: #ffecb3;
-                border-color: #ff9800;
-            }
-            QPushButton:pressed {
-                background-color: #ffe082;
-                border-color: #ef6c00;
-            }
-            QPushButton:disabled {
-                background-color: #f8f9fa;
-                color: #6c757d;
-                border-color: #dee2e6;
-            }
-        """)
-        
-        add_manual_btn = QPushButton("➕ Add Manual Reading")
-        add_manual_btn.clicked.connect(self.add_manual_reading)
-        add_manual_btn.setMinimumWidth(120)
-        add_manual_btn.setStyleSheet("""
-            QPushButton {
-                padding: 4px 12px;
-                border: 1px solid #ccc;
-                border-radius: 6px;
-                background-color: #f3e5f5;
-                color: #7b1fa2;
-                font-weight: 500;
-                font-size: 8pt;
-                min-height: 24px;
-                min-width: 100px;
-            }
-            QPushButton:hover {
-                background-color: #e1bee7;
-                border-color: #9c27b0;
-            }
-            QPushButton:pressed {
-                background-color: #ce93d8;
-                border-color: #8e24aa;
-            }
-            QPushButton:disabled {
-                background-color: #f8f9fa;
-                color: #6c757d;
-                border-color: #dee2e6;
-            }
-        """)
-        
-        import_manual_btn = QPushButton("📊 Import CSV File")
-        import_manual_btn.clicked.connect(self.import_csv_file)
-        import_manual_btn.setMinimumWidth(120)
-        import_manual_btn.setStyleSheet("""
-            QPushButton {
-                padding: 4px 12px;
-                border: 1px solid #ccc;
-                border-radius: 6px;
-                background-color: #f3e5f5;
-                color: #7b1fa2;
-                font-weight: 500;
-                font-size: 8pt;
-                min-height: 24px;
-                min-width: 100px;
-            }
-            QPushButton:hover {
-                background-color: #e1bee7;
-                border-color: #9c27b0;
-            }
-            QPushButton:pressed {
-                background-color: #ce93d8;
-                border-color: #8e24aa;
-            }
-            QPushButton:disabled {
-                background-color: #f8f9fa;
-                color: #6c757d;
-                border-color: #dee2e6;
-            }
-        """)
+        # Create standardized buttons with different color schemes for visual distinction
+        update_monet_btn = self._create_standard_button("🌐 Update Monet Data", "orange", self.update_monet_data)
+        add_manual_btn = self._create_standard_button("➕ Add Manual Reading", "purple", self.add_manual_reading)
+        import_manual_btn = self._create_standard_button("📊 Import CSV File", "blue", self.import_csv_file)
         
         # Add buttons to the horizontal layout
         btn_layout.addWidget(update_monet_btn)
         btn_layout.addWidget(add_manual_btn)
         btn_layout.addWidget(import_manual_btn)
         btn_layout.addStretch()
-        
-        # Windows-specific fix: Force exact dimensions to override platform rendering differences
-        import sys
-        if sys.platform.startswith('win'):
-            logger.info("MANUAL_PANEL: Applying Windows-specific button size fixes")
-            for btn in [update_monet_btn, add_manual_btn, import_manual_btn]:
-                btn.setFixedHeight(28)  # Force exact height
-                btn.setMinimumWidth(120)  # Force consistent minimum width
-                # Override any Windows-specific margin/padding issues
-                current_style = btn.styleSheet()
-                btn.setStyleSheet(current_style + """
-                    QPushButton {
-                        margin: 0px;
-                        border-width: 1px;
-                        text-align: center;
-                    }
-                """)
         
         # Add button layout to main layout
         layout.addLayout(btn_layout)
@@ -2988,40 +2780,53 @@ class WaterLevelTab(QWidget):
         
         return group
     
-    def _debug_panel_complete_styling(self, panel_name, group, main_layout, btn_layout, buttons, btn_names):
-        """Comprehensive debugging of all styling properties"""
-        logger.info(f"=== {panel_name} PANEL COMPLETE STYLING DEBUG ===")
+    def _create_standard_button(self, text, color_scheme, click_handler=None):
+        """Create a standardized button with consistent sizing and styling across all panels"""
+        button = QPushButton(text)
+        if click_handler:
+            button.clicked.connect(click_handler)
         
-        # 1. GROUP BOX (Container) Properties
-        logger.info(f"{panel_name}_GROUP: size={group.size()}, pos={group.pos()}")
-        logger.info(f"{panel_name}_GROUP: margins={group.contentsMargins()}")
-        logger.info(f"{panel_name}_GROUP: sizePolicy={group.sizePolicy().horizontalPolicy()}, {group.sizePolicy().verticalPolicy()}")
-        logger.info(f"{panel_name}_GROUP: font={group.font().family()}, size={group.font().pointSize()}")
-        logger.info(f"{panel_name}_GROUP: styleSheet length={len(group.styleSheet())}")
+        # UNIFIED SIZING: All buttons get identical dimensions
+        button.setFixedSize(140, 32)  # Fixed size ensures perfect consistency
         
-        # 2. MAIN LAYOUT (Vertical) Properties  
-        logger.info(f"{panel_name}_MAIN_LAYOUT: margins={main_layout.contentsMargins()}")
-        logger.info(f"{panel_name}_MAIN_LAYOUT: spacing={main_layout.spacing()}")
-        logger.info(f"{panel_name}_MAIN_LAYOUT: sizeConstraint={main_layout.sizeConstraint()}")
+        # Color schemes
+        colors = {
+            'green': {'bg': '#f1f8e9', 'color': '#388e3c', 'hover': '#c8e6c9', 'pressed': '#a5d6a7', 'border': '#4caf50'},
+            'blue': {'bg': '#e7f3ff', 'color': '#0d47a1', 'hover': '#bbdefb', 'pressed': '#90caf9', 'border': '#1976d2'},
+            'orange': {'bg': '#fff8e1', 'color': '#f57c00', 'hover': '#ffecb3', 'pressed': '#ffe082', 'border': '#ff9800'},
+            'purple': {'bg': '#f3e5f5', 'color': '#7b1fa2', 'hover': '#e1bee7', 'pressed': '#ce93d8', 'border': '#9c27b0'}
+        }
         
-        # 3. BUTTON LAYOUT (Horizontal) Properties
-        logger.info(f"{panel_name}_BTN_LAYOUT: margins={btn_layout.contentsMargins()}")
-        logger.info(f"{panel_name}_BTN_LAYOUT: spacing={btn_layout.spacing()}")
-        logger.info(f"{panel_name}_BTN_LAYOUT: count={btn_layout.count()}")
+        scheme = colors.get(color_scheme, colors['blue'])
         
-        # 4. EACH BUTTON Properties
-        for i, (btn, name) in enumerate(zip(buttons, btn_names)):
-            logger.info(f"{panel_name}_{name}_BUTTON:")
-            logger.info(f"  size={btn.size()}, pos={btn.pos()}")
-            logger.info(f"  margins={btn.contentsMargins()}")
-            logger.info(f"  font={btn.font().family()}, size={btn.font().pointSize()}, weight={btn.font().weight()}")
-            logger.info(f"  text='{btn.text()}', len={len(btn.text())}")
-            logger.info(f"  styleSheet_length={len(btn.styleSheet())}")
-            logger.info(f"  sizePolicy={btn.sizePolicy().horizontalPolicy()}, {btn.sizePolicy().verticalPolicy()}")
-            logger.info(f"  minimumSize={btn.minimumSize()}, maximumSize={btn.maximumSize()}")
-            logger.info(f"  baseSize={btn.baseSize()}, sizeIncrement={btn.sizeIncrement()}")
-            
-        logger.info(f"=== END {panel_name} PANEL DEBUG ===\n")
+        button.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {scheme['bg']};
+                color: {scheme['color']};
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                font-weight: 500;
+                font-size: 8pt;
+                text-align: center;
+                padding: 0px;
+                margin: 0px;
+            }}
+            QPushButton:hover {{
+                background-color: {scheme['hover']};
+                border-color: {scheme['border']};
+            }}
+            QPushButton:pressed {{
+                background-color: {scheme['pressed']};
+                border-color: {scheme['color']};
+            }}
+            QPushButton:disabled {{
+                background-color: #f8f9fa;
+                color: #6c757d;
+                border-color: #dee2e6;
+            }}
+        """)
+        
+        return button
     
     def create_logo_area(self):
         """Create an area for app logo in the bottom right corner"""
