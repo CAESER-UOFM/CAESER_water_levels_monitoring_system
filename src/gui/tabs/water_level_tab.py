@@ -110,6 +110,10 @@ class CenteredIconTable(QTableWidget):
 class WaterLevelTab(QWidget):
     def __init__(self, db_manager, parent=None):
         super().__init__(parent)
+        print(f"DEBUG: WaterLevelTab logger name = {logger.name}")
+        print(f"DEBUG: WaterLevelTab logger level = {logger.level}")  
+        print(f"DEBUG: WaterLevelTab logger effective level = {logger.getEffectiveLevel()}")
+        print(f"DEBUG: WaterLevelTab logger handlers = {logger.handlers}")
         logger.info("=== WATER_LEVEL_TAB VERSION: temperature-edit-fix-2025-08-19-v4 ===")
         logger.info("WATER_LEVEL_TAB: Starting __init__ - tab construction beginning")
         # Initialize core attributes first
