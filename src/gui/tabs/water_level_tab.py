@@ -2823,8 +2823,9 @@ class WaterLevelTab(QWidget):
         group.setMinimumHeight(50)  # Force exact height match
         group.setFixedHeight(50)    # Ensure no height variation
         
-        # DEBUG: Log telemetry panel dimensions
-        logger.info(f"TELEMETRY_PANEL: height={group.height()}, sizeHint={group.sizeHint()}, minimumSizeHint={group.minimumSizeHint()}")
+        # COMPREHENSIVE DEBUG: Show ALL styling properties
+        self._debug_panel_complete_styling("TELEMETRY", group, layout, btn_layout, 
+                                         [update_telemetry_btn], ["Telemetry"])
         
         return group
     
@@ -2983,13 +2984,47 @@ class WaterLevelTab(QWidget):
         group.setMinimumHeight(50)  # Force exact height match
         group.setFixedHeight(50)    # Ensure no height variation
         
-        # DEBUG: Log manual panel dimensions and button layout
-        logger.info(f"MANUAL_PANEL: height={group.height()}, sizeHint={group.sizeHint()}, minimumSizeHint={group.minimumSizeHint()}")
-        logger.info(f"MANUAL_PANEL: Button count=3, Layout margins={layout.contentsMargins()}, Layout spacing={layout.spacing()}")
-        logger.info(f"MANUAL_PANEL: Button layout margins={btn_layout.contentsMargins()}, Button layout spacing={btn_layout.spacing()}")
-        logger.info(f"MANUAL_PANEL: Button widths - Monet:{update_monet_btn.width()}, Manual:{add_manual_btn.width()}, CSV:{import_manual_btn.width()}")
+        # COMPREHENSIVE DEBUG: Show ALL styling properties
+        self._debug_panel_complete_styling("MANUAL", group, layout, btn_layout, 
+                                         [update_monet_btn, add_manual_btn, import_manual_btn],
+                                         ["Monet", "Manual", "CSV"])
         
         return group
+    
+    def _debug_panel_complete_styling(self, panel_name, group, main_layout, btn_layout, buttons, btn_names):
+        """Comprehensive debugging of all styling properties"""
+        logger.info(f"=== {panel_name} PANEL COMPLETE STYLING DEBUG ===")
+        
+        # 1. GROUP BOX (Container) Properties
+        logger.info(f"{panel_name}_GROUP: size={group.size()}, pos={group.pos()}")
+        logger.info(f"{panel_name}_GROUP: margins={group.contentsMargins()}")
+        logger.info(f"{panel_name}_GROUP: sizePolicy={group.sizePolicy().horizontalPolicy()}, {group.sizePolicy().verticalPolicy()}")
+        logger.info(f"{panel_name}_GROUP: font={group.font().family()}, size={group.font().pointSize()}")
+        logger.info(f"{panel_name}_GROUP: styleSheet length={len(group.styleSheet())}")
+        
+        # 2. MAIN LAYOUT (Vertical) Properties  
+        logger.info(f"{panel_name}_MAIN_LAYOUT: margins={main_layout.contentsMargins()}")
+        logger.info(f"{panel_name}_MAIN_LAYOUT: spacing={main_layout.spacing()}")
+        logger.info(f"{panel_name}_MAIN_LAYOUT: sizeConstraint={main_layout.sizeConstraint()}")
+        
+        # 3. BUTTON LAYOUT (Horizontal) Properties
+        logger.info(f"{panel_name}_BTN_LAYOUT: margins={btn_layout.contentsMargins()}")
+        logger.info(f"{panel_name}_BTN_LAYOUT: spacing={btn_layout.spacing()}")
+        logger.info(f"{panel_name}_BTN_LAYOUT: count={btn_layout.count()}")
+        
+        # 4. EACH BUTTON Properties
+        for i, (btn, name) in enumerate(zip(buttons, btn_names)):
+            logger.info(f"{panel_name}_{name}_BUTTON:")
+            logger.info(f"  size={btn.size()}, pos={btn.pos()}")
+            logger.info(f"  margins={btn.contentsMargins()}")
+            logger.info(f"  font={btn.font().family()}, size={btn.font().pointSize()}, weight={btn.font().weight()}")
+            logger.info(f"  text='{btn.text()}', len={len(btn.text())}")
+            logger.info(f"  styleSheet_length={len(btn.styleSheet())}")
+            logger.info(f"  sizePolicy={btn.sizePolicy().horizontalPolicy()}, {btn.sizePolicy().verticalPolicy()}")
+            logger.info(f"  minimumSize={btn.minimumSize()}, maximumSize={btn.maximumSize()}")
+            logger.info(f"  baseSize={btn.baseSize()}, sizeIncrement={btn.sizeIncrement()}")
+            
+        logger.info(f"=== END {panel_name} PANEL DEBUG ===\n")
     
     def create_logo_area(self):
         """Create an area for app logo in the bottom right corner"""
