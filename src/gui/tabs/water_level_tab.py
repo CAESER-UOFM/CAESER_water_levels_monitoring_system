@@ -493,10 +493,10 @@ class WaterLevelTab(QWidget):
         plot_section.addWidget(plot_container)
         right_side.addLayout(plot_section, stretch=16)  # Increased from 13 to 16 for even more plot space
 
-        # Bottom grid layout with minimal spacing
+        # Bottom grid layout with proper spacing between panels
         bottom_grid = QGridLayout()
-        bottom_grid.setSpacing(0)  # Removed spacing entirely
-        bottom_grid.setContentsMargins(0, 0, 0, 0)  # Removed all margins
+        bottom_grid.setSpacing(3)  # Add some spacing between panels to prevent visual crowding
+        bottom_grid.setContentsMargins(0, 0, 0, 0)  # Keep margins at 0
         
         # Add panels with reduced spacing
         telemetry_group = self.create_compact_telemetry_panel()
@@ -522,7 +522,13 @@ class WaterLevelTab(QWidget):
         bottom_grid.setColumnStretch(0, 10)  # Panels column gets 90% of space  
         bottom_grid.setColumnStretch(1, 1)   # Logo column gets 10% of space
         
+        # CRITICAL FIX: Set equal row stretch factors for consistent panel heights
+        bottom_grid.setRowStretch(0, 1)  # Telemetry panel gets equal space
+        bottom_grid.setRowStretch(1, 1)  # Transducer panel gets equal space  
+        bottom_grid.setRowStretch(2, 1)  # Manual panel gets equal space
+        
         logger.info(f"BOTTOM_GRID: Column stretch - Panels:10, Logo:1 (gives buttons more room)")
+        logger.info(f"BOTTOM_GRID: Row stretch - All panels:1 (equal height distribution)")
         
         right_side.addLayout(bottom_grid, stretch=1)  # Keep at 1 for 16:1 ratio (plot gets ~94% of space)
 
@@ -2665,10 +2671,9 @@ class WaterLevelTab(QWidget):
         # Add button layout to main layout
         layout.addLayout(btn_layout)
         
-        # Set consistent dimensions to match other sections exactly
-        group.setMaximumHeight(50)  # Reduced from 85 to 50 for more compact design
-        group.setMinimumHeight(50)  # Force exact height match
-        group.setFixedHeight(50)    # Ensure no height variation
+        # Let grid layout handle height distribution with row stretch factors
+        group.setMinimumHeight(50)  # Minimum height for readability
+        group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)  # Allow vertical expansion
         
         return group
     
@@ -2715,12 +2720,9 @@ class WaterLevelTab(QWidget):
         # Add button layout to main layout
         layout.addLayout(btn_layout)
         
-        # Set consistent dimensions to match other sections exactly
-        group.setMaximumHeight(50)  # Reduced from 85 to 50 for more compact design
-        group.setMinimumHeight(50)  # Force exact height match
-        group.setFixedHeight(50)    # Ensure no height variation
-        
-        # Debug logging removed - root cause found: column space allocation issue
+        # Let grid layout handle height distribution with row stretch factors
+        group.setMinimumHeight(50)  # Minimum height for readability
+        group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)  # Allow vertical expansion
         
         return group
     
@@ -2771,12 +2773,9 @@ class WaterLevelTab(QWidget):
         # Add button layout to main layout
         layout.addLayout(btn_layout)
         
-        # Set consistent dimensions to match other sections exactly
-        group.setMaximumHeight(50)  # Reduced from 85 to 50 for more compact design
-        group.setMinimumHeight(50)  # Force exact height match
-        group.setFixedHeight(50)    # Ensure no height variation
-        
-        # Debug logging removed - root cause found: column space allocation issue
+        # Let grid layout handle height distribution with row stretch factors
+        group.setMinimumHeight(50)  # Minimum height for readability
+        group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)  # Allow vertical expansion
         
         return group
     
