@@ -513,10 +513,11 @@ class WaterLevelTab(QWidget):
         
         # DEBUG: Log grid layout information
         logger.info(f"BOTTOM_GRID: Telemetry at (0,0), Transducer at (1,0), Manual at (2,0)")
+        logger.info(f"BOTTOM_GRID: Logo spans rows 1-2 in column 1 for proper alignment")
         logger.info(f"BOTTOM_GRID: spacing={bottom_grid.spacing()}, margins={bottom_grid.contentsMargins()}")
         
-        # Add logo to bottom-right position (aligned to bottom of the grid)
-        bottom_grid.addWidget(self.logo_area, 2, 1, 1, 1, Qt.AlignBottom)  # Row 2 (bottom), Column 1, aligned to bottom
+        # Add logo spanning rows 1-2 to align with Transducer+Manual height
+        bottom_grid.addWidget(self.logo_area, 1, 1, 2, 1, Qt.AlignBottom)  # Start row 1, span 2 rows, bottom aligned
         
         # CRITICAL FIX: Give button panels MUCH more space to accommodate 3 buttons
         bottom_grid.setColumnStretch(0, 10)  # Panels column gets 90% of space  
