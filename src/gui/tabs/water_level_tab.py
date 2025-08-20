@@ -38,6 +38,7 @@ from ..handlers.manual_readings_handler import ManualReadingsHandler
 from ..handlers.progress_dialog_handler import progress_dialog  # Import the standardized progress dialog handler
 
 logger = logging.getLogger(__name__)
+print(f"PRINT: water_level_tab.py imported, logger = {logger.name}, effective level = {logger.getEffectiveLevel()}")
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 from matplotlib.backend_bases import MouseButton
 from matplotlib.widgets import Cursor
@@ -109,7 +110,9 @@ class CenteredIconTable(QTableWidget):
 
 class WaterLevelTab(QWidget):
     def __init__(self, db_manager, parent=None):
+        print("PRINT: WaterLevelTab.__init__ CALLED! This should ALWAYS appear")
         super().__init__(parent)
+        print(f"PRINT: super().__init__ completed, logger effective level = {logger.getEffectiveLevel()}")
         logger.info("=== WATER_LEVEL_TAB VERSION: temperature-edit-fix-2025-08-19-v4 ===")
         logger.info("WATER_LEVEL_TAB: Starting __init__ - tab construction beginning")
         # Initialize core attributes first
