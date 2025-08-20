@@ -518,9 +518,11 @@ class WaterLevelTab(QWidget):
         # Add logo to bottom-right position (aligned to bottom of the grid)
         bottom_grid.addWidget(self.logo_area, 2, 1, 1, 1, Qt.AlignBottom)  # Row 2 (bottom), Column 1, aligned to bottom
         
-        # Adjust column stretches
-        bottom_grid.setColumnStretch(0, 6)  # Panels column gets more space
-        bottom_grid.setColumnStretch(1, 1)   # Logo column gets minimal space
+        # CRITICAL FIX: Give button panels MUCH more space to accommodate 3 buttons
+        bottom_grid.setColumnStretch(0, 10)  # Panels column gets 90% of space  
+        bottom_grid.setColumnStretch(1, 1)   # Logo column gets 10% of space
+        
+        logger.info(f"BOTTOM_GRID: Column stretch - Panels:10, Logo:1 (gives buttons more room)")
         
         right_side.addLayout(bottom_grid, stretch=1)  # Keep at 1 for 16:1 ratio (plot gets ~94% of space)
 
@@ -2823,9 +2825,7 @@ class WaterLevelTab(QWidget):
         group.setMinimumHeight(50)  # Force exact height match
         group.setFixedHeight(50)    # Ensure no height variation
         
-        # COMPREHENSIVE DEBUG: Show ALL styling properties
-        self._debug_panel_complete_styling("TELEMETRY", group, layout, btn_layout, 
-                                         [update_telemetry_btn], ["Telemetry"])
+        # Debug logging removed - root cause found: column space allocation issue
         
         return group
     
@@ -2984,10 +2984,7 @@ class WaterLevelTab(QWidget):
         group.setMinimumHeight(50)  # Force exact height match
         group.setFixedHeight(50)    # Ensure no height variation
         
-        # COMPREHENSIVE DEBUG: Show ALL styling properties
-        self._debug_panel_complete_styling("MANUAL", group, layout, btn_layout, 
-                                         [update_monet_btn, add_manual_btn, import_manual_btn],
-                                         ["Monet", "Manual", "CSV"])
+        # Debug logging removed - root cause found: column space allocation issue
         
         return group
     
