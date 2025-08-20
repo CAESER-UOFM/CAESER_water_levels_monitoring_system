@@ -38,7 +38,6 @@ from ..handlers.manual_readings_handler import ManualReadingsHandler
 from ..handlers.progress_dialog_handler import progress_dialog  # Import the standardized progress dialog handler
 
 logger = logging.getLogger(__name__)
-print(f"PRINT: water_level_tab.py imported, logger = {logger.name}, effective level = {logger.getEffectiveLevel()}")
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 from matplotlib.backend_bases import MouseButton
 from matplotlib.widgets import Cursor
@@ -110,12 +109,10 @@ class CenteredIconTable(QTableWidget):
 
 class WaterLevelTab(QWidget):
     def __init__(self, db_manager, parent=None):
-        print("PRINT: WaterLevelTab.__init__ CALLED! This should ALWAYS appear")
         super().__init__(parent)
         
-        # Force logger reconfiguration to ensure INFO level works
+        # Ensure logger is configured for INFO level output
         logger.setLevel(logging.INFO)
-        print(f"PRINT: After force config, logger effective level = {logger.getEffectiveLevel()}")
         
         logger.info("=== WATER_LEVEL_TAB VERSION: temperature-edit-fix-2025-08-19-v4 ===")
         logger.info("WATER_LEVEL_TAB: Starting __init__ - tab construction beginning")
@@ -2803,9 +2800,20 @@ class WaterLevelTab(QWidget):
         btn_layout.addWidget(update_telemetry_btn)
         btn_layout.addStretch()
         
-        # DEBUG: Log telemetry button properties for comparison
-        logger.info(f"TELEMETRY_PANEL_BUTTONS: Telemetry size={update_telemetry_btn.size()}")
-        logger.info(f"TELEMETRY_PANEL_BUTTONS: Telemetry styleSheet length={len(update_telemetry_btn.styleSheet())}")
+        # Windows-specific fix: Force exact dimensions to override platform rendering differences
+        import sys
+        if sys.platform.startswith('win'):
+            logger.info("TELEMETRY_PANEL: Applying Windows-specific button size fixes")
+            update_telemetry_btn.setFixedHeight(28)  # Force exact height
+            update_telemetry_btn.setMinimumWidth(120)  # Force consistent minimum width
+            current_style = update_telemetry_btn.styleSheet()
+            update_telemetry_btn.setStyleSheet(current_style + """
+                QPushButton {
+                    margin: 0px;
+                    border-width: 1px;
+                    text-align: center;
+                }
+            """)
         
         # Add button layout to main layout
         layout.addLayout(btn_layout)
@@ -2950,11 +2958,22 @@ class WaterLevelTab(QWidget):
         btn_layout.addWidget(import_manual_btn)
         btn_layout.addStretch()
         
-        # DEBUG: Log button properties to compare with other panels
-        logger.info(f"MANUAL_PANEL_BUTTONS: Monet size={update_monet_btn.size()}, Manual size={add_manual_btn.size()}, CSV size={import_manual_btn.size()}")
-        logger.info(f"MANUAL_PANEL_BUTTONS: Monet styleSheet length={len(update_monet_btn.styleSheet())}")
-        logger.info(f"MANUAL_PANEL_BUTTONS: Manual styleSheet length={len(add_manual_btn.styleSheet())}")
-        logger.info(f"MANUAL_PANEL_BUTTONS: CSV styleSheet length={len(import_manual_btn.styleSheet())}")
+        # Windows-specific fix: Force exact dimensions to override platform rendering differences
+        import sys
+        if sys.platform.startswith('win'):
+            logger.info("MANUAL_PANEL: Applying Windows-specific button size fixes")
+            for btn in [update_monet_btn, add_manual_btn, import_manual_btn]:
+                btn.setFixedHeight(28)  # Force exact height
+                btn.setMinimumWidth(120)  # Force consistent minimum width
+                # Override any Windows-specific margin/padding issues
+                current_style = btn.styleSheet()
+                btn.setStyleSheet(current_style + """
+                    QPushButton {
+                        margin: 0px;
+                        border-width: 1px;
+                        text-align: center;
+                    }
+                """)
         
         # Add button layout to main layout
         layout.addLayout(btn_layout)
