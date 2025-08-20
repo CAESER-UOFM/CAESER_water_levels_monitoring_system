@@ -2630,7 +2630,6 @@ class WaterLevelTab(QWidget):
         """Create a compact transducer data panel with buttons in a single row"""
         logger.info("TRANSDUCER_PANEL: Creating transducer panel")
         group = QGroupBox("Transducer Data")
-        group.setMaximumHeight(50)  # Reduced from 70 to 50 for more compact design
         group.setStyleSheet("""
             QGroupBox {
                 font-size: 8pt;
@@ -2639,7 +2638,6 @@ class WaterLevelTab(QWidget):
                 background-color: #f8f9fa;
                 border: 1px solid #dee2e6;
                 padding-top: 8px;
-                max-height: 50px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
@@ -2681,7 +2679,6 @@ class WaterLevelTab(QWidget):
         """Create a compact telemetry data panel with buttons in a single row"""
         logger.info("TELEMETRY_PANEL: Creating telemetry panel")
         group = QGroupBox("Telemetry Data")
-        group.setMaximumHeight(50)  # Reduced from 70 to 50 for more compact design
         group.setStyleSheet("""
             QGroupBox {
                 font-size: 8pt;
@@ -2690,7 +2687,6 @@ class WaterLevelTab(QWidget):
                 background-color: #f8f9fa;
                 border: 1px solid #dee2e6;
                 padding-top: 8px;
-                max-height: 50px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
@@ -2730,7 +2726,6 @@ class WaterLevelTab(QWidget):
         """Create a compact manual readings panel with buttons in a single row"""
         logger.info("MANUAL_PANEL: Creating manual panel")
         group = QGroupBox("Manual Readings")
-        group.setMaximumHeight(50)  # Reduced from 70 to 50 for more compact design
         group.setStyleSheet("""
             QGroupBox {
                 font-size: 8pt;
@@ -2739,7 +2734,6 @@ class WaterLevelTab(QWidget):
                 background-color: #f8f9fa;
                 border: 1px solid #dee2e6;
                 padding-top: 8px;
-                max-height: 50px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
