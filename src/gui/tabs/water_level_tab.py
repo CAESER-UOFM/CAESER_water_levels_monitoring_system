@@ -397,18 +397,22 @@ class WaterLevelTab(QWidget):
         plot_controls.addWidget(self.show_gaps_cb)
         
         self.show_temp_btn = QPushButton("🌡️ Show Temperature")
-        self.show_temp_btn.setFixedHeight(32)  # Added fixed height
+        self.show_temp_btn.setFixedHeight(32)  # Keep fixed height for alignment
         self.show_temp_btn.setCheckable(True)
         self.show_temp_btn.clicked.connect(self.toggle_plot_type)
+        # Let button dynamically size width based on content
+        self.show_temp_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         self.show_temp_btn.setStyleSheet("""
             QPushButton {
-                padding: 8px 16px;
+                padding: 6px 12px;
                 border: 1px solid #ccc;
                 border-radius: 6px;
                 background-color: #f3e5f5;
                 font-weight: 500;
-                min-height: 24px;
+                min-height: 28px;
+                min-width: 0px;
                 color: #7b1fa2;
+                text-align: center;
             }
             QPushButton:hover {
                 background-color: #e1bee7;
