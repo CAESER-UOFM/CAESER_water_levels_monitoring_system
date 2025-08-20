@@ -112,7 +112,11 @@ class WaterLevelTab(QWidget):
     def __init__(self, db_manager, parent=None):
         print("PRINT: WaterLevelTab.__init__ CALLED! This should ALWAYS appear")
         super().__init__(parent)
-        print(f"PRINT: super().__init__ completed, logger effective level = {logger.getEffectiveLevel()}")
+        
+        # Force logger reconfiguration to ensure INFO level works
+        logger.setLevel(logging.INFO)
+        print(f"PRINT: After force config, logger effective level = {logger.getEffectiveLevel()}")
+        
         logger.info("=== WATER_LEVEL_TAB VERSION: temperature-edit-fix-2025-08-19-v4 ===")
         logger.info("WATER_LEVEL_TAB: Starting __init__ - tab construction beginning")
         # Initialize core attributes first
@@ -2799,6 +2803,10 @@ class WaterLevelTab(QWidget):
         btn_layout.addWidget(update_telemetry_btn)
         btn_layout.addStretch()
         
+        # DEBUG: Log telemetry button properties for comparison
+        logger.info(f"TELEMETRY_PANEL_BUTTONS: Telemetry size={update_telemetry_btn.size()}")
+        logger.info(f"TELEMETRY_PANEL_BUTTONS: Telemetry styleSheet length={len(update_telemetry_btn.styleSheet())}")
+        
         # Add button layout to main layout
         layout.addLayout(btn_layout)
         
@@ -2941,6 +2949,12 @@ class WaterLevelTab(QWidget):
         btn_layout.addWidget(add_manual_btn)
         btn_layout.addWidget(import_manual_btn)
         btn_layout.addStretch()
+        
+        # DEBUG: Log button properties to compare with other panels
+        logger.info(f"MANUAL_PANEL_BUTTONS: Monet size={update_monet_btn.size()}, Manual size={add_manual_btn.size()}, CSV size={import_manual_btn.size()}")
+        logger.info(f"MANUAL_PANEL_BUTTONS: Monet styleSheet length={len(update_monet_btn.styleSheet())}")
+        logger.info(f"MANUAL_PANEL_BUTTONS: Manual styleSheet length={len(add_manual_btn.styleSheet())}")
+        logger.info(f"MANUAL_PANEL_BUTTONS: CSV styleSheet length={len(import_manual_btn.styleSheet())}")
         
         # Add button layout to main layout
         layout.addLayout(btn_layout)
