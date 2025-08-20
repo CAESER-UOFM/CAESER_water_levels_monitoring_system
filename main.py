@@ -17,16 +17,22 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 
-# Setup minimal logging - only essential startup info
+# Setup logging - Allow INFO level through but keep root at WARNING
 logging.basicConfig(
-    level=logging.WARNING,  # Only show warnings and errors by default
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
+    level=logging.DEBUG,  # Allow all levels to pass through the system
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
-# Set the console handler to INFO level so configured loggers can show INFO messages
-console_handler = logging.getLogger().handlers[0]  # Get the StreamHandler we just created
+# Configure console handler with INFO level
+console_handler = logging.StreamHandler(sys.stdout)
 console_handler.setLevel(logging.INFO)
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+
+# Clear default handlers and add our configured console handler
+root_logger = logging.getLogger()
+root_logger.handlers.clear()
+root_logger.addHandler(console_handler)
+root_logger.setLevel(logging.WARNING)  # Root logger level - only explicit loggers will show INFO
 
 # Allow INFO level for main application startup
 logging.getLogger('__main__').setLevel(logging.INFO)
