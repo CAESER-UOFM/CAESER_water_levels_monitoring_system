@@ -444,11 +444,33 @@ class HybridFieldDataConsolidator:
                 first_date = df['timestamp'].min()
                 last_date = df['timestamp'].max()
                 
+                # Use SolinstReader's proper device type detection based on units
+                is_barologger = reader.is_barologger(metadata)
+                device_type = 'barologger' if is_barologger else 'water_level'
+                
+                # Improved CAE number cleaning - handle various special characters
+                clean_cae_number = 'unknown'
+                if metadata.location:
+                    # Remove common problematic characters for filenames/paths
+                    clean_cae_number = (metadata.location
+                                      .replace(':', '')     # Colon (Windows invalid)
+                                      .replace('/', '_')    # Forward slash 
+                                      .replace('\\', '_')   # Backward slash
+                                      .replace('|', '_')    # Pipe
+                                      .replace('?', '_')    # Question mark
+                                      .replace('*', '_')    # Asterisk
+                                      .replace('<', '_')    # Less than
+                                      .replace('>', '_')    # Greater than
+                                      .replace('"', '_')    # Quote
+                                      .strip())             # Remove whitespace
+                
                 return {
                     'serial_number': str(metadata.serial_number) if metadata.serial_number else 'unknown',
-                    'cae_number': metadata.location.replace(':', '') if metadata.location else 'unknown',
+                    'cae_number': clean_cae_number,
                     'location': metadata.location if metadata.location else 'unknown',
-                    'device_type': 'barologger' if 'baro' in filename.lower() else 'water_level',
+                    'device_type': device_type,
+                    'level_unit': metadata.level_unit if hasattr(metadata, 'level_unit') else 'unknown',
+                    'original_level_unit': metadata.original_level_unit if hasattr(metadata, 'original_level_unit') else 'unknown',
                     'actual_start_date': first_date.isoformat(),
                     'actual_end_date': last_date.isoformat()
                 }
@@ -495,7 +517,7 @@ class HybridFieldDataConsolidator:
                     'files': []
                 }
             
-            # Create file entry
+            # Create file entry with enhanced metadata
             file_entry = {
                 'filename': filename,
                 'shared_drive_file_path': file_path,
@@ -504,6 +526,9 @@ class HybridFieldDataConsolidator:
                 'cae_number': file_metadata.get('cae_number', 'unknown'),
                 'location': file_metadata.get('location', 'unknown'),
                 'device_type': file_metadata.get('device_type', 'unknown'),
+                'level_unit': file_metadata.get('level_unit', 'unknown'),
+                'original_level_unit': file_metadata.get('original_level_unit', 'unknown'),
+                'detection_method': 'units_based' if file_metadata.get('level_unit') != 'unknown' else 'filename_fallback',
                 'actual_start_date': file_metadata.get('actual_start_date', ''),
                 'actual_end_date': file_metadata.get('actual_end_date', ''),
                 'file_size': file_size,
