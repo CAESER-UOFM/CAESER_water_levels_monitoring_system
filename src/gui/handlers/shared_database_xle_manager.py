@@ -95,13 +95,8 @@ class SharedDatabaseXLEManager:
             device_temp_dir = os.path.join(project_temp_dir, device_type)
             os.makedirs(device_temp_dir, exist_ok=True)
             
-            # Generate temp filename with metadata
-            identifier = well_number if well_number else serial_number
-            start_str = start_date.strftime('%Y%m%d')
-            end_str = end_date.strftime('%Y%m%d')
-            temp_filename = f"{device_type}_{identifier}_{location}_{start_str}_to_{end_str}.xle"
-            
-            # Clean filename for filesystem compatibility
+            # Use original filename, just sanitize for filesystem compatibility
+            temp_filename = os.path.basename(original_file_path)
             temp_filename = self._sanitize_filename(temp_filename)
             temp_file_path = os.path.join(device_temp_dir, temp_filename)
             
