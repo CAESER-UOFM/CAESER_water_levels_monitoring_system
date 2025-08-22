@@ -741,7 +741,7 @@ class AutoUpdateHandler:
                     if self.db_manager.is_cloud_database:
                         # For shared databases: only track files for later push, don't save to SMOO yet
                         self._track_autosync_xle_file(
-                            temp_file_path, file_info['serial_number'], file_info['name']
+                            temp_file_path, file_info['serial_number'], file_info['name'], device_type_hint='barologger'
                         )
                         logger.debug("AUTO_SYNC_XLE: Tracked file for push operation (not saved to SMOO yet)")
                     else:
@@ -1043,7 +1043,7 @@ class AutoUpdateHandler:
                         if self.db_manager.is_cloud_database:
                             # For shared databases: only track files for later push, don't save to SMOO yet
                             self._track_autosync_xle_file(
-                                temp_file_path, file_info['cae_number'], file_info['name']
+                                temp_file_path, file_info['cae_number'], file_info['name'], device_type_hint='transducer'
                             )
                             logger.info(f"AUTO_SYNC_XLE: Tracked water level file for push operation: {file_info['name']}")
                         else:
@@ -1219,10 +1219,16 @@ class AutoUpdateHandler:
             logger.error(f"AUTO_SYNC_XLE: Error preserving XLE file {original_filename}: {e}")
             return None
     
-    def _track_autosync_xle_file(self, file_path, serial_or_cae_number, original_filename):
+    def _track_autosync_xle_file(self, file_path, serial_or_cae_number, original_filename, device_type_hint=None):
         """
         Track autosync XLE file for shared database upload using SharedDatabaseXLEManager.
         Handles both barologger (serial number) and transducer (CAE number) files.
+        
+        Args:
+            file_path: Path to the XLE file
+            serial_or_cae_number: Serial number for barologgers or CAE number for transducers
+            original_filename: Original filename of the XLE file
+            device_type_hint: Optional hint about device type ('barologger' or 'transducer')
         """
         try:
             if not hasattr(self.parent, 'cloud_db_handler'):
@@ -1248,16 +1254,27 @@ class AutoUpdateHandler:
                 return None
             
             # Determine device type and identifiers
-            # CAE numbers are typically in format 'CAE000XX' for transducers
-            # Serial numbers are numeric strings for barologgers
-            if str(serial_or_cae_number).startswith('CAE'):
-                device_type = 'transducer'
-                well_number = serial_or_cae_number
-                serial_number = None
+            if device_type_hint:
+                # Use provided hint (more reliable than string pattern matching)
+                device_type = device_type_hint
+                if device_type == 'transducer':
+                    well_number = serial_or_cae_number
+                    serial_number = None
+                else:  # barologger
+                    serial_number = serial_or_cae_number
+                    well_number = None
             else:
-                device_type = 'barologger'
-                serial_number = serial_or_cae_number
-                well_number = None
+                # Fallback to pattern matching
+                # CAE numbers typically start with 'CAE' but can be other formats like 'HA:A-012'
+                # Barologger serial numbers are typically numeric
+                if str(serial_or_cae_number).startswith('CAE') or ':' in str(serial_or_cae_number):
+                    device_type = 'transducer'
+                    well_number = serial_or_cae_number
+                    serial_number = None
+                else:
+                    device_type = 'barologger'
+                    serial_number = serial_or_cae_number
+                    well_number = None
             
             # Check if this is a shared database - use SharedDatabaseXLEManager
             if hasattr(cloud_handler, 'get_shared_xle_manager'):

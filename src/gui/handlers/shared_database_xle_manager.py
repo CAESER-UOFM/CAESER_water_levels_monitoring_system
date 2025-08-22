@@ -201,7 +201,11 @@ class SharedDatabaseXLEManager:
                     device_type = file_record['device_type']
                     identifier = file_record.get('well_number') or file_record['serial_number']
                     
-                    target_dir = os.path.join(smoo_xle_dir, f"{device_type}s", identifier)
+                    # Sanitize identifier for directory name (Windows doesn't allow : < > " | ? * \ /)
+                    safe_identifier = self._sanitize_filename(str(identifier))
+                    
+                    # Use os.path.join for proper path construction on Windows/Mac
+                    target_dir = os.path.join(smoo_xle_dir, f"{device_type}s", safe_identifier)
                     os.makedirs(target_dir, exist_ok=True)
                     
                     # Generate final filename for SMOO
