@@ -397,15 +397,16 @@ class HybridFieldDataConsolidator:
                 first_date = df['timestamp'].min()
                 last_date = df['timestamp'].max()
                 
-                # Get location from metadata (not from filename!)
+                # Get serial number and location from metadata
+                serial_number = str(metadata.serial_number) if metadata.serial_number else 'UNKNOWN'
                 location = metadata.location.strip() if metadata.location else 'UNKNOWN'
                 
-                # Remove any problematic characters from location
-                location = location.replace(':', '').replace('/', '_').replace('\\', '_')
+                # Remove any problematic characters from location (comprehensive cleaning)
+                safe_location = location.replace(':', '_').replace('/', '_').replace('\\', '_').replace('|', '_').replace('?', '_').replace('*', '_').replace('<', '_').replace('>', '_').replace('"', '_').strip()
                 
-                # Format: Location_YYYY_MM_DD_To_YYYY_MM_DD.xle
+                # Format: SerialNumber_Location_YYYY_MM_DD_To_YYYY_MM_DD.xle
                 # Using actual data dates, not the metadata start/stop times
-                new_filename = f"{location}_{first_date.strftime('%Y_%m_%d')}_To_{last_date.strftime('%Y_%m_%d')}.xle"
+                new_filename = f"{serial_number}_{safe_location}_{first_date.strftime('%Y_%m_%d')}_To_{last_date.strftime('%Y_%m_%d')}.xle"
                 
                 logger.info(f"Generated corrected filename: {new_filename} (original: {original_filename})")
                 logger.debug(f"  Location from metadata: {metadata.location}")

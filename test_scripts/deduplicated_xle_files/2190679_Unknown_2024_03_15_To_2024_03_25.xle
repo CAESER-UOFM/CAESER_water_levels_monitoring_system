@@ -1,0 +1,6605 @@
+<?xml version="1.0" ?>
+<Body_xle>
+    <File_info>
+        <Company></Company>
+        <LICENCE></LICENCE>
+        <Date>2024/03/25</Date>
+        <Time>08:59:47</Time>
+        <FileName></FileName>
+        <Created_by>Version 4.6.3</Created_by>
+        <Downloaded_by>Version 4.6.3</Downloaded_by>
+        <Program_by>Unknown 0.0.0</Program_by>
+    </File_info>
+    <Instrument_info>
+        <Instrument_type>L5_LT</Instrument_type>
+        <Model_number>M10     </Model_number>
+        <Instrument_state>Stopped</Instrument_state>
+        <Serial_number>2190679</Serial_number>
+        <Battery_voltage>3.54800</Battery_voltage>
+        <Battery_charge>1480.00</Battery_charge>
+        <Channel>2</Channel>
+        <Firmware>1.006</Firmware>
+    </Instrument_info>
+    <Instrument_info_data_header>
+        <Project_ID></Project_ID>
+        <Location></Location>
+        <Latitude>0.000</Latitude>
+        <Longtitude>0.000</Longtitude>
+        <Sample_rate>90000</Sample_rate>
+        <Sample_mode>0</Sample_mode>
+        <!--Linear-->
+        <Memory_mode>Slate</Memory_mode>
+        <Event_ch>1</Event_ch>
+        <Event_threshold>0.000000</Event_threshold>
+        <Schedule />
+        <Start_time>2024/03/15 15:00:00</Start_time>
+        <Stop_time>2024/03/15 13:43:08</Stop_time>
+        <Num_log>936</Num_log>
+    </Instrument_info_data_header>
+    <Ch1_data_header>
+        <Identification>Q-173</Identification>
+        <Unit>ft</Unit>
+        <Parameters>
+            <Offset Val="0.0000" Unit="ft" />
+        </Parameters>
+    </Ch1_data_header>
+    <Ch2_data_header>
+        <Identification>TEMPERATURE</Identification>
+        <Unit>°C</Unit>
+        <Parameters />
+    </Ch2_data_header>
+    <Data>
+        <Log id="1">
+            <Date>2024/03/15</Date>
+            <Time>15:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2728</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="2">
+            <Date>2024/03/15</Date>
+            <Time>15:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2732</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="3">
+            <Date>2024/03/15</Date>
+            <Time>15:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2734</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="4">
+            <Date>2024/03/15</Date>
+            <Time>15:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2738</ch1>
+            <ch2>17.718</ch2>
+        </Log>
+        <Log id="5">
+            <Date>2024/03/15</Date>
+            <Time>16:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2733</ch1>
+            <ch2>17.718</ch2>
+        </Log>
+        <Log id="6">
+            <Date>2024/03/15</Date>
+            <Time>16:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2727</ch1>
+            <ch2>17.718</ch2>
+        </Log>
+        <Log id="7">
+            <Date>2024/03/15</Date>
+            <Time>16:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2759</ch1>
+            <ch2>17.720</ch2>
+        </Log>
+        <Log id="8">
+            <Date>2024/03/15</Date>
+            <Time>16:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2750</ch1>
+            <ch2>17.718</ch2>
+        </Log>
+        <Log id="9">
+            <Date>2024/03/15</Date>
+            <Time>17:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2754</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="10">
+            <Date>2024/03/15</Date>
+            <Time>17:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2769</ch1>
+            <ch2>17.718</ch2>
+        </Log>
+        <Log id="11">
+            <Date>2024/03/15</Date>
+            <Time>17:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2793</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="12">
+            <Date>2024/03/15</Date>
+            <Time>17:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2817</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="13">
+            <Date>2024/03/15</Date>
+            <Time>18:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2864</ch1>
+            <ch2>17.720</ch2>
+        </Log>
+        <Log id="14">
+            <Date>2024/03/15</Date>
+            <Time>18:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2889</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="15">
+            <Date>2024/03/15</Date>
+            <Time>18:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2906</ch1>
+            <ch2>17.719</ch2>
+        </Log>
+        <Log id="16">
+            <Date>2024/03/15</Date>
+            <Time>18:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2926</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="17">
+            <Date>2024/03/15</Date>
+            <Time>19:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2936</ch1>
+            <ch2>17.719</ch2>
+        </Log>
+        <Log id="18">
+            <Date>2024/03/15</Date>
+            <Time>19:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2943</ch1>
+            <ch2>17.718</ch2>
+        </Log>
+        <Log id="19">
+            <Date>2024/03/15</Date>
+            <Time>19:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2953</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="20">
+            <Date>2024/03/15</Date>
+            <Time>19:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2975</ch1>
+            <ch2>17.720</ch2>
+        </Log>
+        <Log id="21">
+            <Date>2024/03/15</Date>
+            <Time>20:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2998</ch1>
+            <ch2>17.719</ch2>
+        </Log>
+        <Log id="22">
+            <Date>2024/03/15</Date>
+            <Time>20:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3023</ch1>
+            <ch2>17.720</ch2>
+        </Log>
+        <Log id="23">
+            <Date>2024/03/15</Date>
+            <Time>20:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3051</ch1>
+            <ch2>17.720</ch2>
+        </Log>
+        <Log id="24">
+            <Date>2024/03/15</Date>
+            <Time>20:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3074</ch1>
+            <ch2>17.718</ch2>
+        </Log>
+        <Log id="25">
+            <Date>2024/03/15</Date>
+            <Time>21:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3099</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="26">
+            <Date>2024/03/15</Date>
+            <Time>21:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3125</ch1>
+            <ch2>17.718</ch2>
+        </Log>
+        <Log id="27">
+            <Date>2024/03/15</Date>
+            <Time>21:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3143</ch1>
+            <ch2>17.721</ch2>
+        </Log>
+        <Log id="28">
+            <Date>2024/03/15</Date>
+            <Time>21:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3149</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="29">
+            <Date>2024/03/15</Date>
+            <Time>22:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3171</ch1>
+            <ch2>17.718</ch2>
+        </Log>
+        <Log id="30">
+            <Date>2024/03/15</Date>
+            <Time>22:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3164</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="31">
+            <Date>2024/03/15</Date>
+            <Time>22:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3166</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="32">
+            <Date>2024/03/15</Date>
+            <Time>22:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3174</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="33">
+            <Date>2024/03/15</Date>
+            <Time>23:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3181</ch1>
+            <ch2>17.718</ch2>
+        </Log>
+        <Log id="34">
+            <Date>2024/03/15</Date>
+            <Time>23:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3185</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="35">
+            <Date>2024/03/15</Date>
+            <Time>23:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3195</ch1>
+            <ch2>17.718</ch2>
+        </Log>
+        <Log id="36">
+            <Date>2024/03/15</Date>
+            <Time>23:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3208</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="37">
+            <Date>2024/03/16</Date>
+            <Time>00:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3217</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="38">
+            <Date>2024/03/16</Date>
+            <Time>00:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3230</ch1>
+            <ch2>17.718</ch2>
+        </Log>
+        <Log id="39">
+            <Date>2024/03/16</Date>
+            <Time>00:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3251</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="40">
+            <Date>2024/03/16</Date>
+            <Time>00:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3270</ch1>
+            <ch2>17.718</ch2>
+        </Log>
+        <Log id="41">
+            <Date>2024/03/16</Date>
+            <Time>01:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3279</ch1>
+            <ch2>17.718</ch2>
+        </Log>
+        <Log id="42">
+            <Date>2024/03/16</Date>
+            <Time>01:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3294</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="43">
+            <Date>2024/03/16</Date>
+            <Time>01:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3319</ch1>
+            <ch2>17.719</ch2>
+        </Log>
+        <Log id="44">
+            <Date>2024/03/16</Date>
+            <Time>01:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3332</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="45">
+            <Date>2024/03/16</Date>
+            <Time>02:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3343</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="46">
+            <Date>2024/03/16</Date>
+            <Time>02:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3361</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="47">
+            <Date>2024/03/16</Date>
+            <Time>02:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3369</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="48">
+            <Date>2024/03/16</Date>
+            <Time>02:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3373</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="49">
+            <Date>2024/03/16</Date>
+            <Time>03:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3366</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="50">
+            <Date>2024/03/16</Date>
+            <Time>03:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3356</ch1>
+            <ch2>17.719</ch2>
+        </Log>
+        <Log id="51">
+            <Date>2024/03/16</Date>
+            <Time>03:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3351</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="52">
+            <Date>2024/03/16</Date>
+            <Time>03:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3343</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="53">
+            <Date>2024/03/16</Date>
+            <Time>04:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3329</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="54">
+            <Date>2024/03/16</Date>
+            <Time>04:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3328</ch1>
+            <ch2>17.718</ch2>
+        </Log>
+        <Log id="55">
+            <Date>2024/03/16</Date>
+            <Time>04:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3319</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="56">
+            <Date>2024/03/16</Date>
+            <Time>04:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3317</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="57">
+            <Date>2024/03/16</Date>
+            <Time>05:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3307</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="58">
+            <Date>2024/03/16</Date>
+            <Time>05:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3311</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="59">
+            <Date>2024/03/16</Date>
+            <Time>05:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3310</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="60">
+            <Date>2024/03/16</Date>
+            <Time>05:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3303</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="61">
+            <Date>2024/03/16</Date>
+            <Time>06:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3300</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="62">
+            <Date>2024/03/16</Date>
+            <Time>06:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3299</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="63">
+            <Date>2024/03/16</Date>
+            <Time>06:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3282</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="64">
+            <Date>2024/03/16</Date>
+            <Time>06:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3273</ch1>
+            <ch2>17.718</ch2>
+        </Log>
+        <Log id="65">
+            <Date>2024/03/16</Date>
+            <Time>07:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3260</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="66">
+            <Date>2024/03/16</Date>
+            <Time>07:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3262</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="67">
+            <Date>2024/03/16</Date>
+            <Time>07:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3248</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="68">
+            <Date>2024/03/16</Date>
+            <Time>07:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3249</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="69">
+            <Date>2024/03/16</Date>
+            <Time>08:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3255</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="70">
+            <Date>2024/03/16</Date>
+            <Time>08:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3268</ch1>
+            <ch2>17.718</ch2>
+        </Log>
+        <Log id="71">
+            <Date>2024/03/16</Date>
+            <Time>08:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3275</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="72">
+            <Date>2024/03/16</Date>
+            <Time>08:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3282</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="73">
+            <Date>2024/03/16</Date>
+            <Time>09:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3290</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="74">
+            <Date>2024/03/16</Date>
+            <Time>09:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3299</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="75">
+            <Date>2024/03/16</Date>
+            <Time>09:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3302</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="76">
+            <Date>2024/03/16</Date>
+            <Time>09:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3319</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="77">
+            <Date>2024/03/16</Date>
+            <Time>10:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3335</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="78">
+            <Date>2024/03/16</Date>
+            <Time>10:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3339</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="79">
+            <Date>2024/03/16</Date>
+            <Time>10:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3346</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="80">
+            <Date>2024/03/16</Date>
+            <Time>10:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3356</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="81">
+            <Date>2024/03/16</Date>
+            <Time>11:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3367</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="82">
+            <Date>2024/03/16</Date>
+            <Time>11:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3364</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="83">
+            <Date>2024/03/16</Date>
+            <Time>11:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3368</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="84">
+            <Date>2024/03/16</Date>
+            <Time>11:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3368</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="85">
+            <Date>2024/03/16</Date>
+            <Time>12:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3364</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="86">
+            <Date>2024/03/16</Date>
+            <Time>12:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3344</ch1>
+            <ch2>17.718</ch2>
+        </Log>
+        <Log id="87">
+            <Date>2024/03/16</Date>
+            <Time>12:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3313</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="88">
+            <Date>2024/03/16</Date>
+            <Time>12:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3301</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="89">
+            <Date>2024/03/16</Date>
+            <Time>13:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3265</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="90">
+            <Date>2024/03/16</Date>
+            <Time>13:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3233</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="91">
+            <Date>2024/03/16</Date>
+            <Time>13:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3179</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="92">
+            <Date>2024/03/16</Date>
+            <Time>13:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3128</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="93">
+            <Date>2024/03/16</Date>
+            <Time>14:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3096</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="94">
+            <Date>2024/03/16</Date>
+            <Time>14:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3039</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="95">
+            <Date>2024/03/16</Date>
+            <Time>14:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2982</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="96">
+            <Date>2024/03/16</Date>
+            <Time>14:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2916</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="97">
+            <Date>2024/03/16</Date>
+            <Time>15:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2862</ch1>
+            <ch2>17.717</ch2>
+        </Log>
+        <Log id="98">
+            <Date>2024/03/16</Date>
+            <Time>15:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2799</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="99">
+            <Date>2024/03/16</Date>
+            <Time>15:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2749</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="100">
+            <Date>2024/03/16</Date>
+            <Time>15:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2702</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="101">
+            <Date>2024/03/16</Date>
+            <Time>16:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2661</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="102">
+            <Date>2024/03/16</Date>
+            <Time>16:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2623</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="103">
+            <Date>2024/03/16</Date>
+            <Time>16:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2574</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="104">
+            <Date>2024/03/16</Date>
+            <Time>16:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2531</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="105">
+            <Date>2024/03/16</Date>
+            <Time>17:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2491</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="106">
+            <Date>2024/03/16</Date>
+            <Time>17:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2440</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="107">
+            <Date>2024/03/16</Date>
+            <Time>17:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2400</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="108">
+            <Date>2024/03/16</Date>
+            <Time>17:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2365</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="109">
+            <Date>2024/03/16</Date>
+            <Time>18:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2337</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="110">
+            <Date>2024/03/16</Date>
+            <Time>18:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2315</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="111">
+            <Date>2024/03/16</Date>
+            <Time>18:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2312</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="112">
+            <Date>2024/03/16</Date>
+            <Time>18:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2294</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="113">
+            <Date>2024/03/16</Date>
+            <Time>19:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2282</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="114">
+            <Date>2024/03/16</Date>
+            <Time>19:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2267</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="115">
+            <Date>2024/03/16</Date>
+            <Time>19:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2238</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="116">
+            <Date>2024/03/16</Date>
+            <Time>19:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2213</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="117">
+            <Date>2024/03/16</Date>
+            <Time>20:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2190</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="118">
+            <Date>2024/03/16</Date>
+            <Time>20:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2184</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="119">
+            <Date>2024/03/16</Date>
+            <Time>20:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2201</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="120">
+            <Date>2024/03/16</Date>
+            <Time>20:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2206</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="121">
+            <Date>2024/03/16</Date>
+            <Time>21:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2203</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="122">
+            <Date>2024/03/16</Date>
+            <Time>21:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2210</ch1>
+            <ch2>17.716</ch2>
+        </Log>
+        <Log id="123">
+            <Date>2024/03/16</Date>
+            <Time>21:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2211</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="124">
+            <Date>2024/03/16</Date>
+            <Time>21:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2202</ch1>
+            <ch2>17.712</ch2>
+        </Log>
+        <Log id="125">
+            <Date>2024/03/16</Date>
+            <Time>22:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2209</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="126">
+            <Date>2024/03/16</Date>
+            <Time>22:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2194</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="127">
+            <Date>2024/03/16</Date>
+            <Time>22:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2188</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="128">
+            <Date>2024/03/16</Date>
+            <Time>22:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2180</ch1>
+            <ch2>17.712</ch2>
+        </Log>
+        <Log id="129">
+            <Date>2024/03/16</Date>
+            <Time>23:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2171</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="130">
+            <Date>2024/03/16</Date>
+            <Time>23:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2158</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="131">
+            <Date>2024/03/16</Date>
+            <Time>23:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2141</ch1>
+            <ch2>17.712</ch2>
+        </Log>
+        <Log id="132">
+            <Date>2024/03/16</Date>
+            <Time>23:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2129</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="133">
+            <Date>2024/03/17</Date>
+            <Time>00:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2113</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="134">
+            <Date>2024/03/17</Date>
+            <Time>00:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2088</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="135">
+            <Date>2024/03/17</Date>
+            <Time>00:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2062</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="136">
+            <Date>2024/03/17</Date>
+            <Time>00:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2040</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="137">
+            <Date>2024/03/17</Date>
+            <Time>01:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2011</ch1>
+            <ch2>17.712</ch2>
+        </Log>
+        <Log id="138">
+            <Date>2024/03/17</Date>
+            <Time>01:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1991</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="139">
+            <Date>2024/03/17</Date>
+            <Time>01:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1960</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="140">
+            <Date>2024/03/17</Date>
+            <Time>01:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1961</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="141">
+            <Date>2024/03/17</Date>
+            <Time>02:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1957</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="142">
+            <Date>2024/03/17</Date>
+            <Time>02:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1950</ch1>
+            <ch2>17.715</ch2>
+        </Log>
+        <Log id="143">
+            <Date>2024/03/17</Date>
+            <Time>02:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1939</ch1>
+            <ch2>17.712</ch2>
+        </Log>
+        <Log id="144">
+            <Date>2024/03/17</Date>
+            <Time>02:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1940</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="145">
+            <Date>2024/03/17</Date>
+            <Time>03:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1938</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="146">
+            <Date>2024/03/17</Date>
+            <Time>03:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1922</ch1>
+            <ch2>17.712</ch2>
+        </Log>
+        <Log id="147">
+            <Date>2024/03/17</Date>
+            <Time>03:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1919</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="148">
+            <Date>2024/03/17</Date>
+            <Time>03:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1901</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="149">
+            <Date>2024/03/17</Date>
+            <Time>04:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1893</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="150">
+            <Date>2024/03/17</Date>
+            <Time>04:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1851</ch1>
+            <ch2>17.714</ch2>
+        </Log>
+        <Log id="151">
+            <Date>2024/03/17</Date>
+            <Time>04:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1812</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="152">
+            <Date>2024/03/17</Date>
+            <Time>04:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1781</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="153">
+            <Date>2024/03/17</Date>
+            <Time>05:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1763</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="154">
+            <Date>2024/03/17</Date>
+            <Time>05:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1774</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="155">
+            <Date>2024/03/17</Date>
+            <Time>05:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1796</ch1>
+            <ch2>17.712</ch2>
+        </Log>
+        <Log id="156">
+            <Date>2024/03/17</Date>
+            <Time>05:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1825</ch1>
+            <ch2>17.712</ch2>
+        </Log>
+        <Log id="157">
+            <Date>2024/03/17</Date>
+            <Time>06:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1848</ch1>
+            <ch2>17.712</ch2>
+        </Log>
+        <Log id="158">
+            <Date>2024/03/17</Date>
+            <Time>06:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1855</ch1>
+            <ch2>17.712</ch2>
+        </Log>
+        <Log id="159">
+            <Date>2024/03/17</Date>
+            <Time>06:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1881</ch1>
+            <ch2>17.712</ch2>
+        </Log>
+        <Log id="160">
+            <Date>2024/03/17</Date>
+            <Time>06:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1891</ch1>
+            <ch2>17.712</ch2>
+        </Log>
+        <Log id="161">
+            <Date>2024/03/17</Date>
+            <Time>07:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1880</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="162">
+            <Date>2024/03/17</Date>
+            <Time>07:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1884</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="163">
+            <Date>2024/03/17</Date>
+            <Time>07:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1891</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="164">
+            <Date>2024/03/17</Date>
+            <Time>07:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1898</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="165">
+            <Date>2024/03/17</Date>
+            <Time>08:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1920</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="166">
+            <Date>2024/03/17</Date>
+            <Time>08:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1956</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="167">
+            <Date>2024/03/17</Date>
+            <Time>08:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1974</ch1>
+            <ch2>17.712</ch2>
+        </Log>
+        <Log id="168">
+            <Date>2024/03/17</Date>
+            <Time>08:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1996</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="169">
+            <Date>2024/03/17</Date>
+            <Time>09:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2007</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="170">
+            <Date>2024/03/17</Date>
+            <Time>09:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2029</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="171">
+            <Date>2024/03/17</Date>
+            <Time>09:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2044</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="172">
+            <Date>2024/03/17</Date>
+            <Time>09:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2061</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="173">
+            <Date>2024/03/17</Date>
+            <Time>10:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2081</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="174">
+            <Date>2024/03/17</Date>
+            <Time>10:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2130</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="175">
+            <Date>2024/03/17</Date>
+            <Time>10:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2178</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="176">
+            <Date>2024/03/17</Date>
+            <Time>10:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2232</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="177">
+            <Date>2024/03/17</Date>
+            <Time>11:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2240</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="178">
+            <Date>2024/03/17</Date>
+            <Time>11:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2247</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="179">
+            <Date>2024/03/17</Date>
+            <Time>11:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2281</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="180">
+            <Date>2024/03/17</Date>
+            <Time>11:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2284</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="181">
+            <Date>2024/03/17</Date>
+            <Time>12:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2291</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="182">
+            <Date>2024/03/17</Date>
+            <Time>12:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2298</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="183">
+            <Date>2024/03/17</Date>
+            <Time>12:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2292</ch1>
+            <ch2>17.709</ch2>
+        </Log>
+        <Log id="184">
+            <Date>2024/03/17</Date>
+            <Time>12:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2293</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="185">
+            <Date>2024/03/17</Date>
+            <Time>13:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2306</ch1>
+            <ch2>17.709</ch2>
+        </Log>
+        <Log id="186">
+            <Date>2024/03/17</Date>
+            <Time>13:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2298</ch1>
+            <ch2>17.713</ch2>
+        </Log>
+        <Log id="187">
+            <Date>2024/03/17</Date>
+            <Time>13:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2284</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="188">
+            <Date>2024/03/17</Date>
+            <Time>13:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2265</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="189">
+            <Date>2024/03/17</Date>
+            <Time>14:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2247</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="190">
+            <Date>2024/03/17</Date>
+            <Time>14:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2217</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="191">
+            <Date>2024/03/17</Date>
+            <Time>14:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2204</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="192">
+            <Date>2024/03/17</Date>
+            <Time>14:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2193</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="193">
+            <Date>2024/03/17</Date>
+            <Time>15:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2174</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="194">
+            <Date>2024/03/17</Date>
+            <Time>15:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2153</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="195">
+            <Date>2024/03/17</Date>
+            <Time>15:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2130</ch1>
+            <ch2>17.709</ch2>
+        </Log>
+        <Log id="196">
+            <Date>2024/03/17</Date>
+            <Time>15:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2100</ch1>
+            <ch2>17.709</ch2>
+        </Log>
+        <Log id="197">
+            <Date>2024/03/17</Date>
+            <Time>16:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2085</ch1>
+            <ch2>17.712</ch2>
+        </Log>
+        <Log id="198">
+            <Date>2024/03/17</Date>
+            <Time>16:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2055</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="199">
+            <Date>2024/03/17</Date>
+            <Time>16:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2024</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="200">
+            <Date>2024/03/17</Date>
+            <Time>16:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2001</ch1>
+            <ch2>17.709</ch2>
+        </Log>
+        <Log id="201">
+            <Date>2024/03/17</Date>
+            <Time>17:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1976</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="202">
+            <Date>2024/03/17</Date>
+            <Time>17:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1956</ch1>
+            <ch2>17.709</ch2>
+        </Log>
+        <Log id="203">
+            <Date>2024/03/17</Date>
+            <Time>17:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1942</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="204">
+            <Date>2024/03/17</Date>
+            <Time>17:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1938</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="205">
+            <Date>2024/03/17</Date>
+            <Time>18:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1942</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="206">
+            <Date>2024/03/17</Date>
+            <Time>18:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1959</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="207">
+            <Date>2024/03/17</Date>
+            <Time>18:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1969</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="208">
+            <Date>2024/03/17</Date>
+            <Time>18:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1969</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="209">
+            <Date>2024/03/17</Date>
+            <Time>19:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1974</ch1>
+            <ch2>17.709</ch2>
+        </Log>
+        <Log id="210">
+            <Date>2024/03/17</Date>
+            <Time>19:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1981</ch1>
+            <ch2>17.709</ch2>
+        </Log>
+        <Log id="211">
+            <Date>2024/03/17</Date>
+            <Time>19:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1991</ch1>
+            <ch2>17.708</ch2>
+        </Log>
+        <Log id="212">
+            <Date>2024/03/17</Date>
+            <Time>19:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2004</ch1>
+            <ch2>17.708</ch2>
+        </Log>
+        <Log id="213">
+            <Date>2024/03/17</Date>
+            <Time>20:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2022</ch1>
+            <ch2>17.709</ch2>
+        </Log>
+        <Log id="214">
+            <Date>2024/03/17</Date>
+            <Time>20:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2033</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="215">
+            <Date>2024/03/17</Date>
+            <Time>20:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2055</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="216">
+            <Date>2024/03/17</Date>
+            <Time>20:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2086</ch1>
+            <ch2>17.709</ch2>
+        </Log>
+        <Log id="217">
+            <Date>2024/03/17</Date>
+            <Time>21:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2108</ch1>
+            <ch2>17.708</ch2>
+        </Log>
+        <Log id="218">
+            <Date>2024/03/17</Date>
+            <Time>21:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2142</ch1>
+            <ch2>17.709</ch2>
+        </Log>
+        <Log id="219">
+            <Date>2024/03/17</Date>
+            <Time>21:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2176</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="220">
+            <Date>2024/03/17</Date>
+            <Time>21:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2203</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="221">
+            <Date>2024/03/17</Date>
+            <Time>22:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2245</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="222">
+            <Date>2024/03/17</Date>
+            <Time>22:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2276</ch1>
+            <ch2>17.709</ch2>
+        </Log>
+        <Log id="223">
+            <Date>2024/03/17</Date>
+            <Time>22:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2303</ch1>
+            <ch2>17.708</ch2>
+        </Log>
+        <Log id="224">
+            <Date>2024/03/17</Date>
+            <Time>22:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2335</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="225">
+            <Date>2024/03/17</Date>
+            <Time>23:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2355</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="226">
+            <Date>2024/03/17</Date>
+            <Time>23:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2369</ch1>
+            <ch2>17.708</ch2>
+        </Log>
+        <Log id="227">
+            <Date>2024/03/17</Date>
+            <Time>23:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2392</ch1>
+            <ch2>17.709</ch2>
+        </Log>
+        <Log id="228">
+            <Date>2024/03/17</Date>
+            <Time>23:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2410</ch1>
+            <ch2>17.708</ch2>
+        </Log>
+        <Log id="229">
+            <Date>2024/03/18</Date>
+            <Time>00:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2428</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="230">
+            <Date>2024/03/18</Date>
+            <Time>00:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2460</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="231">
+            <Date>2024/03/18</Date>
+            <Time>00:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2497</ch1>
+            <ch2>17.708</ch2>
+        </Log>
+        <Log id="232">
+            <Date>2024/03/18</Date>
+            <Time>00:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2536</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="233">
+            <Date>2024/03/18</Date>
+            <Time>01:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2589</ch1>
+            <ch2>17.709</ch2>
+        </Log>
+        <Log id="234">
+            <Date>2024/03/18</Date>
+            <Time>01:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2650</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="235">
+            <Date>2024/03/18</Date>
+            <Time>01:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2704</ch1>
+            <ch2>17.711</ch2>
+        </Log>
+        <Log id="236">
+            <Date>2024/03/18</Date>
+            <Time>01:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2750</ch1>
+            <ch2>17.709</ch2>
+        </Log>
+        <Log id="237">
+            <Date>2024/03/18</Date>
+            <Time>02:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2808</ch1>
+            <ch2>17.709</ch2>
+        </Log>
+        <Log id="238">
+            <Date>2024/03/18</Date>
+            <Time>02:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2855</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="239">
+            <Date>2024/03/18</Date>
+            <Time>02:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2901</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="240">
+            <Date>2024/03/18</Date>
+            <Time>02:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2955</ch1>
+            <ch2>17.709</ch2>
+        </Log>
+        <Log id="241">
+            <Date>2024/03/18</Date>
+            <Time>03:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2999</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="242">
+            <Date>2024/03/18</Date>
+            <Time>03:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3045</ch1>
+            <ch2>17.708</ch2>
+        </Log>
+        <Log id="243">
+            <Date>2024/03/18</Date>
+            <Time>03:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3090</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="244">
+            <Date>2024/03/18</Date>
+            <Time>03:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3119</ch1>
+            <ch2>17.708</ch2>
+        </Log>
+        <Log id="245">
+            <Date>2024/03/18</Date>
+            <Time>04:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3145</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="246">
+            <Date>2024/03/18</Date>
+            <Time>04:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3183</ch1>
+            <ch2>17.708</ch2>
+        </Log>
+        <Log id="247">
+            <Date>2024/03/18</Date>
+            <Time>04:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3221</ch1>
+            <ch2>17.709</ch2>
+        </Log>
+        <Log id="248">
+            <Date>2024/03/18</Date>
+            <Time>04:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3268</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="249">
+            <Date>2024/03/18</Date>
+            <Time>05:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3299</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="250">
+            <Date>2024/03/18</Date>
+            <Time>05:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3333</ch1>
+            <ch2>17.708</ch2>
+        </Log>
+        <Log id="251">
+            <Date>2024/03/18</Date>
+            <Time>05:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3366</ch1>
+            <ch2>17.709</ch2>
+        </Log>
+        <Log id="252">
+            <Date>2024/03/18</Date>
+            <Time>05:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3408</ch1>
+            <ch2>17.705</ch2>
+        </Log>
+        <Log id="253">
+            <Date>2024/03/18</Date>
+            <Time>06:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3455</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="254">
+            <Date>2024/03/18</Date>
+            <Time>06:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3509</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="255">
+            <Date>2024/03/18</Date>
+            <Time>06:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3569</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="256">
+            <Date>2024/03/18</Date>
+            <Time>06:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3625</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="257">
+            <Date>2024/03/18</Date>
+            <Time>07:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3668</ch1>
+            <ch2>17.708</ch2>
+        </Log>
+        <Log id="258">
+            <Date>2024/03/18</Date>
+            <Time>07:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3708</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="259">
+            <Date>2024/03/18</Date>
+            <Time>07:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3745</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="260">
+            <Date>2024/03/18</Date>
+            <Time>07:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3798</ch1>
+            <ch2>17.708</ch2>
+        </Log>
+        <Log id="261">
+            <Date>2024/03/18</Date>
+            <Time>08:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3859</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="262">
+            <Date>2024/03/18</Date>
+            <Time>08:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3927</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="263">
+            <Date>2024/03/18</Date>
+            <Time>08:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3991</ch1>
+            <ch2>17.710</ch2>
+        </Log>
+        <Log id="264">
+            <Date>2024/03/18</Date>
+            <Time>08:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4046</ch1>
+            <ch2>17.708</ch2>
+        </Log>
+        <Log id="265">
+            <Date>2024/03/18</Date>
+            <Time>09:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4111</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="266">
+            <Date>2024/03/18</Date>
+            <Time>09:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4170</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="267">
+            <Date>2024/03/18</Date>
+            <Time>09:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4217</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="268">
+            <Date>2024/03/18</Date>
+            <Time>09:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4266</ch1>
+            <ch2>17.708</ch2>
+        </Log>
+        <Log id="269">
+            <Date>2024/03/18</Date>
+            <Time>10:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4308</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="270">
+            <Date>2024/03/18</Date>
+            <Time>10:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4371</ch1>
+            <ch2>17.708</ch2>
+        </Log>
+        <Log id="271">
+            <Date>2024/03/18</Date>
+            <Time>10:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4423</ch1>
+            <ch2>17.708</ch2>
+        </Log>
+        <Log id="272">
+            <Date>2024/03/18</Date>
+            <Time>10:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4464</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="273">
+            <Date>2024/03/18</Date>
+            <Time>11:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4515</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="274">
+            <Date>2024/03/18</Date>
+            <Time>11:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4550</ch1>
+            <ch2>17.705</ch2>
+        </Log>
+        <Log id="275">
+            <Date>2024/03/18</Date>
+            <Time>11:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4620</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="276">
+            <Date>2024/03/18</Date>
+            <Time>11:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4670</ch1>
+            <ch2>17.705</ch2>
+        </Log>
+        <Log id="277">
+            <Date>2024/03/18</Date>
+            <Time>12:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4715</ch1>
+            <ch2>17.705</ch2>
+        </Log>
+        <Log id="278">
+            <Date>2024/03/18</Date>
+            <Time>12:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4756</ch1>
+            <ch2>17.705</ch2>
+        </Log>
+        <Log id="279">
+            <Date>2024/03/18</Date>
+            <Time>12:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4790</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="280">
+            <Date>2024/03/18</Date>
+            <Time>12:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4831</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="281">
+            <Date>2024/03/18</Date>
+            <Time>13:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4842</ch1>
+            <ch2>17.705</ch2>
+        </Log>
+        <Log id="282">
+            <Date>2024/03/18</Date>
+            <Time>13:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4860</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="283">
+            <Date>2024/03/18</Date>
+            <Time>13:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4871</ch1>
+            <ch2>17.708</ch2>
+        </Log>
+        <Log id="284">
+            <Date>2024/03/18</Date>
+            <Time>13:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4856</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="285">
+            <Date>2024/03/18</Date>
+            <Time>14:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4861</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="286">
+            <Date>2024/03/18</Date>
+            <Time>14:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4861</ch1>
+            <ch2>17.705</ch2>
+        </Log>
+        <Log id="287">
+            <Date>2024/03/18</Date>
+            <Time>14:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4858</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="288">
+            <Date>2024/03/18</Date>
+            <Time>14:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4838</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="289">
+            <Date>2024/03/18</Date>
+            <Time>15:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4834</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="290">
+            <Date>2024/03/18</Date>
+            <Time>15:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4837</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="291">
+            <Date>2024/03/18</Date>
+            <Time>15:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4825</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="292">
+            <Date>2024/03/18</Date>
+            <Time>15:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4825</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="293">
+            <Date>2024/03/18</Date>
+            <Time>16:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4830</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="294">
+            <Date>2024/03/18</Date>
+            <Time>16:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4830</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="295">
+            <Date>2024/03/18</Date>
+            <Time>16:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4830</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="296">
+            <Date>2024/03/18</Date>
+            <Time>16:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4837</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="297">
+            <Date>2024/03/18</Date>
+            <Time>17:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4839</ch1>
+            <ch2>17.705</ch2>
+        </Log>
+        <Log id="298">
+            <Date>2024/03/18</Date>
+            <Time>17:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4843</ch1>
+            <ch2>17.705</ch2>
+        </Log>
+        <Log id="299">
+            <Date>2024/03/18</Date>
+            <Time>17:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4846</ch1>
+            <ch2>17.705</ch2>
+        </Log>
+        <Log id="300">
+            <Date>2024/03/18</Date>
+            <Time>17:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4839</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="301">
+            <Date>2024/03/18</Date>
+            <Time>18:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4842</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="302">
+            <Date>2024/03/18</Date>
+            <Time>18:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4837</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="303">
+            <Date>2024/03/18</Date>
+            <Time>18:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4838</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="304">
+            <Date>2024/03/18</Date>
+            <Time>18:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4853</ch1>
+            <ch2>17.703</ch2>
+        </Log>
+        <Log id="305">
+            <Date>2024/03/18</Date>
+            <Time>19:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4851</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="306">
+            <Date>2024/03/18</Date>
+            <Time>19:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4852</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="307">
+            <Date>2024/03/18</Date>
+            <Time>19:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4853</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="308">
+            <Date>2024/03/18</Date>
+            <Time>19:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4867</ch1>
+            <ch2>17.705</ch2>
+        </Log>
+        <Log id="309">
+            <Date>2024/03/18</Date>
+            <Time>20:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4877</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="310">
+            <Date>2024/03/18</Date>
+            <Time>20:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4902</ch1>
+            <ch2>17.705</ch2>
+        </Log>
+        <Log id="311">
+            <Date>2024/03/18</Date>
+            <Time>20:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4934</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="312">
+            <Date>2024/03/18</Date>
+            <Time>20:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4957</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="313">
+            <Date>2024/03/18</Date>
+            <Time>21:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4990</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="314">
+            <Date>2024/03/18</Date>
+            <Time>21:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.5030</ch1>
+            <ch2>17.705</ch2>
+        </Log>
+        <Log id="315">
+            <Date>2024/03/18</Date>
+            <Time>21:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.5067</ch1>
+            <ch2>17.705</ch2>
+        </Log>
+        <Log id="316">
+            <Date>2024/03/18</Date>
+            <Time>21:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.5091</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="317">
+            <Date>2024/03/18</Date>
+            <Time>22:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.5119</ch1>
+            <ch2>17.703</ch2>
+        </Log>
+        <Log id="318">
+            <Date>2024/03/18</Date>
+            <Time>22:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.5152</ch1>
+            <ch2>17.705</ch2>
+        </Log>
+        <Log id="319">
+            <Date>2024/03/18</Date>
+            <Time>22:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.5171</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="320">
+            <Date>2024/03/18</Date>
+            <Time>22:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.5203</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="321">
+            <Date>2024/03/18</Date>
+            <Time>23:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.5212</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="322">
+            <Date>2024/03/18</Date>
+            <Time>23:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.5231</ch1>
+            <ch2>17.707</ch2>
+        </Log>
+        <Log id="323">
+            <Date>2024/03/18</Date>
+            <Time>23:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.5230</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="324">
+            <Date>2024/03/18</Date>
+            <Time>23:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.5232</ch1>
+            <ch2>17.705</ch2>
+        </Log>
+        <Log id="325">
+            <Date>2024/03/19</Date>
+            <Time>00:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.5240</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="326">
+            <Date>2024/03/19</Date>
+            <Time>00:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.5241</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="327">
+            <Date>2024/03/19</Date>
+            <Time>00:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.5236</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="328">
+            <Date>2024/03/19</Date>
+            <Time>00:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.5220</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="329">
+            <Date>2024/03/19</Date>
+            <Time>01:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.5214</ch1>
+            <ch2>17.703</ch2>
+        </Log>
+        <Log id="330">
+            <Date>2024/03/19</Date>
+            <Time>01:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.5205</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="331">
+            <Date>2024/03/19</Date>
+            <Time>01:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.5195</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="332">
+            <Date>2024/03/19</Date>
+            <Time>01:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.5191</ch1>
+            <ch2>17.706</ch2>
+        </Log>
+        <Log id="333">
+            <Date>2024/03/19</Date>
+            <Time>02:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.5173</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="334">
+            <Date>2024/03/19</Date>
+            <Time>02:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.5155</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="335">
+            <Date>2024/03/19</Date>
+            <Time>02:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.5126</ch1>
+            <ch2>17.703</ch2>
+        </Log>
+        <Log id="336">
+            <Date>2024/03/19</Date>
+            <Time>02:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.5095</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="337">
+            <Date>2024/03/19</Date>
+            <Time>03:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.5067</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="338">
+            <Date>2024/03/19</Date>
+            <Time>03:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.5035</ch1>
+            <ch2>17.703</ch2>
+        </Log>
+        <Log id="339">
+            <Date>2024/03/19</Date>
+            <Time>03:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.5013</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="340">
+            <Date>2024/03/19</Date>
+            <Time>03:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4987</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="341">
+            <Date>2024/03/19</Date>
+            <Time>04:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4966</ch1>
+            <ch2>17.703</ch2>
+        </Log>
+        <Log id="342">
+            <Date>2024/03/19</Date>
+            <Time>04:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4943</ch1>
+            <ch2>17.701</ch2>
+        </Log>
+        <Log id="343">
+            <Date>2024/03/19</Date>
+            <Time>04:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4928</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="344">
+            <Date>2024/03/19</Date>
+            <Time>04:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4922</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="345">
+            <Date>2024/03/19</Date>
+            <Time>05:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4903</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="346">
+            <Date>2024/03/19</Date>
+            <Time>05:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4898</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="347">
+            <Date>2024/03/19</Date>
+            <Time>05:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4880</ch1>
+            <ch2>17.703</ch2>
+        </Log>
+        <Log id="348">
+            <Date>2024/03/19</Date>
+            <Time>05:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4880</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="349">
+            <Date>2024/03/19</Date>
+            <Time>06:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4864</ch1>
+            <ch2>17.703</ch2>
+        </Log>
+        <Log id="350">
+            <Date>2024/03/19</Date>
+            <Time>06:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4844</ch1>
+            <ch2>17.700</ch2>
+        </Log>
+        <Log id="351">
+            <Date>2024/03/19</Date>
+            <Time>06:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4832</ch1>
+            <ch2>17.701</ch2>
+        </Log>
+        <Log id="352">
+            <Date>2024/03/19</Date>
+            <Time>06:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4815</ch1>
+            <ch2>17.703</ch2>
+        </Log>
+        <Log id="353">
+            <Date>2024/03/19</Date>
+            <Time>07:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4809</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="354">
+            <Date>2024/03/19</Date>
+            <Time>07:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4792</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="355">
+            <Date>2024/03/19</Date>
+            <Time>07:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4798</ch1>
+            <ch2>17.703</ch2>
+        </Log>
+        <Log id="356">
+            <Date>2024/03/19</Date>
+            <Time>07:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4803</ch1>
+            <ch2>17.703</ch2>
+        </Log>
+        <Log id="357">
+            <Date>2024/03/19</Date>
+            <Time>08:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4799</ch1>
+            <ch2>17.703</ch2>
+        </Log>
+        <Log id="358">
+            <Date>2024/03/19</Date>
+            <Time>08:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4800</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="359">
+            <Date>2024/03/19</Date>
+            <Time>08:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4804</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="360">
+            <Date>2024/03/19</Date>
+            <Time>08:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4801</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="361">
+            <Date>2024/03/19</Date>
+            <Time>09:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4812</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="362">
+            <Date>2024/03/19</Date>
+            <Time>09:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4817</ch1>
+            <ch2>17.703</ch2>
+        </Log>
+        <Log id="363">
+            <Date>2024/03/19</Date>
+            <Time>09:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4823</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="364">
+            <Date>2024/03/19</Date>
+            <Time>09:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4831</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="365">
+            <Date>2024/03/19</Date>
+            <Time>10:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4840</ch1>
+            <ch2>17.701</ch2>
+        </Log>
+        <Log id="366">
+            <Date>2024/03/19</Date>
+            <Time>10:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4850</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="367">
+            <Date>2024/03/19</Date>
+            <Time>10:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4853</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="368">
+            <Date>2024/03/19</Date>
+            <Time>10:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4863</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="369">
+            <Date>2024/03/19</Date>
+            <Time>11:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4857</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="370">
+            <Date>2024/03/19</Date>
+            <Time>11:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4850</ch1>
+            <ch2>17.703</ch2>
+        </Log>
+        <Log id="371">
+            <Date>2024/03/19</Date>
+            <Time>11:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4825</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="372">
+            <Date>2024/03/19</Date>
+            <Time>11:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4802</ch1>
+            <ch2>17.701</ch2>
+        </Log>
+        <Log id="373">
+            <Date>2024/03/19</Date>
+            <Time>12:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4761</ch1>
+            <ch2>17.701</ch2>
+        </Log>
+        <Log id="374">
+            <Date>2024/03/19</Date>
+            <Time>12:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4719</ch1>
+            <ch2>17.704</ch2>
+        </Log>
+        <Log id="375">
+            <Date>2024/03/19</Date>
+            <Time>12:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4680</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="376">
+            <Date>2024/03/19</Date>
+            <Time>12:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4629</ch1>
+            <ch2>17.703</ch2>
+        </Log>
+        <Log id="377">
+            <Date>2024/03/19</Date>
+            <Time>13:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4585</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="378">
+            <Date>2024/03/19</Date>
+            <Time>13:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4528</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="379">
+            <Date>2024/03/19</Date>
+            <Time>13:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4472</ch1>
+            <ch2>17.703</ch2>
+        </Log>
+        <Log id="380">
+            <Date>2024/03/19</Date>
+            <Time>13:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4421</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="381">
+            <Date>2024/03/19</Date>
+            <Time>14:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4369</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="382">
+            <Date>2024/03/19</Date>
+            <Time>14:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4285</ch1>
+            <ch2>17.700</ch2>
+        </Log>
+        <Log id="383">
+            <Date>2024/03/19</Date>
+            <Time>14:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4215</ch1>
+            <ch2>17.699</ch2>
+        </Log>
+        <Log id="384">
+            <Date>2024/03/19</Date>
+            <Time>14:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4146</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="385">
+            <Date>2024/03/19</Date>
+            <Time>15:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4059</ch1>
+            <ch2>17.701</ch2>
+        </Log>
+        <Log id="386">
+            <Date>2024/03/19</Date>
+            <Time>15:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3974</ch1>
+            <ch2>17.701</ch2>
+        </Log>
+        <Log id="387">
+            <Date>2024/03/19</Date>
+            <Time>15:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3895</ch1>
+            <ch2>17.703</ch2>
+        </Log>
+        <Log id="388">
+            <Date>2024/03/19</Date>
+            <Time>15:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3809</ch1>
+            <ch2>17.700</ch2>
+        </Log>
+        <Log id="389">
+            <Date>2024/03/19</Date>
+            <Time>16:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3732</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="390">
+            <Date>2024/03/19</Date>
+            <Time>16:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3639</ch1>
+            <ch2>17.701</ch2>
+        </Log>
+        <Log id="391">
+            <Date>2024/03/19</Date>
+            <Time>16:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3563</ch1>
+            <ch2>17.700</ch2>
+        </Log>
+        <Log id="392">
+            <Date>2024/03/19</Date>
+            <Time>16:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3464</ch1>
+            <ch2>17.700</ch2>
+        </Log>
+        <Log id="393">
+            <Date>2024/03/19</Date>
+            <Time>17:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3374</ch1>
+            <ch2>17.700</ch2>
+        </Log>
+        <Log id="394">
+            <Date>2024/03/19</Date>
+            <Time>17:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3303</ch1>
+            <ch2>17.701</ch2>
+        </Log>
+        <Log id="395">
+            <Date>2024/03/19</Date>
+            <Time>17:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3230</ch1>
+            <ch2>17.702</ch2>
+        </Log>
+        <Log id="396">
+            <Date>2024/03/19</Date>
+            <Time>17:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3189</ch1>
+            <ch2>17.700</ch2>
+        </Log>
+        <Log id="397">
+            <Date>2024/03/19</Date>
+            <Time>18:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3138</ch1>
+            <ch2>17.699</ch2>
+        </Log>
+        <Log id="398">
+            <Date>2024/03/19</Date>
+            <Time>18:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3114</ch1>
+            <ch2>17.701</ch2>
+        </Log>
+        <Log id="399">
+            <Date>2024/03/19</Date>
+            <Time>18:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3078</ch1>
+            <ch2>17.699</ch2>
+        </Log>
+        <Log id="400">
+            <Date>2024/03/19</Date>
+            <Time>18:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3045</ch1>
+            <ch2>17.700</ch2>
+        </Log>
+        <Log id="401">
+            <Date>2024/03/19</Date>
+            <Time>19:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3009</ch1>
+            <ch2>17.701</ch2>
+        </Log>
+        <Log id="402">
+            <Date>2024/03/19</Date>
+            <Time>19:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2964</ch1>
+            <ch2>17.699</ch2>
+        </Log>
+        <Log id="403">
+            <Date>2024/03/19</Date>
+            <Time>19:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2941</ch1>
+            <ch2>17.700</ch2>
+        </Log>
+        <Log id="404">
+            <Date>2024/03/19</Date>
+            <Time>19:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2915</ch1>
+            <ch2>17.700</ch2>
+        </Log>
+        <Log id="405">
+            <Date>2024/03/19</Date>
+            <Time>20:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2904</ch1>
+            <ch2>17.700</ch2>
+        </Log>
+        <Log id="406">
+            <Date>2024/03/19</Date>
+            <Time>20:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2875</ch1>
+            <ch2>17.701</ch2>
+        </Log>
+        <Log id="407">
+            <Date>2024/03/19</Date>
+            <Time>20:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2865</ch1>
+            <ch2>17.701</ch2>
+        </Log>
+        <Log id="408">
+            <Date>2024/03/19</Date>
+            <Time>20:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2861</ch1>
+            <ch2>17.699</ch2>
+        </Log>
+        <Log id="409">
+            <Date>2024/03/19</Date>
+            <Time>21:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2853</ch1>
+            <ch2>17.700</ch2>
+        </Log>
+        <Log id="410">
+            <Date>2024/03/19</Date>
+            <Time>21:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2863</ch1>
+            <ch2>17.699</ch2>
+        </Log>
+        <Log id="411">
+            <Date>2024/03/19</Date>
+            <Time>21:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2858</ch1>
+            <ch2>17.698</ch2>
+        </Log>
+        <Log id="412">
+            <Date>2024/03/19</Date>
+            <Time>21:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2847</ch1>
+            <ch2>17.700</ch2>
+        </Log>
+        <Log id="413">
+            <Date>2024/03/19</Date>
+            <Time>22:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2851</ch1>
+            <ch2>17.700</ch2>
+        </Log>
+        <Log id="414">
+            <Date>2024/03/19</Date>
+            <Time>22:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2859</ch1>
+            <ch2>17.699</ch2>
+        </Log>
+        <Log id="415">
+            <Date>2024/03/19</Date>
+            <Time>22:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2852</ch1>
+            <ch2>17.700</ch2>
+        </Log>
+        <Log id="416">
+            <Date>2024/03/19</Date>
+            <Time>22:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2862</ch1>
+            <ch2>17.699</ch2>
+        </Log>
+        <Log id="417">
+            <Date>2024/03/19</Date>
+            <Time>23:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2862</ch1>
+            <ch2>17.699</ch2>
+        </Log>
+        <Log id="418">
+            <Date>2024/03/19</Date>
+            <Time>23:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2876</ch1>
+            <ch2>17.698</ch2>
+        </Log>
+        <Log id="419">
+            <Date>2024/03/19</Date>
+            <Time>23:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2866</ch1>
+            <ch2>17.701</ch2>
+        </Log>
+        <Log id="420">
+            <Date>2024/03/19</Date>
+            <Time>23:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2858</ch1>
+            <ch2>17.700</ch2>
+        </Log>
+        <Log id="421">
+            <Date>2024/03/20</Date>
+            <Time>00:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2868</ch1>
+            <ch2>17.700</ch2>
+        </Log>
+        <Log id="422">
+            <Date>2024/03/20</Date>
+            <Time>00:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2855</ch1>
+            <ch2>17.698</ch2>
+        </Log>
+        <Log id="423">
+            <Date>2024/03/20</Date>
+            <Time>00:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2853</ch1>
+            <ch2>17.701</ch2>
+        </Log>
+        <Log id="424">
+            <Date>2024/03/20</Date>
+            <Time>00:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2847</ch1>
+            <ch2>17.698</ch2>
+        </Log>
+        <Log id="425">
+            <Date>2024/03/20</Date>
+            <Time>01:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2832</ch1>
+            <ch2>17.699</ch2>
+        </Log>
+        <Log id="426">
+            <Date>2024/03/20</Date>
+            <Time>01:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2814</ch1>
+            <ch2>17.698</ch2>
+        </Log>
+        <Log id="427">
+            <Date>2024/03/20</Date>
+            <Time>01:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2802</ch1>
+            <ch2>17.698</ch2>
+        </Log>
+        <Log id="428">
+            <Date>2024/03/20</Date>
+            <Time>01:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2792</ch1>
+            <ch2>17.697</ch2>
+        </Log>
+        <Log id="429">
+            <Date>2024/03/20</Date>
+            <Time>02:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2785</ch1>
+            <ch2>17.697</ch2>
+        </Log>
+        <Log id="430">
+            <Date>2024/03/20</Date>
+            <Time>02:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2783</ch1>
+            <ch2>17.697</ch2>
+        </Log>
+        <Log id="431">
+            <Date>2024/03/20</Date>
+            <Time>02:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2789</ch1>
+            <ch2>17.697</ch2>
+        </Log>
+        <Log id="432">
+            <Date>2024/03/20</Date>
+            <Time>02:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2787</ch1>
+            <ch2>17.697</ch2>
+        </Log>
+        <Log id="433">
+            <Date>2024/03/20</Date>
+            <Time>03:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2790</ch1>
+            <ch2>17.697</ch2>
+        </Log>
+        <Log id="434">
+            <Date>2024/03/20</Date>
+            <Time>03:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2787</ch1>
+            <ch2>17.697</ch2>
+        </Log>
+        <Log id="435">
+            <Date>2024/03/20</Date>
+            <Time>03:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2776</ch1>
+            <ch2>17.696</ch2>
+        </Log>
+        <Log id="436">
+            <Date>2024/03/20</Date>
+            <Time>03:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2772</ch1>
+            <ch2>17.697</ch2>
+        </Log>
+        <Log id="437">
+            <Date>2024/03/20</Date>
+            <Time>04:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2759</ch1>
+            <ch2>17.698</ch2>
+        </Log>
+        <Log id="438">
+            <Date>2024/03/20</Date>
+            <Time>04:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2746</ch1>
+            <ch2>17.696</ch2>
+        </Log>
+        <Log id="439">
+            <Date>2024/03/20</Date>
+            <Time>04:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2744</ch1>
+            <ch2>17.697</ch2>
+        </Log>
+        <Log id="440">
+            <Date>2024/03/20</Date>
+            <Time>04:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2746</ch1>
+            <ch2>17.697</ch2>
+        </Log>
+        <Log id="441">
+            <Date>2024/03/20</Date>
+            <Time>05:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2738</ch1>
+            <ch2>17.696</ch2>
+        </Log>
+        <Log id="442">
+            <Date>2024/03/20</Date>
+            <Time>05:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2734</ch1>
+            <ch2>17.692</ch2>
+        </Log>
+        <Log id="443">
+            <Date>2024/03/20</Date>
+            <Time>05:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2731</ch1>
+            <ch2>17.694</ch2>
+        </Log>
+        <Log id="444">
+            <Date>2024/03/20</Date>
+            <Time>05:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2746</ch1>
+            <ch2>17.696</ch2>
+        </Log>
+        <Log id="445">
+            <Date>2024/03/20</Date>
+            <Time>06:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2755</ch1>
+            <ch2>17.694</ch2>
+        </Log>
+        <Log id="446">
+            <Date>2024/03/20</Date>
+            <Time>06:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2774</ch1>
+            <ch2>17.695</ch2>
+        </Log>
+        <Log id="447">
+            <Date>2024/03/20</Date>
+            <Time>06:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2781</ch1>
+            <ch2>17.697</ch2>
+        </Log>
+        <Log id="448">
+            <Date>2024/03/20</Date>
+            <Time>06:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2789</ch1>
+            <ch2>17.696</ch2>
+        </Log>
+        <Log id="449">
+            <Date>2024/03/20</Date>
+            <Time>07:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2813</ch1>
+            <ch2>17.697</ch2>
+        </Log>
+        <Log id="450">
+            <Date>2024/03/20</Date>
+            <Time>07:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2827</ch1>
+            <ch2>17.696</ch2>
+        </Log>
+        <Log id="451">
+            <Date>2024/03/20</Date>
+            <Time>07:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2839</ch1>
+            <ch2>17.696</ch2>
+        </Log>
+        <Log id="452">
+            <Date>2024/03/20</Date>
+            <Time>07:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2859</ch1>
+            <ch2>17.695</ch2>
+        </Log>
+        <Log id="453">
+            <Date>2024/03/20</Date>
+            <Time>08:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2887</ch1>
+            <ch2>17.695</ch2>
+        </Log>
+        <Log id="454">
+            <Date>2024/03/20</Date>
+            <Time>08:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2899</ch1>
+            <ch2>17.694</ch2>
+        </Log>
+        <Log id="455">
+            <Date>2024/03/20</Date>
+            <Time>08:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2915</ch1>
+            <ch2>17.696</ch2>
+        </Log>
+        <Log id="456">
+            <Date>2024/03/20</Date>
+            <Time>08:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2930</ch1>
+            <ch2>17.695</ch2>
+        </Log>
+        <Log id="457">
+            <Date>2024/03/20</Date>
+            <Time>09:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2948</ch1>
+            <ch2>17.696</ch2>
+        </Log>
+        <Log id="458">
+            <Date>2024/03/20</Date>
+            <Time>09:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2946</ch1>
+            <ch2>17.695</ch2>
+        </Log>
+        <Log id="459">
+            <Date>2024/03/20</Date>
+            <Time>09:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2940</ch1>
+            <ch2>17.693</ch2>
+        </Log>
+        <Log id="460">
+            <Date>2024/03/20</Date>
+            <Time>09:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2962</ch1>
+            <ch2>17.695</ch2>
+        </Log>
+        <Log id="461">
+            <Date>2024/03/20</Date>
+            <Time>10:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2950</ch1>
+            <ch2>17.692</ch2>
+        </Log>
+        <Log id="462">
+            <Date>2024/03/20</Date>
+            <Time>10:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2965</ch1>
+            <ch2>17.694</ch2>
+        </Log>
+        <Log id="463">
+            <Date>2024/03/20</Date>
+            <Time>10:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2963</ch1>
+            <ch2>17.693</ch2>
+        </Log>
+        <Log id="464">
+            <Date>2024/03/20</Date>
+            <Time>10:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2968</ch1>
+            <ch2>17.695</ch2>
+        </Log>
+        <Log id="465">
+            <Date>2024/03/20</Date>
+            <Time>11:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2974</ch1>
+            <ch2>17.694</ch2>
+        </Log>
+        <Log id="466">
+            <Date>2024/03/20</Date>
+            <Time>11:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2972</ch1>
+            <ch2>17.693</ch2>
+        </Log>
+        <Log id="467">
+            <Date>2024/03/20</Date>
+            <Time>11:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2987</ch1>
+            <ch2>17.692</ch2>
+        </Log>
+        <Log id="468">
+            <Date>2024/03/20</Date>
+            <Time>11:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2982</ch1>
+            <ch2>17.691</ch2>
+        </Log>
+        <Log id="469">
+            <Date>2024/03/20</Date>
+            <Time>12:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2992</ch1>
+            <ch2>17.694</ch2>
+        </Log>
+        <Log id="470">
+            <Date>2024/03/20</Date>
+            <Time>12:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2994</ch1>
+            <ch2>17.692</ch2>
+        </Log>
+        <Log id="471">
+            <Date>2024/03/20</Date>
+            <Time>12:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2982</ch1>
+            <ch2>17.691</ch2>
+        </Log>
+        <Log id="472">
+            <Date>2024/03/20</Date>
+            <Time>12:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2970</ch1>
+            <ch2>17.692</ch2>
+        </Log>
+        <Log id="473">
+            <Date>2024/03/20</Date>
+            <Time>13:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2955</ch1>
+            <ch2>17.693</ch2>
+        </Log>
+        <Log id="474">
+            <Date>2024/03/20</Date>
+            <Time>13:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2927</ch1>
+            <ch2>17.691</ch2>
+        </Log>
+        <Log id="475">
+            <Date>2024/03/20</Date>
+            <Time>13:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2906</ch1>
+            <ch2>17.694</ch2>
+        </Log>
+        <Log id="476">
+            <Date>2024/03/20</Date>
+            <Time>13:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2865</ch1>
+            <ch2>17.694</ch2>
+        </Log>
+        <Log id="477">
+            <Date>2024/03/20</Date>
+            <Time>14:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2835</ch1>
+            <ch2>17.693</ch2>
+        </Log>
+        <Log id="478">
+            <Date>2024/03/20</Date>
+            <Time>14:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2788</ch1>
+            <ch2>17.692</ch2>
+        </Log>
+        <Log id="479">
+            <Date>2024/03/20</Date>
+            <Time>14:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2752</ch1>
+            <ch2>17.693</ch2>
+        </Log>
+        <Log id="480">
+            <Date>2024/03/20</Date>
+            <Time>14:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2709</ch1>
+            <ch2>17.693</ch2>
+        </Log>
+        <Log id="481">
+            <Date>2024/03/20</Date>
+            <Time>15:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2667</ch1>
+            <ch2>17.694</ch2>
+        </Log>
+        <Log id="482">
+            <Date>2024/03/20</Date>
+            <Time>15:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2617</ch1>
+            <ch2>17.694</ch2>
+        </Log>
+        <Log id="483">
+            <Date>2024/03/20</Date>
+            <Time>15:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2582</ch1>
+            <ch2>17.693</ch2>
+        </Log>
+        <Log id="484">
+            <Date>2024/03/20</Date>
+            <Time>15:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2550</ch1>
+            <ch2>17.695</ch2>
+        </Log>
+        <Log id="485">
+            <Date>2024/03/20</Date>
+            <Time>16:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2505</ch1>
+            <ch2>17.694</ch2>
+        </Log>
+        <Log id="486">
+            <Date>2024/03/20</Date>
+            <Time>16:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2473</ch1>
+            <ch2>17.694</ch2>
+        </Log>
+        <Log id="487">
+            <Date>2024/03/20</Date>
+            <Time>16:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2439</ch1>
+            <ch2>17.693</ch2>
+        </Log>
+        <Log id="488">
+            <Date>2024/03/20</Date>
+            <Time>16:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2415</ch1>
+            <ch2>17.693</ch2>
+        </Log>
+        <Log id="489">
+            <Date>2024/03/20</Date>
+            <Time>17:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2374</ch1>
+            <ch2>17.692</ch2>
+        </Log>
+        <Log id="490">
+            <Date>2024/03/20</Date>
+            <Time>17:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2354</ch1>
+            <ch2>17.694</ch2>
+        </Log>
+        <Log id="491">
+            <Date>2024/03/20</Date>
+            <Time>17:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2333</ch1>
+            <ch2>17.692</ch2>
+        </Log>
+        <Log id="492">
+            <Date>2024/03/20</Date>
+            <Time>17:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2322</ch1>
+            <ch2>17.691</ch2>
+        </Log>
+        <Log id="493">
+            <Date>2024/03/20</Date>
+            <Time>18:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2310</ch1>
+            <ch2>17.691</ch2>
+        </Log>
+        <Log id="494">
+            <Date>2024/03/20</Date>
+            <Time>18:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2313</ch1>
+            <ch2>17.691</ch2>
+        </Log>
+        <Log id="495">
+            <Date>2024/03/20</Date>
+            <Time>18:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2326</ch1>
+            <ch2>17.693</ch2>
+        </Log>
+        <Log id="496">
+            <Date>2024/03/20</Date>
+            <Time>18:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2346</ch1>
+            <ch2>17.693</ch2>
+        </Log>
+        <Log id="497">
+            <Date>2024/03/20</Date>
+            <Time>19:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2367</ch1>
+            <ch2>17.691</ch2>
+        </Log>
+        <Log id="498">
+            <Date>2024/03/20</Date>
+            <Time>19:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2396</ch1>
+            <ch2>17.693</ch2>
+        </Log>
+        <Log id="499">
+            <Date>2024/03/20</Date>
+            <Time>19:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2431</ch1>
+            <ch2>17.693</ch2>
+        </Log>
+        <Log id="500">
+            <Date>2024/03/20</Date>
+            <Time>19:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2460</ch1>
+            <ch2>17.692</ch2>
+        </Log>
+        <Log id="501">
+            <Date>2024/03/20</Date>
+            <Time>20:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2500</ch1>
+            <ch2>17.694</ch2>
+        </Log>
+        <Log id="502">
+            <Date>2024/03/20</Date>
+            <Time>20:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2533</ch1>
+            <ch2>17.691</ch2>
+        </Log>
+        <Log id="503">
+            <Date>2024/03/20</Date>
+            <Time>20:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2580</ch1>
+            <ch2>17.693</ch2>
+        </Log>
+        <Log id="504">
+            <Date>2024/03/20</Date>
+            <Time>20:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2632</ch1>
+            <ch2>17.695</ch2>
+        </Log>
+        <Log id="505">
+            <Date>2024/03/20</Date>
+            <Time>21:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2690</ch1>
+            <ch2>17.692</ch2>
+        </Log>
+        <Log id="506">
+            <Date>2024/03/20</Date>
+            <Time>21:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2742</ch1>
+            <ch2>17.692</ch2>
+        </Log>
+        <Log id="507">
+            <Date>2024/03/20</Date>
+            <Time>21:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2795</ch1>
+            <ch2>17.691</ch2>
+        </Log>
+        <Log id="508">
+            <Date>2024/03/20</Date>
+            <Time>21:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2843</ch1>
+            <ch2>17.690</ch2>
+        </Log>
+        <Log id="509">
+            <Date>2024/03/20</Date>
+            <Time>22:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2901</ch1>
+            <ch2>17.692</ch2>
+        </Log>
+        <Log id="510">
+            <Date>2024/03/20</Date>
+            <Time>22:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2971</ch1>
+            <ch2>17.690</ch2>
+        </Log>
+        <Log id="511">
+            <Date>2024/03/20</Date>
+            <Time>22:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3026</ch1>
+            <ch2>17.693</ch2>
+        </Log>
+        <Log id="512">
+            <Date>2024/03/20</Date>
+            <Time>22:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3077</ch1>
+            <ch2>17.692</ch2>
+        </Log>
+        <Log id="513">
+            <Date>2024/03/20</Date>
+            <Time>23:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3111</ch1>
+            <ch2>17.689</ch2>
+        </Log>
+        <Log id="514">
+            <Date>2024/03/20</Date>
+            <Time>23:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3141</ch1>
+            <ch2>17.691</ch2>
+        </Log>
+        <Log id="515">
+            <Date>2024/03/20</Date>
+            <Time>23:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3173</ch1>
+            <ch2>17.692</ch2>
+        </Log>
+        <Log id="516">
+            <Date>2024/03/20</Date>
+            <Time>23:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3196</ch1>
+            <ch2>17.690</ch2>
+        </Log>
+        <Log id="517">
+            <Date>2024/03/21</Date>
+            <Time>00:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3207</ch1>
+            <ch2>17.686</ch2>
+        </Log>
+        <Log id="518">
+            <Date>2024/03/21</Date>
+            <Time>00:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3227</ch1>
+            <ch2>17.687</ch2>
+        </Log>
+        <Log id="519">
+            <Date>2024/03/21</Date>
+            <Time>00:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3254</ch1>
+            <ch2>17.687</ch2>
+        </Log>
+        <Log id="520">
+            <Date>2024/03/21</Date>
+            <Time>00:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3269</ch1>
+            <ch2>17.687</ch2>
+        </Log>
+        <Log id="521">
+            <Date>2024/03/21</Date>
+            <Time>01:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3283</ch1>
+            <ch2>17.690</ch2>
+        </Log>
+        <Log id="522">
+            <Date>2024/03/21</Date>
+            <Time>01:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3294</ch1>
+            <ch2>17.689</ch2>
+        </Log>
+        <Log id="523">
+            <Date>2024/03/21</Date>
+            <Time>01:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3304</ch1>
+            <ch2>17.688</ch2>
+        </Log>
+        <Log id="524">
+            <Date>2024/03/21</Date>
+            <Time>01:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3318</ch1>
+            <ch2>17.688</ch2>
+        </Log>
+        <Log id="525">
+            <Date>2024/03/21</Date>
+            <Time>02:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3316</ch1>
+            <ch2>17.690</ch2>
+        </Log>
+        <Log id="526">
+            <Date>2024/03/21</Date>
+            <Time>02:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3311</ch1>
+            <ch2>17.687</ch2>
+        </Log>
+        <Log id="527">
+            <Date>2024/03/21</Date>
+            <Time>02:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3294</ch1>
+            <ch2>17.689</ch2>
+        </Log>
+        <Log id="528">
+            <Date>2024/03/21</Date>
+            <Time>02:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3281</ch1>
+            <ch2>17.687</ch2>
+        </Log>
+        <Log id="529">
+            <Date>2024/03/21</Date>
+            <Time>03:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3258</ch1>
+            <ch2>17.689</ch2>
+        </Log>
+        <Log id="530">
+            <Date>2024/03/21</Date>
+            <Time>03:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3236</ch1>
+            <ch2>17.688</ch2>
+        </Log>
+        <Log id="531">
+            <Date>2024/03/21</Date>
+            <Time>03:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3222</ch1>
+            <ch2>17.688</ch2>
+        </Log>
+        <Log id="532">
+            <Date>2024/03/21</Date>
+            <Time>03:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3196</ch1>
+            <ch2>17.687</ch2>
+        </Log>
+        <Log id="533">
+            <Date>2024/03/21</Date>
+            <Time>04:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3192</ch1>
+            <ch2>17.687</ch2>
+        </Log>
+        <Log id="534">
+            <Date>2024/03/21</Date>
+            <Time>04:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3177</ch1>
+            <ch2>17.689</ch2>
+        </Log>
+        <Log id="535">
+            <Date>2024/03/21</Date>
+            <Time>04:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3172</ch1>
+            <ch2>17.689</ch2>
+        </Log>
+        <Log id="536">
+            <Date>2024/03/21</Date>
+            <Time>04:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3185</ch1>
+            <ch2>17.687</ch2>
+        </Log>
+        <Log id="537">
+            <Date>2024/03/21</Date>
+            <Time>05:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3200</ch1>
+            <ch2>17.688</ch2>
+        </Log>
+        <Log id="538">
+            <Date>2024/03/21</Date>
+            <Time>05:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3222</ch1>
+            <ch2>17.691</ch2>
+        </Log>
+        <Log id="539">
+            <Date>2024/03/21</Date>
+            <Time>05:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3242</ch1>
+            <ch2>17.687</ch2>
+        </Log>
+        <Log id="540">
+            <Date>2024/03/21</Date>
+            <Time>05:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3268</ch1>
+            <ch2>17.689</ch2>
+        </Log>
+        <Log id="541">
+            <Date>2024/03/21</Date>
+            <Time>06:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3304</ch1>
+            <ch2>17.689</ch2>
+        </Log>
+        <Log id="542">
+            <Date>2024/03/21</Date>
+            <Time>06:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3338</ch1>
+            <ch2>17.689</ch2>
+        </Log>
+        <Log id="543">
+            <Date>2024/03/21</Date>
+            <Time>06:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3367</ch1>
+            <ch2>17.687</ch2>
+        </Log>
+        <Log id="544">
+            <Date>2024/03/21</Date>
+            <Time>06:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3405</ch1>
+            <ch2>17.690</ch2>
+        </Log>
+        <Log id="545">
+            <Date>2024/03/21</Date>
+            <Time>07:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3428</ch1>
+            <ch2>17.689</ch2>
+        </Log>
+        <Log id="546">
+            <Date>2024/03/21</Date>
+            <Time>07:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3459</ch1>
+            <ch2>17.690</ch2>
+        </Log>
+        <Log id="547">
+            <Date>2024/03/21</Date>
+            <Time>07:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3479</ch1>
+            <ch2>17.689</ch2>
+        </Log>
+        <Log id="548">
+            <Date>2024/03/21</Date>
+            <Time>07:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3512</ch1>
+            <ch2>17.690</ch2>
+        </Log>
+        <Log id="549">
+            <Date>2024/03/21</Date>
+            <Time>08:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3527</ch1>
+            <ch2>17.687</ch2>
+        </Log>
+        <Log id="550">
+            <Date>2024/03/21</Date>
+            <Time>08:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3542</ch1>
+            <ch2>17.688</ch2>
+        </Log>
+        <Log id="551">
+            <Date>2024/03/21</Date>
+            <Time>08:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3581</ch1>
+            <ch2>17.687</ch2>
+        </Log>
+        <Log id="552">
+            <Date>2024/03/21</Date>
+            <Time>08:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3600</ch1>
+            <ch2>17.687</ch2>
+        </Log>
+        <Log id="553">
+            <Date>2024/03/21</Date>
+            <Time>09:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3632</ch1>
+            <ch2>17.689</ch2>
+        </Log>
+        <Log id="554">
+            <Date>2024/03/21</Date>
+            <Time>09:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3666</ch1>
+            <ch2>17.688</ch2>
+        </Log>
+        <Log id="555">
+            <Date>2024/03/21</Date>
+            <Time>09:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3691</ch1>
+            <ch2>17.687</ch2>
+        </Log>
+        <Log id="556">
+            <Date>2024/03/21</Date>
+            <Time>09:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3693</ch1>
+            <ch2>17.687</ch2>
+        </Log>
+        <Log id="557">
+            <Date>2024/03/21</Date>
+            <Time>10:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3697</ch1>
+            <ch2>17.685</ch2>
+        </Log>
+        <Log id="558">
+            <Date>2024/03/21</Date>
+            <Time>10:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3709</ch1>
+            <ch2>17.686</ch2>
+        </Log>
+        <Log id="559">
+            <Date>2024/03/21</Date>
+            <Time>10:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3723</ch1>
+            <ch2>17.687</ch2>
+        </Log>
+        <Log id="560">
+            <Date>2024/03/21</Date>
+            <Time>10:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3714</ch1>
+            <ch2>17.685</ch2>
+        </Log>
+        <Log id="561">
+            <Date>2024/03/21</Date>
+            <Time>11:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3706</ch1>
+            <ch2>17.687</ch2>
+        </Log>
+        <Log id="562">
+            <Date>2024/03/21</Date>
+            <Time>11:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3683</ch1>
+            <ch2>17.687</ch2>
+        </Log>
+        <Log id="563">
+            <Date>2024/03/21</Date>
+            <Time>11:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3685</ch1>
+            <ch2>17.687</ch2>
+        </Log>
+        <Log id="564">
+            <Date>2024/03/21</Date>
+            <Time>11:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3663</ch1>
+            <ch2>17.686</ch2>
+        </Log>
+        <Log id="565">
+            <Date>2024/03/21</Date>
+            <Time>12:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3636</ch1>
+            <ch2>17.685</ch2>
+        </Log>
+        <Log id="566">
+            <Date>2024/03/21</Date>
+            <Time>12:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3611</ch1>
+            <ch2>17.688</ch2>
+        </Log>
+        <Log id="567">
+            <Date>2024/03/21</Date>
+            <Time>12:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3575</ch1>
+            <ch2>17.686</ch2>
+        </Log>
+        <Log id="568">
+            <Date>2024/03/21</Date>
+            <Time>12:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3522</ch1>
+            <ch2>17.683</ch2>
+        </Log>
+        <Log id="569">
+            <Date>2024/03/21</Date>
+            <Time>13:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3486</ch1>
+            <ch2>17.685</ch2>
+        </Log>
+        <Log id="570">
+            <Date>2024/03/21</Date>
+            <Time>13:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3433</ch1>
+            <ch2>17.686</ch2>
+        </Log>
+        <Log id="571">
+            <Date>2024/03/21</Date>
+            <Time>13:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3378</ch1>
+            <ch2>17.686</ch2>
+        </Log>
+        <Log id="572">
+            <Date>2024/03/21</Date>
+            <Time>13:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3307</ch1>
+            <ch2>17.685</ch2>
+        </Log>
+        <Log id="573">
+            <Date>2024/03/21</Date>
+            <Time>14:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3253</ch1>
+            <ch2>17.686</ch2>
+        </Log>
+        <Log id="574">
+            <Date>2024/03/21</Date>
+            <Time>14:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3210</ch1>
+            <ch2>17.683</ch2>
+        </Log>
+        <Log id="575">
+            <Date>2024/03/21</Date>
+            <Time>14:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3173</ch1>
+            <ch2>17.684</ch2>
+        </Log>
+        <Log id="576">
+            <Date>2024/03/21</Date>
+            <Time>14:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3136</ch1>
+            <ch2>17.685</ch2>
+        </Log>
+        <Log id="577">
+            <Date>2024/03/21</Date>
+            <Time>15:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3111</ch1>
+            <ch2>17.683</ch2>
+        </Log>
+        <Log id="578">
+            <Date>2024/03/21</Date>
+            <Time>15:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3076</ch1>
+            <ch2>17.684</ch2>
+        </Log>
+        <Log id="579">
+            <Date>2024/03/21</Date>
+            <Time>15:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3036</ch1>
+            <ch2>17.685</ch2>
+        </Log>
+        <Log id="580">
+            <Date>2024/03/21</Date>
+            <Time>15:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2987</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="581">
+            <Date>2024/03/21</Date>
+            <Time>16:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2935</ch1>
+            <ch2>17.683</ch2>
+        </Log>
+        <Log id="582">
+            <Date>2024/03/21</Date>
+            <Time>16:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2894</ch1>
+            <ch2>17.683</ch2>
+        </Log>
+        <Log id="583">
+            <Date>2024/03/21</Date>
+            <Time>16:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2854</ch1>
+            <ch2>17.683</ch2>
+        </Log>
+        <Log id="584">
+            <Date>2024/03/21</Date>
+            <Time>16:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2821</ch1>
+            <ch2>17.683</ch2>
+        </Log>
+        <Log id="585">
+            <Date>2024/03/21</Date>
+            <Time>17:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2787</ch1>
+            <ch2>17.683</ch2>
+        </Log>
+        <Log id="586">
+            <Date>2024/03/21</Date>
+            <Time>17:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2737</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="587">
+            <Date>2024/03/21</Date>
+            <Time>17:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2712</ch1>
+            <ch2>17.683</ch2>
+        </Log>
+        <Log id="588">
+            <Date>2024/03/21</Date>
+            <Time>17:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2677</ch1>
+            <ch2>17.684</ch2>
+        </Log>
+        <Log id="589">
+            <Date>2024/03/21</Date>
+            <Time>18:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2661</ch1>
+            <ch2>17.681</ch2>
+        </Log>
+        <Log id="590">
+            <Date>2024/03/21</Date>
+            <Time>18:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2648</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="591">
+            <Date>2024/03/21</Date>
+            <Time>18:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2629</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="592">
+            <Date>2024/03/21</Date>
+            <Time>18:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2620</ch1>
+            <ch2>17.681</ch2>
+        </Log>
+        <Log id="593">
+            <Date>2024/03/21</Date>
+            <Time>19:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2624</ch1>
+            <ch2>17.681</ch2>
+        </Log>
+        <Log id="594">
+            <Date>2024/03/21</Date>
+            <Time>19:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2631</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="595">
+            <Date>2024/03/21</Date>
+            <Time>19:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2623</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="596">
+            <Date>2024/03/21</Date>
+            <Time>19:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2623</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="597">
+            <Date>2024/03/21</Date>
+            <Time>20:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2630</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="598">
+            <Date>2024/03/21</Date>
+            <Time>20:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2630</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="599">
+            <Date>2024/03/21</Date>
+            <Time>20:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2627</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="600">
+            <Date>2024/03/21</Date>
+            <Time>20:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2615</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="601">
+            <Date>2024/03/21</Date>
+            <Time>21:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2619</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="602">
+            <Date>2024/03/21</Date>
+            <Time>21:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2616</ch1>
+            <ch2>17.683</ch2>
+        </Log>
+        <Log id="603">
+            <Date>2024/03/21</Date>
+            <Time>21:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2611</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="604">
+            <Date>2024/03/21</Date>
+            <Time>21:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2625</ch1>
+            <ch2>17.681</ch2>
+        </Log>
+        <Log id="605">
+            <Date>2024/03/21</Date>
+            <Time>22:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2631</ch1>
+            <ch2>17.681</ch2>
+        </Log>
+        <Log id="606">
+            <Date>2024/03/21</Date>
+            <Time>22:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2629</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="607">
+            <Date>2024/03/21</Date>
+            <Time>22:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2623</ch1>
+            <ch2>17.679</ch2>
+        </Log>
+        <Log id="608">
+            <Date>2024/03/21</Date>
+            <Time>22:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2630</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="609">
+            <Date>2024/03/21</Date>
+            <Time>23:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2628</ch1>
+            <ch2>17.681</ch2>
+        </Log>
+        <Log id="610">
+            <Date>2024/03/21</Date>
+            <Time>23:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2622</ch1>
+            <ch2>17.681</ch2>
+        </Log>
+        <Log id="611">
+            <Date>2024/03/21</Date>
+            <Time>23:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2605</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="612">
+            <Date>2024/03/21</Date>
+            <Time>23:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2589</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="613">
+            <Date>2024/03/22</Date>
+            <Time>00:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2564</ch1>
+            <ch2>17.681</ch2>
+        </Log>
+        <Log id="614">
+            <Date>2024/03/22</Date>
+            <Time>00:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2538</ch1>
+            <ch2>17.681</ch2>
+        </Log>
+        <Log id="615">
+            <Date>2024/03/22</Date>
+            <Time>00:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2511</ch1>
+            <ch2>17.684</ch2>
+        </Log>
+        <Log id="616">
+            <Date>2024/03/22</Date>
+            <Time>00:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2480</ch1>
+            <ch2>17.681</ch2>
+        </Log>
+        <Log id="617">
+            <Date>2024/03/22</Date>
+            <Time>01:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2446</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="618">
+            <Date>2024/03/22</Date>
+            <Time>01:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2415</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="619">
+            <Date>2024/03/22</Date>
+            <Time>01:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2374</ch1>
+            <ch2>17.680</ch2>
+        </Log>
+        <Log id="620">
+            <Date>2024/03/22</Date>
+            <Time>01:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2353</ch1>
+            <ch2>17.681</ch2>
+        </Log>
+        <Log id="621">
+            <Date>2024/03/22</Date>
+            <Time>02:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2336</ch1>
+            <ch2>17.680</ch2>
+        </Log>
+        <Log id="622">
+            <Date>2024/03/22</Date>
+            <Time>02:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2313</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="623">
+            <Date>2024/03/22</Date>
+            <Time>02:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2286</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="624">
+            <Date>2024/03/22</Date>
+            <Time>02:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2241</ch1>
+            <ch2>17.684</ch2>
+        </Log>
+        <Log id="625">
+            <Date>2024/03/22</Date>
+            <Time>03:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2178</ch1>
+            <ch2>17.683</ch2>
+        </Log>
+        <Log id="626">
+            <Date>2024/03/22</Date>
+            <Time>03:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2134</ch1>
+            <ch2>17.681</ch2>
+        </Log>
+        <Log id="627">
+            <Date>2024/03/22</Date>
+            <Time>03:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2101</ch1>
+            <ch2>17.685</ch2>
+        </Log>
+        <Log id="628">
+            <Date>2024/03/22</Date>
+            <Time>03:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2051</ch1>
+            <ch2>17.684</ch2>
+        </Log>
+        <Log id="629">
+            <Date>2024/03/22</Date>
+            <Time>04:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2013</ch1>
+            <ch2>17.684</ch2>
+        </Log>
+        <Log id="630">
+            <Date>2024/03/22</Date>
+            <Time>04:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1980</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="631">
+            <Date>2024/03/22</Date>
+            <Time>04:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1937</ch1>
+            <ch2>17.683</ch2>
+        </Log>
+        <Log id="632">
+            <Date>2024/03/22</Date>
+            <Time>04:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1909</ch1>
+            <ch2>17.681</ch2>
+        </Log>
+        <Log id="633">
+            <Date>2024/03/22</Date>
+            <Time>05:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1875</ch1>
+            <ch2>17.682</ch2>
+        </Log>
+        <Log id="634">
+            <Date>2024/03/22</Date>
+            <Time>05:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1837</ch1>
+            <ch2>17.681</ch2>
+        </Log>
+        <Log id="635">
+            <Date>2024/03/22</Date>
+            <Time>05:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1819</ch1>
+            <ch2>17.681</ch2>
+        </Log>
+        <Log id="636">
+            <Date>2024/03/22</Date>
+            <Time>05:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1785</ch1>
+            <ch2>17.681</ch2>
+        </Log>
+        <Log id="637">
+            <Date>2024/03/22</Date>
+            <Time>06:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1755</ch1>
+            <ch2>17.681</ch2>
+        </Log>
+        <Log id="638">
+            <Date>2024/03/22</Date>
+            <Time>06:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1722</ch1>
+            <ch2>17.681</ch2>
+        </Log>
+        <Log id="639">
+            <Date>2024/03/22</Date>
+            <Time>06:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1722</ch1>
+            <ch2>17.681</ch2>
+        </Log>
+        <Log id="640">
+            <Date>2024/03/22</Date>
+            <Time>06:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1701</ch1>
+            <ch2>17.679</ch2>
+        </Log>
+        <Log id="641">
+            <Date>2024/03/22</Date>
+            <Time>07:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1698</ch1>
+            <ch2>17.677</ch2>
+        </Log>
+        <Log id="642">
+            <Date>2024/03/22</Date>
+            <Time>07:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1698</ch1>
+            <ch2>17.678</ch2>
+        </Log>
+        <Log id="643">
+            <Date>2024/03/22</Date>
+            <Time>07:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1691</ch1>
+            <ch2>17.676</ch2>
+        </Log>
+        <Log id="644">
+            <Date>2024/03/22</Date>
+            <Time>07:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1682</ch1>
+            <ch2>17.677</ch2>
+        </Log>
+        <Log id="645">
+            <Date>2024/03/22</Date>
+            <Time>08:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1688</ch1>
+            <ch2>17.674</ch2>
+        </Log>
+        <Log id="646">
+            <Date>2024/03/22</Date>
+            <Time>08:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1692</ch1>
+            <ch2>17.674</ch2>
+        </Log>
+        <Log id="647">
+            <Date>2024/03/22</Date>
+            <Time>08:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1695</ch1>
+            <ch2>17.676</ch2>
+        </Log>
+        <Log id="648">
+            <Date>2024/03/22</Date>
+            <Time>08:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1692</ch1>
+            <ch2>17.676</ch2>
+        </Log>
+        <Log id="649">
+            <Date>2024/03/22</Date>
+            <Time>09:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1686</ch1>
+            <ch2>17.677</ch2>
+        </Log>
+        <Log id="650">
+            <Date>2024/03/22</Date>
+            <Time>09:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1666</ch1>
+            <ch2>17.675</ch2>
+        </Log>
+        <Log id="651">
+            <Date>2024/03/22</Date>
+            <Time>09:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1649</ch1>
+            <ch2>17.674</ch2>
+        </Log>
+        <Log id="652">
+            <Date>2024/03/22</Date>
+            <Time>09:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1627</ch1>
+            <ch2>17.674</ch2>
+        </Log>
+        <Log id="653">
+            <Date>2024/03/22</Date>
+            <Time>10:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1607</ch1>
+            <ch2>17.674</ch2>
+        </Log>
+        <Log id="654">
+            <Date>2024/03/22</Date>
+            <Time>10:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1573</ch1>
+            <ch2>17.677</ch2>
+        </Log>
+        <Log id="655">
+            <Date>2024/03/22</Date>
+            <Time>10:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1544</ch1>
+            <ch2>17.677</ch2>
+        </Log>
+        <Log id="656">
+            <Date>2024/03/22</Date>
+            <Time>10:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1531</ch1>
+            <ch2>17.679</ch2>
+        </Log>
+        <Log id="657">
+            <Date>2024/03/22</Date>
+            <Time>11:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1526</ch1>
+            <ch2>17.677</ch2>
+        </Log>
+        <Log id="658">
+            <Date>2024/03/22</Date>
+            <Time>11:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1522</ch1>
+            <ch2>17.677</ch2>
+        </Log>
+        <Log id="659">
+            <Date>2024/03/22</Date>
+            <Time>11:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1498</ch1>
+            <ch2>17.679</ch2>
+        </Log>
+        <Log id="660">
+            <Date>2024/03/22</Date>
+            <Time>11:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1478</ch1>
+            <ch2>17.678</ch2>
+        </Log>
+        <Log id="661">
+            <Date>2024/03/22</Date>
+            <Time>12:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1450</ch1>
+            <ch2>17.676</ch2>
+        </Log>
+        <Log id="662">
+            <Date>2024/03/22</Date>
+            <Time>12:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1425</ch1>
+            <ch2>17.675</ch2>
+        </Log>
+        <Log id="663">
+            <Date>2024/03/22</Date>
+            <Time>12:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1391</ch1>
+            <ch2>17.676</ch2>
+        </Log>
+        <Log id="664">
+            <Date>2024/03/22</Date>
+            <Time>12:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1356</ch1>
+            <ch2>17.677</ch2>
+        </Log>
+        <Log id="665">
+            <Date>2024/03/22</Date>
+            <Time>13:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1313</ch1>
+            <ch2>17.678</ch2>
+        </Log>
+        <Log id="666">
+            <Date>2024/03/22</Date>
+            <Time>13:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1282</ch1>
+            <ch2>17.676</ch2>
+        </Log>
+        <Log id="667">
+            <Date>2024/03/22</Date>
+            <Time>13:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1254</ch1>
+            <ch2>17.672</ch2>
+        </Log>
+        <Log id="668">
+            <Date>2024/03/22</Date>
+            <Time>13:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1240</ch1>
+            <ch2>17.675</ch2>
+        </Log>
+        <Log id="669">
+            <Date>2024/03/22</Date>
+            <Time>14:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1236</ch1>
+            <ch2>17.673</ch2>
+        </Log>
+        <Log id="670">
+            <Date>2024/03/22</Date>
+            <Time>14:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1236</ch1>
+            <ch2>17.673</ch2>
+        </Log>
+        <Log id="671">
+            <Date>2024/03/22</Date>
+            <Time>14:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1226</ch1>
+            <ch2>17.675</ch2>
+        </Log>
+        <Log id="672">
+            <Date>2024/03/22</Date>
+            <Time>14:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1199</ch1>
+            <ch2>17.675</ch2>
+        </Log>
+        <Log id="673">
+            <Date>2024/03/22</Date>
+            <Time>15:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1176</ch1>
+            <ch2>17.673</ch2>
+        </Log>
+        <Log id="674">
+            <Date>2024/03/22</Date>
+            <Time>15:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1143</ch1>
+            <ch2>17.674</ch2>
+        </Log>
+        <Log id="675">
+            <Date>2024/03/22</Date>
+            <Time>15:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1111</ch1>
+            <ch2>17.676</ch2>
+        </Log>
+        <Log id="676">
+            <Date>2024/03/22</Date>
+            <Time>15:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1077</ch1>
+            <ch2>17.674</ch2>
+        </Log>
+        <Log id="677">
+            <Date>2024/03/22</Date>
+            <Time>16:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1047</ch1>
+            <ch2>17.673</ch2>
+        </Log>
+        <Log id="678">
+            <Date>2024/03/22</Date>
+            <Time>16:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1019</ch1>
+            <ch2>17.675</ch2>
+        </Log>
+        <Log id="679">
+            <Date>2024/03/22</Date>
+            <Time>16:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.0995</ch1>
+            <ch2>17.671</ch2>
+        </Log>
+        <Log id="680">
+            <Date>2024/03/22</Date>
+            <Time>16:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.0975</ch1>
+            <ch2>17.672</ch2>
+        </Log>
+        <Log id="681">
+            <Date>2024/03/22</Date>
+            <Time>17:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.0966</ch1>
+            <ch2>17.672</ch2>
+        </Log>
+        <Log id="682">
+            <Date>2024/03/22</Date>
+            <Time>17:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.0964</ch1>
+            <ch2>17.673</ch2>
+        </Log>
+        <Log id="683">
+            <Date>2024/03/22</Date>
+            <Time>17:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.0960</ch1>
+            <ch2>17.670</ch2>
+        </Log>
+        <Log id="684">
+            <Date>2024/03/22</Date>
+            <Time>17:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.0960</ch1>
+            <ch2>17.671</ch2>
+        </Log>
+        <Log id="685">
+            <Date>2024/03/22</Date>
+            <Time>18:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.0974</ch1>
+            <ch2>17.670</ch2>
+        </Log>
+        <Log id="686">
+            <Date>2024/03/22</Date>
+            <Time>18:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1001</ch1>
+            <ch2>17.671</ch2>
+        </Log>
+        <Log id="687">
+            <Date>2024/03/22</Date>
+            <Time>18:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1014</ch1>
+            <ch2>17.671</ch2>
+        </Log>
+        <Log id="688">
+            <Date>2024/03/22</Date>
+            <Time>18:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1050</ch1>
+            <ch2>17.670</ch2>
+        </Log>
+        <Log id="689">
+            <Date>2024/03/22</Date>
+            <Time>19:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1074</ch1>
+            <ch2>17.670</ch2>
+        </Log>
+        <Log id="690">
+            <Date>2024/03/22</Date>
+            <Time>19:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1097</ch1>
+            <ch2>17.668</ch2>
+        </Log>
+        <Log id="691">
+            <Date>2024/03/22</Date>
+            <Time>19:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1125</ch1>
+            <ch2>17.668</ch2>
+        </Log>
+        <Log id="692">
+            <Date>2024/03/22</Date>
+            <Time>19:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1122</ch1>
+            <ch2>17.667</ch2>
+        </Log>
+        <Log id="693">
+            <Date>2024/03/22</Date>
+            <Time>20:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1130</ch1>
+            <ch2>17.668</ch2>
+        </Log>
+        <Log id="694">
+            <Date>2024/03/22</Date>
+            <Time>20:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1137</ch1>
+            <ch2>17.666</ch2>
+        </Log>
+        <Log id="695">
+            <Date>2024/03/22</Date>
+            <Time>20:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1148</ch1>
+            <ch2>17.667</ch2>
+        </Log>
+        <Log id="696">
+            <Date>2024/03/22</Date>
+            <Time>20:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1177</ch1>
+            <ch2>17.667</ch2>
+        </Log>
+        <Log id="697">
+            <Date>2024/03/22</Date>
+            <Time>21:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1182</ch1>
+            <ch2>17.668</ch2>
+        </Log>
+        <Log id="698">
+            <Date>2024/03/22</Date>
+            <Time>21:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1199</ch1>
+            <ch2>17.667</ch2>
+        </Log>
+        <Log id="699">
+            <Date>2024/03/22</Date>
+            <Time>21:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1218</ch1>
+            <ch2>17.669</ch2>
+        </Log>
+        <Log id="700">
+            <Date>2024/03/22</Date>
+            <Time>21:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1250</ch1>
+            <ch2>17.668</ch2>
+        </Log>
+        <Log id="701">
+            <Date>2024/03/22</Date>
+            <Time>22:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1286</ch1>
+            <ch2>17.666</ch2>
+        </Log>
+        <Log id="702">
+            <Date>2024/03/22</Date>
+            <Time>22:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1324</ch1>
+            <ch2>17.668</ch2>
+        </Log>
+        <Log id="703">
+            <Date>2024/03/22</Date>
+            <Time>22:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1343</ch1>
+            <ch2>17.669</ch2>
+        </Log>
+        <Log id="704">
+            <Date>2024/03/22</Date>
+            <Time>22:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1356</ch1>
+            <ch2>17.667</ch2>
+        </Log>
+        <Log id="705">
+            <Date>2024/03/22</Date>
+            <Time>23:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1362</ch1>
+            <ch2>17.668</ch2>
+        </Log>
+        <Log id="706">
+            <Date>2024/03/22</Date>
+            <Time>23:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1379</ch1>
+            <ch2>17.669</ch2>
+        </Log>
+        <Log id="707">
+            <Date>2024/03/22</Date>
+            <Time>23:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1407</ch1>
+            <ch2>17.666</ch2>
+        </Log>
+        <Log id="708">
+            <Date>2024/03/22</Date>
+            <Time>23:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1433</ch1>
+            <ch2>17.666</ch2>
+        </Log>
+        <Log id="709">
+            <Date>2024/03/23</Date>
+            <Time>00:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1453</ch1>
+            <ch2>17.665</ch2>
+        </Log>
+        <Log id="710">
+            <Date>2024/03/23</Date>
+            <Time>00:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1475</ch1>
+            <ch2>17.664</ch2>
+        </Log>
+        <Log id="711">
+            <Date>2024/03/23</Date>
+            <Time>00:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1506</ch1>
+            <ch2>17.659</ch2>
+        </Log>
+        <Log id="712">
+            <Date>2024/03/23</Date>
+            <Time>00:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1539</ch1>
+            <ch2>17.662</ch2>
+        </Log>
+        <Log id="713">
+            <Date>2024/03/23</Date>
+            <Time>01:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1572</ch1>
+            <ch2>17.662</ch2>
+        </Log>
+        <Log id="714">
+            <Date>2024/03/23</Date>
+            <Time>01:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1618</ch1>
+            <ch2>17.662</ch2>
+        </Log>
+        <Log id="715">
+            <Date>2024/03/23</Date>
+            <Time>01:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1647</ch1>
+            <ch2>17.655</ch2>
+        </Log>
+        <Log id="716">
+            <Date>2024/03/23</Date>
+            <Time>01:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1669</ch1>
+            <ch2>17.654</ch2>
+        </Log>
+        <Log id="717">
+            <Date>2024/03/23</Date>
+            <Time>02:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1735</ch1>
+            <ch2>17.654</ch2>
+        </Log>
+        <Log id="718">
+            <Date>2024/03/23</Date>
+            <Time>02:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1790</ch1>
+            <ch2>17.654</ch2>
+        </Log>
+        <Log id="719">
+            <Date>2024/03/23</Date>
+            <Time>02:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1838</ch1>
+            <ch2>17.654</ch2>
+        </Log>
+        <Log id="720">
+            <Date>2024/03/23</Date>
+            <Time>02:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1912</ch1>
+            <ch2>17.651</ch2>
+        </Log>
+        <Log id="721">
+            <Date>2024/03/23</Date>
+            <Time>03:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1963</ch1>
+            <ch2>17.648</ch2>
+        </Log>
+        <Log id="722">
+            <Date>2024/03/23</Date>
+            <Time>03:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2053</ch1>
+            <ch2>17.652</ch2>
+        </Log>
+        <Log id="723">
+            <Date>2024/03/23</Date>
+            <Time>03:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2125</ch1>
+            <ch2>17.650</ch2>
+        </Log>
+        <Log id="724">
+            <Date>2024/03/23</Date>
+            <Time>03:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2193</ch1>
+            <ch2>17.648</ch2>
+        </Log>
+        <Log id="725">
+            <Date>2024/03/23</Date>
+            <Time>04:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2258</ch1>
+            <ch2>17.652</ch2>
+        </Log>
+        <Log id="726">
+            <Date>2024/03/23</Date>
+            <Time>04:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2308</ch1>
+            <ch2>17.652</ch2>
+        </Log>
+        <Log id="727">
+            <Date>2024/03/23</Date>
+            <Time>04:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2396</ch1>
+            <ch2>17.652</ch2>
+        </Log>
+        <Log id="728">
+            <Date>2024/03/23</Date>
+            <Time>04:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2472</ch1>
+            <ch2>17.652</ch2>
+        </Log>
+        <Log id="729">
+            <Date>2024/03/23</Date>
+            <Time>05:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2555</ch1>
+            <ch2>17.650</ch2>
+        </Log>
+        <Log id="730">
+            <Date>2024/03/23</Date>
+            <Time>05:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2640</ch1>
+            <ch2>17.649</ch2>
+        </Log>
+        <Log id="731">
+            <Date>2024/03/23</Date>
+            <Time>05:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2706</ch1>
+            <ch2>17.646</ch2>
+        </Log>
+        <Log id="732">
+            <Date>2024/03/23</Date>
+            <Time>05:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2789</ch1>
+            <ch2>17.649</ch2>
+        </Log>
+        <Log id="733">
+            <Date>2024/03/23</Date>
+            <Time>06:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2875</ch1>
+            <ch2>17.652</ch2>
+        </Log>
+        <Log id="734">
+            <Date>2024/03/23</Date>
+            <Time>06:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2950</ch1>
+            <ch2>17.649</ch2>
+        </Log>
+        <Log id="735">
+            <Date>2024/03/23</Date>
+            <Time>06:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3019</ch1>
+            <ch2>17.647</ch2>
+        </Log>
+        <Log id="736">
+            <Date>2024/03/23</Date>
+            <Time>06:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3115</ch1>
+            <ch2>17.645</ch2>
+        </Log>
+        <Log id="737">
+            <Date>2024/03/23</Date>
+            <Time>07:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3188</ch1>
+            <ch2>17.643</ch2>
+        </Log>
+        <Log id="738">
+            <Date>2024/03/23</Date>
+            <Time>07:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3284</ch1>
+            <ch2>17.641</ch2>
+        </Log>
+        <Log id="739">
+            <Date>2024/03/23</Date>
+            <Time>07:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3378</ch1>
+            <ch2>17.641</ch2>
+        </Log>
+        <Log id="740">
+            <Date>2024/03/23</Date>
+            <Time>07:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3467</ch1>
+            <ch2>17.644</ch2>
+        </Log>
+        <Log id="741">
+            <Date>2024/03/23</Date>
+            <Time>08:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3551</ch1>
+            <ch2>17.647</ch2>
+        </Log>
+        <Log id="742">
+            <Date>2024/03/23</Date>
+            <Time>08:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3637</ch1>
+            <ch2>17.647</ch2>
+        </Log>
+        <Log id="743">
+            <Date>2024/03/23</Date>
+            <Time>08:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3713</ch1>
+            <ch2>17.650</ch2>
+        </Log>
+        <Log id="744">
+            <Date>2024/03/23</Date>
+            <Time>08:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3775</ch1>
+            <ch2>17.649</ch2>
+        </Log>
+        <Log id="745">
+            <Date>2024/03/23</Date>
+            <Time>09:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3853</ch1>
+            <ch2>17.647</ch2>
+        </Log>
+        <Log id="746">
+            <Date>2024/03/23</Date>
+            <Time>09:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3935</ch1>
+            <ch2>17.649</ch2>
+        </Log>
+        <Log id="747">
+            <Date>2024/03/23</Date>
+            <Time>09:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4002</ch1>
+            <ch2>17.651</ch2>
+        </Log>
+        <Log id="748">
+            <Date>2024/03/23</Date>
+            <Time>09:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4052</ch1>
+            <ch2>17.651</ch2>
+        </Log>
+        <Log id="749">
+            <Date>2024/03/23</Date>
+            <Time>10:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4084</ch1>
+            <ch2>17.651</ch2>
+        </Log>
+        <Log id="750">
+            <Date>2024/03/23</Date>
+            <Time>10:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4120</ch1>
+            <ch2>17.651</ch2>
+        </Log>
+        <Log id="751">
+            <Date>2024/03/23</Date>
+            <Time>10:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4166</ch1>
+            <ch2>17.646</ch2>
+        </Log>
+        <Log id="752">
+            <Date>2024/03/23</Date>
+            <Time>10:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4197</ch1>
+            <ch2>17.646</ch2>
+        </Log>
+        <Log id="753">
+            <Date>2024/03/23</Date>
+            <Time>11:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4227</ch1>
+            <ch2>17.649</ch2>
+        </Log>
+        <Log id="754">
+            <Date>2024/03/23</Date>
+            <Time>11:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4271</ch1>
+            <ch2>17.650</ch2>
+        </Log>
+        <Log id="755">
+            <Date>2024/03/23</Date>
+            <Time>11:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4322</ch1>
+            <ch2>17.645</ch2>
+        </Log>
+        <Log id="756">
+            <Date>2024/03/23</Date>
+            <Time>11:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4360</ch1>
+            <ch2>17.645</ch2>
+        </Log>
+        <Log id="757">
+            <Date>2024/03/23</Date>
+            <Time>12:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4395</ch1>
+            <ch2>17.646</ch2>
+        </Log>
+        <Log id="758">
+            <Date>2024/03/23</Date>
+            <Time>12:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4414</ch1>
+            <ch2>17.647</ch2>
+        </Log>
+        <Log id="759">
+            <Date>2024/03/23</Date>
+            <Time>12:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4431</ch1>
+            <ch2>17.646</ch2>
+        </Log>
+        <Log id="760">
+            <Date>2024/03/23</Date>
+            <Time>12:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4430</ch1>
+            <ch2>17.646</ch2>
+        </Log>
+        <Log id="761">
+            <Date>2024/03/23</Date>
+            <Time>13:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4432</ch1>
+            <ch2>17.642</ch2>
+        </Log>
+        <Log id="762">
+            <Date>2024/03/23</Date>
+            <Time>13:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4431</ch1>
+            <ch2>17.641</ch2>
+        </Log>
+        <Log id="763">
+            <Date>2024/03/23</Date>
+            <Time>13:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4388</ch1>
+            <ch2>17.640</ch2>
+        </Log>
+        <Log id="764">
+            <Date>2024/03/23</Date>
+            <Time>13:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4327</ch1>
+            <ch2>17.640</ch2>
+        </Log>
+        <Log id="765">
+            <Date>2024/03/23</Date>
+            <Time>14:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4281</ch1>
+            <ch2>17.643</ch2>
+        </Log>
+        <Log id="766">
+            <Date>2024/03/23</Date>
+            <Time>14:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4227</ch1>
+            <ch2>17.643</ch2>
+        </Log>
+        <Log id="767">
+            <Date>2024/03/23</Date>
+            <Time>14:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4198</ch1>
+            <ch2>17.646</ch2>
+        </Log>
+        <Log id="768">
+            <Date>2024/03/23</Date>
+            <Time>14:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4172</ch1>
+            <ch2>17.645</ch2>
+        </Log>
+        <Log id="769">
+            <Date>2024/03/23</Date>
+            <Time>15:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4147</ch1>
+            <ch2>17.645</ch2>
+        </Log>
+        <Log id="770">
+            <Date>2024/03/23</Date>
+            <Time>15:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.4133</ch1>
+            <ch2>17.650</ch2>
+        </Log>
+        <Log id="771">
+            <Date>2024/03/23</Date>
+            <Time>15:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.4091</ch1>
+            <ch2>17.648</ch2>
+        </Log>
+        <Log id="772">
+            <Date>2024/03/23</Date>
+            <Time>15:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.4061</ch1>
+            <ch2>17.650</ch2>
+        </Log>
+        <Log id="773">
+            <Date>2024/03/23</Date>
+            <Time>16:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.4040</ch1>
+            <ch2>17.648</ch2>
+        </Log>
+        <Log id="774">
+            <Date>2024/03/23</Date>
+            <Time>16:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3997</ch1>
+            <ch2>17.648</ch2>
+        </Log>
+        <Log id="775">
+            <Date>2024/03/23</Date>
+            <Time>16:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3962</ch1>
+            <ch2>17.651</ch2>
+        </Log>
+        <Log id="776">
+            <Date>2024/03/23</Date>
+            <Time>16:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3933</ch1>
+            <ch2>17.652</ch2>
+        </Log>
+        <Log id="777">
+            <Date>2024/03/23</Date>
+            <Time>17:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3909</ch1>
+            <ch2>17.651</ch2>
+        </Log>
+        <Log id="778">
+            <Date>2024/03/23</Date>
+            <Time>17:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3885</ch1>
+            <ch2>17.646</ch2>
+        </Log>
+        <Log id="779">
+            <Date>2024/03/23</Date>
+            <Time>17:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3859</ch1>
+            <ch2>17.645</ch2>
+        </Log>
+        <Log id="780">
+            <Date>2024/03/23</Date>
+            <Time>17:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3839</ch1>
+            <ch2>17.644</ch2>
+        </Log>
+        <Log id="781">
+            <Date>2024/03/23</Date>
+            <Time>18:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3813</ch1>
+            <ch2>17.643</ch2>
+        </Log>
+        <Log id="782">
+            <Date>2024/03/23</Date>
+            <Time>18:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3775</ch1>
+            <ch2>17.642</ch2>
+        </Log>
+        <Log id="783">
+            <Date>2024/03/23</Date>
+            <Time>18:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3756</ch1>
+            <ch2>17.643</ch2>
+        </Log>
+        <Log id="784">
+            <Date>2024/03/23</Date>
+            <Time>18:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3757</ch1>
+            <ch2>17.644</ch2>
+        </Log>
+        <Log id="785">
+            <Date>2024/03/23</Date>
+            <Time>19:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3744</ch1>
+            <ch2>17.641</ch2>
+        </Log>
+        <Log id="786">
+            <Date>2024/03/23</Date>
+            <Time>19:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3756</ch1>
+            <ch2>17.641</ch2>
+        </Log>
+        <Log id="787">
+            <Date>2024/03/23</Date>
+            <Time>19:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3779</ch1>
+            <ch2>17.639</ch2>
+        </Log>
+        <Log id="788">
+            <Date>2024/03/23</Date>
+            <Time>19:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3806</ch1>
+            <ch2>17.641</ch2>
+        </Log>
+        <Log id="789">
+            <Date>2024/03/23</Date>
+            <Time>20:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3800</ch1>
+            <ch2>17.644</ch2>
+        </Log>
+        <Log id="790">
+            <Date>2024/03/23</Date>
+            <Time>20:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3788</ch1>
+            <ch2>17.647</ch2>
+        </Log>
+        <Log id="791">
+            <Date>2024/03/23</Date>
+            <Time>20:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3807</ch1>
+            <ch2>17.646</ch2>
+        </Log>
+        <Log id="792">
+            <Date>2024/03/23</Date>
+            <Time>20:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3827</ch1>
+            <ch2>17.643</ch2>
+        </Log>
+        <Log id="793">
+            <Date>2024/03/23</Date>
+            <Time>21:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3862</ch1>
+            <ch2>17.642</ch2>
+        </Log>
+        <Log id="794">
+            <Date>2024/03/23</Date>
+            <Time>21:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3900</ch1>
+            <ch2>17.639</ch2>
+        </Log>
+        <Log id="795">
+            <Date>2024/03/23</Date>
+            <Time>21:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3928</ch1>
+            <ch2>17.637</ch2>
+        </Log>
+        <Log id="796">
+            <Date>2024/03/23</Date>
+            <Time>21:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3934</ch1>
+            <ch2>17.638</ch2>
+        </Log>
+        <Log id="797">
+            <Date>2024/03/23</Date>
+            <Time>22:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3944</ch1>
+            <ch2>17.637</ch2>
+        </Log>
+        <Log id="798">
+            <Date>2024/03/23</Date>
+            <Time>22:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3959</ch1>
+            <ch2>17.637</ch2>
+        </Log>
+        <Log id="799">
+            <Date>2024/03/23</Date>
+            <Time>22:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3973</ch1>
+            <ch2>17.637</ch2>
+        </Log>
+        <Log id="800">
+            <Date>2024/03/23</Date>
+            <Time>22:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3974</ch1>
+            <ch2>17.634</ch2>
+        </Log>
+        <Log id="801">
+            <Date>2024/03/23</Date>
+            <Time>23:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3963</ch1>
+            <ch2>17.629</ch2>
+        </Log>
+        <Log id="802">
+            <Date>2024/03/23</Date>
+            <Time>23:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3951</ch1>
+            <ch2>17.632</ch2>
+        </Log>
+        <Log id="803">
+            <Date>2024/03/23</Date>
+            <Time>23:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3911</ch1>
+            <ch2>17.637</ch2>
+        </Log>
+        <Log id="804">
+            <Date>2024/03/23</Date>
+            <Time>23:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3877</ch1>
+            <ch2>17.636</ch2>
+        </Log>
+        <Log id="805">
+            <Date>2024/03/24</Date>
+            <Time>00:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3850</ch1>
+            <ch2>17.635</ch2>
+        </Log>
+        <Log id="806">
+            <Date>2024/03/24</Date>
+            <Time>00:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3817</ch1>
+            <ch2>17.635</ch2>
+        </Log>
+        <Log id="807">
+            <Date>2024/03/24</Date>
+            <Time>00:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3799</ch1>
+            <ch2>17.636</ch2>
+        </Log>
+        <Log id="808">
+            <Date>2024/03/24</Date>
+            <Time>00:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3782</ch1>
+            <ch2>17.635</ch2>
+        </Log>
+        <Log id="809">
+            <Date>2024/03/24</Date>
+            <Time>01:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3754</ch1>
+            <ch2>17.633</ch2>
+        </Log>
+        <Log id="810">
+            <Date>2024/03/24</Date>
+            <Time>01:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3732</ch1>
+            <ch2>17.635</ch2>
+        </Log>
+        <Log id="811">
+            <Date>2024/03/24</Date>
+            <Time>01:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3707</ch1>
+            <ch2>17.639</ch2>
+        </Log>
+        <Log id="812">
+            <Date>2024/03/24</Date>
+            <Time>01:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3666</ch1>
+            <ch2>17.642</ch2>
+        </Log>
+        <Log id="813">
+            <Date>2024/03/24</Date>
+            <Time>02:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3634</ch1>
+            <ch2>17.643</ch2>
+        </Log>
+        <Log id="814">
+            <Date>2024/03/24</Date>
+            <Time>02:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3620</ch1>
+            <ch2>17.643</ch2>
+        </Log>
+        <Log id="815">
+            <Date>2024/03/24</Date>
+            <Time>02:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3593</ch1>
+            <ch2>17.643</ch2>
+        </Log>
+        <Log id="816">
+            <Date>2024/03/24</Date>
+            <Time>02:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3554</ch1>
+            <ch2>17.640</ch2>
+        </Log>
+        <Log id="817">
+            <Date>2024/03/24</Date>
+            <Time>03:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3496</ch1>
+            <ch2>17.641</ch2>
+        </Log>
+        <Log id="818">
+            <Date>2024/03/24</Date>
+            <Time>03:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3440</ch1>
+            <ch2>17.638</ch2>
+        </Log>
+        <Log id="819">
+            <Date>2024/03/24</Date>
+            <Time>03:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3379</ch1>
+            <ch2>17.641</ch2>
+        </Log>
+        <Log id="820">
+            <Date>2024/03/24</Date>
+            <Time>03:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3345</ch1>
+            <ch2>17.639</ch2>
+        </Log>
+        <Log id="821">
+            <Date>2024/03/24</Date>
+            <Time>04:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3325</ch1>
+            <ch2>17.640</ch2>
+        </Log>
+        <Log id="822">
+            <Date>2024/03/24</Date>
+            <Time>04:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3295</ch1>
+            <ch2>17.638</ch2>
+        </Log>
+        <Log id="823">
+            <Date>2024/03/24</Date>
+            <Time>04:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3265</ch1>
+            <ch2>17.639</ch2>
+        </Log>
+        <Log id="824">
+            <Date>2024/03/24</Date>
+            <Time>04:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3218</ch1>
+            <ch2>17.640</ch2>
+        </Log>
+        <Log id="825">
+            <Date>2024/03/24</Date>
+            <Time>05:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3180</ch1>
+            <ch2>17.640</ch2>
+        </Log>
+        <Log id="826">
+            <Date>2024/03/24</Date>
+            <Time>05:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3147</ch1>
+            <ch2>17.637</ch2>
+        </Log>
+        <Log id="827">
+            <Date>2024/03/24</Date>
+            <Time>05:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3107</ch1>
+            <ch2>17.638</ch2>
+        </Log>
+        <Log id="828">
+            <Date>2024/03/24</Date>
+            <Time>05:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3068</ch1>
+            <ch2>17.637</ch2>
+        </Log>
+        <Log id="829">
+            <Date>2024/03/24</Date>
+            <Time>06:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3058</ch1>
+            <ch2>17.638</ch2>
+        </Log>
+        <Log id="830">
+            <Date>2024/03/24</Date>
+            <Time>06:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3032</ch1>
+            <ch2>17.641</ch2>
+        </Log>
+        <Log id="831">
+            <Date>2024/03/24</Date>
+            <Time>06:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3012</ch1>
+            <ch2>17.635</ch2>
+        </Log>
+        <Log id="832">
+            <Date>2024/03/24</Date>
+            <Time>06:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3004</ch1>
+            <ch2>17.637</ch2>
+        </Log>
+        <Log id="833">
+            <Date>2024/03/24</Date>
+            <Time>07:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3014</ch1>
+            <ch2>17.639</ch2>
+        </Log>
+        <Log id="834">
+            <Date>2024/03/24</Date>
+            <Time>07:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3016</ch1>
+            <ch2>17.640</ch2>
+        </Log>
+        <Log id="835">
+            <Date>2024/03/24</Date>
+            <Time>07:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3026</ch1>
+            <ch2>17.639</ch2>
+        </Log>
+        <Log id="836">
+            <Date>2024/03/24</Date>
+            <Time>07:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3039</ch1>
+            <ch2>17.641</ch2>
+        </Log>
+        <Log id="837">
+            <Date>2024/03/24</Date>
+            <Time>08:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3031</ch1>
+            <ch2>17.640</ch2>
+        </Log>
+        <Log id="838">
+            <Date>2024/03/24</Date>
+            <Time>08:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3028</ch1>
+            <ch2>17.636</ch2>
+        </Log>
+        <Log id="839">
+            <Date>2024/03/24</Date>
+            <Time>08:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3032</ch1>
+            <ch2>17.637</ch2>
+        </Log>
+        <Log id="840">
+            <Date>2024/03/24</Date>
+            <Time>08:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3034</ch1>
+            <ch2>17.640</ch2>
+        </Log>
+        <Log id="841">
+            <Date>2024/03/24</Date>
+            <Time>09:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3032</ch1>
+            <ch2>17.641</ch2>
+        </Log>
+        <Log id="842">
+            <Date>2024/03/24</Date>
+            <Time>09:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3041</ch1>
+            <ch2>17.635</ch2>
+        </Log>
+        <Log id="843">
+            <Date>2024/03/24</Date>
+            <Time>09:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.3035</ch1>
+            <ch2>17.635</ch2>
+        </Log>
+        <Log id="844">
+            <Date>2024/03/24</Date>
+            <Time>09:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.3040</ch1>
+            <ch2>17.637</ch2>
+        </Log>
+        <Log id="845">
+            <Date>2024/03/24</Date>
+            <Time>10:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.3035</ch1>
+            <ch2>17.638</ch2>
+        </Log>
+        <Log id="846">
+            <Date>2024/03/24</Date>
+            <Time>10:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.3009</ch1>
+            <ch2>17.638</ch2>
+        </Log>
+        <Log id="847">
+            <Date>2024/03/24</Date>
+            <Time>10:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2978</ch1>
+            <ch2>17.636</ch2>
+        </Log>
+        <Log id="848">
+            <Date>2024/03/24</Date>
+            <Time>10:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2956</ch1>
+            <ch2>17.642</ch2>
+        </Log>
+        <Log id="849">
+            <Date>2024/03/24</Date>
+            <Time>11:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2924</ch1>
+            <ch2>17.639</ch2>
+        </Log>
+        <Log id="850">
+            <Date>2024/03/24</Date>
+            <Time>11:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2890</ch1>
+            <ch2>17.638</ch2>
+        </Log>
+        <Log id="851">
+            <Date>2024/03/24</Date>
+            <Time>11:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2866</ch1>
+            <ch2>17.637</ch2>
+        </Log>
+        <Log id="852">
+            <Date>2024/03/24</Date>
+            <Time>11:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2832</ch1>
+            <ch2>17.638</ch2>
+        </Log>
+        <Log id="853">
+            <Date>2024/03/24</Date>
+            <Time>12:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2805</ch1>
+            <ch2>17.643</ch2>
+        </Log>
+        <Log id="854">
+            <Date>2024/03/24</Date>
+            <Time>12:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2764</ch1>
+            <ch2>17.641</ch2>
+        </Log>
+        <Log id="855">
+            <Date>2024/03/24</Date>
+            <Time>12:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2711</ch1>
+            <ch2>17.637</ch2>
+        </Log>
+        <Log id="856">
+            <Date>2024/03/24</Date>
+            <Time>12:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2671</ch1>
+            <ch2>17.639</ch2>
+        </Log>
+        <Log id="857">
+            <Date>2024/03/24</Date>
+            <Time>13:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2610</ch1>
+            <ch2>17.638</ch2>
+        </Log>
+        <Log id="858">
+            <Date>2024/03/24</Date>
+            <Time>13:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2533</ch1>
+            <ch2>17.639</ch2>
+        </Log>
+        <Log id="859">
+            <Date>2024/03/24</Date>
+            <Time>13:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2421</ch1>
+            <ch2>17.640</ch2>
+        </Log>
+        <Log id="860">
+            <Date>2024/03/24</Date>
+            <Time>13:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.2353</ch1>
+            <ch2>17.643</ch2>
+        </Log>
+        <Log id="861">
+            <Date>2024/03/24</Date>
+            <Time>14:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.2280</ch1>
+            <ch2>17.641</ch2>
+        </Log>
+        <Log id="862">
+            <Date>2024/03/24</Date>
+            <Time>14:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.2193</ch1>
+            <ch2>17.643</ch2>
+        </Log>
+        <Log id="863">
+            <Date>2024/03/24</Date>
+            <Time>14:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.2088</ch1>
+            <ch2>17.645</ch2>
+        </Log>
+        <Log id="864">
+            <Date>2024/03/24</Date>
+            <Time>14:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1976</ch1>
+            <ch2>17.639</ch2>
+        </Log>
+        <Log id="865">
+            <Date>2024/03/24</Date>
+            <Time>15:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1879</ch1>
+            <ch2>17.640</ch2>
+        </Log>
+        <Log id="866">
+            <Date>2024/03/24</Date>
+            <Time>15:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1774</ch1>
+            <ch2>17.639</ch2>
+        </Log>
+        <Log id="867">
+            <Date>2024/03/24</Date>
+            <Time>15:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1684</ch1>
+            <ch2>17.641</ch2>
+        </Log>
+        <Log id="868">
+            <Date>2024/03/24</Date>
+            <Time>15:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1594</ch1>
+            <ch2>17.641</ch2>
+        </Log>
+        <Log id="869">
+            <Date>2024/03/24</Date>
+            <Time>16:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1495</ch1>
+            <ch2>17.641</ch2>
+        </Log>
+        <Log id="870">
+            <Date>2024/03/24</Date>
+            <Time>16:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1410</ch1>
+            <ch2>17.640</ch2>
+        </Log>
+        <Log id="871">
+            <Date>2024/03/24</Date>
+            <Time>16:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1306</ch1>
+            <ch2>17.643</ch2>
+        </Log>
+        <Log id="872">
+            <Date>2024/03/24</Date>
+            <Time>16:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1200</ch1>
+            <ch2>17.642</ch2>
+        </Log>
+        <Log id="873">
+            <Date>2024/03/24</Date>
+            <Time>17:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1112</ch1>
+            <ch2>17.641</ch2>
+        </Log>
+        <Log id="874">
+            <Date>2024/03/24</Date>
+            <Time>17:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1022</ch1>
+            <ch2>17.636</ch2>
+        </Log>
+        <Log id="875">
+            <Date>2024/03/24</Date>
+            <Time>17:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.0935</ch1>
+            <ch2>17.635</ch2>
+        </Log>
+        <Log id="876">
+            <Date>2024/03/24</Date>
+            <Time>17:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.0875</ch1>
+            <ch2>17.635</ch2>
+        </Log>
+        <Log id="877">
+            <Date>2024/03/24</Date>
+            <Time>18:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.0817</ch1>
+            <ch2>17.635</ch2>
+        </Log>
+        <Log id="878">
+            <Date>2024/03/24</Date>
+            <Time>18:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.0812</ch1>
+            <ch2>17.639</ch2>
+        </Log>
+        <Log id="879">
+            <Date>2024/03/24</Date>
+            <Time>18:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.0819</ch1>
+            <ch2>17.638</ch2>
+        </Log>
+        <Log id="880">
+            <Date>2024/03/24</Date>
+            <Time>18:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.0815</ch1>
+            <ch2>17.637</ch2>
+        </Log>
+        <Log id="881">
+            <Date>2024/03/24</Date>
+            <Time>19:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.0812</ch1>
+            <ch2>17.633</ch2>
+        </Log>
+        <Log id="882">
+            <Date>2024/03/24</Date>
+            <Time>19:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.0801</ch1>
+            <ch2>17.634</ch2>
+        </Log>
+        <Log id="883">
+            <Date>2024/03/24</Date>
+            <Time>19:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.0799</ch1>
+            <ch2>17.633</ch2>
+        </Log>
+        <Log id="884">
+            <Date>2024/03/24</Date>
+            <Time>19:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.0775</ch1>
+            <ch2>17.632</ch2>
+        </Log>
+        <Log id="885">
+            <Date>2024/03/24</Date>
+            <Time>20:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.0763</ch1>
+            <ch2>17.633</ch2>
+        </Log>
+        <Log id="886">
+            <Date>2024/03/24</Date>
+            <Time>20:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.0755</ch1>
+            <ch2>17.636</ch2>
+        </Log>
+        <Log id="887">
+            <Date>2024/03/24</Date>
+            <Time>20:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.0789</ch1>
+            <ch2>17.636</ch2>
+        </Log>
+        <Log id="888">
+            <Date>2024/03/24</Date>
+            <Time>20:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.0818</ch1>
+            <ch2>17.635</ch2>
+        </Log>
+        <Log id="889">
+            <Date>2024/03/24</Date>
+            <Time>21:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.0851</ch1>
+            <ch2>17.636</ch2>
+        </Log>
+        <Log id="890">
+            <Date>2024/03/24</Date>
+            <Time>21:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.0878</ch1>
+            <ch2>17.636</ch2>
+        </Log>
+        <Log id="891">
+            <Date>2024/03/24</Date>
+            <Time>21:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.0910</ch1>
+            <ch2>17.636</ch2>
+        </Log>
+        <Log id="892">
+            <Date>2024/03/24</Date>
+            <Time>21:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.0953</ch1>
+            <ch2>17.637</ch2>
+        </Log>
+        <Log id="893">
+            <Date>2024/03/24</Date>
+            <Time>22:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.0990</ch1>
+            <ch2>17.637</ch2>
+        </Log>
+        <Log id="894">
+            <Date>2024/03/24</Date>
+            <Time>22:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1025</ch1>
+            <ch2>17.633</ch2>
+        </Log>
+        <Log id="895">
+            <Date>2024/03/24</Date>
+            <Time>22:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1054</ch1>
+            <ch2>17.630</ch2>
+        </Log>
+        <Log id="896">
+            <Date>2024/03/24</Date>
+            <Time>22:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1081</ch1>
+            <ch2>17.631</ch2>
+        </Log>
+        <Log id="897">
+            <Date>2024/03/24</Date>
+            <Time>23:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1091</ch1>
+            <ch2>17.637</ch2>
+        </Log>
+        <Log id="898">
+            <Date>2024/03/24</Date>
+            <Time>23:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1082</ch1>
+            <ch2>17.636</ch2>
+        </Log>
+        <Log id="899">
+            <Date>2024/03/24</Date>
+            <Time>23:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1069</ch1>
+            <ch2>17.632</ch2>
+        </Log>
+        <Log id="900">
+            <Date>2024/03/24</Date>
+            <Time>23:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1078</ch1>
+            <ch2>17.632</ch2>
+        </Log>
+        <Log id="901">
+            <Date>2024/03/25</Date>
+            <Time>00:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1089</ch1>
+            <ch2>17.638</ch2>
+        </Log>
+        <Log id="902">
+            <Date>2024/03/25</Date>
+            <Time>00:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1066</ch1>
+            <ch2>17.636</ch2>
+        </Log>
+        <Log id="903">
+            <Date>2024/03/25</Date>
+            <Time>00:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1065</ch1>
+            <ch2>17.635</ch2>
+        </Log>
+        <Log id="904">
+            <Date>2024/03/25</Date>
+            <Time>00:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1081</ch1>
+            <ch2>17.634</ch2>
+        </Log>
+        <Log id="905">
+            <Date>2024/03/25</Date>
+            <Time>01:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1101</ch1>
+            <ch2>17.638</ch2>
+        </Log>
+        <Log id="906">
+            <Date>2024/03/25</Date>
+            <Time>01:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1092</ch1>
+            <ch2>17.637</ch2>
+        </Log>
+        <Log id="907">
+            <Date>2024/03/25</Date>
+            <Time>01:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1090</ch1>
+            <ch2>17.639</ch2>
+        </Log>
+        <Log id="908">
+            <Date>2024/03/25</Date>
+            <Time>01:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1088</ch1>
+            <ch2>17.638</ch2>
+        </Log>
+        <Log id="909">
+            <Date>2024/03/25</Date>
+            <Time>02:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1075</ch1>
+            <ch2>17.638</ch2>
+        </Log>
+        <Log id="910">
+            <Date>2024/03/25</Date>
+            <Time>02:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.1047</ch1>
+            <ch2>17.636</ch2>
+        </Log>
+        <Log id="911">
+            <Date>2024/03/25</Date>
+            <Time>02:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.1055</ch1>
+            <ch2>17.637</ch2>
+        </Log>
+        <Log id="912">
+            <Date>2024/03/25</Date>
+            <Time>02:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.1035</ch1>
+            <ch2>17.638</ch2>
+        </Log>
+        <Log id="913">
+            <Date>2024/03/25</Date>
+            <Time>03:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.1015</ch1>
+            <ch2>17.637</ch2>
+        </Log>
+        <Log id="914">
+            <Date>2024/03/25</Date>
+            <Time>03:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.0973</ch1>
+            <ch2>17.636</ch2>
+        </Log>
+        <Log id="915">
+            <Date>2024/03/25</Date>
+            <Time>03:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.0944</ch1>
+            <ch2>17.636</ch2>
+        </Log>
+        <Log id="916">
+            <Date>2024/03/25</Date>
+            <Time>03:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.0914</ch1>
+            <ch2>17.638</ch2>
+        </Log>
+        <Log id="917">
+            <Date>2024/03/25</Date>
+            <Time>04:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.0877</ch1>
+            <ch2>17.638</ch2>
+        </Log>
+        <Log id="918">
+            <Date>2024/03/25</Date>
+            <Time>04:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.0845</ch1>
+            <ch2>17.640</ch2>
+        </Log>
+        <Log id="919">
+            <Date>2024/03/25</Date>
+            <Time>04:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.0788</ch1>
+            <ch2>17.641</ch2>
+        </Log>
+        <Log id="920">
+            <Date>2024/03/25</Date>
+            <Time>04:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.0741</ch1>
+            <ch2>17.640</ch2>
+        </Log>
+        <Log id="921">
+            <Date>2024/03/25</Date>
+            <Time>05:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.0707</ch1>
+            <ch2>17.641</ch2>
+        </Log>
+        <Log id="922">
+            <Date>2024/03/25</Date>
+            <Time>05:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.0697</ch1>
+            <ch2>17.640</ch2>
+        </Log>
+        <Log id="923">
+            <Date>2024/03/25</Date>
+            <Time>05:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.0687</ch1>
+            <ch2>17.636</ch2>
+        </Log>
+        <Log id="924">
+            <Date>2024/03/25</Date>
+            <Time>05:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.0692</ch1>
+            <ch2>17.633</ch2>
+        </Log>
+        <Log id="925">
+            <Date>2024/03/25</Date>
+            <Time>06:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.0702</ch1>
+            <ch2>17.629</ch2>
+        </Log>
+        <Log id="926">
+            <Date>2024/03/25</Date>
+            <Time>06:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.0713</ch1>
+            <ch2>17.628</ch2>
+        </Log>
+        <Log id="927">
+            <Date>2024/03/25</Date>
+            <Time>06:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.0757</ch1>
+            <ch2>17.627</ch2>
+        </Log>
+        <Log id="928">
+            <Date>2024/03/25</Date>
+            <Time>06:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.0778</ch1>
+            <ch2>17.630</ch2>
+        </Log>
+        <Log id="929">
+            <Date>2024/03/25</Date>
+            <Time>07:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.0795</ch1>
+            <ch2>17.630</ch2>
+        </Log>
+        <Log id="930">
+            <Date>2024/03/25</Date>
+            <Time>07:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.0797</ch1>
+            <ch2>17.627</ch2>
+        </Log>
+        <Log id="931">
+            <Date>2024/03/25</Date>
+            <Time>07:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.0826</ch1>
+            <ch2>17.627</ch2>
+        </Log>
+        <Log id="932">
+            <Date>2024/03/25</Date>
+            <Time>07:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.0855</ch1>
+            <ch2>17.628</ch2>
+        </Log>
+        <Log id="933">
+            <Date>2024/03/25</Date>
+            <Time>08:00:00</Time>
+            <ms>0</ms>
+            <ch1>47.0880</ch1>
+            <ch2>17.627</ch2>
+        </Log>
+        <Log id="934">
+            <Date>2024/03/25</Date>
+            <Time>08:15:00</Time>
+            <ms>0</ms>
+            <ch1>47.0884</ch1>
+            <ch2>17.628</ch2>
+        </Log>
+        <Log id="935">
+            <Date>2024/03/25</Date>
+            <Time>08:30:00</Time>
+            <ms>0</ms>
+            <ch1>47.0892</ch1>
+            <ch2>17.630</ch2>
+        </Log>
+        <Log id="936">
+            <Date>2024/03/25</Date>
+            <Time>08:45:00</Time>
+            <ms>0</ms>
+            <ch1>47.0889</ch1>
+            <ch2>17.632</ch2>
+        </Log>
+    </Data>
+</Body_xle>
