@@ -1307,7 +1307,7 @@ class AutoUpdateHandler:
                         project_name=project_name,
                         device_type=device_type,
                         serial_number=serial_number or serial_or_cae_number,
-                        location='auto-sync',
+                        location='field-data',
                         start_date=start_date,
                         end_date=end_date,
                         well_number=well_number

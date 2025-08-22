@@ -183,6 +183,11 @@ class SharedDatabaseXLEManager:
             True if successful
         """
         try:
+            # First, clean up any corrupted registry entries for this project
+            corrupted_count = self.cleanup_corrupted_registry(project_name)
+            if corrupted_count > 0:
+                logger.info(f"Cleaned up {corrupted_count} corrupted registry entries before move")
+            
             temp_files = self.list_temp_xle_files(project_name)
             if not temp_files:
                 logger.info(f"No temp XLE files to move for project: {project_name}")
@@ -340,6 +345,43 @@ class SharedDatabaseXLEManager:
             
         except Exception as e:
             logger.error(f"Error cleaning up orphaned files: {e}")
+            return 0
+    
+    def cleanup_corrupted_registry(self, project_name: str = None) -> int:
+        """
+        Clean up corrupted registry entries where files don't exist
+        
+        Args:
+            project_name: Optional project name to limit cleanup to specific project
+            
+        Returns:
+            Number of corrupted entries cleaned up
+        """
+        try:
+            registry = self._load_registry()
+            cleaned_count = 0
+            
+            # Check each registry entry
+            for file_id, record in list(registry.items()):
+                if record['status'] == 'temp':
+                    # Skip if project filter specified and doesn't match
+                    if project_name and record.get('project_name') != project_name:
+                        continue
+                    
+                    # Check if temp file actually exists
+                    if not os.path.exists(record['temp_path']):
+                        logger.info(f"Removing corrupted registry entry: {record['temp_path']}")
+                        del registry[file_id]
+                        cleaned_count += 1
+            
+            if cleaned_count > 0:
+                self._save_registry(registry)
+                logger.info(f"Cleaned up {cleaned_count} corrupted registry entries")
+            
+            return cleaned_count
+            
+        except Exception as e:
+            logger.error(f"Error cleaning up corrupted registry: {e}")
             return 0
     
     def get_temp_storage_info(self) -> Dict:
