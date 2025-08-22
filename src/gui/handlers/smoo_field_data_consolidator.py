@@ -469,6 +469,8 @@ class HybridFieldDataConsolidator:
                     'cae_number': clean_cae_number,
                     'location': metadata.location if metadata.location else 'unknown',
                     'device_type': device_type,
+                    'instrument_type': metadata.instrument_type if hasattr(metadata, 'instrument_type') else 'unknown',
+                    'model_number': metadata.model_number.strip() if hasattr(metadata, 'model_number') and metadata.model_number else 'unknown',
                     'level_unit': metadata.level_unit if hasattr(metadata, 'level_unit') else 'unknown',
                     'original_level_unit': metadata.original_level_unit if hasattr(metadata, 'original_level_unit') else 'unknown',
                     'actual_start_date': first_date.isoformat(),
@@ -517,7 +519,7 @@ class HybridFieldDataConsolidator:
                     'files': []
                 }
             
-            # Create file entry with enhanced metadata
+            # Create file entry with enhanced metadata including instrument details
             file_entry = {
                 'filename': filename,
                 'shared_drive_file_path': file_path,
@@ -526,6 +528,8 @@ class HybridFieldDataConsolidator:
                 'cae_number': file_metadata.get('cae_number', 'unknown'),
                 'location': file_metadata.get('location', 'unknown'),
                 'device_type': file_metadata.get('device_type', 'unknown'),
+                'instrument_type': file_metadata.get('instrument_type', 'unknown'),
+                'model_number': file_metadata.get('model_number', 'unknown'),
                 'level_unit': file_metadata.get('level_unit', 'unknown'),
                 'original_level_unit': file_metadata.get('original_level_unit', 'unknown'),
                 'detection_method': 'units_based' if file_metadata.get('level_unit') != 'unknown' else 'filename_fallback',
