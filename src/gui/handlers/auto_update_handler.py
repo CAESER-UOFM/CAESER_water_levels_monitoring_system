@@ -59,79 +59,62 @@ class AutoUpdateHandler:
             progress_dialog.setFixedSize(450, 120)
             progress_dialog.show()
             
-            # Step 1: Check Google Drive authentication
-            progress_dialog.setLabelText("Verifying Google Drive connection...")
+            # Step 1: Run field data file sync to ensure all files are organized in SMOO
+            progress_dialog.setLabelText("Syncing field data files to SMOO...")
             progress_dialog.setValue(5)
             QApplication.processEvents()
             
-            if not self.drive_service.get_service():
-                logger.error("AUTO_SYNC_DEBUG: Google Drive service not available")
+            logger.info("AUTO_SYNC_DEBUG: Running field data sync to organize new files in SMOO...")
+            
+            # Call the working sync_field_data_files_only method
+            try:
+                # This method handles Google Drive → SMOO file organization
+                # It's the same process as the "Sync Field Data Files Only" button
+                self.parent.sync_field_data_files_only()
+                logger.info("AUTO_SYNC_DEBUG: Field data sync completed successfully")
+                
+                # Update progress after sync completion
+                progress_dialog.setLabelText("Field data sync completed")
+                progress_dialog.setValue(15)
+                QApplication.processEvents()
+                
+            except Exception as sync_error:
+                logger.error(f"AUTO_SYNC_DEBUG: Field data sync failed: {sync_error}")
                 progress_dialog.close()
-                QMessageBox.warning(self.parent, "Authentication Required", 
-                                  "Google Drive authentication required. Please check your service account configuration.")
+                QMessageBox.warning(
+                    self.parent, 
+                    "Field Data Sync Failed", 
+                    f"Failed to sync field data files from Google Drive to SMOO:\n\n{str(sync_error)}\n\n"
+                    "Auto-sync requires organized field data to function properly."
+                )
                 return
             
-            logger.info("AUTO_SYNC_DEBUG: Google Drive service authenticated successfully")
-            
-            # Step 2: Consolidate new files from SOLINST folder
-            progress_dialog.setLabelText("Consolidating new files from SOLINST folder...")
-            progress_dialog.setValue(10)
+            # Step 2: Initialize SMOO folder scanner for database import
+            progress_dialog.setLabelText("Accessing SMOO consolidated data folder...")
+            progress_dialog.setValue(20)
             QApplication.processEvents()
             
-            # Import and run field data consolidation
-            from ..handlers.field_data_consolidator import FieldDataConsolidator
-            consolidator = FieldDataConsolidator(self.drive_service.get_service(), self.settings_handler)
+            logger.info("AUTO_SYNC_DEBUG: Initializing SMOO folder scanner for database import...")
             
-            def consolidation_progress(message, percent):
-                # Map consolidation progress (0-100%) to overall progress (10-15%)
-                overall_progress = 10 + int(percent * 0.05)  # 5% of total progress for consolidation
-                progress_dialog.setLabelText(f"SOLINST → Consolidated: {message}")
-                progress_dialog.setValue(overall_progress)
-                QApplication.processEvents()
-            
-            logger.info("AUTO_SYNC_DEBUG: Running field data consolidation to organize new SOLINST files...")
-            consolidation_success = consolidator.consolidate_field_data(consolidation_progress)
-            
-            if consolidation_success:
-                logger.info("AUTO_SYNC_DEBUG: Field data consolidation completed - metadata updated in real-time")
-            else:
-                logger.warning("AUTO_SYNC_DEBUG: Field data consolidation had issues, continuing with existing data")
-            
-            # Step 3: Initialize consolidated folder monitor
-            progress_dialog.setLabelText("Accessing consolidated field data folder...")
-            progress_dialog.setValue(15)
-            QApplication.processEvents()
-            
-            consolidated_folder_id = self.settings_handler.get_setting("consolidated_field_data_folder", "")
-            logger.info(f"AUTO_SYNC_DEBUG: Consolidated folder ID from settings: {consolidated_folder_id}")
-            
-            if not consolidated_folder_id:
-                logger.info("AUTO_SYNC_DEBUG: No consolidated folder ID found, attempting auto-detection...")
-                # Try to auto-detect the FIELD_DATA_CONSOLIDATED folder
-                consolidated_folder_id = self._auto_detect_consolidated_folder()
-                if consolidated_folder_id:
-                    # Save the detected folder ID for future use
-                    self.settings_handler.set_setting("consolidated_field_data_folder", consolidated_folder_id)
-                    logger.info(f"AUTO_SYNC_DEBUG: Auto-detected and saved consolidated folder ID: {consolidated_folder_id}")
-                else:
-                    logger.error("AUTO_SYNC_DEBUG: Could not auto-detect consolidated folder")
-                    progress_dialog.close()
-                    QMessageBox.warning(self.parent, "Configuration Missing", 
-                                      "Consolidated field data folder not found. Please run field data consolidation first.\n\n"
-                                      "To set this up:\n"
-                                      "1. Go to the 'Runs' tab\n"
-                                      "2. Click 'Consolidate Field Data' button\n"
-                                      "3. This will organize your field data and enable Auto Sync\n\n"
-                                      "Auto Sync requires the consolidated folder structure to work properly.")
-                    return
-            else:
-                logger.info(f"AUTO_SYNC_DEBUG: Using existing consolidated folder ID: {consolidated_folder_id}")
-            
-            # Initialize runs monitor for consolidated folder
-            from ..handlers.runs_folder_monitor import RunsFolderMonitor
-            if not self.runs_monitor:
-                self.runs_monitor = RunsFolderMonitor(consolidated_folder_id, self.db_manager.current_db)
-                self.runs_monitor.set_authenticated_service(self.drive_service.get_service())
+            try:
+                # Initialize SMOO scanner (replaces Google Drive API scanning)
+                from ..handlers.smoo_folder_scanner import SMOOFolderScanner
+                self.smoo_scanner = SMOOFolderScanner(self.db_manager.current_db)
+                logger.info("AUTO_SYNC_DEBUG: SMOO folder scanner initialized successfully")
+                
+            except Exception as scanner_error:
+                logger.error(f"AUTO_SYNC_DEBUG: Failed to initialize SMOO scanner: {scanner_error}")
+                progress_dialog.close()
+                QMessageBox.warning(
+                    self.parent, 
+                    "SMOO Access Error", 
+                    f"Could not access SMOO consolidated folder:\n\n{str(scanner_error)}\n\n"
+                    "Please ensure:\n"
+                    "1. VPN connection is active\n"
+                    "2. SMOO drive is mounted\n"
+                    "3. Field data files have been synced to SMOO"
+                )
+                return
             
             # Step 3: Get barologger tab for processing
             progress_dialog.setLabelText("Initializing barologger processor...")
@@ -158,15 +141,15 @@ class AutoUpdateHandler:
             
             logger.info(f"Found {len(active_barologgers)} active barologgers to sync")
             
-            # Step 5: Check for new files starting from last data month
-            progress_dialog.setLabelText("Scanning consolidated folder for new barologger files...")
+            # Step 3: Scan SMOO for new barologger files
+            progress_dialog.setLabelText("Scanning SMOO for new barologger files...")
             progress_dialog.setValue(45)
             QApplication.processEvents()
             
             current_month = datetime.now().strftime("%Y-%m")
             logger.info(f"AUTO_SYNC_DEBUG: Starting barologger scan in current month: {current_month}")
             logger.info(f"AUTO_SYNC_DEBUG: Active barologgers to check: {active_barologgers}")
-            files_found = self._scan_for_barologger_files(current_month, active_barologgers)
+            files_found = self._scan_smoo_for_barologger_files(current_month, active_barologgers)
             
             logger.info(f"AUTO_SYNC_DEBUG: Files found during scan: {len(files_found)}")
             if files_found:
@@ -225,70 +208,62 @@ class AutoUpdateHandler:
             progress_dialog.setFixedSize(450, 120)
             progress_dialog.show()
             
-            # Step 1: Check Google Drive authentication
-            progress_dialog.setLabelText("Verifying Google Drive connection...")
+            # Step 1: Run field data file sync to ensure all files are organized in SMOO
+            progress_dialog.setLabelText("Syncing field data files to SMOO...")
             progress_dialog.setValue(5)
             QApplication.processEvents()
             
-            if not self.drive_service.get_service():
+            logger.info("Running field data sync to organize new files in SMOO...")
+            
+            # Call the working sync_field_data_files_only method
+            try:
+                # This method handles Google Drive → SMOO file organization
+                # It's the same process as the "Sync Field Data Files Only" button
+                self.parent.sync_field_data_files_only()
+                logger.info("Field data sync completed successfully")
+                
+                # Update progress after sync completion
+                progress_dialog.setLabelText("Field data sync completed")
+                progress_dialog.setValue(15)
+                QApplication.processEvents()
+                
+            except Exception as sync_error:
+                logger.error(f"Field data sync failed: {sync_error}")
                 progress_dialog.close()
-                QMessageBox.warning(self.parent, "Authentication Required", 
-                                  "Google Drive authentication required. Please check your service account configuration.")
+                QMessageBox.warning(
+                    self.parent, 
+                    "Field Data Sync Failed", 
+                    f"Failed to sync field data files from Google Drive to SMOO:\n\n{str(sync_error)}\n\n"
+                    "Auto-sync requires organized field data to function properly."
+                )
                 return
             
-            # Step 2: Consolidate new files from SOLINST folder
-            progress_dialog.setLabelText("Consolidating new files from SOLINST folder...")
-            progress_dialog.setValue(10)
+            # Step 2: Initialize SMOO folder scanner for database import
+            progress_dialog.setLabelText("Accessing SMOO consolidated data folder...")
+            progress_dialog.setValue(20)
             QApplication.processEvents()
             
-            # Import and run field data consolidation
-            from ..handlers.field_data_consolidator import FieldDataConsolidator
-            consolidator = FieldDataConsolidator(self.drive_service.get_service(), self.settings_handler)
+            logger.info("Initializing SMOO folder scanner for database import...")
             
-            def consolidation_progress(message, percent):
-                # Map consolidation progress (0-100%) to overall progress (10-15%)
-                overall_progress = 10 + int(percent * 0.05)  # 5% of total progress for consolidation
-                progress_dialog.setLabelText(f"SOLINST → Consolidated: {message}")
-                progress_dialog.setValue(overall_progress)
-                QApplication.processEvents()
-            
-            logger.info("Running field data consolidation to organize new SOLINST files...")
-            consolidation_success = consolidator.consolidate_field_data(consolidation_progress)
-            
-            if consolidation_success:
-                logger.info("Field data consolidation completed - metadata updated in real-time")
-            else:
-                logger.warning("Field data consolidation had issues, continuing with existing data")
-            
-            # Step 3: Initialize consolidated folder monitor
-            progress_dialog.setLabelText("Accessing consolidated field data folder...")
-            progress_dialog.setValue(15)
-            QApplication.processEvents()
-            
-            consolidated_folder_id = self.settings_handler.get_setting("consolidated_field_data_folder", "")
-            if not consolidated_folder_id:
-                # Try to auto-detect the FIELD_DATA_CONSOLIDATED folder
-                consolidated_folder_id = self._auto_detect_consolidated_folder()
-                if consolidated_folder_id:
-                    # Save the detected folder ID for future use
-                    self.settings_handler.set_setting("consolidated_field_data_folder", consolidated_folder_id)
-                    logger.info(f"Auto-detected and saved consolidated folder ID: {consolidated_folder_id}")
-                else:
-                    progress_dialog.close()
-                    QMessageBox.warning(self.parent, "Configuration Missing", 
-                                      "Consolidated field data folder not found. Please run field data consolidation first.\n\n"
-                                      "To set this up:\n"
-                                      "1. Go to the 'Runs' tab\n"
-                                      "2. Click 'Consolidate Field Data' button\n"
-                                      "3. This will organize your field data and enable Auto Sync\n\n"
-                                      "Auto Sync requires the consolidated folder structure to work properly.")
-                    return
-            
-            # Initialize runs monitor for consolidated folder
-            from ..handlers.runs_folder_monitor import RunsFolderMonitor
-            if not self.runs_monitor:
-                self.runs_monitor = RunsFolderMonitor(consolidated_folder_id, self.db_manager.current_db)
-                self.runs_monitor.set_authenticated_service(self.drive_service.get_service())
+            try:
+                # Initialize SMOO scanner (replaces Google Drive API scanning)
+                from ..handlers.smoo_folder_scanner import SMOOFolderScanner
+                self.smoo_scanner = SMOOFolderScanner(self.db_manager.current_db)
+                logger.info("SMOO folder scanner initialized successfully")
+                
+            except Exception as scanner_error:
+                logger.error(f"Failed to initialize SMOO scanner: {scanner_error}")
+                progress_dialog.close()
+                QMessageBox.warning(
+                    self.parent, 
+                    "SMOO Access Error", 
+                    f"Could not access SMOO consolidated folder:\n\n{str(scanner_error)}\n\n"
+                    "Please ensure:\n"
+                    "1. VPN connection is active\n"
+                    "2. SMOO drive is mounted\n"
+                    "3. Field data files have been synced to SMOO"
+                )
+                return
             
             # Step 3: Get water level tab for processing
             progress_dialog.setLabelText("Initializing water level processor...")
@@ -315,13 +290,13 @@ class AutoUpdateHandler:
             
             logger.info(f"Found {len(active_wells)} active wells to sync")
             
-            # Step 5: Check for new files in current and next month folders
-            progress_dialog.setLabelText("Scanning consolidated folder for new water level files...")
+            # Step 3: Scan SMOO for new water level files
+            progress_dialog.setLabelText("Scanning SMOO for new water level files...")
             progress_dialog.setValue(45)
             QApplication.processEvents()
             
             current_month = datetime.now().strftime("%Y-%m")
-            files_found = self._scan_for_water_level_files(current_month, active_wells)
+            files_found = self._scan_smoo_for_water_level_files(current_month, active_wells)
             
             if not files_found:
                 progress_dialog.close()
@@ -662,42 +637,41 @@ class AutoUpdateHandler:
             temp_dir = tempfile.mkdtemp(prefix="auto_sync_baro_")
             logger.info(f"AUTO_SYNC_DEBUG: Created temp directory: {temp_dir}")
             
-            # Download all files to temp directory
-            progress_dialog.setLabelText("Downloading barologger files...")
+            # Copy SMOO files to temp directory for processing
+            progress_dialog.setLabelText("Preparing barologger files...")
             progress_dialog.setValue(60)
             QApplication.processEvents()
             
-            downloaded_files = []
+            prepared_files = []
             for i, file_info in enumerate(files_found):
                 try:
-                    # Update progress for downloads
-                    download_progress = 60 + (i / total_files) * 20  # 60-80% for downloads
-                    progress_dialog.setValue(int(download_progress))
-                    progress_dialog.setLabelText(f"Downloading {file_info['name']} ({i+1}/{total_files})...")
+                    # Update progress for file preparation
+                    prep_progress = 60 + (i / total_files) * 20  # 60-80% for file prep
+                    progress_dialog.setValue(int(prep_progress))
+                    progress_dialog.setLabelText(f"Preparing {file_info['name']} ({i+1}/{total_files})...")
                     QApplication.processEvents()
                     
-                    # Download to temp directory
+                    # Copy from SMOO to temp directory for processing
+                    source_path = file_info['file_path']
                     temp_file_path = os.path.join(temp_dir, file_info['name'])
-                    success = self._download_file_to_path(file_info['file_id'], temp_file_path)
                     
-                    if success:
-                        downloaded_files.append({
-                            'path': temp_file_path,
-                            'info': file_info
-                        })
-                        logger.info(f"AUTO_SYNC_DEBUG: Downloaded {file_info['name']} to {temp_file_path}")
-                    else:
-                        logger.error(f"AUTO_SYNC_DEBUG: Failed to download {file_info['name']}")
+                    shutil.copy2(source_path, temp_file_path)
+                    
+                    prepared_files.append({
+                        'path': temp_file_path,
+                        'info': file_info
+                    })
+                    logger.info(f"AUTO_SYNC_DEBUG: Prepared {file_info['name']} from SMOO to {temp_file_path}")
                         
                 except Exception as e:
-                    logger.error(f"AUTO_SYNC_DEBUG: Error downloading {file_info['name']}: {e}")
+                    logger.error(f"AUTO_SYNC_DEBUG: Error preparing {file_info['name']}: {e}")
             
-            if not downloaded_files:
-                logger.error("AUTO_SYNC_DEBUG: No files downloaded successfully")
+            if not prepared_files:
+                logger.error("AUTO_SYNC_DEBUG: No files prepared successfully")
                 return 0
             
             # Process the temp folder using barologger tab's folder processing method
-            progress_dialog.setLabelText(f"Processing {len(downloaded_files)} barologger files...")
+            progress_dialog.setLabelText(f"Processing {len(prepared_files)} barologger files...")
             progress_dialog.setValue(80)
             QApplication.processEvents()
             
@@ -756,23 +730,29 @@ class AutoUpdateHandler:
             success = success_count > 0
             
             if success:
-                logger.info(f"AUTO_SYNC_DEBUG: Successfully processed barologger folder with {len(downloaded_files)} files")
+                logger.info(f"AUTO_SYNC_DEBUG: Successfully processed barologger folder with {len(prepared_files)} files")
                 
                 # Preserve XLE files and track them
-                for file_data in downloaded_files:
+                for file_data in prepared_files:
                     file_info = file_data['info']
                     temp_file_path = file_data['path']
                     
-                    # Preserve XLE file
-                    preserved_file_path = self._preserve_autosync_xle_file(
-                        temp_file_path, file_info['name'], file_info['serial_number']
-                    )
-                    
-                    if preserved_file_path:
-                        # Track XLE file for cloud upload
+                    # Handle XLE file preservation based on database type
+                    if self.db_manager.is_cloud_database:
+                        # For shared databases: only track files for later push, don't save to SMOO yet
                         self._track_autosync_xle_file(
-                            preserved_file_path, file_info['serial_number'], file_info['name']
+                            temp_file_path, file_info['serial_number'], file_info['name']
                         )
+                        logger.debug("AUTO_SYNC_XLE: Tracked file for push operation (not saved to SMOO yet)")
+                    else:
+                        # For local databases: save files immediately
+                        preserved_file_path = self._preserve_autosync_xle_file(
+                            temp_file_path, file_info['name'], file_info['serial_number']
+                        )
+                        if preserved_file_path:
+                            logger.debug("AUTO_SYNC_XLE: Files saved immediately for local database")
+                        else:
+                            logger.error("AUTO_SYNC_XLE: Failed to preserve XLE file for local database")
                 
                 # Track the change if we have a change tracker
                 if self.db_manager.change_tracker:
@@ -780,17 +760,17 @@ class AutoUpdateHandler:
                     self.db_manager.change_tracker.track_change(
                         change_type=ChangeType.AUTOMATIC,
                         action=ChangeAction.INSERT,
-                        table_name="barologger_data",
+                        table_name="barometric_readings",
                         record_id=files_found[0]['serial_number'],  # All files are for same barologger
-                        description=f"Auto-imported {len(downloaded_files)} barologger files",
+                        description=f"Auto-imported {len(prepared_files)} barologger files",
                         context={
-                            "file_count": len(downloaded_files),
+                            "file_count": len(prepared_files),
                             "import_method": "auto_sync",
                             "temp_folder": temp_dir
                         }
                     )
                 
-                return len(downloaded_files)
+                return len(prepared_files)
             else:
                 logger.error("AUTO_SYNC_DEBUG: Barologger folder processing failed")
                 return 0
@@ -838,42 +818,41 @@ class AutoUpdateHandler:
             temp_dir = tempfile.mkdtemp(prefix="auto_sync_water_")
             logger.info(f"AUTO_SYNC_DEBUG: Created temp directory: {temp_dir}")
             
-            # Download all files to temp directory
-            progress_dialog.setLabelText("Downloading water level files...")
+            # Copy SMOO files to temp directory for processing
+            progress_dialog.setLabelText("Preparing water level files...")
             progress_dialog.setValue(60)
             QApplication.processEvents()
             
-            downloaded_files = []
+            prepared_files = []
             for i, file_info in enumerate(files_found):
                 try:
-                    # Update progress for downloads
-                    download_progress = 60 + (i / total_files) * 20  # 60-80% for downloads
-                    progress_dialog.setValue(int(download_progress))
-                    progress_dialog.setLabelText(f"Downloading {file_info['name']} ({i+1}/{total_files})...")
+                    # Update progress for file preparation
+                    prep_progress = 60 + (i / total_files) * 20  # 60-80% for file prep
+                    progress_dialog.setValue(int(prep_progress))
+                    progress_dialog.setLabelText(f"Preparing {file_info['name']} ({i+1}/{total_files})...")
                     QApplication.processEvents()
                     
-                    # Download to temp directory
+                    # Copy from SMOO to temp directory for processing
+                    source_path = file_info['file_path']
                     temp_file_path = os.path.join(temp_dir, file_info['name'])
-                    success = self._download_file_to_path(file_info['file_id'], temp_file_path)
                     
-                    if success:
-                        downloaded_files.append({
-                            'path': temp_file_path,
-                            'info': file_info
-                        })
-                        logger.info(f"AUTO_SYNC_DEBUG: Downloaded {file_info['name']} to {temp_file_path}")
-                    else:
-                        logger.error(f"AUTO_SYNC_DEBUG: Failed to download {file_info['name']}")
+                    shutil.copy2(source_path, temp_file_path)
+                    
+                    prepared_files.append({
+                        'path': temp_file_path,
+                        'info': file_info
+                    })
+                    logger.info(f"Prepared {file_info['name']} from SMOO to {temp_file_path}")
                         
                 except Exception as e:
-                    logger.error(f"AUTO_SYNC_DEBUG: Error downloading {file_info['name']}: {e}")
+                    logger.error(f"Error preparing {file_info['name']}: {e}")
             
-            if not downloaded_files:
-                logger.error("AUTO_SYNC_DEBUG: No water level files downloaded successfully")
+            if not prepared_files:
+                logger.error("No water level files prepared successfully")
                 return 0
             
             # Process the temp folder using water level folder processor
-            progress_dialog.setLabelText(f"Processing {len(downloaded_files)} water level files...")
+            progress_dialog.setLabelText(f"Processing {len(prepared_files)} water level files...")
             progress_dialog.setValue(80)
             QApplication.processEvents()
             
@@ -1042,10 +1021,10 @@ class AutoUpdateHandler:
             logger.info(f"AUTO_SYNC_DEBUG: Import complete - total imported: {total_imported} readings")
             
             if success:
-                logger.info(f"AUTO_SYNC_DEBUG: Successfully processed water level folder with {len(downloaded_files)} files")
+                logger.info(f"AUTO_SYNC_DEBUG: Successfully processed water level folder with {len(prepared_files)} files")
                 
                 # Preserve XLE files using same method as barologgers (consistent approach)
-                for file_data in downloaded_files:
+                for file_data in prepared_files:
                     file_info = file_data['info']
                     temp_file_path = file_data['path']
                     
@@ -1060,23 +1039,26 @@ class AutoUpdateHandler:
                             break
                     
                     if matching_well_number:
-                        # Preserve XLE file using well_number as identifier (consistent with folder structure)
-                        preserved_file_path = self._preserve_autosync_xle_file(
-                            temp_file_path, file_info['name'], matching_well_number, file_type="water_level"
-                        )
-                        
-                        if preserved_file_path:
-                            logger.info(f"AUTO_SYNC_XLE: Preserved water level file: {preserved_file_path}")
-                            # Track XLE file for cloud upload
+                        # Handle XLE file preservation based on database type
+                        if self.db_manager.is_cloud_database:
+                            # For shared databases: only track files for later push, don't save to SMOO yet
                             self._track_autosync_xle_file(
-                                preserved_file_path, file_info['cae_number'], file_info['name']
+                                temp_file_path, file_info['cae_number'], file_info['name']
                             )
+                            logger.info(f"AUTO_SYNC_XLE: Tracked water level file for push operation: {file_info['name']}")
                         else:
-                            logger.error(f"AUTO_SYNC_XLE: Failed to preserve water level file: {file_info['name']}")
+                            # For local databases: save files immediately
+                            preserved_file_path = self._preserve_autosync_xle_file(
+                                temp_file_path, file_info['name'], matching_well_number, file_type="water_level"
+                            )
+                            if preserved_file_path:
+                                logger.info(f"AUTO_SYNC_XLE: Preserved water level file: {preserved_file_path}")
+                            else:
+                                logger.error(f"AUTO_SYNC_XLE: Failed to preserve water level file: {file_info['name']}")
                     else:
                         logger.warning(f"AUTO_SYNC_XLE: No matching well found for CAE {file_info['cae_number']} in file {file_info['name']}")
                 
-                return len(downloaded_files)
+                return len(prepared_files)
             else:
                 logger.error("AUTO_SYNC_DEBUG: Water level folder processing failed")
                 return 0
@@ -1136,34 +1118,58 @@ class AutoUpdateHandler:
         Returns the preserved file path or None if failed.
         """
         try:
-            # Determine if we're working with a shared database (S: drive)
-            is_shared_database = False
+            # Use database manager's cloud detection instead of path-based detection
+            is_shared_database = self.db_manager.is_cloud_database
             if self.db_manager.current_db:
                 db_path = Path(self.db_manager.current_db)
-                # Check if database is on S: drive (Windows) or shared drive path
-                if str(db_path).startswith('S:') or 'shared_drive' in str(db_path).lower():
-                    is_shared_database = True
-                    logger.info(f"AUTO_SYNC_XLE: Detected shared database: {db_path}")
+                if is_shared_database:
+                    logger.info(f"AUTO_SYNC_XLE: Detected shared/cloud database: {db_path}")
                 else:
                     logger.info(f"AUTO_SYNC_XLE: Detected local database: {db_path}")
             
             # Get XLE import directory based on database type
             if is_shared_database:
-                # For shared databases, use S: drive imported_xle_files
-                shared_drive_root = self.settings_handler.get_setting("shared_drive_root", "")
-                if shared_drive_root:
-                    xle_import_base = Path(shared_drive_root) / "imported_xle_files"
-                    logger.info(f"AUTO_SYNC_XLE: Using shared drive XLE import path: {xle_import_base}")
-                else:
-                    # Fallback: try to construct S: drive path from database location
-                    db_path = Path(self.db_manager.current_db)
-                    if str(db_path).startswith('S:'):
-                        # Extract base S: drive path and add imported_xle_files
-                        s_drive_base = "S:/Water_Projects/CAESER/Water_Data_Series/Water_levels_monitoring_system"
-                        xle_import_base = Path(s_drive_base) / "imported_xle_files"
-                        logger.warning(f"AUTO_SYNC_XLE: Using fallback S: drive path: {xle_import_base}")
+                # For shared databases, use SMOO Projects structure
+                shared_drive_projects = self.settings_handler.get_setting("shared_drive_projects", "")
+                if shared_drive_projects:
+                    # Get project name from database
+                    project_name = None
+                    if self.db_manager.current_db:
+                        db_path = Path(self.db_manager.current_db)
+                        if db_path.name.startswith('wlm_'):
+                            project_name = db_path.name[4:-3]  # Remove 'wlm_' prefix and '.db' suffix
+                        else:
+                            project_name = db_path.stem
+                    
+                    if project_name:
+                        xle_import_base = Path(shared_drive_projects) / project_name / "XLE_Files"
+                        logger.info(f"AUTO_SYNC_XLE: Using shared drive project XLE path: {xle_import_base}")
                     else:
-                        logger.error("AUTO_SYNC_XLE: Cannot determine S: drive path for shared database")
+                        logger.error("AUTO_SYNC_XLE: Could not determine project name for shared database")
+                        return None
+                else:
+                    # Fallback: use SMOO path manager for cross-platform compatibility
+                    from config.smoo_paths import get_smoo_path, is_smoo_available
+                    
+                    if is_smoo_available():
+                        smoo_projects = get_smoo_path("projects")
+                        # Get project name from database
+                        project_name = None
+                        if self.db_manager.current_db:
+                            db_path = Path(self.db_manager.current_db)
+                            if db_path.name.startswith('wlm_'):
+                                project_name = db_path.name[4:-3]  # Remove 'wlm_' prefix and '.db' suffix
+                            else:
+                                project_name = db_path.stem
+                        
+                        if project_name:
+                            xle_import_base = Path(smoo_projects) / project_name / "XLE_Files"
+                            logger.info(f"AUTO_SYNC_XLE: Using SMOO project XLE path: {xle_import_base}")
+                        else:
+                            logger.error("AUTO_SYNC_XLE: Could not determine project name for SMOO path")
+                            return None
+                    else:
+                        logger.error("AUTO_SYNC_XLE: SMOO not available for shared database")
                         return None
             else:
                 # For local databases, use local imported_xle_files directory
@@ -1186,11 +1192,16 @@ class AutoUpdateHandler:
             # Choose folder based on file type
             folder_type = "barologgers" if file_type == "barologger" else "water_levels"
             
-            # Create directory structure: imported_xle_files/[project]/[barologgers|water_levels]/[identifier]/
-            if project_name:
-                target_dir = xle_import_base / project_name / folder_type / safe_identifier
-            else:
+            # Create directory structure
+            if is_shared_database:
+                # For shared databases: Projects/[project]/XLE_Files/[barologgers|water_levels]/[identifier]/
                 target_dir = xle_import_base / folder_type / safe_identifier
+            else:
+                # For local databases: imported_xle_files/[project]/[barologgers|water_levels]/[identifier]/
+                if project_name:
+                    target_dir = xle_import_base / project_name / folder_type / safe_identifier
+                else:
+                    target_dir = xle_import_base / folder_type / safe_identifier
             
             # Create directory if it doesn't exist
             target_dir.mkdir(parents=True, exist_ok=True)
@@ -1208,44 +1219,109 @@ class AutoUpdateHandler:
             logger.error(f"AUTO_SYNC_XLE: Error preserving XLE file {original_filename}: {e}")
             return None
     
-    def _track_autosync_xle_file(self, file_path, serial_number, original_filename):
+    def _track_autosync_xle_file(self, file_path, serial_or_cae_number, original_filename):
         """
-        Track autosync XLE file for cloud upload using XLE file manager.
+        Track autosync XLE file for shared database upload using SharedDatabaseXLEManager.
+        Handles both barologger (serial number) and transducer (CAE number) files.
         """
         try:
-            # Get cloud database handler and XLE manager
-            if hasattr(self.parent, 'cloud_db_handler'):
-                cloud_handler = self.parent.cloud_db_handler
-                if cloud_handler and cloud_handler.xle_manager:
-                    # Get project name
-                    project_name = None
-                    if self.db_manager.current_db:
-                        db_path = Path(self.db_manager.current_db)
-                        if db_path.name.startswith('wlm_'):
-                            project_name = db_path.name[4:-3]  # Remove 'wlm_' prefix and '.db' suffix
-                        else:
-                            project_name = db_path.stem
-                    
+            if not hasattr(self.parent, 'cloud_db_handler'):
+                logger.warning("Cloud database handler not available for XLE tracking")
+                return None
+            
+            cloud_handler = self.parent.cloud_db_handler
+            if not cloud_handler:
+                logger.warning("Cloud database handler not initialized for XLE tracking")
+                return None
+            
+            # Get project name
+            project_name = None
+            if self.db_manager.current_db:
+                db_path = Path(self.db_manager.current_db)
+                if db_path.name.startswith('wlm_'):
+                    project_name = db_path.name[4:-3]  # Remove 'wlm_' prefix and '.db' suffix
+                else:
+                    project_name = db_path.stem
+            
+            if not project_name:
+                logger.warning("Could not determine project name for XLE tracking")
+                return None
+            
+            # Determine device type and identifiers
+            # CAE numbers are typically in format 'CAE000XX' for transducers
+            # Serial numbers are numeric strings for barologgers
+            if str(serial_or_cae_number).startswith('CAE'):
+                device_type = 'transducer'
+                well_number = serial_or_cae_number
+                serial_number = None
+            else:
+                device_type = 'barologger'
+                serial_number = serial_or_cae_number
+                well_number = None
+            
+            # Check if this is a shared database - use SharedDatabaseXLEManager
+            if hasattr(cloud_handler, 'get_shared_xle_manager'):
+                shared_xle_manager = cloud_handler.get_shared_xle_manager()
+                if shared_xle_manager:
                     # Extract dates from filename for tracking
-                    start_date, end_date = self._extract_dates_from_filename(original_filename)
+                    start_date_str, end_date_str = self._extract_dates_from_filename(original_filename)
                     
-                    # Track the XLE file for upload
-                    file_id = cloud_handler.xle_manager.track_xle_file(
-                        file_path=file_path,
-                        file_type='barologger',
-                        serial_number=serial_number,
-                        well_number=None,  # Barologgers don't have well numbers
+                    # Convert to datetime objects for SharedDatabaseXLEManager
+                    from datetime import datetime, timedelta
+                    try:
+                        if end_date_str:
+                            end_date = datetime.fromisoformat(end_date_str)
+                        else:
+                            end_date = datetime.now()
+                        
+                        if start_date_str:
+                            start_date = datetime.fromisoformat(start_date_str)
+                        else:
+                            # Default to 30 days before end date if not available
+                            start_date = end_date - timedelta(days=30)
+                    except Exception as e:
+                        logger.warning(f"Error parsing dates from {original_filename}: {e}, using defaults")
+                        end_date = datetime.now()
+                        start_date = end_date - timedelta(days=30)
+                    
+                    # Store XLE file in temporary location for later push to SMOO
+                    temp_file_path = shared_xle_manager.store_temp_xle(
+                        original_file_path=file_path,
+                        project_name=project_name,
+                        device_type=device_type,
+                        serial_number=serial_number or serial_or_cae_number,
+                        location='auto-sync',
                         start_date=start_date,
                         end_date=end_date,
-                        project_name=project_name
+                        well_number=well_number
                     )
                     
-                    logger.info(f"Tracked autosync XLE file for upload: {original_filename} (ID: {file_id})")
-                    return file_id
+                    logger.info(f"Stored temp {device_type} XLE file for SMOO push: {original_filename} -> {temp_file_path}")
+                    return temp_file_path
                 else:
-                    logger.warning("XLE manager not available for tracking autosync file")
+                    logger.warning("SharedDatabaseXLEManager not available for XLE tracking")
+            
+            # Fallback to legacy Google Drive XLE manager (disabled)
+            elif hasattr(cloud_handler, 'xle_manager') and cloud_handler.xle_manager:
+                logger.warning("Using legacy Google Drive XLE manager (disabled functionality)")
+                # Extract dates from filename for tracking
+                start_date_str, end_date_str = self._extract_dates_from_filename(original_filename)
+                
+                # Track the XLE file for upload (Google Drive system, now disabled)
+                file_id = cloud_handler.xle_manager.track_xle_file(
+                    file_path=file_path,
+                    file_type=device_type,
+                    serial_number=serial_number or serial_or_cae_number,
+                    well_number=well_number,
+                    start_date=start_date_str,
+                    end_date=end_date_str,
+                    project_name=project_name
+                )
+                
+                logger.info(f"Tracked autosync XLE file (legacy): {original_filename} (ID: {file_id})")
+                return file_id
             else:
-                logger.warning("Cloud database handler not available for XLE tracking")
+                logger.warning("No XLE manager available for tracking autosync file")
                 
         except Exception as e:
             logger.error(f"Error tracking autosync XLE file {original_filename}: {e}")
@@ -1959,6 +2035,261 @@ class AutoUpdateHandler:
         except Exception as e:
             logger.error(f"Error auto-detecting consolidated folder: {e}")
             return None
+    
+    def _scan_smoo_for_barologger_files(self, current_month, active_barologgers):
+        """Scan SMOO consolidated folder for new barologger files using direct file system access"""
+        files_found = []
+        
+        try:
+            logger.info(f"AUTO_SYNC_DEBUG: Scanning SMOO for barologger files in {current_month}")
+            
+            # Get smart month ranges for each barologger
+            barologger_month_ranges = self._get_barologger_search_ranges(active_barologgers)
+            logger.info(f"AUTO_SYNC_DEBUG: Barologger month ranges: {barologger_month_ranges}")
+            
+            # Get all available month folders if needed
+            needs_all_months = any(month_range == "ALL_AVAILABLE" for month_range in barologger_month_ranges.values())
+            
+            if needs_all_months:
+                logger.info("AUTO_SYNC_DEBUG: Some barologgers need ALL_AVAILABLE search, getting all month folders...")
+                month_folders = self.smoo_scanner.get_all_available_month_folders()
+            else:
+                # Get specific month folders needed
+                months_to_scan = set()
+                for month_range in barologger_month_ranges.values():
+                    if isinstance(month_range, list):
+                        months_to_scan.update(month_range)
+                    elif month_range != "ALL_AVAILABLE":
+                        months_to_scan.add(month_range)
+                
+                # Add current month as fallback
+                months_to_scan.add(current_month)
+                logger.info(f"AUTO_SYNC_DEBUG: Scanning specific months: {months_to_scan}")
+                
+                month_folders = {}
+                for month in months_to_scan:
+                    folders = self.smoo_scanner.get_month_folders(month)
+                    month_folders.update(folders)
+            
+            logger.info(f"AUTO_SYNC_DEBUG: Found {len(month_folders)} month folders to scan")
+            
+            # Scan each month folder for files with matching serial numbers
+            for month_name, folder_path in month_folders.items():
+                logger.info(f"AUTO_SYNC_DEBUG: Scanning month folder: {month_name} at {folder_path}")
+                
+                # Scan the main month folder for files with serial numbers (no subfolders)
+                month_readings = self.smoo_scanner.scan_barologger_files(str(folder_path))
+                logger.info(f"AUTO_SYNC_DEBUG: Found {len(month_readings)} readings with serial numbers in {month_name}")
+                
+                # Check each file against active barologgers
+                for serial_number, file_data in month_readings.items():
+                    # Check if this is an active barologger
+                    if serial_number in active_barologgers:
+                        # Check if this file is newer than existing data
+                        if self._is_smoo_barologger_file_newer(file_data, serial_number):
+                            files_found.append({
+                                'name': file_data['filename'],
+                                'serial_number': serial_number,
+                                'folder_name': month_name,
+                                'file_path': file_data['file_path'],
+                                'reading_date': file_data['date']
+                            })
+                            logger.info(f"AUTO_SYNC_DEBUG: Added file with serial {serial_number}: {file_data['filename']}")
+                        else:
+                            logger.debug(f"AUTO_SYNC_DEBUG: Skipping older file: {file_data['filename']}")
+                    else:
+                        logger.debug(f"AUTO_SYNC_DEBUG: Skipping inactive serial: {serial_number}")
+            
+            logger.info(f"AUTO_SYNC_DEBUG: Completed SMOO barologger scan - found {len(files_found)} files")
+            return files_found
+            
+        except Exception as e:
+            logger.error(f"AUTO_SYNC_DEBUG: Error scanning SMOO for barologger files: {e}")
+            return []
+    
+    def _scan_smoo_for_water_level_files(self, current_month, active_wells):
+        """Scan SMOO consolidated folder for new water level files using direct file system access"""
+        files_found = []
+        
+        try:
+            logger.info(f"Scanning SMOO for water level files in {current_month}")
+            
+            # Get smart month ranges for each well
+            well_month_ranges = self._get_water_level_search_ranges(active_wells)
+            logger.info(f"Water level month ranges: {well_month_ranges}")
+            
+            # Get all available month folders if needed
+            needs_all_months = any(month_range == "ALL_AVAILABLE" for month_range in well_month_ranges.values())
+            
+            if needs_all_months:
+                logger.info("Some wells need ALL_AVAILABLE search, getting all month folders...")
+                month_folders = self.smoo_scanner.get_all_available_month_folders()
+            else:
+                # Get specific month folders needed
+                months_to_scan = set()
+                for month_range in well_month_ranges.values():
+                    if isinstance(month_range, list):
+                        months_to_scan.update(month_range)
+                    elif month_range != "ALL_AVAILABLE":
+                        months_to_scan.add(month_range)
+                
+                # Add current month as fallback
+                months_to_scan.add(current_month)
+                logger.info(f"Scanning specific months: {months_to_scan}")
+                
+                month_folders = {}
+                for month in months_to_scan:
+                    folders = self.smoo_scanner.get_month_folders(month)
+                    month_folders.update(folders)
+            
+            logger.info(f"Found {len(month_folders)} month folders to scan")
+            
+            # Scan each month folder for water level files
+            for month_name, folder_path in month_folders.items():
+                logger.info(f"Scanning month folder: {month_name} at {folder_path}")
+                
+                # Scan month folder root for metadata.json and XLE files
+                logger.debug(f"Scanning month folder root: {folder_path}")
+                
+                # Scan for XLE files using metadata.json in month folder root
+                month_readings = self.smoo_scanner.scan_xle_files(str(folder_path))
+                logger.info(f"Found {len(month_readings)} water level readings in {month_name}")
+                
+                # Check each file against active wells
+                for location, file_data in month_readings.items():
+                    try:
+                        filename = file_data['filename']
+                        
+                        # Extract CAE number from filename (location part)
+                        cae_number = location
+                        
+                        # Check if this is an active well
+                        if cae_number in active_wells:
+                            # Check if this file is newer than existing data
+                            if self._is_smoo_water_level_file_newer(file_data, cae_number):
+                                files_found.append({
+                                    'name': filename,
+                                    'cae_number': cae_number,
+                                    'folder_name': month_name,
+                                    'file_path': file_data['file_path'],
+                                    'reading_date': file_data['date']
+                                })
+                                logger.info(f"Added water level file: {filename} (CAE: {cae_number})")
+                            else:
+                                logger.debug(f"Skipping older file: {filename}")
+                        else:
+                            logger.debug(f"Skipping inactive well: {cae_number}")
+                            
+                    except Exception as file_error:
+                        logger.warning(f"Error processing file {file_data}: {file_error}")
+                        continue
+            
+            logger.info(f"Completed SMOO water level scan - found {len(files_found)} files")
+            return files_found
+            
+        except Exception as e:
+            logger.error(f"Error scanning SMOO for water level files: {e}")
+            return []
+    
+    def _is_smoo_barologger_file_newer(self, file_data, serial_number):
+        """Check if SMOO barologger file is newer than existing database data"""
+        try:
+            # Get the end date from the filename or file data
+            if 'reading_date' in file_data:
+                file_end_date = file_data['reading_date']
+            else:
+                file_end_date = self.smoo_scanner.extract_date_from_filename(file_data['filename'])
+            
+            if not file_end_date:
+                logger.warning(f"Could not determine file date for {file_data['filename']}, processing anyway")
+                return True
+            
+            # Check against database - get last reading for this serial number
+            if self.db_manager and self.db_manager.current_db:
+                conn = sqlite3.connect(self.db_manager.current_db)
+                cursor = conn.cursor()
+                
+                # Get the latest reading timestamp for this barologger
+                cursor.execute("""
+                    SELECT MAX(timestamp_utc) 
+                    FROM barometric_readings 
+                    WHERE serial_number = ?
+                """, (serial_number,))
+                
+                result = cursor.fetchone()
+                conn.close()
+                
+                if result and result[0]:
+                    last_data_timestamp = datetime.fromisoformat(result[0])
+                    
+                    # Check if file end date is newer than last data
+                    if file_end_date > last_data_timestamp:
+                        logger.info(f"File {file_data['filename']} is newer ({file_end_date}) than last data ({last_data_timestamp}) - processing")
+                        return True
+                    else:
+                        logger.info(f"File {file_data['filename']} is not newer than last data ({last_data_timestamp}) - skipping")
+                        return False
+            
+            logger.info(f"No previous data found for barologger {serial_number}, will process file {file_data['filename']}")
+            return True  # No previous data, process the file
+            
+        except Exception as e:
+            logger.error(f"Error checking if barologger file is newer: {e}")
+            return True  # When in doubt, process the file
+    
+    def _is_smoo_water_level_file_newer(self, file_data, cae_number):
+        """Check if SMOO water level file is newer than existing database data"""
+        try:
+            # Get the end date from the filename or file data
+            if 'reading_date' in file_data:
+                file_end_date = file_data['reading_date']
+            else:
+                file_end_date = self.smoo_scanner.extract_date_from_filename(file_data['filename'])
+            
+            if not file_end_date:
+                logger.warning(f"Could not determine file date for {file_data['filename']}, processing anyway")
+                return True
+            
+            # Check against database - get last reading for this well
+            if self.db_manager and self.db_manager.current_db:
+                conn = sqlite3.connect(self.db_manager.current_db)
+                cursor = conn.cursor()
+                
+                # Get the latest reading timestamp for this well 
+                # Convert CAE to well_number first
+                cursor.execute("SELECT well_number FROM wells WHERE cae_number = ?", (cae_number,))
+                well_result = cursor.fetchone()
+                if not well_result:
+                    logger.warning(f"Could not find well_number for CAE {cae_number}")
+                    return True  # Process the file if we can't determine the well
+                
+                well_number = well_result[0]
+                cursor.execute("""
+                    SELECT MAX(timestamp_utc) 
+                    FROM water_level_readings 
+                    WHERE well_number = ?
+                """, (well_number,))
+                
+                result = cursor.fetchone()
+                conn.close()
+                
+                if result and result[0]:
+                    last_data_timestamp = datetime.fromisoformat(result[0])
+                    
+                    # Check if file end date is newer than last data
+                    if file_end_date > last_data_timestamp:
+                        logger.info(f"File {file_data['filename']} is newer ({file_end_date}) than last data ({last_data_timestamp}) - processing")
+                        return True
+                    else:
+                        logger.info(f"File {file_data['filename']} is not newer than last data ({last_data_timestamp}) - skipping")
+                        return False
+            
+            logger.info(f"No previous data found for well {cae_number}, will process file {file_data['filename']}")
+            return True  # No previous data, process the file
+            
+        except Exception as e:
+            logger.error(f"Error checking if water level file is newer: {e}")
+            return True  # When in doubt, process the file
     
     def test_generate_metadata(self):
         """Test method to generate metadata files - can be called manually for now"""

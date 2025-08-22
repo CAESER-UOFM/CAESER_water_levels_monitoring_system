@@ -44,9 +44,15 @@ class HybridFieldDataConsolidator:
         # Legacy single folder support (for backward compatibility)
         self.solinst_folder_id = self.settings_handler.get_setting("google_drive_solinst_folder_id", "")
         
-        # SMOO target (FIELD_DATA_CONSOLIDATED)
-        self.smoo_root = self.settings_handler.get_setting("shared_drive_root", DefaultPaths.SHARED_DRIVE_BASE)
-        self.consolidated_folder = os.path.join(self.smoo_root, "FIELD_DATA_CONSOLIDATED")
+        # SMOO target (FIELD_DATA_CONSOLIDATED) - use cross-platform path manager
+        from ...config.smoo_paths import get_smoo_path, is_smoo_available
+        if is_smoo_available():
+            self.smoo_root = get_smoo_path("base")
+            self.consolidated_folder = get_smoo_path("field_data")
+        else:
+            # Fallback to settings for backward compatibility
+            self.smoo_root = self.settings_handler.get_setting("shared_drive_root", DefaultPaths.SHARED_DRIVE_BASE)
+            self.consolidated_folder = os.path.join(self.smoo_root, "FIELD_DATA_CONSOLIDATED")
         
         # Field data consolidation organizes files by YYYY-MM date folders
         # This is SEPARATE from XLE import organization (which uses well/serial folders)

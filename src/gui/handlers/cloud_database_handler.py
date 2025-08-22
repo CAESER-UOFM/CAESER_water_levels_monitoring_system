@@ -1500,53 +1500,45 @@ class CloudDatabaseHandler:
     
     def _upload_project_xle_files(self, project_name: str, progress_callback=None):
         """
-        Upload pending XLE files for a project.
+        Handle XLE files for project upload.
         
-        TASK 6: OBSOLETE GOOGLE DRIVE XLE UPLOAD - DISABLED
-        This functionality has been replaced by the new SMOO XLE file workflow.
-        XLE files are now managed through SharedDatabaseXLEManager for shared databases.
+        UPDATED: XLE files are now managed through SMOO workflow via SharedDatabaseXLEManager.
+        This method now properly delegates to the SharedDriveDbHandler for SMOO-based systems.
         """
         try:
-            logger.info(f"XLE_UPLOAD: DISABLED - Obsolete Google Drive XLE upload skipped for project: '{project_name}'")
-            logger.info("XLE_UPLOAD: XLE files are now managed through SMOO workflow for shared databases")
+            logger.info(f"XLE_UPLOAD: Processing XLE files for project: '{project_name}'")
             
-            # Skip all Google Drive XLE upload functionality
-            if progress_callback:
-                progress_callback(89, "XLE upload disabled - using SMOO workflow")
-            
-            return
-            
-            # Check what pending files we have before upload
-            pending_files = self.xle_manager.get_pending_uploads(project_name)
-            logger.info(f"XLE_UPLOAD: Found {len(pending_files)} pending XLE files for project '{project_name}'")
-            
-            if pending_files:
-                for i, file_record in enumerate(pending_files):
-                    logger.info(f"XLE_UPLOAD: Pending file {i+1}: {file_record.get('file_name', 'unknown')} "
-                              f"(type: {file_record.get('file_type', 'unknown')}, "
-                              f"serial: {file_record.get('serial_number', 'unknown')}, "
-                              f"status: {file_record.get('upload_status', 'unknown')})")
-            
-            # Create progress wrapper for XLE uploads
-            def xle_progress_callback(progress, message):
+            # Check if we're using Google Drive (legacy) or SMOO system
+            if hasattr(self, 'xle_manager') and self.xle_manager:
+                logger.info("XLE_UPLOAD: Using legacy Google Drive XLE manager (functionality disabled)")
+                
+                # Check what pending files we have before upload
+                pending_files = self.xle_manager.get_pending_uploads(project_name)
+                logger.info(f"XLE_UPLOAD: Found {len(pending_files)} pending XLE files for project '{project_name}'")
+                
+                if pending_files:
+                    for i, file_record in enumerate(pending_files):
+                        logger.info(f"XLE_UPLOAD: Pending file {i+1}: {file_record.get('file_name', 'unknown')} "
+                                  f"(type: {file_record.get('file_type', 'unknown')}, "
+                                  f"serial: {file_record.get('serial_number', 'unknown')}, "
+                                  f"status: {file_record.get('upload_status', 'unknown')})")
+                
+                # Google Drive XLE upload is disabled
+                logger.info("XLE_UPLOAD: Google Drive XLE upload disabled - files tracked but not uploaded")
                 if progress_callback:
-                    # Map XLE progress to 70-89% range (20% allocation for XLE upload)
-                    adjusted_progress = 70 + int(progress * 0.19)
-                    progress_callback(adjusted_progress, f"XLE: {message}")
-            
-            # Upload XLE files for this project
-            results = self.xle_manager.upload_project_xle_files(
-                project_name, xle_progress_callback
-            )
-            
-            if results['total'] > 0:
-                logger.info(f"XLE_UPLOAD: Upload results for {project_name}: {results['success']} success, {results['failed']} failed")
+                    progress_callback(89, "XLE upload disabled (Google Drive legacy)")
             else:
-                logger.info(f"XLE_UPLOAD: No pending XLE files to upload for project: {project_name}")
+                logger.info("XLE_UPLOAD: No Google Drive XLE manager available")
+                if progress_callback:
+                    progress_callback(89, "XLE files managed by SMOO workflow")
+            
+            # Note: For SMOO systems, XLE files are handled by SharedDriveDbHandler.push_database_with_changes()
+            # which calls SharedDatabaseXLEManager.move_to_smoo() directly
+            logger.info("XLE_UPLOAD: XLE files for SMOO systems are handled during database push operation")
                 
         except Exception as e:
-            logger.error(f"XLE_UPLOAD: Error uploading XLE files for project {project_name}: {e}")
-            # Don't fail the entire database upload if XLE upload fails
+            logger.error(f"XLE_UPLOAD: Error processing XLE files for project {project_name}: {e}")
+            # Don't fail the entire database upload if XLE processing fails
             if progress_callback:
                 progress_callback(89, "XLE upload encountered issues, continuing...")
     

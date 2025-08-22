@@ -53,8 +53,30 @@ class SharedDriveDbHandler:
         self.session_backups = {}  # {project_name: {"original": path, "last_uploaded": path}}
         
     def get_shared_drive_root(self):
-        """Get the shared drive root path from settings"""
+        """Get the shared drive root path with SMOO-aware cross-platform support"""
         if not self.shared_drive_root:
+            # Try to use SMOO-aware path resolution first
+            try:
+                from ...config.paths import get_smoo_aware_path, is_smoo_environment
+                
+                if is_smoo_environment():
+                    # Use SMOO path (cross-platform)
+                    smoo_root = get_smoo_aware_path("base")
+                    if smoo_root and Path(smoo_root).exists():
+                        self.shared_drive_root = smoo_root + "/"
+                        logger.info(f"SharedDriveDbHandler using SMOO root path: '{self.shared_drive_root}'")
+                        return self.shared_drive_root
+                    else:
+                        logger.warning("SMOO path detected but not accessible, falling back to settings")
+                else:
+                    logger.info("SMOO environment not available, using settings-based path")
+                    
+            except ImportError:
+                logger.debug("SMOO path manager not available, using legacy settings")
+            except Exception as e:
+                logger.warning(f"Error accessing SMOO paths: {e}, falling back to settings")
+            
+            # Fallback to settings-based configuration
             self.shared_drive_root = self.settings_handler.get_setting("shared_drive_root")
             if not self.shared_drive_root:
                 raise ValueError("shared_drive_root not configured in settings.json. Please configure shared drive paths.")
@@ -62,8 +84,28 @@ class SharedDriveDbHandler:
         return self.shared_drive_root
     
     def get_projects_folder_path(self):
-        """Get the projects folder path from shared drive root"""
+        """Get the projects folder path with SMOO-aware cross-platform support"""
         if not self.projects_folder_path:
+            # Try to use SMOO-aware path resolution first
+            try:
+                from ...config.paths import get_smoo_aware_path, is_smoo_environment
+                
+                if is_smoo_environment():
+                    # Use direct SMOO projects path
+                    smoo_projects = get_smoo_aware_path("projects")
+                    if smoo_projects and Path(smoo_projects).exists():
+                        self.projects_folder_path = smoo_projects
+                        logger.info(f"SharedDriveDbHandler using SMOO projects path: '{self.projects_folder_path}'")
+                        return self.projects_folder_path
+                    else:
+                        logger.warning("SMOO projects path detected but not accessible, falling back to root + Projects")
+                
+            except ImportError:
+                logger.debug("SMOO path manager not available for projects path")
+            except Exception as e:
+                logger.warning(f"Error accessing SMOO projects path: {e}, falling back to root + Projects")
+            
+            # Fallback to root + Projects approach
             root = self.get_shared_drive_root()
             self.projects_folder_path = os.path.join(root, "Projects")
             logger.info(f"SharedDriveDbHandler projects path: '{self.projects_folder_path}'")

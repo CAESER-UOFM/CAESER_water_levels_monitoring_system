@@ -89,6 +89,14 @@ class MainWindow(QMainWindow):
         # self.drive_service = GoogleDriveService.get_instance(self.settings_handler)
         # self.drive_db_handler = None
         
+        # Initialize Google Service Account Handler for auto-sync operations
+        try:
+            from .handlers.google_service_account import GoogleServiceAccountHandler
+            self.google_service_handler = GoogleServiceAccountHandler(self.settings_handler)
+            logger.info("Google Service Account Handler initialized for auto-sync")
+        except Exception as e:
+            logger.error(f"Failed to initialize Google Service Account Handler: {e}")
+            self.google_service_handler = None
         
         # Initialize Cloud database handler (will be set after authentication)
         self.cloud_db_handler = None
@@ -2873,9 +2881,21 @@ class MainWindow(QMainWindow):
         
         # Initialize handler if needed
         if self.auto_update_handler is None:
-            # REMOVED: AutoUpdateHandler with Google Drive OAuth dependency
-            # self.auto_update_handler = AutoUpdateHandler(...)
-            logger.info("Auto-update handler disabled - requires service account adaptation")
+            # Re-enable AutoUpdateHandler with SMOO support
+            from .handlers.auto_update_handler import AutoUpdateHandler
+            # Initialize with existing drive service and settings
+            tabs = {
+                "barologger": self._tabs.get("barologger"),  # Barologger tab
+                "water_level": self._tabs.get("water_level")   # Water level tab
+            }
+            self.auto_update_handler = AutoUpdateHandler(
+                self, 
+                self.db_manager, 
+                self.google_service_handler,  # Use existing service handler
+                self.settings_handler, 
+                tabs
+            )
+            logger.info("Auto-update handler enabled with SMOO support")
         
         # Check if handler is available
         if not self.auto_update_handler:
@@ -2949,7 +2969,8 @@ class MainWindow(QMainWindow):
             
             # Check if SMOO is accessible
             logger.info("📁 FIELD_SYNC: Checking SMOO shared drive access...")
-            smoo_root = self.settings_handler.get_setting("shared_drive_root", "")
+            from ..config.smoo_paths import get_smoo_path
+            smoo_root = get_smoo_path("base")
             logger.info(f"📁 FIELD_SYNC: SMOO root path: {smoo_root}")
             
             if not smoo_root or not os.path.exists(smoo_root):
@@ -3946,9 +3967,20 @@ class MainWindow(QMainWindow):
             
             # Initialize AutoUpdateHandler now that tabs are setup
             if self.auto_update_handler is None:
-                # REMOVED: AutoUpdateHandler with Google Drive OAuth dependency
-                # self.auto_update_handler = AutoUpdateHandler(...)
-                logger.info("Auto-update handler disabled - requires service account adaptation")
+                # Enable AutoUpdateHandler with SMOO support
+                from .handlers.auto_update_handler import AutoUpdateHandler
+                tabs = {
+                    "barologger": self._tabs.get("barologger"),  # Barologger tab
+                    "water_level": self._tabs.get("water_level")   # Water level tab
+                }
+                self.auto_update_handler = AutoUpdateHandler(
+                    self, 
+                    self.db_manager, 
+                    self.google_service_handler,  # Use existing service handler
+                    self.settings_handler, 
+                    tabs
+                )
+                logger.info("Auto-update handler enabled with SMOO support")
             
             # Final steps
             self.progress_dialog.setValue(100)
