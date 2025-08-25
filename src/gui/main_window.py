@@ -56,6 +56,7 @@ from .dialogs.shared_drive_settings_dialog import SharedDriveSettingsDialog
 from .dialogs.field_data_settings_dialog import GoogleDriveFieldDataDialog
 from .dialogs.unified_credentials_dialog import UnifiedCredentialsDialog
 from .dialogs.draft_selection_dialog import DraftSelectionDialog
+from .dialogs.folder_scanner_dialog import FolderScannerDialog
 
 logger = logging.getLogger(__name__)
 
@@ -2810,6 +2811,15 @@ class MainWindow(QMainWindow):
         find_files_by_date_range_action.triggered.connect(self.open_find_files_by_date_range)
         tools_menu.addAction(find_files_by_date_range_action)
         
+        # Add separator for file management tools
+        tools_menu.addSeparator()
+        
+        # Add Folder Scanner action
+        folder_scanner_action = QAction("🔍 Scan Folders for XLE Files", self)
+        folder_scanner_action.triggered.connect(self.open_folder_scanner)
+        folder_scanner_action.setToolTip("Scan any folder for new XLE files and integrate them into your collection")
+        tools_menu.addAction(folder_scanner_action)
+        
         # Update menu
         update_menu = menu_bar.addMenu("Update")
         
@@ -3209,6 +3219,16 @@ class MainWindow(QMainWindow):
             
             # Update status bar
             self.status_bar.showMessage("Data refresh complete", 3000)  # Show for 3 seconds
+    
+    def open_folder_scanner(self):
+        """Open the folder scanner dialog"""
+        try:
+            from .dialogs.folder_scanner_dialog import FolderScannerDialog
+            dialog = FolderScannerDialog(self)
+            dialog.exec_()
+        except Exception as e:
+            logger.error(f"Error opening folder scanner dialog: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to open folder scanner: {str(e)}")
     
     def show_user_management(self):
         """Show the user management dialog"""

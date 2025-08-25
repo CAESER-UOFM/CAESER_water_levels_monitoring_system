@@ -125,13 +125,21 @@ class XLEFileOrganizer:
         """Format date as year_month_day"""
         return dt.strftime("%Y_%m_%d")
     
-    def _format_filename(self, location: str, start_date: datetime, end_date: datetime) -> str:
-        """Format the filename according to the specified pattern"""
-        # If same year, only include year once
+    def _format_filename(self, serial_number: str, location: str, start_date: datetime, end_date: datetime) -> str:
+        """
+        Format the filename according to the standardized pattern: {serial}_{location}_{dates}
+        This matches the IntelligentFilenameGenerator format for consistency across the app
+        """
+        # Format dates
+        start_formatted = self._format_date(start_date)
+        
+        # Same year optimization
         if start_date.year == end_date.year:
-            filename = f"{location}_{self._format_date(start_date)}_To_{end_date.strftime('%m_%d')}"
+            end_formatted = end_date.strftime('%m_%d')
+            filename = f"{serial_number}_{location}_{start_formatted}_To_{end_formatted}"
         else:
-            filename = f"{location}_{self._format_date(start_date)}_To_{self._format_date(end_date)}"
+            end_formatted = self._format_date(end_date)
+            filename = f"{serial_number}_{location}_{start_formatted}_To_{end_formatted}"
         
         # Replace any invalid filename characters
         for char in ['<', '>', ':', '"', '/', '\\', '|', '?', '*']:
@@ -266,7 +274,7 @@ class XLEFileOrganizer:
             logger.info(f"Created/verified folder: {target_folder}")
             
             # Generate new filename
-            new_filename = f"{self._format_filename(location, start_date, end_date)}.xle"
+            new_filename = f"{self._format_filename(serial_number, location, start_date, end_date)}.xle"
             new_file_path = target_folder / new_filename
             logger.info(f"New file path will be: {new_file_path}")
             

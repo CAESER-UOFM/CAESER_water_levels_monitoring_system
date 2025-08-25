@@ -9,3 +9,4 @@ from .well_dialog import WellDialog
 from .well_import_dialog import WellImportDialog
 from .login_dialog import LoginDialog
 from .user_management_dialog import UserManagementDialog, EditUserDialog
+from .folder_scanner_dialog import FolderScannerDialog

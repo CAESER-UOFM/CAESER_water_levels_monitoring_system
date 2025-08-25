@@ -502,9 +502,9 @@ class SharedDriveDbHandler:
                 # Clean up old backups (keep only last 5 backups)
                 self._cleanup_old_backups(backup_folder_path, project_name)
             
-            # Upload database
+            # Upload database (convert from WAL to DELETE mode for SMB compatibility)
             logger.info(f"Uploading database for {project_name} to shared drive")
-            shutil.copy2(local_db_path, shared_db_path)
+            self._copy_database_for_smb(local_db_path, shared_db_path)
             
             # Update metadata
             modified_time = self._get_file_modified_time(shared_db_path)
@@ -526,6 +526,52 @@ class SharedDriveDbHandler:
         except Exception as e:
             logger.error(f"Error uploading database for {project_name}: {e}")
             return False
+    
+    def _copy_database_for_smb(self, source_path: str, dest_path: str):
+        """
+        Copy database to SMB share, converting from WAL to DELETE journal mode.
+        WAL mode doesn't work reliably on network shares.
+        """
+        import tempfile
+        import sqlite3
+        
+        try:
+            # Create temporary copy
+            with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as temp_file:
+                temp_path = temp_file.name
+            
+            # Copy to temp location
+            shutil.copy2(source_path, temp_path)
+            
+            # Convert journal mode for SMB compatibility
+            logger.info("Converting database from WAL to DELETE mode for SMB compatibility")
+            conn = sqlite3.connect(temp_path)
+            
+            # Check current journal mode
+            cursor = conn.cursor()
+            cursor.execute('PRAGMA journal_mode')
+            current_mode = cursor.fetchone()[0]
+            
+            if current_mode.upper() == 'WAL':
+                # Convert to DELETE mode (works reliably on SMB shares)
+                conn.execute('PRAGMA journal_mode = DELETE')
+                conn.execute('VACUUM')  # Clean up and compact
+                logger.info("Database converted from WAL to DELETE mode")
+            else:
+                logger.info(f"Database already in {current_mode} mode, no conversion needed")
+            
+            conn.close()
+            
+            # Copy converted database to final destination
+            shutil.copy2(temp_path, dest_path)
+            
+            # Clean up temp file
+            os.unlink(temp_path)
+            
+        except Exception as e:
+            logger.error(f"Error copying database for SMB: {e}")
+            # Fallback to simple copy
+            shutil.copy2(source_path, dest_path)
     
     def set_database_manager(self, database_manager):
         """Set the database manager for operations (interface compatibility)"""
