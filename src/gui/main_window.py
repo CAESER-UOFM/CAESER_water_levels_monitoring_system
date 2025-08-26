@@ -163,10 +163,23 @@ class MainWindow(QMainWindow):
         # Progress dialog will be created after successful login
         self.progress_dialog = None
         
+        # Initialize Google Drive monitor (will be set after authentication)
+        self.drive_monitor = None
+        
+        # Log successful initialization
+        self.logger.info("Main window initialized successfully (login required separately)")
+        
+        # Note: Login and initialization will be handled externally
+    
+    def perform_login_and_initialization(self):
+        """
+        Perform login and continue with application initialization.
+        This method should be called after splash screen closes.
+        """
         # Show login dialog
         if not self.show_login_dialog():
-            # Exit if login fails
-            sys.exit(0)
+            # Return False if login fails - main.py can handle exit
+            return False
             
         # Create and show progress dialog after successful login
         self.progress_dialog = QProgressDialog("Initializing application...", None, 0, 100, self)
@@ -182,18 +195,15 @@ class MainWindow(QMainWindow):
         self.progress_dialog.setStyleSheet("QProgressDialog { background-color: #f0f0f0; }")
         self.progress_dialog.show()
         
-        # Initialize Google Drive monitor (will be set after authentication)
-        self.drive_monitor = None
+        self.logger.info("Starting application initialization after login")
         
-        # Log successful initialization
-        self.logger.info("Main window initialized successfully")
-        
-        # REMOVED: Google Drive OAuth initialization
-        # Continue directly with initialization (no Google Drive check needed)
+        # Continue with initialization
         QTimer.singleShot(100, self._finish_initialization)
         
         self.progress_dialog.setValue(40)
         self.progress_dialog.setLabelText("Setting up application menu...")
+        
+        return True
     
     # REMOVED: _check_drive_and_continue_init - Google Drive OAuth authentication
     # This method handled Google Drive login dialogs and is no longer needed

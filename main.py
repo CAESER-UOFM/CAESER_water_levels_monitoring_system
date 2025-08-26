@@ -144,9 +144,17 @@ def main():
         import time
         time.sleep(0.8)
         
-        # Close splash before showing main window
+        # Close splash before showing login
+        logger.info("Closing splash screen")
         splash.close_splash()
-        app.processEvents()  # Ensure splash is closed before showing login
+        app.processEvents()  # Ensure splash is closed
+        
+        # Now perform login and initialization
+        logger.info("Performing login and initialization")
+        if not window.perform_login_and_initialization():
+            # Exit if login fails
+            logger.error("Login failed or was cancelled")
+            sys.exit(0)
         
         logger.info("Showing main window")
         window.show()
