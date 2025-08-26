@@ -107,14 +107,8 @@ def main():
         
         app = QApplication(sys.argv)
         
-        # Show splash screen immediately
-        logger.info("Showing splash screen")
-        splash = SplashScreen()
-        splash.show()
-        app.processEvents()  # Force the splash to be displayed
-        
-        # Load icon via resource_path for bundle support
-        splash.update_message("Loading application resources...")
+        # Load icon IMMEDIATELY after QApplication creation for fastest display
+        logger.info("Loading application icon...")
         icon_path = resource_path('src/gui/icons/app_icon.webp')
         if not icon_path.exists():
             icon_path = resource_path('src/gui/icons/app_icon.ico')
@@ -122,19 +116,31 @@ def main():
         
         logger.info(f"Loading icon from: {icon_path.absolute()}")
         
+        app_icon = None
         if icon_path.exists():
-            app.setWindowIcon(QIcon(str(icon_path)))
+            app_icon = QIcon(str(icon_path))
+            app.setWindowIcon(app_icon)
         else:
             logger.warning(f"No icon file found at {icon_path.absolute()}")
-            
+        
+        # Show splash screen immediately after icon is loaded
+        logger.info("Showing splash screen")
+        splash = SplashScreen()
+        # Apply icon to splash screen immediately if we have it
+        if app_icon:
+            splash.setWindowIcon(app_icon)
+        splash.show()
+        app.processEvents()  # Force the splash to be displayed
+        
         # Create main window with progress updates
         splash.update_message("Initializing main interface...")
         app.processEvents()
         logger.info("Creating main window")
         window = MainWindow()
         
-        # Use the same icon path that worked for the app
-        window.setWindowIcon(QIcon(str(icon_path)))
+        # Apply the same icon to main window
+        if app_icon:
+            window.setWindowIcon(app_icon)
         
         # Final splash message
         splash.update_message("Ready to dive deep! 🚰")
