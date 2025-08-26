@@ -30,7 +30,7 @@ class SplashScreen(QDialog):
     def setup_ui(self):
         """Create the splash screen interface matching login dialog style"""
         self.setWindowTitle("CAESER Water Levels")
-        self.setFixedSize(380, 280)
+        self.setFixedSize(450, 350)
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
         
         # Center the dialog on screen
@@ -41,7 +41,7 @@ class SplashScreen(QDialog):
         layout.setSpacing(15)
         layout.setContentsMargins(40, 40, 40, 40)
         
-        # Circular mascot container (matching login style)
+        # Add app icon with exact same layout as login dialog
         self.setup_circular_mascot(layout)
         
         # Title matching login style
@@ -83,66 +83,92 @@ class SplashScreen(QDialog):
         
         self.setLayout(layout)
         
-        # Style to match login dialog - blue gradient background
+        # Style with enhanced black metallic gradient background
         self.setStyleSheet("""
             QDialog {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #4a90e2, stop:1 #357abd);
+                    stop:0 #4a4a4a, stop:0.2 #2c2c2c, stop:0.5 #1a1a1a, 
+                    stop:0.8 #0f0f0f, stop:1 #000000);
                 border-radius: 15px;
-                border: 1px solid rgba(255, 255, 255, 0.2);
+                border: 3px solid qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #888888, stop:0.5 #555555, stop:1 #333333);
             }
         """)
     
     def setup_circular_mascot(self, layout):
-        """Add circular mascot container matching login dialog"""
+        """Add circular mascot container exactly matching login dialog"""
         try:
-            # Create container for circular mascot
-            mascot_container = QLabel()
-            mascot_container.setFixedSize(100, 100)
-            mascot_container.setAlignment(Qt.AlignCenter)
+            # Import required Qt components
+            from PyQt5.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout
+            from PyQt5.QtGui import QIcon
+            from PyQt5.QtCore import QSize
+            
+            # Create icon layout with stretches exactly like login dialog
+            icon_layout = QHBoxLayout()
+            
+            # Create a centered container for the icon exactly like login dialog
+            icon_container = QFrame()
+            icon_container.setLayout(QVBoxLayout())
+            icon_container.layout().setAlignment(Qt.AlignCenter)
+            
+            # Create icon frame with maximum size to eliminate all cutoff
+            self.icon_frame = QFrame()
+            self.icon_frame.setObjectName("iconFrame") 
+            self.icon_frame.setFixedSize(150, 150)
+            self.icon_frame.setStyleSheet("""
+                #iconFrame {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                        stop:0 rgba(255, 255, 255, 25), 
+                        stop:0.5 rgba(200, 200, 200, 15), 
+                        stop:1 rgba(150, 150, 150, 10));
+                    border-radius: 75px;
+                    border: 3px solid qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                        stop:0 rgba(255, 255, 255, 60), 
+                        stop:0.5 rgba(180, 180, 180, 50), 
+                        stop:1 rgba(120, 120, 120, 40));
+                }
+            """)
+            
+            # Create inner layout with more padding to center icon better
+            icon_inner_layout = QVBoxLayout(self.icon_frame)
+            icon_inner_layout.setContentsMargins(10, 10, 10, 10)
+            
+            # Create icon label exactly like login dialog
+            icon_label = QLabel()
+            icon_label.setAlignment(Qt.AlignCenter)
             
             # Use exact same path approach as login dialog 
             icon_dir = Path(__file__).parent.parent / "icons"
-            mascot_path = icon_dir / "app_icon.webp"
-            if not mascot_path.exists():
-                mascot_path = icon_dir / "water_level_meter.png"
+            icon_path = icon_dir / "app_icon.webp"
+            if not icon_path.exists():
+                icon_path = icon_dir / "water_level_meter.png"
             
-            if mascot_path.exists():
-                # Load and prepare the mascot image
-                pixmap = QPixmap(str(mascot_path))
+            if icon_path.exists():
+                # Load with even larger size to fit bigger container
+                icon = QIcon(str(icon_path))
+                pixmap = icon.pixmap(120, 120)  # Even larger size for bigger container
+                icon_label.setPixmap(pixmap)
                 
-                # Scale to fit circle
-                scaled_pixmap = pixmap.scaled(80, 80, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                mascot_container.setPixmap(scaled_pixmap)
-                
-                # Create circular container with breathing animation
-                mascot_container.setStyleSheet("""
-                    QLabel {
-                        background: rgba(255, 255, 255, 0.15);
-                        border: 2px solid rgba(255, 255, 255, 0.3);
-                        border-radius: 50px;
-                        padding: 8px;
-                    }
-                """)
-                
-                # Add breathing animation
-                self.add_breathing_animation(mascot_container)
+                # Add breathing animation exactly like login dialog
+                self.add_breathing_animation()
                 
             else:
-                # Fallback with emoji
-                mascot_container.setText("🌊")
-                mascot_container.setStyleSheet("""
-                    QLabel {
-                        font-size: 36px;
-                        background: rgba(255, 255, 255, 0.15);
-                        border: 2px solid rgba(255, 255, 255, 0.3);
-                        border-radius: 50px;
-                        color: white;
-                    }
-                """)
-                self.add_breathing_animation(mascot_container)
+                # Fallback
+                icon_label.setText("🌊")
+                icon_label.setStyleSheet("font-size: 36px; color: white;")
             
-            layout.addWidget(mascot_container)
+            # Add label to inner layout exactly like login dialog
+            icon_inner_layout.addWidget(icon_label)
+            
+            # Add icon frame to the centered container exactly like login dialog
+            icon_container.layout().addWidget(self.icon_frame)
+            
+            # Add stretches and container exactly like login dialog
+            icon_layout.addStretch()
+            icon_layout.addWidget(icon_container)
+            icon_layout.addStretch()
+            layout.addLayout(icon_layout)
+            layout.addSpacing(10)  # Same spacing as login dialog
             
         except Exception as e:
             # Simple fallback
@@ -152,37 +178,47 @@ class SplashScreen(QDialog):
             placeholder.setStyleSheet("""
                 QLabel {
                     font-size: 36px;
-                    background: rgba(255, 255, 255, 0.15);
-                    border: 2px solid rgba(255, 255, 255, 0.3);
+                    background: rgba(255, 255, 255, 30);
+                    border: 2px solid rgba(255, 255, 255, 60);
                     border-radius: 50px;
                     color: white;
                 }
             """)
             layout.addWidget(placeholder)
     
-    def add_breathing_animation(self, widget):
-        """Add subtle breathing animation to mascot matching login dialog style"""
+    def add_breathing_animation(self):
+        """Add breathing animation exactly matching login dialog"""
         from PyQt5.QtCore import QPropertyAnimation, QEasingCurve, QSize
         
         try:
-            # Create size-based breathing animation like login dialog
-            self.breathing_animation = QPropertyAnimation(widget, b"minimumSize")
-            self.breathing_animation.setDuration(3000)  # 3 second cycle
-            self.breathing_animation.setStartValue(QSize(95, 95))
-            self.breathing_animation.setEndValue(QSize(105, 105))
-            self.breathing_animation.setEasingCurve(QEasingCurve.InOutSine)
+            # Create breathing animation with maximum container size
+            self.breathe_animation = QPropertyAnimation(self.icon_frame, b"minimumSize")
+            self.breathe_animation.setDuration(4000)  # Same duration as login
+            self.breathe_animation.setStartValue(QSize(150, 150))  # Updated for maximum container
+            self.breathe_animation.setEndValue(QSize(160, 160))
+            self.breathe_animation.setEasingCurve(QEasingCurve.InOutSine)
             
-            # Create return animation
-            self.breathing_animation_2 = QPropertyAnimation(widget, b"minimumSize")
-            self.breathing_animation_2.setDuration(3000)
-            self.breathing_animation_2.setStartValue(QSize(105, 105))
-            self.breathing_animation_2.setEndValue(QSize(95, 95))
-            self.breathing_animation_2.setEasingCurve(QEasingCurve.InOutSine)
+            # Create second animation with maximum container size
+            self.breathe_animation_2 = QPropertyAnimation(self.icon_frame, b"minimumSize")
+            self.breathe_animation_2.setDuration(4000)
+            self.breathe_animation_2.setStartValue(QSize(160, 160))
+            self.breathe_animation_2.setEndValue(QSize(150, 150))
+            self.breathe_animation_2.setEasingCurve(QEasingCurve.InOutSine)
             
-            # Link animations for continuous breathing
-            self.breathing_animation.finished.connect(self.breathing_animation_2.start)
-            self.breathing_animation_2.finished.connect(self.breathing_animation.start)
-            self.breathing_animation.start()
+            # Link animations exactly like login dialog
+            self.breathe_animation.finished.connect(self.breathe_animation_2.start)
+            self.breathe_animation_2.finished.connect(self.breathe_animation.start)
+            
+            # Keep icon centered exactly like login dialog
+            def update_maximum_size():
+                size = self.icon_frame.minimumSize()
+                self.icon_frame.setMaximumSize(size)
+                
+            self.breathe_animation.valueChanged.connect(update_maximum_size)
+            self.breathe_animation_2.valueChanged.connect(update_maximum_size)
+            
+            # Start animation exactly like login dialog
+            self.breathe_animation.start()
             
         except Exception:
             # Skip animation if there are issues
@@ -246,10 +282,10 @@ class SplashScreen(QDialog):
         try:
             self.message_timer.stop()
             self.progress_timer.stop()
-            if hasattr(self, 'breathing_animation'):
-                self.breathing_animation.stop()
-            if hasattr(self, 'breathing_animation_2'):
-                self.breathing_animation_2.stop()
+            if hasattr(self, 'breathe_animation'):
+                self.breathe_animation.stop()
+            if hasattr(self, 'breathe_animation_2'):
+                self.breathe_animation_2.stop()
         except:
             pass
         self.close()

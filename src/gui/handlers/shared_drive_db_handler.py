@@ -355,13 +355,14 @@ class SharedDriveDbHandler:
         logger.info(f"Found {len(projects)} projects in shared drive")
         return projects
     
-    def download_project_database(self, project_name: str, force_download: bool = False) -> Optional[str]:
+    def download_project_database(self, project_name: str, force_download: bool = False, progress_callback=None) -> Optional[str]:
         """
         Download project database from shared drive to local cache.
         
         Args:
             project_name: Name of the project
             force_download: Force download even if cache is valid
+            progress_callback: Optional callback function(progress_percent, message)
             
         Returns:
             Path to downloaded database file or None if failed
@@ -389,7 +390,7 @@ class SharedDriveDbHandler:
             
             # Download database using chunked copy for large files
             logger.info(f"Downloading database for {project_name} from shared drive")
-            self._copy_large_file(shared_db_path, cached_db_path)
+            self._copy_large_file(shared_db_path, cached_db_path, progress_callback, "Download")
             
             # Save metadata
             project_info = {
@@ -405,13 +406,14 @@ class SharedDriveDbHandler:
             logger.error(f"Error downloading database for {project_name}: {e}")
             return None
     
-    def get_working_database_path(self, project_name: str, force_download: bool = False) -> Optional[str]:
+    def get_working_database_path(self, project_name: str, force_download: bool = False, progress_callback=None) -> Optional[str]:
         """
         Get path to working database (wlm_PROJECT.db) for local operations.
         
         Args:
             project_name: Name of the project
             force_download: Force download from shared drive
+            progress_callback: Optional callback function(progress_percent, message)
             
         Returns:
             Path to working database file or None if failed
@@ -439,7 +441,7 @@ class SharedDriveDbHandler:
             
             # Copy from shared drive to working database using chunked copy
             logger.info(f"Creating working database for {project_name}")
-            self._copy_large_file(shared_db_path, working_db_path)
+            self._copy_large_file(shared_db_path, working_db_path, progress_callback, "Download")
             
             # Save working metadata
             project_info = {
@@ -563,7 +565,7 @@ class SharedDriveDbHandler:
             conn.close()
             
             # Copy converted database to final destination using chunked copy for large files
-            self._copy_large_file(temp_path, dest_path)
+            self._copy_large_file(temp_path, dest_path, None, "Upload")
             
             # Clean up temp file
             os.unlink(temp_path)
@@ -573,10 +575,16 @@ class SharedDriveDbHandler:
             # Fallback to simple copy
             shutil.copy2(source_path, dest_path)
     
-    def _copy_large_file(self, source_path: str, dest_path: str):
+    def _copy_large_file(self, source_path: str, dest_path: str, progress_callback=None, operation_type="Copy"):
         """
         Copy large files in chunks to avoid memory issues with large databases.
         Uses 1MB chunks to efficiently handle files like 1.69GB databases over network shares.
+        
+        Args:
+            source_path: Path to source file
+            dest_path: Path to destination file
+            progress_callback: Optional callback function(progress_percent, message)
+            operation_type: Type of operation ("Copy", "Download", "Upload") for progress messages
         """
         try:
             # Get file size for progress tracking
@@ -595,10 +603,15 @@ class SharedDriveDbHandler:
                         dst.write(chunk)
                         copied_bytes += len(chunk)
                         
-                        # Log progress every 100MB
+                        # Update progress every 100MB or when complete
                         if copied_bytes % (100 * 1024 * 1024) == 0 or copied_bytes == file_size:
-                            progress = (copied_bytes / file_size) * 100
-                            logger.info(f"Upload progress: {progress:.1f}% ({copied_bytes / (1024*1024):.1f}/{file_size / (1024*1024):.1f} MB)")
+                            progress_percent = (copied_bytes / file_size) * 100
+                            message = f"{operation_type} progress: {progress_percent:.1f}% ({copied_bytes / (1024*1024):.1f}/{file_size / (1024*1024):.1f} MB)"
+                            logger.info(message)
+                            
+                            # Call progress callback if provided
+                            if progress_callback:
+                                progress_callback(progress_percent, message)
             
             logger.info(f"Large file copy completed: {os.path.basename(source_path)} ({file_size / (1024*1024):.1f} MB)")
         except Exception as e:
@@ -845,7 +858,7 @@ class SharedDriveDbHandler:
         if progress_callback:
             progress_callback(20, "Downloading from shared drive...")
             
-        cached_db_path = self.download_project_database(project_name, force_download)
+        cached_db_path = self.download_project_database(project_name, force_download, progress_callback)
         
         if progress_callback:
             progress_callback(100, "Download complete")
