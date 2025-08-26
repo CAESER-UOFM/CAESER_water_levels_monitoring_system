@@ -80,7 +80,10 @@ logger.info(f"Project root: {PROJECT_ROOT}")
 logger.info("Setting up Qt attributes")
 QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
 
-# Now import GUI components
+# Import splash screen first (lightweight)
+from src.gui.dialogs.splash_screen import SplashScreen
+
+# Now import GUI components - will be shown after splash
 logger.info("Importing GUI components")
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from src.gui.main_window import MainWindow
@@ -104,7 +107,14 @@ def main():
         
         app = QApplication(sys.argv)
         
+        # Show splash screen immediately
+        logger.info("Showing splash screen")
+        splash = SplashScreen()
+        splash.show()
+        app.processEvents()  # Force the splash to be displayed
+        
         # Load icon via resource_path for bundle support
+        splash.update_message("Loading application resources...")
         icon_path = resource_path('src/gui/icons/app_icon.webp')
         if not icon_path.exists():
             icon_path = resource_path('src/gui/icons/app_icon.ico')
@@ -117,11 +127,25 @@ def main():
         else:
             logger.warning(f"No icon file found at {icon_path.absolute()}")
             
+        # Create main window with progress updates
+        splash.update_message("Initializing main interface...")
+        app.processEvents()
         logger.info("Creating main window")
         window = MainWindow()
+        
         # Use the same icon path that worked for the app
         window.setWindowIcon(QIcon(str(icon_path)))
         
+        # Final splash message
+        splash.update_message("Ready to dive deep! 🚰")
+        app.processEvents()
+        
+        # Brief pause to ensure splash is visible
+        import time
+        time.sleep(0.8)
+        
+        # Close splash and show main window
+        splash.close_splash()
         logger.info("Showing main window")
         window.show()
         
