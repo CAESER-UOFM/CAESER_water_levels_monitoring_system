@@ -144,8 +144,10 @@ def main():
         import time
         time.sleep(0.8)
         
-        # Close splash and show main window
+        # Close splash before showing main window
         splash.close_splash()
+        app.processEvents()  # Ensure splash is closed before showing login
+        
         logger.info("Showing main window")
         window.show()
         

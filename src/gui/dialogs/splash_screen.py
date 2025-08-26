@@ -27,9 +27,9 @@ class SplashScreen(QDialog):
         self.setup_timer()
         
     def setup_ui(self):
-        """Create the splash screen interface"""
+        """Create the splash screen interface matching login dialog style"""
         self.setWindowTitle("CAESER Water Levels")
-        self.setFixedSize(400, 300)
+        self.setFixedSize(380, 280)
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
         
         # Center the dialog on screen
@@ -37,105 +37,149 @@ class SplashScreen(QDialog):
         
         # Main layout
         layout = QVBoxLayout()
-        layout.setSpacing(20)
-        layout.setContentsMargins(30, 30, 30, 30)
+        layout.setSpacing(15)
+        layout.setContentsMargins(40, 40, 40, 40)
         
-        # Mascot image
-        self.setup_mascot_image(layout)
+        # Circular mascot container (matching login style)
+        self.setup_circular_mascot(layout)
         
-        # Title and subtitle
-        self.setup_title_section(layout)
+        # Title matching login style
+        title_label = QLabel("Water Level Monitoring")
+        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setStyleSheet("""
+            QLabel {
+                font-size: 18px;
+                font-weight: bold;
+                color: white;
+                margin-bottom: 10px;
+            }
+        """)
+        layout.addWidget(title_label)
         
         # Loading message
-        self.loading_label = QLabel("Welcome to CAESER! 🌊")
+        self.loading_label = QLabel("Loading your groundwater data...")
         self.loading_label.setAlignment(Qt.AlignCenter)
         self.loading_label.setStyleSheet("""
             QLabel {
                 font-size: 14px;
-                color: #2c3e50;
-                font-weight: bold;
+                color: rgba(255, 255, 255, 0.9);
+                margin-bottom: 20px;
             }
         """)
         layout.addWidget(self.loading_label)
         
-        # Progress dots
+        # Breathing progress dots
         self.progress_label = QLabel("●●●")
         self.progress_label.setAlignment(Qt.AlignCenter)
         self.progress_label.setStyleSheet("""
             QLabel {
-                font-size: 16px;
-                color: #3498db;
-                letter-spacing: 3px;
+                font-size: 14px;
+                color: rgba(255, 255, 255, 0.7);
+                letter-spacing: 4px;
             }
         """)
         layout.addWidget(self.progress_label)
         
-        # Add stretch to push everything toward center
-        layout.addStretch()
-        
         self.setLayout(layout)
         
-        # Style the dialog
+        # Style to match login dialog - blue gradient background
         self.setStyleSheet("""
             QDialog {
-                background-color: white;
-                border: 2px solid #3498db;
-                border-radius: 10px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #4a90e2, stop:1 #357abd);
+                border-radius: 15px;
+                border: 1px solid rgba(255, 255, 255, 0.2);
             }
         """)
     
-    def setup_mascot_image(self, layout):
-        """Add the CAESER mascot image"""
+    def setup_circular_mascot(self, layout):
+        """Add circular mascot container matching login dialog"""
         try:
+            # Create container for circular mascot
+            mascot_container = QLabel()
+            mascot_container.setFixedSize(100, 100)
+            mascot_container.setAlignment(Qt.AlignCenter)
+            
             # Path to the mascot image
             project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             mascot_path = os.path.join(project_root, "src", "gui", "icons", "app_icon.webp")
             
             if os.path.exists(mascot_path):
-                mascot_label = QLabel()
+                # Load and prepare the mascot image
                 pixmap = QPixmap(mascot_path)
-                # Scale to reasonable size for splash
-                scaled_pixmap = pixmap.scaled(120, 120, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                mascot_label.setPixmap(scaled_pixmap)
-                mascot_label.setAlignment(Qt.AlignCenter)
-                layout.addWidget(mascot_label)
+                
+                # Scale to fit circle
+                scaled_pixmap = pixmap.scaled(80, 80, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                mascot_container.setPixmap(scaled_pixmap)
+                
+                # Create circular container with breathing animation
+                mascot_container.setStyleSheet("""
+                    QLabel {
+                        background: rgba(255, 255, 255, 0.15);
+                        border: 2px solid rgba(255, 255, 255, 0.3);
+                        border-radius: 50px;
+                        padding: 8px;
+                    }
+                """)
+                
+                # Add breathing animation
+                self.add_breathing_animation(mascot_container)
+                
             else:
-                # Fallback if image not found
-                placeholder = QLabel("🌊")
-                placeholder.setAlignment(Qt.AlignCenter)
-                placeholder.setStyleSheet("font-size: 48px;")
-                layout.addWidget(placeholder)
-        except Exception:
-            # Fallback emoji if anything goes wrong
+                # Fallback with emoji
+                mascot_container.setText("🌊")
+                mascot_container.setStyleSheet("""
+                    QLabel {
+                        font-size: 36px;
+                        background: rgba(255, 255, 255, 0.15);
+                        border: 2px solid rgba(255, 255, 255, 0.3);
+                        border-radius: 50px;
+                        color: white;
+                    }
+                """)
+                self.add_breathing_animation(mascot_container)
+            
+            layout.addWidget(mascot_container)
+            
+        except Exception as e:
+            # Simple fallback
             placeholder = QLabel("🌊")
             placeholder.setAlignment(Qt.AlignCenter)
-            placeholder.setStyleSheet("font-size: 48px;")
+            placeholder.setFixedSize(100, 100)
+            placeholder.setStyleSheet("""
+                QLabel {
+                    font-size: 36px;
+                    background: rgba(255, 255, 255, 0.15);
+                    border: 2px solid rgba(255, 255, 255, 0.3);
+                    border-radius: 50px;
+                    color: white;
+                }
+            """)
             layout.addWidget(placeholder)
     
-    def setup_title_section(self, layout):
-        """Add title and subtitle"""
-        title_label = QLabel("CAESER")
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("""
-            QLabel {
-                font-size: 24px;
-                font-weight: bold;
-                color: #2c3e50;
-                margin-bottom: 5px;
-            }
-        """)
-        layout.addWidget(title_label)
+    def add_breathing_animation(self, widget):
+        """Add subtle breathing animation to mascot"""
+        from PyQt5.QtCore import QPropertyAnimation, QEasingCurve
+        from PyQt5.QtWidgets import QGraphicsOpacityEffect
         
-        subtitle_label = QLabel("Water Levels Monitoring System")
-        subtitle_label.setAlignment(Qt.AlignCenter)
-        subtitle_label.setStyleSheet("""
-            QLabel {
-                font-size: 12px;
-                color: #7f8c8d;
-                margin-bottom: 10px;
-            }
-        """)
-        layout.addWidget(subtitle_label)
+        try:
+            # Add opacity effect for breathing
+            opacity_effect = QGraphicsOpacityEffect()
+            widget.setGraphicsEffect(opacity_effect)
+            
+            # Create breathing animation
+            self.breathing_animation = QPropertyAnimation(opacity_effect, b"opacity")
+            self.breathing_animation.setDuration(2000)  # 2 second cycle
+            self.breathing_animation.setStartValue(0.7)
+            self.breathing_animation.setEndValue(1.0)
+            self.breathing_animation.setEasingCurve(QEasingCurve.InOutQuad)
+            self.breathing_animation.setLoopCount(-1)  # Infinite loop
+            self.breathing_animation.finished.connect(self.breathing_animation.start)
+            self.breathing_animation.start()
+            
+        except Exception:
+            # Skip animation if there are issues
+            pass
     
     def setup_messages(self):
         """Setup rotating loading messages"""
@@ -192,6 +236,11 @@ class SplashScreen(QDialog):
     
     def close_splash(self):
         """Clean shutdown of the splash screen"""
-        self.message_timer.stop()
-        self.progress_timer.stop()
+        try:
+            self.message_timer.stop()
+            self.progress_timer.stop()
+            if hasattr(self, 'breathing_animation'):
+                self.breathing_animation.stop()
+        except:
+            pass
         self.close()
