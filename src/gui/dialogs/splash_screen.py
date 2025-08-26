@@ -8,6 +8,7 @@ immediate feedback and branded experience while components load.
 
 import os
 import random
+from pathlib import Path
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QProgressBar
 )
@@ -100,13 +101,15 @@ class SplashScreen(QDialog):
             mascot_container.setFixedSize(100, 100)
             mascot_container.setAlignment(Qt.AlignCenter)
             
-            # Path to the mascot image
-            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            mascot_path = os.path.join(project_root, "src", "gui", "icons", "app_icon.webp")
+            # Use exact same path approach as login dialog 
+            icon_dir = Path(__file__).parent.parent / "icons"
+            mascot_path = icon_dir / "app_icon.webp"
+            if not mascot_path.exists():
+                mascot_path = icon_dir / "water_level_meter.png"
             
-            if os.path.exists(mascot_path):
+            if mascot_path.exists():
                 # Load and prepare the mascot image
-                pixmap = QPixmap(mascot_path)
+                pixmap = QPixmap(str(mascot_path))
                 
                 # Scale to fit circle
                 scaled_pixmap = pixmap.scaled(80, 80, Qt.KeepAspectRatio, Qt.SmoothTransformation)
@@ -158,23 +161,27 @@ class SplashScreen(QDialog):
             layout.addWidget(placeholder)
     
     def add_breathing_animation(self, widget):
-        """Add subtle breathing animation to mascot"""
-        from PyQt5.QtCore import QPropertyAnimation, QEasingCurve
-        from PyQt5.QtWidgets import QGraphicsOpacityEffect
+        """Add subtle breathing animation to mascot matching login dialog style"""
+        from PyQt5.QtCore import QPropertyAnimation, QEasingCurve, QSize
         
         try:
-            # Add opacity effect for breathing
-            opacity_effect = QGraphicsOpacityEffect()
-            widget.setGraphicsEffect(opacity_effect)
+            # Create size-based breathing animation like login dialog
+            self.breathing_animation = QPropertyAnimation(widget, b"minimumSize")
+            self.breathing_animation.setDuration(3000)  # 3 second cycle
+            self.breathing_animation.setStartValue(QSize(95, 95))
+            self.breathing_animation.setEndValue(QSize(105, 105))
+            self.breathing_animation.setEasingCurve(QEasingCurve.InOutSine)
             
-            # Create breathing animation
-            self.breathing_animation = QPropertyAnimation(opacity_effect, b"opacity")
-            self.breathing_animation.setDuration(2000)  # 2 second cycle
-            self.breathing_animation.setStartValue(0.7)
-            self.breathing_animation.setEndValue(1.0)
-            self.breathing_animation.setEasingCurve(QEasingCurve.InOutQuad)
-            self.breathing_animation.setLoopCount(-1)  # Infinite loop
-            self.breathing_animation.finished.connect(self.breathing_animation.start)
+            # Create return animation
+            self.breathing_animation_2 = QPropertyAnimation(widget, b"minimumSize")
+            self.breathing_animation_2.setDuration(3000)
+            self.breathing_animation_2.setStartValue(QSize(105, 105))
+            self.breathing_animation_2.setEndValue(QSize(95, 95))
+            self.breathing_animation_2.setEasingCurve(QEasingCurve.InOutSine)
+            
+            # Link animations for continuous breathing
+            self.breathing_animation.finished.connect(self.breathing_animation_2.start)
+            self.breathing_animation_2.finished.connect(self.breathing_animation.start)
             self.breathing_animation.start()
             
         except Exception:
@@ -241,6 +248,8 @@ class SplashScreen(QDialog):
             self.progress_timer.stop()
             if hasattr(self, 'breathing_animation'):
                 self.breathing_animation.stop()
+            if hasattr(self, 'breathing_animation_2'):
+                self.breathing_animation_2.stop()
         except:
             pass
         self.close()
