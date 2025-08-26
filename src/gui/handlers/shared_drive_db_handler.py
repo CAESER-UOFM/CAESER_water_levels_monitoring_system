@@ -387,9 +387,9 @@ class SharedDriveDbHandler:
                 logger.info(f"Using cached database for {project_name}")
                 return cached_db_path
             
-            # Download database
+            # Download database using chunked copy for large files
             logger.info(f"Downloading database for {project_name} from shared drive")
-            shutil.copy2(shared_db_path, cached_db_path)
+            self._copy_large_file(shared_db_path, cached_db_path)
             
             # Save metadata
             project_info = {
@@ -437,9 +437,9 @@ class SharedDriveDbHandler:
                 logger.info(f"Using existing working database for {project_name}")
                 return working_db_path
             
-            # Copy from shared drive to working database
+            # Copy from shared drive to working database using chunked copy
             logger.info(f"Creating working database for {project_name}")
-            shutil.copy2(shared_db_path, working_db_path)
+            self._copy_large_file(shared_db_path, working_db_path)
             
             # Save working metadata
             project_info = {
@@ -562,8 +562,8 @@ class SharedDriveDbHandler:
             
             conn.close()
             
-            # Copy converted database to final destination
-            shutil.copy2(temp_path, dest_path)
+            # Copy converted database to final destination using chunked copy for large files
+            self._copy_large_file(temp_path, dest_path)
             
             # Clean up temp file
             os.unlink(temp_path)
@@ -572,6 +572,38 @@ class SharedDriveDbHandler:
             logger.error(f"Error copying database for SMB: {e}")
             # Fallback to simple copy
             shutil.copy2(source_path, dest_path)
+    
+    def _copy_large_file(self, source_path: str, dest_path: str):
+        """
+        Copy large files in chunks to avoid memory issues with large databases.
+        Uses 1MB chunks to efficiently handle files like 1.69GB databases over network shares.
+        """
+        try:
+            # Get file size for progress tracking
+            file_size = os.path.getsize(source_path)
+            copied_bytes = 0
+            chunk_size = 1024 * 1024  # 1MB chunks
+            
+            logger.info(f"Starting chunked copy of {os.path.basename(source_path)} ({file_size / (1024*1024):.1f} MB)")
+            
+            with open(source_path, 'rb') as src:
+                with open(dest_path, 'wb') as dst:
+                    while True:
+                        chunk = src.read(chunk_size)
+                        if not chunk:
+                            break
+                        dst.write(chunk)
+                        copied_bytes += len(chunk)
+                        
+                        # Log progress every 100MB
+                        if copied_bytes % (100 * 1024 * 1024) == 0 or copied_bytes == file_size:
+                            progress = (copied_bytes / file_size) * 100
+                            logger.info(f"Upload progress: {progress:.1f}% ({copied_bytes / (1024*1024):.1f}/{file_size / (1024*1024):.1f} MB)")
+            
+            logger.info(f"Large file copy completed: {os.path.basename(source_path)} ({file_size / (1024*1024):.1f} MB)")
+        except Exception as e:
+            logger.error(f"Error in chunked file copy: {e}")
+            raise
     
     def set_database_manager(self, database_manager):
         """Set the database manager for operations (interface compatibility)"""
