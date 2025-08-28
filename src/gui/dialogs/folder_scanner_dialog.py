@@ -188,23 +188,16 @@ class FolderScannerDialog(QDialog):
         path_layout.addWidget(self.browse_button)
         folder_layout.addLayout(path_layout)
         
-        # Scan options
-        options_layout = QHBoxLayout()
-        self.dry_run_checkbox = QCheckBox("Dry Run (preview only)")
-        self.dry_run_checkbox.setChecked(True)
-        self.dry_run_checkbox.setToolTip("When checked, files will not be moved - only a preview will be shown")
-        
-        options_layout.addWidget(self.dry_run_checkbox)
-        options_layout.addStretch()
-        folder_layout.addLayout(options_layout)
+        # Note: Scanning always does preview first - no confusing dry run checkbox needed
         
         layout.addWidget(folder_group)
         
         # Scan controls
         controls_layout = QHBoxLayout()
-        self.scan_button = QPushButton("🔍 Scan Folder")
+        self.scan_button = QPushButton("🔍 Preview Folder")
         self.scan_button.clicked.connect(self.start_scan)
         self.scan_button.setMinimumHeight(35)
+        self.scan_button.setToolTip("Preview XLE files in folder - no files will be moved")
         
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
@@ -225,11 +218,12 @@ class FolderScannerDialog(QDialog):
         self.summary_label.setWordWrap(True)
         summary_layout.addWidget(self.summary_label)
         
-        # Apply changes button (only shown after successful dry run)
-        self.apply_button = QPushButton("✅ Apply Changes")
+        # Add files button (only shown after successful scan)
+        self.apply_button = QPushButton("📥 Add Files")
         self.apply_button.clicked.connect(self.apply_changes)
         self.apply_button.setVisible(False)
         self.apply_button.setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-weight: bold; }")
+        self.apply_button.setToolTip("Import the unique files found during scan into your collection")
         summary_layout.addWidget(self.apply_button)
         
         results_splitter.addWidget(summary_group)
@@ -983,8 +977,8 @@ class FolderScannerDialog(QDialog):
         self.progress_bar.setValue(0)
         self.apply_button.setVisible(False)
         
-        # Start background scan
-        apply_changes = not self.dry_run_checkbox.isChecked()
+        # Start background scan - ALWAYS in preview mode first
+        apply_changes = False  # Never apply changes during initial scan
         self.scan_thread = FolderScanThread(self.scanner, folder_path, apply_changes)
         self.scan_thread.progress_updated.connect(self.update_progress)
         self.scan_thread.scan_completed.connect(self.handle_scan_completed)
@@ -1010,8 +1004,8 @@ class FolderScannerDialog(QDialog):
         # Update detailed results
         self.update_results_tree(results)
         
-        # Show apply button if this was a dry run and there are files to process
-        if self.dry_run_checkbox.isChecked() and results.get('unique_files', 0) > 0:
+        # Show apply button if there are files to process (scanning is always preview)
+        if results.get('unique_files', 0) > 0:
             self.apply_button.setVisible(True)
         
         # Refresh other tabs
@@ -1021,17 +1015,16 @@ class FolderScannerDialog(QDialog):
         # Show completion message
         total_unique = results.get('unique_files', 0)
         if total_unique > 0:
-            action = "Would be processed" if self.dry_run_checkbox.isChecked() else "Processed"
             QMessageBox.information(
                 self,
-                "Scan Complete",
-                f"Scan completed successfully!\\n\\n"
+                "Preview Complete",
+                f"Preview completed successfully!\\n\\n"
                 f"📁 Folder: {results['folder_path']}\\n"
                 f"📊 Total files found: {results['total_files']}\\n"
                 f"🆕 Unique files: {total_unique}\\n"
                 f"🔄 Duplicates: {results['duplicates']}\\n"
                 f"❌ Errors: {results['errors']}\\n\\n"
-                f"{action}: {results.get('processed', 0)} files"
+                f"Click 'Add Files' button to import the {total_unique} unique files."
             )
         else:
             QMessageBox.information(
