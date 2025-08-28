@@ -10,6 +10,7 @@ import os
 import sqlite3
 import re
 from pathlib import Path
+from datetime import datetime
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                            QPushButton, QLineEdit, QTextEdit, QProgressBar,
                            QGroupBox, QListWidget, QCheckBox, QComboBox,
@@ -421,13 +422,18 @@ class FolderScannerDialog(QDialog):
         self.tab_widget.addTab(browser_widget, "🗄️ Database Browser")
     
     def get_database_path(self) -> Path:
-        """Get the path to the database file"""
-        if is_smoo_available():
-            smoo_base = get_smoo_path("base")
-            return Path(smoo_base) / "universal_xle_files" / "folder_scan_tracking.db"
+        """Get the path to the database file - must match scanner's path"""
+        if self.scanner and hasattr(self.scanner, 'db') and self.scanner.db:
+            # Use the exact same path the scanner is using
+            return Path(self.scanner.db.db_path)
         else:
-            current_dir = Path(__file__).parent.parent.parent.parent
-            return current_dir / "test_scripts" / "corrected_xle_files" / "folder_scan_tracking.db"
+            # Fallback - try to match scanner's default path
+            if is_smoo_available():
+                smoo_base = get_smoo_path("base")
+                return Path(smoo_base) / "universal_xle_files" / "folder_scan_tracking.db"
+            else:
+                # Use current working directory like the scanner does
+                return Path.cwd() / "folder_scan_tracking.db"
     
     def load_database_records(self):
         """Load all records from the database"""
@@ -1153,27 +1159,49 @@ class FolderScannerDialog(QDialog):
                 ])
     
     def load_scan_history(self):
-        """Load and display scan history"""
-        if not self.scanner:
-            return
-        
+        """Load and display scan history directly from database"""
         try:
-            summary = self.scanner.get_scan_summary()
-            history = summary.get('recent_scans', [])
+            db_path = self.get_database_path()
             
-            self.history_table.setRowCount(len(history))
+            if not db_path.exists():
+                self.history_table.setRowCount(0)
+                return
             
-            for row, scan in enumerate(history):
-                self.history_table.setItem(row, 0, QTableWidgetItem(scan.get('last_scan_date', 'N/A')))
-                self.history_table.setItem(row, 1, QTableWidgetItem(scan.get('folder_path', 'N/A')))
-                self.history_table.setItem(row, 2, QTableWidgetItem(str(scan.get('files_found', 0))))
-                self.history_table.setItem(row, 3, QTableWidgetItem(str(scan.get('unique_files_added', 0))))
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            
+            # Load scan history directly from database
+            cursor.execute("""
+                SELECT folder_path, last_scan_date, files_found, unique_files_added, scan_metadata
+                FROM scanned_folders 
+                ORDER BY last_scan_date DESC 
+                LIMIT 50
+            """)
+            
+            history_rows = cursor.fetchall()
+            conn.close()
+            
+            self.history_table.setRowCount(len(history_rows))
+            
+            for row, (folder_path, scan_date, files_found, unique_added, metadata) in enumerate(history_rows):
+                # Format date nicely
+                try:
+                    date_obj = datetime.fromisoformat(scan_date)
+                    formatted_date = date_obj.strftime("%Y-%m-%d %H:%M")
+                except:
+                    formatted_date = scan_date or "N/A"
+                
+                self.history_table.setItem(row, 0, QTableWidgetItem(formatted_date))
+                self.history_table.setItem(row, 1, QTableWidgetItem(folder_path or "N/A"))
+                self.history_table.setItem(row, 2, QTableWidgetItem(str(files_found or 0)))
+                self.history_table.setItem(row, 3, QTableWidgetItem(str(unique_added or 0)))
                 self.history_table.setItem(row, 4, QTableWidgetItem("Completed"))
             
             self.history_table.resizeColumnsToContents()
             
         except Exception as e:
             print(f"Error loading scan history: {e}")
+            self.history_table.setRowCount(0)
     
     def update_collection_summary(self):
         """Update the collection overview"""

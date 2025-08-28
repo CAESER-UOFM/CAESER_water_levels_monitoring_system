@@ -177,7 +177,10 @@ class UniversalXLEScanner:
         self.unmatched_dir = Path(unmatched_dir) 
         self.databases_dir = Path(databases_dir)
         self.reader = SolinstReader()
-        self.db = FolderScanDatabase()
+        
+        # Create tracking database in the same directory as corrected files
+        db_path = Path(corrected_dir).parent / "folder_scan_tracking.db"
+        self.db = FolderScanDatabase(str(db_path))
         
         # Load databases dynamically from SMOO Projects structure
         self.databases = self._discover_project_databases()
