@@ -87,9 +87,28 @@ class FolderScanDatabase:
                 file_size INTEGER,
                 processing_date TEXT,
                 final_location TEXT,
-                status TEXT
+                status TEXT,
+                cae_number TEXT,
+                project_name TEXT,
+                instrument_type TEXT
             )
         ''')
+        
+        # Add new columns to existing databases (migration)
+        try:
+            cursor.execute('ALTER TABLE processed_files ADD COLUMN cae_number TEXT')
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+            
+        try:
+            cursor.execute('ALTER TABLE processed_files ADD COLUMN project_name TEXT')
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+            
+        try:
+            cursor.execute('ALTER TABLE processed_files ADD COLUMN instrument_type TEXT')
+        except sqlite3.OperationalError:
+            pass  # Column already exists
         
         conn.commit()
         conn.close()
@@ -115,19 +134,22 @@ class FolderScanDatabase:
         conn.close()
     
     def record_processed_file(self, file_sig: str, file_path: str, filename: str, 
-                            serial: str, size: int, final_location: str, status: str):
-        """Record a processed file"""
+                            serial: str, size: int, final_location: str, status: str,
+                            cae_number: str = None, project_name: str = None, 
+                            instrument_type: str = None):
+        """Record a processed file with optional enhanced metadata"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         cursor.execute('''
             INSERT OR IGNORE INTO processed_files 
             (file_signature, original_path, filename, serial_number, file_size, 
-             processing_date, final_location, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             processing_date, final_location, status, cae_number, project_name, instrument_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             file_sig, str(file_path), filename, serial, size,
-            datetime.now().isoformat(), final_location, status
+            datetime.now().isoformat(), final_location, status,
+            cae_number, project_name, instrument_type
         ))
         
         conn.commit()
@@ -335,8 +357,8 @@ class UniversalXLEScanner:
                         self.all_transducer_locations.append({
                             'serial_number': str(serial_number),
                             'well_number': well_number,
-                            'start_date': start_date,
-                            'end_date': end_date,
+                            'start_date': start_date or '',  # Convert None to empty string
+                            'end_date': end_date or '',      # Convert None to empty string
                             'cae_number': cae_number,
                             'database': db_name
                         })
@@ -507,19 +529,31 @@ class UniversalXLEScanner:
                         
                         if apply_changes:
                             # Generate proper filename: Serial_CAE_Location_StartDate_To_EndDate.xle
-                            location_clean = metadata.get('location', 'Unknown').replace(' ', '_').replace('/', '_')
-                            start_date = location_record.get('start_date', '').replace('-', '_')
-                            end_date = location_record.get('end_date', '').replace('-', '_')
+                            # Debug: check for None values before calling replace
+                            location_raw = metadata.get('location')
+                            start_date_raw = location_record.get('start_date')
+                            end_date_raw = location_record.get('end_date')
+                            
+                            if location_raw is None or start_date_raw is None or end_date_raw is None:
+                                print(f"      ⚠️ Warning - Found None values:")
+                                print(f"         location: {location_raw}")
+                                print(f"         start_date: {start_date_raw}")
+                                print(f"         end_date: {end_date_raw}")
+                            
+                            location_clean = (location_raw or 'Unknown').replace(' ', '_').replace('/', '_')
+                            start_date = (start_date_raw or '').replace('-', '_')
+                            end_date = (end_date_raw or '').replace('-', '_')
                             
                             new_name = f"{serial_number}_{cae_number}_{location_clean}_{start_date}_To_{end_date}.xle"
                             dest_path = self.corrected_dir / new_name
                             shutil.copy2(file_path, dest_path)
                             
-                            # Record in database
+                            # Record in database with enhanced metadata
                             self.db.record_processed_file(
                                 signature, str(file_path), file_path.name,
                                 serial_number, metadata['file_size'],
-                                str(dest_path), 'corrected'
+                                str(dest_path), 'corrected',
+                                cae_number, project_name, metadata.get('instrument_type')
                             )
                             
                         corrected_count += 1
@@ -534,11 +568,12 @@ class UniversalXLEScanner:
                         dest_path = self.unmatched_dir / file_path.name
                         shutil.copy2(file_path, dest_path)
                         
-                        # Record in database
+                        # Record in database with enhanced metadata
                         self.db.record_processed_file(
                             signature, str(file_path), file_path.name,
                             serial_number, metadata['file_size'],
-                            str(dest_path), 'unmatched'
+                            str(dest_path), 'unmatched',
+                            None, None, metadata.get('instrument_type')  # No CAE/project for unmatched
                         )
                     
                     unmatched_count += 1
