@@ -101,8 +101,10 @@ class FolderScannerDialog(QDialog):
         self.init_ui()
         self.init_scanner()
         
-        # Load database records after initialization
+        # Load database records and scan history after initialization
         QTimer.singleShot(100, self.load_database_records)
+        QTimer.singleShot(200, self.load_scan_history)
+        QTimer.singleShot(300, self.update_collection_summary)
     
     def init_scanner(self):
         """Initialize the universal scanner"""
@@ -508,12 +510,16 @@ class FolderScannerDialog(QDialog):
             except:
                 formatted_date = processing_date or "N/A"
             
-            # Set table items with enhanced metadata
+            # Set table items with enhanced metadata and fallbacks for legacy records
+            display_cae = cae_number or self.extract_cae_from_filename(filename) or ""
+            display_project = project_name or ("Legacy Corrected" if status == 'corrected' else "Legacy Unmatched" if status == 'unmatched' else "")
+            display_device = instrument_type or ("L5_LT" if filename and 'L5' in filename.upper() else "Levelogger" if filename and 'LEVEL' in filename.upper() else "")
+            
             self.db_table.setItem(row, 0, QTableWidgetItem(filename or ""))
-            self.db_table.setItem(row, 1, QTableWidgetItem(cae_number or ""))  # CAE #
-            self.db_table.setItem(row, 2, QTableWidgetItem(project_name or ""))  # Project
+            self.db_table.setItem(row, 1, QTableWidgetItem(display_cae))  # CAE #
+            self.db_table.setItem(row, 2, QTableWidgetItem(display_project))  # Project
             self.db_table.setItem(row, 3, QTableWidgetItem(serial_number or ""))  # Serial #
-            self.db_table.setItem(row, 4, QTableWidgetItem(instrument_type or ""))  # Device Type
+            self.db_table.setItem(row, 4, QTableWidgetItem(display_device))  # Device Type
             self.db_table.setItem(row, 5, QTableWidgetItem(status or ""))  # Status
             self.db_table.setItem(row, 6, QTableWidgetItem(size_kb))  # Size
             self.db_table.setItem(row, 7, QTableWidgetItem(formatted_date))  # Date
@@ -545,6 +551,15 @@ class FolderScannerDialog(QDialog):
             
         except:
             return ""
+    
+    def extract_cae_from_filename(self, filename):
+        """Extract CAE number from filename for legacy records"""
+        if not filename:
+            return None
+        
+        # Reuse the same logic as extract_location_from_filename
+        location = self.extract_location_from_filename(filename)
+        return location if location else None
     
     def filter_database_records(self):
         """Filter database records based on current filter values"""
@@ -643,10 +658,32 @@ class FolderScannerDialog(QDialog):
         for record in data_to_use:
             filename, cae_number, project_name, serial_number, instrument_type, status = record[:6]
             
-            if project_name: projects.add(project_name)
-            if cae_number: cae_numbers.add(cae_number)
+            # Handle legacy records - add meaningful fallbacks
+            if project_name: 
+                projects.add(project_name)
+            elif status == 'corrected':
+                projects.add("Legacy Corrected")
+            elif status == 'unmatched':
+                projects.add("Legacy Unmatched")
+                
+            if cae_number: 
+                cae_numbers.add(cae_number)
+            elif serial_number and status == 'corrected':
+                # Try to extract CAE from filename for legacy records
+                cae_from_filename = self.extract_cae_from_filename(filename)
+                if cae_from_filename:
+                    cae_numbers.add(cae_from_filename)
+                    
             if serial_number: serial_numbers.add(serial_number)
-            if instrument_type: devices.add(instrument_type)
+            
+            if instrument_type: 
+                devices.add(instrument_type)
+            elif filename:  # Try to infer from filename for legacy records
+                if 'L5' in filename.upper():
+                    devices.add("L5_LT")
+                elif 'LEVEL' in filename.upper():
+                    devices.add("Levelogger")
+                    
             if status: statuses.add(status)
         
         # Update dropdowns while preserving current selection if valid
