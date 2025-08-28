@@ -540,7 +540,8 @@ class UniversalXLEScanner:
                                 print(f"         start_date: {start_date_raw}")
                                 print(f"         end_date: {end_date_raw}")
                             
-                            location_clean = (location_raw or 'Unknown').replace(' ', '_').replace('/', '_')
+                            # Use consistent filename cleaning logic (same as smoo_field_data_consolidator)
+                            location_clean = (location_raw or 'Unknown').replace(':', '').replace('/', '_').replace('\\', '_').replace('|', '_').replace('?', '_').replace('*', '_').replace('<', '_').replace('>', '_').replace('"', '_').replace(' ', '_').strip()
                             start_date = (start_date_raw or '').replace('-', '_')
                             end_date = (end_date_raw or '').replace('-', '_')
                             

@@ -510,10 +510,13 @@ class FolderScannerDialog(QDialog):
             except:
                 formatted_date = processing_date or "N/A"
             
-            # Set table items with enhanced metadata and fallbacks for legacy records
+            # Set table items with enhanced metadata and fallbacks for legacy records  
             display_cae = cae_number or self.extract_cae_from_filename(filename) or ""
             display_project = project_name or ("Legacy Corrected" if status == 'corrected' else "Legacy Unmatched" if status == 'unmatched' else "")
-            display_device = instrument_type or ("L5_LT" if filename and 'L5' in filename.upper() else "Levelogger" if filename and 'LEVEL' in filename.upper() else "")
+            display_device = instrument_type or ("L5_LT" if filename and 'L5' in filename.upper() else "Levellogger" if filename and 'LEVEL' in filename.upper() else "")
+            
+            # Don't duplicate location - Location column should show file path location, not CAE
+            display_location = location if location != display_cae else ""
             
             self.db_table.setItem(row, 0, QTableWidgetItem(filename or ""))
             self.db_table.setItem(row, 1, QTableWidgetItem(display_cae))  # CAE #
@@ -523,7 +526,7 @@ class FolderScannerDialog(QDialog):
             self.db_table.setItem(row, 5, QTableWidgetItem(status or ""))  # Status
             self.db_table.setItem(row, 6, QTableWidgetItem(size_kb))  # Size
             self.db_table.setItem(row, 7, QTableWidgetItem(formatted_date))  # Date
-            self.db_table.setItem(row, 8, QTableWidgetItem(location))  # Location (fallback)
+            self.db_table.setItem(row, 8, QTableWidgetItem(display_location))  # Location (avoid duplication with CAE)
             self.db_table.setItem(row, 9, QTableWidgetItem(file_signature[:16] + "..." if len(file_signature) > 16 else file_signature))  # Signature
             self.db_table.setItem(row, 10, QTableWidgetItem(str(original_path) if original_path else ""))  # Path
     
