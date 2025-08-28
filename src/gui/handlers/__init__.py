@@ -9,3 +9,4 @@ from .solinst_reader import SolinstReader
 from .water_level_single_handler import WaterLevelHandler
 from .water_level_folder_handler import WaterLevelFolderProcessor
 from .user_auth_service import UserAuthService
+from .universal_folder_scanner import UniversalXLEScanner

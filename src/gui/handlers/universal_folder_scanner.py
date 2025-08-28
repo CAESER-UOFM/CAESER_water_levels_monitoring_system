@@ -22,7 +22,7 @@ import hashlib
 # Handle imports that work both in package context and standalone
 try:
     # Try relative imports first (when used as part of the package)
-    from ...config.smoo_paths import get_smoo_path, is_smoo_available
+    from config.smoo_paths import get_smoo_path, is_smoo_available
     from .solinst_reader import SolinstReader
 except ImportError:
     # Fall back to direct file imports (when used standalone or from different contexts)
