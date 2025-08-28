@@ -22,23 +22,21 @@ from PyQt5.QtGui import QFont, QIcon, QStandardItemModel, QStandardItem
 # Import SMOO path management
 from ...config.smoo_paths import get_smoo_path, is_smoo_available
 
-# Add test_scripts to path for the universal scanner
-test_scripts_dir = Path(__file__).parent.parent.parent.parent / "test_scripts"
-sys.path.insert(0, str(test_scripts_dir))
-
+# Import universal scanner using direct file import to avoid package conflicts
 try:
-    from universal_folder_scanner import UniversalXLEScanner
+    # Direct import that works reliably
+    import importlib.util
+    scanner_path = Path(__file__).parent.parent / "handlers" / "universal_folder_scanner.py"
+    spec = importlib.util.spec_from_file_location("universal_folder_scanner", scanner_path)
+    scanner_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(scanner_module)
+    UniversalXLEScanner = scanner_module.UniversalXLEScanner
     print("✅ Successfully imported UniversalXLEScanner in dialog")
 except ImportError as e:
     # Fallback for when the scanner isn't available
     print(f"❌ Failed to import UniversalXLEScanner: {e}")
     print(f"❌ Current working directory: {os.getcwd()}")
-    print(f"❌ Python path: {sys.path}")
-    print(f"❌ Test scripts dir: {test_scripts_dir}")
-    print(f"❌ Test scripts exists: {test_scripts_dir.exists()}")
-    if test_scripts_dir.exists():
-        scanner_file = test_scripts_dir / "universal_folder_scanner.py"
-        print(f"❌ Scanner file exists: {scanner_file.exists()}")
+    print(f"❌ Scanner path: {Path(__file__).parent.parent / 'handlers' / 'universal_folder_scanner.py'}")
     import traceback
     traceback.print_exc()
     UniversalXLEScanner = None
