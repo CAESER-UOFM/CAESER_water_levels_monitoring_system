@@ -454,6 +454,13 @@ class UniversalXLEScanner:
         
         if not apply_changes:
             print("   📝 DRY RUN MODE - No files will be moved")
+        else:
+            # Ensure destination directories exist before copying files
+            print("   📁 Creating destination directories...")
+            self.corrected_dir.mkdir(parents=True, exist_ok=True)
+            self.unmatched_dir.mkdir(parents=True, exist_ok=True)
+            print(f"   ✅ Corrected dir: {self.corrected_dir}")
+            print(f"   ✅ Unmatched dir: {self.unmatched_dir}")
         
         # Load databases for matching
         self.load_databases()
@@ -481,6 +488,7 @@ class UniversalXLEScanner:
                 for location_record in self.all_transducer_locations:
                     if location_record['serial_number'] == serial_number:
                         # Found a match - this would go to corrected
+                        print(f"      ✅ MATCHED to well: {location_record.get('cae_number', 'Unknown')} (Serial: {serial_number})")
                         if apply_changes:
                             # Copy to corrected folder with proper naming
                             new_name = f"{serial_number}_{location_record['cae_number']}_{file_path.stem}.xle"
@@ -500,6 +508,8 @@ class UniversalXLEScanner:
                 
                 if not matched:
                     # No match found - goes to unmatched
+                    print(f"      ❌ UNMATCHED: Serial {serial_number} not found in any database")
+                    print(f"         Available serials: {[loc.get('serial_number', 'N/A') for loc in self.all_transducer_locations[:5]]}...")
                     if apply_changes:
                         dest_path = self.unmatched_dir / file_path.name
                         shutil.copy2(file_path, dest_path)
