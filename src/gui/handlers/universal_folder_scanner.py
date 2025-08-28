@@ -468,13 +468,17 @@ class UniversalXLEScanner:
         corrected_count = 0
         unmatched_count = 0
         
+        # Add matching info to results for dialog display
+        for file_info in scan_results['unique_files_list']:
+            file_info['match_info'] = {'project': 'Unmatched', 'cae_number': 'N/A'}
+        
         # Create temporary processing directory
         temp_dir = Path("temp_processing")
         if apply_changes:
             temp_dir.mkdir(exist_ok=True)
         
         try:
-            for file_info in scan_results['unique_files_list']:
+            for i, file_info in enumerate(scan_results['unique_files_list']):
                 file_path = Path(file_info['file_path'])
                 metadata = file_info['metadata']
                 signature = file_info['signature']
@@ -488,10 +492,23 @@ class UniversalXLEScanner:
                 for location_record in self.all_transducer_locations:
                     if location_record['serial_number'] == serial_number:
                         # Found a match - this would go to corrected
-                        print(f"      ✅ MATCHED to well: {location_record.get('cae_number', 'Unknown')} (Serial: {serial_number})")
+                        cae_number = location_record.get('cae_number', 'Unknown')
+                        project_name = location_record.get('database', 'Unknown')
+                        print(f"      ✅ MATCHED to well: {cae_number} in project: {project_name} (Serial: {serial_number})")
+                        
+                        # Store matching info for dialog display
+                        scan_results['unique_files_list'][i]['match_info'] = {
+                            'project': project_name,
+                            'cae_number': cae_number
+                        }
+                        
                         if apply_changes:
-                            # Copy to corrected folder with proper naming
-                            new_name = f"{serial_number}_{location_record['cae_number']}_{file_path.stem}.xle"
+                            # Generate proper filename: Serial_CAE_Location_StartDate_To_EndDate.xle
+                            location_clean = metadata.get('location', 'Unknown').replace(' ', '_').replace('/', '_')
+                            start_date = location_record.get('start_date', '').replace('-', '_')
+                            end_date = location_record.get('end_date', '').replace('-', '_')
+                            
+                            new_name = f"{serial_number}_{cae_number}_{location_clean}_{start_date}_To_{end_date}.xle"
                             dest_path = self.corrected_dir / new_name
                             shutil.copy2(file_path, dest_path)
                             

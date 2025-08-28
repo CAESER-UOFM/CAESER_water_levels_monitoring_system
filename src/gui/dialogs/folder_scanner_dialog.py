@@ -233,7 +233,7 @@ class FolderScannerDialog(QDialog):
         details_layout = QVBoxLayout(details_group)
         
         self.results_tree = QTreeWidget()
-        self.results_tree.setHeaderLabels(["File", "Status", "Serial", "Location"])
+        self.results_tree.setHeaderLabels(["File", "Status", "Serial", "Location", "Project", "Well (CAE)"])
         details_layout.addWidget(self.results_tree)
         
         results_splitter.addWidget(details_group)
@@ -1100,22 +1100,30 @@ class FolderScannerDialog(QDialog):
         self.results_tree.clear()
         
         if results.get('unique_files_list'):
-            unique_root = QTreeWidgetItem(self.results_tree, ["New Unique Files", "", "", ""])
+            unique_root = QTreeWidgetItem(self.results_tree, ["New Unique Files", "", "", "", "", ""])
             unique_root.setExpanded(True)
             
             for file_info in results['unique_files_list']:
                 file_path = Path(file_info['file_path'])
                 metadata = file_info['metadata']
                 
+                # Get matching information if available
+                match_info = file_info.get('match_info', {})
+                project_name = match_info.get('project', 'Unmatched')
+                well_cae = match_info.get('cae_number', 'N/A')
+                status = "Matched" if project_name != 'Unmatched' else "Unmatched"
+                
                 item = QTreeWidgetItem(unique_root, [
                     file_path.name,
-                    "New/Unique",
+                    status,
                     metadata.get('serial_number', 'N/A'),
-                    metadata.get('location', 'N/A')
+                    metadata.get('location', 'N/A'),
+                    project_name,
+                    well_cae
                 ])
         
         if results.get('duplicates_list'):
-            dup_root = QTreeWidgetItem(self.results_tree, ["Duplicate Files", "", "", ""])
+            dup_root = QTreeWidgetItem(self.results_tree, ["Duplicate Files", "", "", "", "", ""])
             dup_root.setExpanded(False)
             
             for dup_info in results['duplicates_list'][:20]:  # Limit display
@@ -1124,11 +1132,13 @@ class FolderScannerDialog(QDialog):
                     file_path.name,
                     f"Duplicate ({dup_info['reason']})",
                     "",
+                    "",
+                    "",
                     ""
                 ])
         
         if results.get('errors_list'):
-            error_root = QTreeWidgetItem(self.results_tree, ["Files with Errors", "", "", ""])
+            error_root = QTreeWidgetItem(self.results_tree, ["Files with Errors", "", "", "", "", ""])
             error_root.setExpanded(False)
             
             for error_info in results['errors_list']:
@@ -1136,6 +1146,8 @@ class FolderScannerDialog(QDialog):
                 item = QTreeWidgetItem(error_root, [
                     file_path.name,
                     f"Error ({error_info['reason']})",
+                    "",
+                    "",
                     "",
                     ""
                 ])
