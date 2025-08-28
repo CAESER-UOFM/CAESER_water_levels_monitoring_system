@@ -28,8 +28,24 @@ sys.path.insert(0, str(test_scripts_dir))
 
 try:
     from universal_folder_scanner import UniversalXLEScanner
-except ImportError:
+    print("✅ Successfully imported UniversalXLEScanner in dialog")
+except ImportError as e:
     # Fallback for when the scanner isn't available
+    print(f"❌ Failed to import UniversalXLEScanner: {e}")
+    print(f"❌ Current working directory: {os.getcwd()}")
+    print(f"❌ Python path: {sys.path}")
+    print(f"❌ Test scripts dir: {test_scripts_dir}")
+    print(f"❌ Test scripts exists: {test_scripts_dir.exists()}")
+    if test_scripts_dir.exists():
+        scanner_file = test_scripts_dir / "universal_folder_scanner.py"
+        print(f"❌ Scanner file exists: {scanner_file.exists()}")
+    import traceback
+    traceback.print_exc()
+    UniversalXLEScanner = None
+except Exception as e:
+    print(f"❌ Unexpected error importing UniversalXLEScanner: {e}")
+    import traceback
+    traceback.print_exc()
     UniversalXLEScanner = None
 
 
@@ -92,7 +108,13 @@ class FolderScannerDialog(QDialog):
     def init_scanner(self):
         """Initialize the universal scanner"""
         if UniversalXLEScanner is None:
-            self.show_error("Universal scanner not available. Please ensure the scanner module is properly installed.")
+            error_msg = ("Universal scanner not available.\n\n"
+                        "This could be due to:\n"
+                        "• Missing dependencies in the universal_folder_scanner module\n"
+                        "• Import path issues\n"
+                        "• Missing universal_folder_scanner.py file\n\n"
+                        "Check the console output for detailed error information.")
+            self.show_error(error_msg)
             return
         
         try:
