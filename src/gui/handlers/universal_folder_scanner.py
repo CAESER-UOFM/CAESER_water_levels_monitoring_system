@@ -426,6 +426,32 @@ class UniversalXLEScanner:
         except:
             return f"{file_path.name}_{file_path.stat().st_size if file_path.exists() else 0}_error"
     
+    def format_folder_name(self, name: str) -> str:
+        """Format a name to be safe for use as a folder name"""
+        if not name or name.lower() in ['unknown', 'n/a', 'none']:
+            return 'UNKNOWN'
+        
+        # Clean the name for filesystem safety
+        cleaned = str(name).strip()
+        # Replace problematic characters
+        replacements = {
+            ':': '-', '/': '_', '\\': '_', '|': '_', 
+            '?': '_', '*': '_', '<': '_', '>': '_', 
+            '"': '_', "'": '_', ' ': '_', '.': '_',
+            '#': ''  # Remove hash symbols completely
+        }
+        
+        for old, new in replacements.items():
+            cleaned = cleaned.replace(old, new)
+        
+        # Remove multiple underscores and trailing/leading underscores
+        while '__' in cleaned:
+            cleaned = cleaned.replace('__', '_')
+        cleaned = cleaned.strip('_')
+        
+        # Ensure it's not empty after cleaning
+        return cleaned if cleaned else 'UNKNOWN'
+    
     def extract_xle_metadata(self, file_path: Path) -> Dict:
         """Extract metadata from XLE file"""
         try:
@@ -794,18 +820,29 @@ class UniversalXLEScanner:
                                 start_date = 'UNKNOWN'
                                 end_date = 'UNKNOWN'
                             
-                            # Determine device type and organize by project + device type
+                            # Determine device type and organize by project + device type + case/location
                             device_type = location_record.get('device_type', 'water_levels')
                             device_folder = 'barologgers' if device_type == 'barologger' else 'water_levels'
                             
-                            # Create organized folder structure: corrected/PROJECT/device_type/
-                            project_dir = self.corrected_dir / project_name / device_folder
+                            # Add case/location subfolder for better organization
+                            if device_type == 'barologger':
+                                # For barologgers: use location name (already in cae_number field for baros)
+                                subfolder_name = self.format_folder_name(cae_number)
+                            else:
+                                # For water level transducers: use CAE number
+                                subfolder_name = self.format_folder_name(cae_number)
+                            
+                            # Create organized folder structure: corrected/PROJECT/device_type/CAE_or_LOCATION/
+                            project_dir = self.corrected_dir / project_name / device_folder / subfolder_name
                             project_dir.mkdir(parents=True, exist_ok=True)
                             
                             # Use CORRECT format: Serial_Location_StartDate_To_EndDate.xle (NO duplicate location)
                             new_name = f"{serial_number}_{location_clean}_{start_date}_To_{end_date}.xle"
                             dest_path = project_dir / new_name
                             shutil.copy2(file_path, dest_path)
+                            
+                            print(f"      📁 Organized: {project_name}/{device_folder}/{subfolder_name}/")
+                            print(f"      📄 Created: {new_name}")
                             
                             # Record in database with enhanced metadata
                             self.db.record_processed_file(
@@ -905,12 +942,20 @@ class UniversalXLEScanner:
                             location_raw = metadata.location if hasattr(metadata, 'location') else matched_cae
                             location_clean = (location_raw or matched_cae or 'Unknown').replace(':', '').replace('/', '_').replace('\\\\', '_').replace('|', '_').replace('?', '_').replace('*', '_').replace('<', '_').replace('>', '_').replace('"', '_').replace(' ', '_').strip()
                             
-                            # Determine device type and organize by project + device type  
+                            # Determine device type and organize by project + device type + case/location
                             device_type = matched_location.get('device_type', 'water_levels')
                             device_folder = 'barologgers' if device_type == 'barologger' else 'water_levels'
                             
-                            # Create organized folder structure for upgraded file
-                            project_dir = self.corrected_dir / matched_project / device_folder
+                            # Add case/location subfolder for better organization
+                            if device_type == 'barologger':
+                                # For barologgers: use location name (already in cae_number field for baros)
+                                subfolder_name = self.format_folder_name(matched_cae)
+                            else:
+                                # For water level transducers: use CAE number
+                                subfolder_name = self.format_folder_name(matched_cae)
+                            
+                            # Create organized folder structure for upgraded file: corrected/PROJECT/device_type/CAE_or_LOCATION/
+                            project_dir = self.corrected_dir / matched_project / device_folder / subfolder_name
                             project_dir.mkdir(parents=True, exist_ok=True)
                             
                             # Generate corrected filename
@@ -919,6 +964,9 @@ class UniversalXLEScanner:
                             
                             # Move file from unmatched to organized corrected folder
                             shutil.move(str(original_location), str(corrected_path))
+                            
+                            print(f"      📁 Organized: {matched_project}/{device_folder}/{subfolder_name}/")
+                            print(f"      📄 Upgraded: {corrected_name}")
                             
                             # Update database record
                             success = self.db.upgrade_file_status(
