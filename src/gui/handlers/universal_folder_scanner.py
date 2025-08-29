@@ -542,24 +542,23 @@ class UniversalXLEScanner:
                             # Use consistent filename cleaning logic (same as smoo_field_data_consolidator)
                             location_clean = (location_raw or cae_number or 'Unknown').replace(':', '').replace('/', '_').replace('\\', '_').replace('|', '_').replace('?', '_').replace('*', '_').replace('<', '_').replace('>', '_').replace('"', '_').replace(' ', '_').strip()
                             
-                            # Extract actual data date range from XLE metadata (not database deployment dates)
-                            start_date_str = metadata.get('start_date', '')
-                            end_date_str = metadata.get('end_date', '')
-                            
-                            # Format dates consistently 
-                            if start_date_str and end_date_str:
-                                try:
-                                    # Parse and format dates like SMOO consolidator
-                                    from datetime import datetime
-                                    start_dt = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
-                                    end_dt = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
-                                    start_date = start_dt.strftime('%Y_%m_%d')
-                                    end_date = end_dt.strftime('%Y_%m_%d')
-                                except:
-                                    # Fallback to simple string replacement
-                                    start_date = start_date_str.replace('-', '_').replace(':', '_').replace(' ', '_')[:10]
-                                    end_date = end_date_str.replace('-', '_').replace(':', '_').replace(' ', '_')[:10]
-                            else:
+                            # Extract actual first and last dates from data points (same as SMOO consolidator)
+                            try:
+                                # Read XLE file to get actual data (not just metadata)
+                                df, _ = self.reader.read_xle(Path(file_path))
+                                
+                                # Get actual first and last dates from data
+                                if not df.empty and 'timestamp' in df.columns:
+                                    first_date = df['timestamp'].min()
+                                    last_date = df['timestamp'].max()
+                                    start_date = first_date.strftime('%Y_%m_%d')
+                                    end_date = last_date.strftime('%Y_%m_%d')
+                                else:
+                                    # Fallback if no data available
+                                    start_date = 'UNKNOWN'
+                                    end_date = 'UNKNOWN'
+                            except Exception as e:
+                                print(f"   ⚠️  Could not extract actual dates from {file_path.name}: {e}")
                                 start_date = 'UNKNOWN'
                                 end_date = 'UNKNOWN'
                             
