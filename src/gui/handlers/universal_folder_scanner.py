@@ -226,6 +226,79 @@ class FolderScanDatabase:
         conn.close()
         return signatures
     
+    def get_unmatched_files(self) -> List[Dict]:
+        """Get all files currently marked as unmatched for potential upgrading"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT file_signature, original_path, filename, serial_number, 
+                   final_location, processing_date, cae_number, project_name
+            FROM processed_files 
+            WHERE status = 'unmatched'
+            ORDER BY processing_date DESC
+        ''')
+        
+        unmatched_files = []
+        for row in cursor.fetchall():
+            unmatched_files.append({
+                'file_signature': row[0],
+                'original_path': row[1], 
+                'filename': row[2],
+                'serial_number': row[3],
+                'final_location': row[4],
+                'processing_date': row[5],
+                'cae_number': row[6],
+                'project_name': row[7]
+            })
+        
+        conn.close()
+        return unmatched_files
+    
+    def upgrade_file_status(self, file_signature: str, new_status: str, 
+                           new_location: str, cae_number: str = None, project_name: str = None):
+        """Upgrade a file's status (e.g., unmatched -> corrected) and update location"""
+        max_retries = 3
+        retry_delay = 0.1
+        
+        for attempt in range(max_retries):
+            conn = None
+            try:
+                conn = sqlite3.connect(self.db_path, timeout=10.0)
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    UPDATE processed_files 
+                    SET status = ?, final_location = ?, cae_number = ?, project_name = ?,
+                        processing_date = ?
+                    WHERE file_signature = ?
+                ''', (new_status, new_location, cae_number, project_name, 
+                      datetime.now().isoformat(), file_signature))
+                
+                conn.commit()
+                return cursor.rowcount > 0  # Return True if row was updated
+                
+            except sqlite3.OperationalError as e:
+                if "readonly" in str(e).lower() or "locked" in str(e).lower():
+                    if attempt < max_retries - 1:
+                        import time
+                        time.sleep(retry_delay)
+                        retry_delay *= 2
+                        continue
+                    else:
+                        print(f"   ❌ Failed to upgrade file status after {max_retries} attempts: {e}")
+                        raise
+                else:
+                    raise
+            finally:
+                if conn:
+                    try:
+                        conn.close()
+                    except:
+                        pass
+        
+        return False
+    
     def get_scan_history(self) -> List[Dict]:
         """Get folder scan history"""
         conn = sqlite3.connect(self.db_path)
@@ -555,6 +628,10 @@ class UniversalXLEScanner:
         # Load databases for matching
         self.load_databases()
         
+        # Check for previously unmatched files that can now be matched (smart upgrade)
+        if apply_changes:
+            self.check_and_upgrade_unmatched_files()
+        
         corrected_count = 0
         unmatched_count = 0
         
@@ -673,6 +750,85 @@ class UniversalXLEScanner:
             # Clean up temp directory
             if apply_changes and temp_dir.exists():
                 shutil.rmtree(temp_dir, ignore_errors=True)
+    
+    def check_and_upgrade_unmatched_files(self):
+        """Check previously unmatched files that can now be matched and upgrade them"""
+        print("\\n🔄 Checking for unmatched files that can now be matched...")
+        
+        unmatched_files = self.db.get_unmatched_files()
+        if not unmatched_files:
+            print("   ℹ️  No unmatched files to check")
+            return
+        
+        upgraded_count = 0
+        
+        for unmatched_file in unmatched_files:
+            serial_number = unmatched_file['serial_number']
+            original_location = Path(unmatched_file['final_location'])
+            
+            # Check if this serial number can now be matched
+            matched_location = None
+            matched_project = None
+            matched_cae = None
+            
+            for location_record in self.all_transducer_locations:
+                if location_record['serial_number'] == serial_number:
+                    matched_location = location_record
+                    matched_project = location_record.get('database', 'Unknown')
+                    matched_cae = location_record.get('cae_number', 'Unknown')
+                    break
+            
+            if matched_location:
+                # We found a match! Move file from unmatched to corrected
+                try:
+                    if original_location.exists():
+                        # Generate proper corrected filename
+                        df, metadata = self.reader.read_xle(original_location)
+                        
+                        if not df.empty and 'timestamp' in df.columns:
+                            first_date = df['timestamp'].min()
+                            last_date = df['timestamp'].max()
+                            start_date = first_date.strftime('%Y_%m_%d')
+                            end_date = last_date.strftime('%Y_%m_%d')
+                            
+                            # Clean location name
+                            location_raw = metadata.location if hasattr(metadata, 'location') else matched_cae
+                            location_clean = (location_raw or matched_cae or 'Unknown').replace(':', '').replace('/', '_').replace('\\\\', '_').replace('|', '_').replace('?', '_').replace('*', '_').replace('<', '_').replace('>', '_').replace('"', '_').replace(' ', '_').strip()
+                            
+                            # Generate corrected filename
+                            corrected_name = f"{serial_number}_{location_clean}_{start_date}_To_{end_date}.xle"
+                            corrected_path = self.corrected_dir / corrected_name
+                            
+                            # Move file from unmatched to corrected
+                            shutil.move(str(original_location), str(corrected_path))
+                            
+                            # Update database record
+                            success = self.db.upgrade_file_status(
+                                unmatched_file['file_signature'],
+                                'corrected', 
+                                str(corrected_path),
+                                matched_cae,
+                                matched_project
+                            )
+                            
+                            if success:
+                                print(f"   ✅ UPGRADED: {original_location.name} → {corrected_name}")
+                                print(f"      📍 Now matched to well: {matched_cae} in project: {matched_project}")
+                                upgraded_count += 1
+                            else:
+                                print(f"   ⚠️  File moved but database update failed for {corrected_name}")
+                        else:
+                            print(f"   ⚠️  Could not read data from {original_location.name} for upgrade")
+                    else:
+                        print(f"   ⚠️  Unmatched file no longer exists: {original_location}")
+                        
+                except Exception as e:
+                    print(f"   ❌ Error upgrading {unmatched_file['filename']}: {e}")
+        
+        if upgraded_count > 0:
+            print(f"   🎉 Successfully upgraded {upgraded_count} files from unmatched to corrected!")
+        else:
+            print("   ℹ️  No files could be upgraded at this time")
     
     def get_scan_summary(self) -> Dict:
         """Get summary of all scanning activity"""
