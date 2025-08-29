@@ -85,6 +85,31 @@ class FolderScanThread(QThread):
             self.error_occurred.emit(str(e))
 
 
+class FileProcessingThread(QThread):
+    """Efficient thread for processing already-found unique files without re-scanning"""
+    progress_updated = pyqtSignal(str, int)
+    processing_completed = pyqtSignal(dict)
+    error_occurred = pyqtSignal(str)
+    
+    def __init__(self, scanner, scan_results):
+        super().__init__()
+        self.scanner = scanner
+        self.scan_results = scan_results
+        
+    def run(self):
+        try:
+            self.progress_updated.emit("Processing unique files...", 10)
+            
+            # Process ONLY the unique files we already identified (efficient!)
+            process_results = self.scanner.process_unique_files(self.scan_results, apply_changes=True)
+            
+            self.progress_updated.emit("Files processed successfully!", 100)
+            self.processing_completed.emit(process_results)
+            
+        except Exception as e:
+            self.error_occurred.emit(str(e))
+
+
 class FolderScannerDialog(QDialog):
     """Main dialog for the folder scanning system"""
     
@@ -1104,7 +1129,7 @@ class FolderScannerDialog(QDialog):
         self.show_error(f"Scan failed: {error_message}")
     
     def apply_changes(self):
-        """Apply changes from the last dry run"""
+        """Apply changes from the last dry run - EFFICIENT: only process unique files, no re-scan"""
         if not self.last_scan_results:
             return
         
@@ -1119,19 +1144,46 @@ class FolderScannerDialog(QDialog):
         )
         
         if reply == QMessageBox.Yes:
-            # Re-run scan with apply_changes=True
-            folder_path = self.folder_path_edit.text().strip()
-            
+            # Process ONLY the unique files we already found (no re-scan needed!)
             self.apply_button.setVisible(False)
             self.scan_button.setEnabled(False)
             self.progress_bar.setVisible(True)
             self.progress_bar.setValue(0)
             
-            self.scan_thread = FolderScanThread(self.scanner, folder_path, apply_changes=True)
-            self.scan_thread.progress_updated.connect(self.update_progress)
-            self.scan_thread.scan_completed.connect(self.handle_scan_completed)
-            self.scan_thread.error_occurred.connect(self.handle_scan_error)
-            self.scan_thread.start()
+            # Use a direct processing thread instead of re-scanning
+            self.process_thread = FileProcessingThread(self.scanner, self.last_scan_results)
+            self.process_thread.progress_updated.connect(self.update_progress)
+            self.process_thread.processing_completed.connect(self.handle_processing_completed)
+            self.process_thread.error_occurred.connect(self.handle_scan_error)
+            self.process_thread.start()
+    
+    def handle_processing_completed(self, results):
+        """Handle completion of file processing (no re-scan)"""
+        # Reset UI
+        self.scan_button.setEnabled(True)
+        self.progress_bar.setVisible(False)
+        
+        # Update display with processing results
+        total_processed = results.get('processed', 0)
+        total_corrected = results.get('corrected', 0)
+        total_unmatched = results.get('unmatched', 0)
+        
+        # Show success message
+        QMessageBox.information(
+            self,
+            "Processing Complete",
+            f"Successfully processed {total_processed} files:\\n"
+            f"📁 Corrected: {total_corrected}\\n"
+            f"📁 Unmatched: {total_unmatched}\\n\\n"
+            f"Files have been organized in the corrected and unmatched folders."
+        )
+        
+        # Hide the Add Files button since processing is complete
+        self.apply_button.setVisible(False)
+        
+        # Refresh database records and other tabs
+        self.load_database_records()
+        self.load_scan_history()
     
     def update_scan_summary(self, results):
         """Update the scan results summary"""
