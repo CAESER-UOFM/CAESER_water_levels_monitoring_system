@@ -1193,6 +1193,7 @@ class FolderScannerDialog(QDialog):
 📊 Total XLE files found: {results['total_files']}<br>
 🆕 New unique files: {results['unique_files']}<br>
 🔄 Duplicates (already processed): {results['duplicates']}<br>
+🚫 Compensated files (skipped): {results.get('compensated_files', 0)}<br>
 ❌ Files with errors: {results['errors']}<br>
 <br>
 """

@@ -453,6 +453,28 @@ class UniversalXLEScanner:
                 'error': str(e)
             }
     
+    def is_file_compensated(self, file_path: Path) -> bool:
+        """
+        Check if XLE file is already compensated by looking for <Compensation_info> section
+        
+        Compensated files have barometric compensation already applied by Solinst software
+        and should NOT be imported to avoid double compensation.
+        """
+        try:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+                
+                # Look for <Compensation_info> section which indicates already compensated file
+                if '<Compensation_info>' in content:
+                    return True
+                    
+                return False
+                
+        except Exception as e:
+            print(f"   ⚠️  Could not check compensation status for {file_path.name}: {e}")
+            # If we can't determine, assume it's not compensated (safer for import)
+            return False
+    
     def load_databases(self):
         """Load all database information for matching"""
         print(f"\\n📊 Loading database information...")
@@ -568,6 +590,7 @@ class UniversalXLEScanner:
         unique_files = []
         duplicates = []
         errors = []
+        compensated_files = []  # Track compensated files separately
         
         for file_path in xle_files:
             try:
@@ -580,6 +603,15 @@ class UniversalXLEScanner:
                         'file_path': str(file_path),
                         'signature': signature,
                         'reason': 'already_processed'
+                    })
+                    continue
+                
+                # Check if file is already compensated (CRITICAL: avoid double compensation!)
+                if self.is_file_compensated(file_path):
+                    compensated_files.append({
+                        'file_path': str(file_path),
+                        'signature': signature,
+                        'reason': 'already_compensated'
                     })
                     continue
                 
@@ -615,14 +647,17 @@ class UniversalXLEScanner:
             'unique_files': len(unique_files),
             'duplicates': len(duplicates),
             'errors': len(errors),
+            'compensated_files': len(compensated_files),
             'unique_files_list': unique_files,
             'duplicates_list': duplicates,
-            'errors_list': errors
+            'errors_list': errors,
+            'compensated_files_list': compensated_files
         }
         
         print(f"   ✅ Scan complete:")
         print(f"      🆕 Unique files: {len(unique_files)}")
         print(f"      🔄 Duplicates: {len(duplicates)}")
+        print(f"      🚫 Compensated (skipped): {len(compensated_files)}")
         print(f"      ❌ Errors: {len(errors)}")
         
         # Record scan in database
@@ -633,6 +668,7 @@ class UniversalXLEScanner:
             {
                 'duplicates': len(duplicates),
                 'errors': len(errors),
+                'compensated_files': len(compensated_files),
                 'scan_method': 'universal_scanner'
             }
         )
