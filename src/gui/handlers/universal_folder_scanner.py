@@ -535,24 +535,36 @@ class UniversalXLEScanner:
                         }
                         
                         if apply_changes:
-                            # Generate proper filename: Serial_CAE_Location_StartDate_To_EndDate.xle
-                            # Debug: check for None values before calling replace
+                            # Generate proper filename using SAME logic as smoo_field_data_consolidator
+                            # Format: SerialNumber_Location_YYYY_MM_DD_To_YYYY_MM_DD.xle
                             location_raw = metadata.get('location')
-                            start_date_raw = location_record.get('start_date')
-                            end_date_raw = location_record.get('end_date')
-                            
-                            if location_raw is None or start_date_raw is None or end_date_raw is None:
-                                print(f"      ⚠️ Warning - Found None values:")
-                                print(f"         location: {location_raw}")
-                                print(f"         start_date: {start_date_raw}")
-                                print(f"         end_date: {end_date_raw}")
                             
                             # Use consistent filename cleaning logic (same as smoo_field_data_consolidator)
-                            location_clean = (location_raw or 'Unknown').replace(':', '').replace('/', '_').replace('\\', '_').replace('|', '_').replace('?', '_').replace('*', '_').replace('<', '_').replace('>', '_').replace('"', '_').replace(' ', '_').strip()
-                            start_date = (start_date_raw or '').replace('-', '_')
-                            end_date = (end_date_raw or '').replace('-', '_')
+                            location_clean = (location_raw or cae_number or 'Unknown').replace(':', '').replace('/', '_').replace('\\', '_').replace('|', '_').replace('?', '_').replace('*', '_').replace('<', '_').replace('>', '_').replace('"', '_').replace(' ', '_').strip()
                             
-                            new_name = f"{serial_number}_{cae_number}_{location_clean}_{start_date}_To_{end_date}.xle"
+                            # Extract actual data date range from XLE metadata (not database deployment dates)
+                            start_date_str = metadata.get('start_date', '')
+                            end_date_str = metadata.get('end_date', '')
+                            
+                            # Format dates consistently 
+                            if start_date_str and end_date_str:
+                                try:
+                                    # Parse and format dates like SMOO consolidator
+                                    from datetime import datetime
+                                    start_dt = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
+                                    end_dt = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
+                                    start_date = start_dt.strftime('%Y_%m_%d')
+                                    end_date = end_dt.strftime('%Y_%m_%d')
+                                except:
+                                    # Fallback to simple string replacement
+                                    start_date = start_date_str.replace('-', '_').replace(':', '_').replace(' ', '_')[:10]
+                                    end_date = end_date_str.replace('-', '_').replace(':', '_').replace(' ', '_')[:10]
+                            else:
+                                start_date = 'UNKNOWN'
+                                end_date = 'UNKNOWN'
+                            
+                            # Use CORRECT format: Serial_Location_StartDate_To_EndDate.xle (NO duplicate location)
+                            new_name = f"{serial_number}_{location_clean}_{start_date}_To_{end_date}.xle"
                             dest_path = self.corrected_dir / new_name
                             shutil.copy2(file_path, dest_path)
                             
