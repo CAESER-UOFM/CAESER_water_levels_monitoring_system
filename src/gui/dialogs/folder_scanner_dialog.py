@@ -87,7 +87,7 @@ class FolderScanThread(QThread):
 
 class FileProcessingThread(QThread):
     """Efficient thread for processing already-found unique files without re-scanning"""
-    progress_updated = pyqtSignal(str, int)
+    progress_updated = pyqtSignal(int, str)  # Fixed: (value, message) to match handler
     processing_completed = pyqtSignal(dict)
     error_occurred = pyqtSignal(str)
     
@@ -98,12 +98,12 @@ class FileProcessingThread(QThread):
         
     def run(self):
         try:
-            self.progress_updated.emit("Processing unique files...", 10)
+            self.progress_updated.emit(10, "Processing unique files...")  # Fixed: (value, message)
             
             # Process ONLY the unique files we already identified (efficient!)
             process_results = self.scanner.process_unique_files(self.scan_results, apply_changes=True)
             
-            self.progress_updated.emit("Files processed successfully!", 100)
+            self.progress_updated.emit(100, "Files processed successfully!")  # Fixed: (value, message)
             self.processing_completed.emit(process_results)
             
         except Exception as e:
