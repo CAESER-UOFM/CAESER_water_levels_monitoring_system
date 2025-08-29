@@ -498,9 +498,41 @@ class UniversalXLEScanner:
                             'start_date': start_date or '',  # Convert None to empty string
                             'end_date': end_date or '',      # Convert None to empty string
                             'cae_number': cae_number,
-                            'database': db_name
+                            'database': db_name,
+                            'device_type': 'transducer'
                         })
                         locations_count += 1
+                
+                # Load barologger locations (separate table for barometric sensors)
+                try:
+                    cursor.execute("""
+                        SELECT bl.serial_number, bl.location_description, bl.start_date, bl.end_date 
+                        FROM barologger_locations bl
+                        JOIN barologgers b ON bl.serial_number = b.serial_number
+                        ORDER BY bl.serial_number, bl.start_date
+                    """)
+                    baro_rows = cursor.fetchall()
+                    
+                    baro_count = 0
+                    for serial_number, location_desc, start_date, end_date in baro_rows:
+                        self.all_transducer_locations.append({
+                            'serial_number': str(serial_number),
+                            'well_number': None,  # Barologgers don't have well numbers
+                            'start_date': start_date or '',
+                            'end_date': end_date or '',
+                            'cae_number': location_desc,  # Use location description as CAE number
+                            'database': db_name,
+                            'device_type': 'barologger'
+                        })
+                        baro_count += 1
+                        locations_count += 1
+                    
+                    if baro_count > 0:
+                        print(f"      📊 Added {baro_count} barologger locations")
+                        
+                except Exception as baro_error:
+                    print(f"      ⚠️  Could not load barologgers from {db_name}: {baro_error}")
+                    # Continue without barologgers if table doesn't exist
                 
                 conn.close()
                 print(f"   ✅ {db_name}: {wells_count} wells, {locations_count} locations")
