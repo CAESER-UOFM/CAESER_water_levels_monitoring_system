@@ -211,43 +211,32 @@ class FolderScannerDialog(QDialog):
         
         layout.addLayout(controls_layout)
         
-        # Results display
-        results_splitter = QSplitter(Qt.Horizontal)
+        # Summary section (compact header-style)
+        summary_layout = QHBoxLayout()
         
-        # Left side: Summary (more compact)
-        summary_group = QGroupBox("Scan Results")
-        summary_layout = QVBoxLayout(summary_group)
-        summary_layout.setSpacing(8)  # Reduce spacing for compactness
-        
+        # Scan results info (left side)
         self.summary_label = QLabel("No scan performed yet")
         self.summary_label.setWordWrap(True)
-        self.summary_label.setStyleSheet("QLabel { font-size: 11px; }")  # Slightly smaller text
+        self.summary_label.setStyleSheet("QLabel { font-size: 11px; background-color: #f5f5f5; padding: 8px; border-radius: 4px; }")
         summary_layout.addWidget(self.summary_label)
         
-        # Add vertical stretch to push button to bottom
+        # Add stretch to push button to right
         summary_layout.addStretch()
         
-        # Add files button (only shown after successful scan)
+        # Add files button (compact, right side)
         self.apply_button = QPushButton("📥 Add Files")
         self.apply_button.clicked.connect(self.apply_changes)
         self.apply_button.setVisible(False)
         self.apply_button.setMinimumHeight(30)
-        self.apply_button.setMaximumHeight(35)  # Keep button compact
+        self.apply_button.setMaximumHeight(35)
+        self.apply_button.setMaximumWidth(120)  # Keep button compact
         self.apply_button.setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-weight: bold; font-size: 11px; }")
         self.apply_button.setToolTip("Import the unique files found during scan into your collection")
         summary_layout.addWidget(self.apply_button)
         
-        # Set size constraints to keep summary panel compact
-        summary_group.setMaximumWidth(250)
-        summary_group.setMaximumHeight(200)  # Limit height to keep it compact
-        summary_group.setMinimumHeight(120)  # Ensure minimum usability
+        layout.addLayout(summary_layout)
         
-        results_splitter.addWidget(summary_group)
-        
-        # Right side: Detailed results
-        details_group = QGroupBox("File Details")
-        details_layout = QVBoxLayout(details_group)
-        
+        # File Details Table (takes up main space)
         self.results_tree = QTreeWidget()
         self.results_tree.setHeaderLabels(["File", "Status", "Serial", "Location", "Project", "Well (CAE)"])
         
@@ -264,15 +253,11 @@ class FolderScannerDialog(QDialog):
         header.setMinimumSectionSize(80)
         self.results_tree.setColumnWidth(0, 200)  # File column wider by default
         
-        details_layout.addWidget(self.results_tree)
+        # Style the table like the Database Browser
+        self.results_tree.setAlternatingRowColors(True)
+        self.results_tree.setSortingEnabled(True)
         
-        results_splitter.addWidget(details_group)
-        # Set initial sizes: smaller summary panel, larger details panel
-        results_splitter.setSizes([200, 600])
-        results_splitter.setCollapsible(0, False)  # Prevent summary from collapsing completely
-        results_splitter.setCollapsible(1, False)  # Prevent details from collapsing completely
-        
-        layout.addWidget(results_splitter)
+        layout.addWidget(self.results_tree)
         
         self.tab_widget.addTab(scanner_widget, "📁 Folder Scanner")
     
