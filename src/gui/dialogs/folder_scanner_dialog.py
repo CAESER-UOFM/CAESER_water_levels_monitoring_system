@@ -197,9 +197,10 @@ class FolderScannerDialog(QDialog):
         
         # Scan controls
         controls_layout = QHBoxLayout()
-        self.scan_button = QPushButton("🔍 Preview Folder")
+        self.scan_button = QPushButton("🔍 Preview")
         self.scan_button.clicked.connect(self.start_scan)
         self.scan_button.setMinimumHeight(35)
+        self.scan_button.setMaximumWidth(120)  # Make button more compact
         self.scan_button.setToolTip("Preview XLE files in folder - no files will be moved")
         
         self.progress_bar = QProgressBar()
@@ -213,21 +214,31 @@ class FolderScannerDialog(QDialog):
         # Results display
         results_splitter = QSplitter(Qt.Horizontal)
         
-        # Left side: Summary
-        summary_group = QGroupBox("Scan Results Summary")
+        # Left side: Summary (more compact)
+        summary_group = QGroupBox("Scan Results")
         summary_layout = QVBoxLayout(summary_group)
+        summary_layout.setSpacing(8)  # Reduce spacing for compactness
         
         self.summary_label = QLabel("No scan performed yet")
         self.summary_label.setWordWrap(True)
+        self.summary_label.setStyleSheet("QLabel { font-size: 11px; }")  # Slightly smaller text
         summary_layout.addWidget(self.summary_label)
+        
+        # Add vertical stretch to push button to bottom
+        summary_layout.addStretch()
         
         # Add files button (only shown after successful scan)
         self.apply_button = QPushButton("📥 Add Files")
         self.apply_button.clicked.connect(self.apply_changes)
         self.apply_button.setVisible(False)
-        self.apply_button.setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-weight: bold; }")
+        self.apply_button.setMinimumHeight(30)
+        self.apply_button.setMaximumHeight(35)  # Keep button compact
+        self.apply_button.setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-weight: bold; font-size: 11px; }")
         self.apply_button.setToolTip("Import the unique files found during scan into your collection")
         summary_layout.addWidget(self.apply_button)
+        
+        # Set maximum width to prevent summary panel from getting too wide
+        summary_group.setMaximumWidth(250)
         
         results_splitter.addWidget(summary_group)
         
@@ -237,10 +248,27 @@ class FolderScannerDialog(QDialog):
         
         self.results_tree = QTreeWidget()
         self.results_tree.setHeaderLabels(["File", "Status", "Serial", "Location", "Project", "Well (CAE)"])
+        
+        # Enable smooth column resizing
+        header = self.results_tree.header()
+        header.setSectionResizeMode(0, QHeaderView.Interactive)  # File column
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # Status column
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Serial column
+        header.setSectionResizeMode(3, QHeaderView.Interactive)  # Location column
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Project column
+        header.setSectionResizeMode(5, QHeaderView.Interactive)  # Well column
+        
+        # Set minimum column widths for better usability
+        header.setMinimumSectionSize(80)
+        self.results_tree.setColumnWidth(0, 200)  # File column wider by default
+        
         details_layout.addWidget(self.results_tree)
         
         results_splitter.addWidget(details_group)
-        results_splitter.setSizes([300, 500])
+        # Set initial sizes: smaller summary panel, larger details panel
+        results_splitter.setSizes([200, 600])
+        results_splitter.setCollapsible(0, False)  # Prevent summary from collapsing completely
+        results_splitter.setCollapsible(1, False)  # Prevent details from collapsing completely
         
         layout.addWidget(results_splitter)
         
