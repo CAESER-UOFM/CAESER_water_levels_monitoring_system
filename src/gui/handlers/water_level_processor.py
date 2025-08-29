@@ -7,6 +7,14 @@ from typing import Dict, Optional, Tuple, List
 from .solinst_reader import SolinstReader
 import numpy as np
 
+# Import vented transducer utilities
+import sys
+sys.path.append(str(Path(__file__).parent.parent))
+try:
+    from utils.vented_transducer_utils import should_apply_compensation, is_vented_transducer
+except ImportError:
+    print("Warning: Could not import vented transducer utilities")
+
 logger = logging.getLogger(__name__)
 
 class WaterLevelProcessor:
@@ -416,8 +424,9 @@ class WaterLevelProcessor:
             # Correct boundary readings
             df = self.correct_boundary_readings(df)
             
-            # Process data
-            processed_data = self.process_data(df, well_info, manual_readings, existing_data)
+            # Process data (pass file_path and metadata for vented transducer detection)
+            processed_data = self.process_data(df, well_info, manual_readings, existing_data, 
+                                              is_folder_import=False, file_path=file_path, metadata=metadata)
             
             # Track XLE file for future upload (if XLE manager available)
             self._track_xle_file(file_path, metadata, well_number, time_range)
@@ -539,7 +548,9 @@ class WaterLevelProcessor:
     def process_data(self, df: pd.DataFrame, well_info: Dict,
                     manual_readings: pd.DataFrame = None,
                     existing_data: pd.DataFrame = None,
-                    is_folder_import: bool = False) -> pd.DataFrame:
+                    is_folder_import: bool = False,
+                    file_path: Path = None,
+                    metadata = None) -> pd.DataFrame:
         """Process water level data"""
         try:
             df = df.copy()
@@ -554,14 +565,32 @@ class WaterLevelProcessor:
                                    'baro_flag' in df.columns and 
                                    'baro_source' in df.columns)
             
-            # Only do barometric processing if not already done
-            if not barometric_processed:
+            # Check if this is a vented transducer (no compensation needed)
+            is_vented = False
+            try:
+                if 'should_apply_compensation' in globals():
+                    # Use instrument type from metadata or file path
+                    instrument_type = getattr(metadata, 'instrument_type', None) if metadata else None
+                    is_vented = not should_apply_compensation(instrument_type=instrument_type, file_path=file_path)
+                    if is_vented:
+                        logger.info(f"Detected vented transducer ({instrument_type}) - skipping barometric compensation")
+            except Exception as e:
+                logger.warning(f"Could not check vented status: {e}, assuming non-vented")
+                is_vented = False
+
+            # Only do barometric processing if not already done AND transducer is not vented
+            if not barometric_processed and not is_vented:
                 # Get barometric data for this time range
                 time_range = (df['timestamp_utc'].min(), df['timestamp_utc'].max())
                 logger.debug(f"Getting baro data for time range: {time_range}")
                 logger.debug(f"Time range types: {type(time_range[0])}, {type(time_range[1])}")
                 
-                baro_coverage = self._check_baro_coverage(time_range)
+                # Use pre-computed baro_coverage if available (from folder handler)
+                if 'baro_coverage' in well_info:
+                    baro_coverage = well_info['baro_coverage']
+                    logger.debug("Using pre-computed baro coverage from folder handler")
+                else:
+                    baro_coverage = self._check_baro_coverage(time_range)
                 
                 # Calculate water pressure with appropriate compensation
                 if baro_coverage['type'] == 'master' and baro_coverage['complete']:
@@ -609,6 +638,12 @@ class WaterLevelProcessor:
                     df['water_pressure'] = df['pressure'] - self.STANDARD_ATMOS_PRESSURE
                     df['baro_source'] = 'standard_pressure'
                     df['baro_flag'] = 'standard'
+            elif is_vented:
+                # Vented transducers: no compensation needed, use pressure directly as water_pressure
+                logger.debug("Vented transducer: using pressure directly without compensation")
+                df['water_pressure'] = df['pressure']  # No atmospheric correction needed
+                df['baro_source'] = 'vented_transducer'
+                df['baro_flag'] = 'vented'
             else:
                 logger.debug(f"Barometric processing already done, baro_flag={df['baro_flag'].iloc[0]}")
             

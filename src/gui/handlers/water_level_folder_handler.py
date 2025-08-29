@@ -318,32 +318,11 @@ class WaterLevelFolderProcessor:
                             # Ensure timestamp_utc is datetime
                             df['timestamp_utc'] = pd.to_datetime(df['timestamp_utc'])
                             
-                            # Calculate water pressure with appropriate compensation using the
-                            # well-level baro_coverage rather than checking per-file
-                            if baro_coverage['type'] == 'master' and baro_coverage['complete']:
-                                # Use master barometric data
-                                progress_dialog.log_message("Using master barometric data...")
-                                baro_df = baro_coverage['data']
-                                
-                                # Interpolate barometric pressure
-                                baro_df['timestamp_utc'] = pd.to_datetime(baro_df['timestamp_utc'])
-                                baro_pressure = np.interp(
-                                    df['timestamp_utc'].values.astype('datetime64[ns]').astype(float),
-                                    baro_df['timestamp_utc'].values.astype('datetime64[ns]').astype(float),
-                                    baro_df['pressure'].values
-                                )
-                                df['water_pressure'] = df['pressure'] - baro_pressure
-                                df['baro_source'] = 'master_baro'
-                                df['baro_flag'] = 'master'
-                            else:
-                                # Use standard atmospheric pressure
-                                progress_dialog.log_message("Using standard atmospheric pressure...")
-                                df['water_pressure'] = df['pressure'] - self.processor.STANDARD_ATMOS_PRESSURE
-                                df['baro_source'] = 'standard_pressure'
-                                df['baro_flag'] = 'standard'
+                            # Let process_data handle all compensation logic including vented transducer detection
+                            # Pass baro_coverage info via well_info so processor can use it if needed
+                            well_info_with_baro = well_data['well_info'].copy()
+                            well_info_with_baro['baro_coverage'] = baro_coverage
                             
-                            # Process the data using core processor but skip the baro compensation part
-                            # by passing our pre-processed DataFrame
                             # For folder import, we want to ensure proper leveling between segments:
                             # - For first file: use manual readings and existing data from database
                             # - For subsequent files: use manual readings and already processed data segments
@@ -363,10 +342,12 @@ class WaterLevelFolderProcessor:
                             # then prior existing data (which now includes previously processed segments)
                             df = self.processor.process_data(
                                 df, 
-                                well_data['well_info'],
+                                well_info_with_baro,
                                 manual_readings,
                                 combined_reference_data,
-                                is_folder_import=True
+                                is_folder_import=True,
+                                file_path=file_path,
+                                metadata=metadata
                             )
                             
                             # Add to processed data
