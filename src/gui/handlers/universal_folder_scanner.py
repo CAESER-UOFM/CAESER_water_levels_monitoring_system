@@ -61,6 +61,8 @@ class FolderScanDatabase:
     
     def init_database(self):
         """Initialize the tracking database"""
+        # Ensure parent directory exists before creating database
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
@@ -199,6 +201,11 @@ class UniversalXLEScanner:
         self.unmatched_dir = Path(unmatched_dir) 
         self.databases_dir = Path(databases_dir)
         self.reader = SolinstReader()
+        
+        # Ensure directories exist during initialization
+        self.corrected_dir.parent.mkdir(parents=True, exist_ok=True)  # Create universal_xle_files
+        self.corrected_dir.mkdir(parents=True, exist_ok=True)         # Create corrected
+        self.unmatched_dir.mkdir(parents=True, exist_ok=True)         # Create unmatched
         
         # Create tracking database in the same directory as corrected files
         db_path = Path(corrected_dir).parent / "folder_scan_tracking.db"
