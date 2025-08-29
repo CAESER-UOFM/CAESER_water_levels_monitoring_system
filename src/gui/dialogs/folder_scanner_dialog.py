@@ -1194,6 +1194,7 @@ class FolderScannerDialog(QDialog):
 🆕 New unique files: {results['unique_files']}<br>
 🔄 Duplicates (already processed): {results['duplicates']}<br>
 🚫 Compensated files (skipped): {results.get('compensated_files', 0)}<br>
+🌬️ Vented transducers: {results.get('vented_files', 0)}<br>
 ❌ Files with errors: {results['errors']}<br>
 <br>
 """

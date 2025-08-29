@@ -19,6 +19,14 @@ import re
 from collections import defaultdict
 import hashlib
 
+# Import vented transducer utilities
+try:
+    from utils.vented_transducer_utils import is_vented_transducer, should_apply_compensation
+except ImportError:
+    # Fallback for standalone execution
+    sys.path.append(str(Path(__file__).parent.parent))
+    from utils.vented_transducer_utils import is_vented_transducer, should_apply_compensation
+
 # Handle imports that work both in package context and standalone
 try:
     # Try relative imports first (when used as part of the package)
@@ -436,10 +444,15 @@ class UniversalXLEScanner:
             instrument_match = re.search(r'<Instrument_type>(.*?)</Instrument_type>', content, re.IGNORECASE)
             instrument = instrument_match.group(1).strip() if instrument_match else ''
             
+            # Check if this is a vented transducer
+            is_vented = is_vented_transducer(instrument_type=instrument)
+            
             return {
                 'serial_number': serial,
                 'location': location,
                 'instrument_type': instrument,
+                'is_vented': is_vented,
+                'compensation_required': not is_vented,
                 'file_size': file_path.stat().st_size,
                 'file_path': str(file_path)
             }
@@ -448,6 +461,8 @@ class UniversalXLEScanner:
                 'serial_number': None,
                 'location': '',
                 'instrument_type': '',
+                'is_vented': False,
+                'compensation_required': True,  # Default to requiring compensation if unknown
                 'file_size': file_path.stat().st_size if file_path.exists() else 0,
                 'file_path': str(file_path),
                 'error': str(e)
@@ -591,6 +606,7 @@ class UniversalXLEScanner:
         duplicates = []
         errors = []
         compensated_files = []  # Track compensated files separately
+        vented_files = []  # Track vented transducers separately
         
         for file_path in xle_files:
             try:
@@ -626,6 +642,15 @@ class UniversalXLEScanner:
                     })
                     continue
                 
+                # Check if this is a vented transducer (for tracking/reporting)
+                if metadata.get('is_vented', False):
+                    vented_files.append({
+                        'file_path': str(file_path),
+                        'signature': signature,
+                        'metadata': metadata,
+                        'reason': 'vented_transducer'
+                    })
+                
                 # This is a new unique file
                 unique_files.append({
                     'file_path': str(file_path),
@@ -648,16 +673,19 @@ class UniversalXLEScanner:
             'duplicates': len(duplicates),
             'errors': len(errors),
             'compensated_files': len(compensated_files),
+            'vented_files': len(vented_files),
             'unique_files_list': unique_files,
             'duplicates_list': duplicates,
             'errors_list': errors,
-            'compensated_files_list': compensated_files
+            'compensated_files_list': compensated_files,
+            'vented_files_list': vented_files
         }
         
         print(f"   ✅ Scan complete:")
         print(f"      🆕 Unique files: {len(unique_files)}")
         print(f"      🔄 Duplicates: {len(duplicates)}")
         print(f"      🚫 Compensated (skipped): {len(compensated_files)}")
+        print(f"      🌬️ Vented transducers: {len(vented_files)}")
         print(f"      ❌ Errors: {len(errors)}")
         
         # Record scan in database
@@ -669,6 +697,7 @@ class UniversalXLEScanner:
                 'duplicates': len(duplicates),
                 'errors': len(errors),
                 'compensated_files': len(compensated_files),
+                'vented_files': len(vented_files),
                 'scan_method': 'universal_scanner'
             }
         )
