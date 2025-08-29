@@ -729,9 +729,17 @@ class UniversalXLEScanner:
                                 start_date = 'UNKNOWN'
                                 end_date = 'UNKNOWN'
                             
+                            # Determine device type and organize by project + device type
+                            device_type = location_record.get('device_type', 'water_levels')
+                            device_folder = 'barologgers' if device_type == 'barologger' else 'water_levels'
+                            
+                            # Create organized folder structure: corrected/PROJECT/device_type/
+                            project_dir = self.corrected_dir / project_name / device_folder
+                            project_dir.mkdir(parents=True, exist_ok=True)
+                            
                             # Use CORRECT format: Serial_Location_StartDate_To_EndDate.xle (NO duplicate location)
                             new_name = f"{serial_number}_{location_clean}_{start_date}_To_{end_date}.xle"
-                            dest_path = self.corrected_dir / new_name
+                            dest_path = project_dir / new_name
                             shutil.copy2(file_path, dest_path)
                             
                             # Record in database with enhanced metadata
@@ -747,11 +755,16 @@ class UniversalXLEScanner:
                         break
                 
                 if not matched:
-                    # No match found - goes to unmatched
+                    # No match found - goes to unmatched with organized structure  
                     print(f"      ❌ UNMATCHED: Serial {serial_number} not found in any database")
                     print(f"         Available serials: {[loc.get('serial_number', 'N/A') for loc in self.all_transducer_locations[:5]]}...")
                     if apply_changes:
-                        dest_path = self.unmatched_dir / file_path.name
+                        # Organize unmatched files by device type too (guess from filename patterns)
+                        device_folder = 'barologgers' if any(baro_pattern in file_path.name.lower() for baro_pattern in ['baro', 'barometric']) else 'water_levels'
+                        unmatched_device_dir = self.unmatched_dir / device_folder
+                        unmatched_device_dir.mkdir(parents=True, exist_ok=True)
+                        
+                        dest_path = unmatched_device_dir / file_path.name
                         shutil.copy2(file_path, dest_path)
                         
                         # Record in database with enhanced metadata
@@ -827,11 +840,19 @@ class UniversalXLEScanner:
                             location_raw = metadata.location if hasattr(metadata, 'location') else matched_cae
                             location_clean = (location_raw or matched_cae or 'Unknown').replace(':', '').replace('/', '_').replace('\\\\', '_').replace('|', '_').replace('?', '_').replace('*', '_').replace('<', '_').replace('>', '_').replace('"', '_').replace(' ', '_').strip()
                             
+                            # Determine device type and organize by project + device type  
+                            device_type = matched_location.get('device_type', 'water_levels')
+                            device_folder = 'barologgers' if device_type == 'barologger' else 'water_levels'
+                            
+                            # Create organized folder structure for upgraded file
+                            project_dir = self.corrected_dir / matched_project / device_folder
+                            project_dir.mkdir(parents=True, exist_ok=True)
+                            
                             # Generate corrected filename
                             corrected_name = f"{serial_number}_{location_clean}_{start_date}_To_{end_date}.xle"
-                            corrected_path = self.corrected_dir / corrected_name
+                            corrected_path = project_dir / corrected_name
                             
-                            # Move file from unmatched to corrected
+                            # Move file from unmatched to organized corrected folder
                             shutil.move(str(original_location), str(corrected_path))
                             
                             # Update database record
@@ -876,8 +897,8 @@ class UniversalXLEScanner:
             'total_unique_added': total_unique_added,
             'recent_scans': history[:10],  # Last 10 scans
             'current_collection_size': {
-                'corrected': len(list(self.corrected_dir.glob("*.xle"))) if self.corrected_dir.exists() else 0,
-                'unmatched': len(list(self.unmatched_dir.glob("*.xle"))) if self.unmatched_dir.exists() else 0
+                'corrected': len(list(self.corrected_dir.glob("**/*.xle"))) if self.corrected_dir.exists() else 0,
+                'unmatched': len(list(self.unmatched_dir.glob("**/*.xle"))) if self.unmatched_dir.exists() else 0
             }
         }
 
