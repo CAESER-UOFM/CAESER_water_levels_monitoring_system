@@ -237,8 +237,10 @@ class FolderScannerDialog(QDialog):
         self.apply_button.setToolTip("Import the unique files found during scan into your collection")
         summary_layout.addWidget(self.apply_button)
         
-        # Set maximum width to prevent summary panel from getting too wide
+        # Set size constraints to keep summary panel compact
         summary_group.setMaximumWidth(250)
+        summary_group.setMaximumHeight(200)  # Limit height to keep it compact
+        summary_group.setMinimumHeight(120)  # Ensure minimum usability
         
         results_splitter.addWidget(summary_group)
         
