@@ -116,46 +116,104 @@ class FolderScanDatabase:
         conn.close()
     
     def record_folder_scan(self, folder_path: str, files_found: int, unique_added: int, metadata: Dict):
-        """Record a completed folder scan"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+        """Record a completed folder scan with retry logic"""
+        max_retries = 3
+        retry_delay = 0.1
         
-        cursor.execute('''
-            INSERT OR REPLACE INTO scanned_folders 
-            (folder_path, last_scan_date, files_found, unique_files_added, scan_metadata)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (
-            str(folder_path),
-            datetime.now().isoformat(),
-            files_found,
-            unique_added,
-            json.dumps(metadata, default=str)
-        ))
-        
-        conn.commit()
-        conn.close()
+        for attempt in range(max_retries):
+            conn = None
+            try:
+                conn = sqlite3.connect(self.db_path, timeout=10.0)
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    INSERT OR REPLACE INTO scanned_folders 
+                    (folder_path, last_scan_date, files_found, unique_files_added, scan_metadata)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (
+                    str(folder_path),
+                    datetime.now().isoformat(),
+                    files_found,
+                    unique_added,
+                    json.dumps(metadata, default=str)
+                ))
+                
+                conn.commit()
+                return  # Success
+                
+            except sqlite3.OperationalError as e:
+                if "readonly" in str(e).lower() or "locked" in str(e).lower():
+                    if attempt < max_retries - 1:
+                        import time
+                        time.sleep(retry_delay)
+                        retry_delay *= 2
+                        continue
+                    else:
+                        print(f"   ❌ Failed to record scan after {max_retries} attempts: {e}")
+                        raise
+                else:
+                    raise
+            except Exception as e:
+                print(f"   ❌ Error recording scan: {e}")
+                raise
+            finally:
+                if conn:
+                    try:
+                        conn.close()
+                    except:
+                        pass
     
     def record_processed_file(self, file_sig: str, file_path: str, filename: str, 
                             serial: str, size: int, final_location: str, status: str,
                             cae_number: str = None, project_name: str = None, 
                             instrument_type: str = None):
         """Record a processed file with optional enhanced metadata"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+        max_retries = 3
+        retry_delay = 0.1  # 100ms delay between retries
         
-        cursor.execute('''
-            INSERT OR IGNORE INTO processed_files 
-            (file_signature, original_path, filename, serial_number, file_size, 
-             processing_date, final_location, status, cae_number, project_name, instrument_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            file_sig, str(file_path), filename, serial, size,
-            datetime.now().isoformat(), final_location, status,
-            cae_number, project_name, instrument_type
-        ))
-        
-        conn.commit()
-        conn.close()
+        for attempt in range(max_retries):
+            conn = None
+            try:
+                conn = sqlite3.connect(self.db_path, timeout=10.0)  # 10 second timeout
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    INSERT OR IGNORE INTO processed_files 
+                    (file_signature, original_path, filename, serial_number, file_size, 
+                     processing_date, final_location, status, cae_number, project_name, instrument_type)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    file_sig, str(file_path), filename, serial, size,
+                    datetime.now().isoformat(), final_location, status,
+                    cae_number, project_name, instrument_type
+                ))
+                
+                conn.commit()
+                return  # Success - exit retry loop
+                
+            except sqlite3.OperationalError as e:
+                if "readonly" in str(e).lower() or "locked" in str(e).lower():
+                    print(f"   ⚠️  Database locked on attempt {attempt + 1}/{max_retries}, retrying...")
+                    if attempt < max_retries - 1:  # Don't sleep on last attempt
+                        import time
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # Exponential backoff
+                        continue
+                    else:
+                        print(f"   ❌ Database operation failed after {max_retries} attempts: {e}")
+                        raise
+                else:
+                    print(f"   ❌ Database error: {e}")
+                    raise
+            except Exception as e:
+                print(f"   ❌ Unexpected database error: {e}")
+                raise
+            finally:
+                if conn:
+                    try:
+                        conn.close()
+                    except:
+                        pass  # Ignore errors when closing
     
     def get_processed_signatures(self) -> Set[str]:
         """Get all processed file signatures"""
