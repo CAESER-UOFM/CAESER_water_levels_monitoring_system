@@ -793,12 +793,11 @@ class UniversalXLEScanner:
                         }
                         
                         if apply_changes:
-                            # Generate proper filename using SAME logic as smoo_field_data_consolidator
-                            # Format: SerialNumber_Location_YYYY_MM_DD_To_YYYY_MM_DD.xle
-                            location_raw = metadata.get('location')
-                            
-                            # Use consistent filename cleaning logic (same as smoo_field_data_consolidator)
-                            location_clean = (location_raw or cae_number or 'Unknown').replace(':', '').replace('/', '_').replace('\\', '_').replace('|', '_').replace('?', '_').replace('*', '_').replace('<', '_').replace('>', '_').replace('"', '_').replace(' ', '_').strip()
+                            # Generate proper filename using database CAE number for consistency
+                            # Format: SerialNumber_CAE_YYYY_MM_DD_To_YYYY_MM_DD.xle
+                            # Use CAE number from database (not original XLE location) to match folder structure
+                            # Keep CAE format simple for filename (allow dashes, just clean filesystem-unsafe chars)
+                            cae_clean = str(cae_number).replace('/', '_').replace('\\', '_').replace(':', '_').replace('*', '_').replace('?', '_').replace('"', '_').replace('<', '_').replace('>', '_').replace('|', '_').strip()
                             
                             # Extract actual first and last dates from data points (same as SMOO consolidator)
                             try:
@@ -836,13 +835,14 @@ class UniversalXLEScanner:
                             project_dir = self.corrected_dir / project_name / device_folder / subfolder_name
                             project_dir.mkdir(parents=True, exist_ok=True)
                             
-                            # Use CORRECT format: Serial_Location_StartDate_To_EndDate.xle (NO duplicate location)
-                            new_name = f"{serial_number}_{location_clean}_{start_date}_To_{end_date}.xle"
+                            # Use CORRECT format: Serial_CAE_StartDate_To_EndDate.xle (matches folder structure)
+                            new_name = f"{serial_number}_{cae_clean}_{start_date}_To_{end_date}.xle"
                             dest_path = project_dir / new_name
                             shutil.copy2(file_path, dest_path)
                             
                             print(f"      📁 Organized: {project_name}/{device_folder}/{subfolder_name}/")
                             print(f"      📄 Created: {new_name}")
+                            print(f"      ✅ Using database CAE '{cae_number}' for consistent naming")
                             
                             # Record in database with enhanced metadata
                             self.db.record_processed_file(
@@ -938,9 +938,9 @@ class UniversalXLEScanner:
                             start_date = first_date.strftime('%Y_%m_%d')
                             end_date = last_date.strftime('%Y_%m_%d')
                             
-                            # Clean location name
-                            location_raw = metadata.location if hasattr(metadata, 'location') else matched_cae
-                            location_clean = (location_raw or matched_cae or 'Unknown').replace(':', '').replace('/', '_').replace('\\\\', '_').replace('|', '_').replace('?', '_').replace('*', '_').replace('<', '_').replace('>', '_').replace('"', '_').replace(' ', '_').strip()
+                            # Use database CAE number for consistency with folder structure
+                            # Keep CAE format simple for filename (allow dashes, just clean filesystem-unsafe chars)
+                            cae_clean = str(matched_cae).replace('/', '_').replace('\\', '_').replace(':', '_').replace('*', '_').replace('?', '_').replace('"', '_').replace('<', '_').replace('>', '_').replace('|', '_').strip()
                             
                             # Determine device type and organize by project + device type + case/location
                             device_type = matched_location.get('device_type', 'water_levels')
@@ -958,8 +958,8 @@ class UniversalXLEScanner:
                             project_dir = self.corrected_dir / matched_project / device_folder / subfolder_name
                             project_dir.mkdir(parents=True, exist_ok=True)
                             
-                            # Generate corrected filename
-                            corrected_name = f"{serial_number}_{location_clean}_{start_date}_To_{end_date}.xle"
+                            # Generate corrected filename using database CAE number
+                            corrected_name = f"{serial_number}_{cae_clean}_{start_date}_To_{end_date}.xle"
                             corrected_path = project_dir / corrected_name
                             
                             # Move file from unmatched to organized corrected folder
@@ -967,6 +967,7 @@ class UniversalXLEScanner:
                             
                             print(f"      📁 Organized: {matched_project}/{device_folder}/{subfolder_name}/")
                             print(f"      📄 Upgraded: {corrected_name}")
+                            print(f"      ✅ Using database CAE '{matched_cae}' for consistent naming")
                             
                             # Update database record
                             success = self.db.upgrade_file_status(
