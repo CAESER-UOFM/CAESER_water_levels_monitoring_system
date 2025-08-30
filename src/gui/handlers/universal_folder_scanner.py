@@ -357,6 +357,9 @@ class UniversalXLEScanner:
         self.all_wells_data = {}
         self.all_transducer_locations = []
         
+        # Track failed operations for reporting
+        self.failed_operations = []
+        
         # Processing state
         self.new_files = []
         self.duplicate_files = []
@@ -451,6 +454,93 @@ class UniversalXLEScanner:
         
         # Ensure it's not empty after cleaning
         return cleaned if cleaned else 'UNKNOWN'
+    
+    def retry_operation(self, operation, *args, max_retries=3, delay=1.0, operation_name="Operation", **kwargs):
+        """
+        Retry an operation with exponential backoff for network/permission errors
+        
+        Args:
+            operation: Function to retry
+            *args: Arguments for the operation
+            max_retries: Maximum number of retry attempts
+            delay: Initial delay between retries (seconds)
+            operation_name: Name for logging
+            **kwargs: Keyword arguments for the operation
+            
+        Returns:
+            Result of operation or None if all retries failed
+        """
+        import time
+        
+        for attempt in range(max_retries + 1):
+            try:
+                result = operation(*args, **kwargs)
+                if attempt > 0:
+                    print(f"      ✅ {operation_name} succeeded on retry {attempt}")
+                return result
+                
+            except (OSError, IOError, PermissionError) as e:
+                if attempt == max_retries:
+                    print(f"      ❌ {operation_name} failed after {max_retries} retries: {str(e)[:100]}")
+                    self.failed_operations.append({
+                        'operation': operation_name,
+                        'args': str(args)[:100],
+                        'error': str(e)[:200],
+                        'final_attempt': True
+                    })
+                    return None
+                else:
+                    wait_time = delay * (2 ** attempt)  # Exponential backoff
+                    print(f"      ⚠️  {operation_name} failed (attempt {attempt + 1}/{max_retries + 1}): {str(e)[:100]}")
+                    print(f"      ⏳ Retrying in {wait_time:.1f} seconds...")
+                    time.sleep(wait_time)
+                    
+            except Exception as e:
+                # For non-network errors, don't retry
+                print(f"      ❌ {operation_name} failed with non-retryable error: {str(e)[:100]}")
+                self.failed_operations.append({
+                    'operation': operation_name,
+                    'args': str(args)[:100], 
+                    'error': str(e)[:200],
+                    'final_attempt': True,
+                    'non_retryable': True
+                })
+                return None
+        
+        return None
+    
+    def generate_failure_report(self) -> str:
+        """Generate a summary report of failed operations"""
+        if not self.failed_operations:
+            return "✅ No failed operations"
+        
+        report = f"\n⚠️  OPERATION FAILURES SUMMARY ({len(self.failed_operations)} total)\n"
+        report += "=" * 60 + "\n"
+        
+        # Group by operation type
+        operation_groups = {}
+        for failure in self.failed_operations:
+            op_type = failure['operation']
+            if op_type not in operation_groups:
+                operation_groups[op_type] = []
+            operation_groups[op_type].append(failure)
+        
+        for op_type, failures in operation_groups.items():
+            report += f"\n📋 {op_type}: {len(failures)} failures\n"
+            for i, failure in enumerate(failures[:3], 1):  # Show first 3 of each type
+                report += f"   {i}. {failure['error'][:100]}\n"
+                if failure.get('non_retryable'):
+                    report += f"      💀 Non-retryable error\n"
+                else:
+                    report += f"      🔄 Retried but failed\n"
+            
+            if len(failures) > 3:
+                report += f"   ... and {len(failures) - 3} more similar failures\n"
+        
+        report += f"\n💡 Suggestion: Check network connectivity and file permissions\n"
+        report += f"   Failed operations have been logged and processing continued\n"
+        
+        return report
     
     def extract_xle_metadata(self, file_path: Path) -> Dict:
         """Extract metadata from XLE file"""
@@ -762,6 +852,9 @@ class UniversalXLEScanner:
         for file_info in scan_results['unique_files_list']:
             file_info['match_info'] = {'project': 'Unmatched', 'cae_number': 'N/A'}
         
+        # Clear any previous failure tracking
+        self.failed_operations = []
+        
         # Create temporary processing directory
         temp_dir = Path("temp_processing")
         if apply_changes:
@@ -838,21 +931,34 @@ class UniversalXLEScanner:
                             # Use CORRECT format: Serial_CAE_StartDate_To_EndDate.xle (matches folder structure)
                             new_name = f"{serial_number}_{cae_clean}_{start_date}_To_{end_date}.xle"
                             dest_path = project_dir / new_name
-                            shutil.copy2(file_path, dest_path)
                             
-                            print(f"      📁 Organized: {project_name}/{device_folder}/{subfolder_name}/")
-                            print(f"      📄 Created: {new_name}")
-                            print(f"      ✅ Using database CAE '{cae_number}' for consistent naming")
-                            
-                            # Record in database with enhanced metadata
-                            self.db.record_processed_file(
-                                signature, str(file_path), file_path.name,
-                                serial_number, metadata['file_size'],
-                                str(dest_path), 'corrected',
-                                cae_number, project_name, metadata.get('instrument_type')
+                            # Attempt file copy with retry logic
+                            copy_result = self.retry_operation(
+                                shutil.copy2, file_path, dest_path,
+                                operation_name=f"Copy {file_path.name} to corrected"
                             )
                             
-                        corrected_count += 1
+                            if copy_result is not None:
+                                print(f"      📁 Organized: {project_name}/{device_folder}/{subfolder_name}/")
+                                print(f"      📄 Created: {new_name}")
+                                print(f"      ✅ Using database CAE '{cae_number}' for consistent naming")
+                                
+                                # Record in database with enhanced metadata
+                                try:
+                                    self.db.record_processed_file(
+                                        signature, str(file_path), file_path.name,
+                                        serial_number, metadata['file_size'],
+                                        str(dest_path), 'corrected',
+                                        cae_number, project_name, metadata.get('instrument_type')
+                                    )
+                                    corrected_count += 1
+                                except Exception as db_error:
+                                    print(f"      ⚠️  Database recording failed: {str(db_error)[:100]}")
+                                    # Continue processing even if database fails
+                            else:
+                                print(f"      ❌ Skipped {file_path.name} - all copy attempts failed")
+                                # Continue to next file instead of stopping entire process
+                            
                         matched = True
                         break
                 
@@ -867,22 +973,40 @@ class UniversalXLEScanner:
                         unmatched_device_dir.mkdir(parents=True, exist_ok=True)
                         
                         dest_path = unmatched_device_dir / file_path.name
-                        shutil.copy2(file_path, dest_path)
                         
-                        # Record in database with enhanced metadata
-                        self.db.record_processed_file(
-                            signature, str(file_path), file_path.name,
-                            serial_number, metadata['file_size'],
-                            str(dest_path), 'unmatched',
-                            None, None, metadata.get('instrument_type')  # No CAE/project for unmatched
+                        # Attempt file copy with retry logic
+                        copy_result = self.retry_operation(
+                            shutil.copy2, file_path, dest_path,
+                            operation_name=f"Copy {file_path.name} to unmatched"
                         )
-                    
-                    unmatched_count += 1
+                        
+                        if copy_result is not None:
+                            # Record in database with enhanced metadata
+                            try:
+                                self.db.record_processed_file(
+                                    signature, str(file_path), file_path.name,
+                                    serial_number, metadata['file_size'],
+                                    str(dest_path), 'unmatched',
+                                    None, None, metadata.get('instrument_type')  # No CAE/project for unmatched
+                                )
+                                unmatched_count += 1
+                            except Exception as db_error:
+                                print(f"      ⚠️  Database recording failed: {str(db_error)[:100]}")
+                                # Continue processing even if database fails
+                        else:
+                            print(f"      ❌ Skipped {file_path.name} - all copy attempts failed")
+            
+            # Generate failure report
+            failure_report = self.generate_failure_report()
+            if self.failed_operations:
+                print(failure_report)
             
             results = {
                 'processed': len(scan_results['unique_files_list']),
                 'corrected': corrected_count,
                 'unmatched': unmatched_count,
+                'failures': len(self.failed_operations),
+                'failure_report': failure_report,
                 'dry_run': not apply_changes
             }
             
@@ -890,6 +1014,8 @@ class UniversalXLEScanner:
             print(f"   ✅ {action} {results['processed']} files:")
             print(f"      📁 Corrected: {results['corrected']}")
             print(f"      📁 Unmatched: {results['unmatched']}")
+            if results['failures'] > 0:
+                print(f"      ⚠️  Failures: {results['failures']} (processing continued)")
             
             return results
             
@@ -962,28 +1088,39 @@ class UniversalXLEScanner:
                             corrected_name = f"{serial_number}_{cae_clean}_{start_date}_To_{end_date}.xle"
                             corrected_path = project_dir / corrected_name
                             
-                            # Move file from unmatched to organized corrected folder
-                            shutil.move(str(original_location), str(corrected_path))
-                            
-                            print(f"      📁 Organized: {matched_project}/{device_folder}/{subfolder_name}/")
-                            print(f"      📄 Upgraded: {corrected_name}")
-                            print(f"      ✅ Using database CAE '{matched_cae}' for consistent naming")
-                            
-                            # Update database record
-                            success = self.db.upgrade_file_status(
-                                unmatched_file['file_signature'],
-                                'corrected', 
-                                str(corrected_path),
-                                matched_cae,
-                                matched_project
+                            # Move file from unmatched to organized corrected folder with retry
+                            move_result = self.retry_operation(
+                                shutil.move, str(original_location), str(corrected_path),
+                                operation_name=f"Move {original_location.name} to corrected"
                             )
                             
-                            if success:
-                                print(f"   ✅ UPGRADED: {original_location.name} → {corrected_name}")
-                                print(f"      📍 Now matched to well: {matched_cae} in project: {matched_project}")
-                                upgraded_count += 1
+                            if move_result is not None:
+                                print(f"      📁 Organized: {matched_project}/{device_folder}/{subfolder_name}/")
+                                print(f"      📄 Upgraded: {corrected_name}")
+                                print(f"      ✅ Using database CAE '{matched_cae}' for consistent naming")
+                                
+                                # Update database record
+                                try:
+                                    success = self.db.upgrade_file_status(
+                                        unmatched_file['file_signature'],
+                                        'corrected', 
+                                        str(corrected_path),
+                                        matched_cae,
+                                        matched_project
+                                    )
+                                    
+                                    if success:
+                                        print(f"   ✅ UPGRADED: {original_location.name} → {corrected_name}")
+                                        print(f"      📍 Now matched to well: {matched_cae} in project: {matched_project}")
+                                        upgraded_count += 1
+                                    else:
+                                        print(f"   ⚠️  File moved but database update failed for {corrected_name}")
+                                except Exception as db_error:
+                                    print(f"   ⚠️  Database update failed: {str(db_error)[:100]}")
+                                    # File was moved successfully, continue
                             else:
-                                print(f"   ⚠️  File moved but database update failed for {corrected_name}")
+                                print(f"   ❌ Failed to move {original_location.name} - all move attempts failed")
+                                # Continue to next file instead of stopping
                         else:
                             print(f"   ⚠️  Could not read data from {original_location.name} for upgrade")
                     else:
