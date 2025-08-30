@@ -542,6 +542,108 @@ class UniversalXLEScanner:
         
         return report
     
+    def validate_date_range(self, file_first_timestamp, deployment_start, deployment_end):
+        """
+        Validate if file's first timestamp falls within transducer deployment date range
+        
+        Args:
+            file_first_timestamp: First timestamp from XLE data (datetime or string)
+            deployment_start: Start date from database (string, should not be None)
+            deployment_end: End date from database (string or None - if None, assume current deployment)
+            
+        Returns:
+            bool: True if file timestamp is within deployment range
+        """
+        from datetime import datetime, date
+        
+        try:
+            # Convert file timestamp to date
+            if isinstance(file_first_timestamp, str):
+                # Handle various date string formats
+                try:
+                    file_date = datetime.fromisoformat(file_first_timestamp).date()
+                except:
+                    try:
+                        file_date = datetime.strptime(file_first_timestamp, '%Y-%m-%d %H:%M:%S').date()
+                    except:
+                        file_date = datetime.strptime(file_first_timestamp, '%Y-%m-%d').date()
+            elif hasattr(file_first_timestamp, 'date'):
+                file_date = file_first_timestamp.date()
+            else:
+                print(f"      ⚠️  Invalid file timestamp format: {file_first_timestamp}")
+                return False
+            
+            # Parse deployment start date (should not be None)
+            if not deployment_start:
+                print(f"      ⚠️  Missing deployment start date - cannot validate")
+                return False
+                
+            start_date = datetime.strptime(deployment_start, '%Y-%m-%d').date()
+            
+            # Parse deployment end date (None means current deployment)
+            if deployment_end:
+                end_date = datetime.strptime(deployment_end, '%Y-%m-%d').date()
+            else:
+                # No end date = current deployment, use today
+                end_date = date.today()
+            
+            # Check if file date is within deployment range
+            is_valid = start_date <= file_date <= end_date
+            
+            if not is_valid:
+                print(f"      📅 Date mismatch: File={file_date}, Deployment={start_date} to {end_date}")
+            
+            return is_valid
+            
+        except Exception as e:
+            print(f"      ⚠️  Date validation error: {e}")
+            # If we can't validate dates, assume it's valid (safer for processing)
+            return True
+    
+    def find_matching_deployments(self, serial_number, file_first_timestamp):
+        """
+        Find all deployment records that match serial number and date range
+        
+        Returns:
+            list: All matching deployment records (could be 0, 1, or multiple)
+        """
+        matches = []
+        
+        for location_record in self.all_transducer_locations:
+            if location_record['serial_number'] == serial_number:
+                # Check date range validation
+                if self.validate_date_range(
+                    file_first_timestamp, 
+                    location_record['start_date'], 
+                    location_record['end_date']
+                ):
+                    matches.append(location_record)
+        
+        return matches
+    
+    def get_file_first_timestamp(self, file_path: Path):
+        """
+        Extract the first data timestamp from XLE file (not file creation date)
+        
+        Returns:
+            datetime or None: First timestamp from XLE data
+        """
+        try:
+            # Use SolinstReader to get actual data timestamps
+            df, metadata = self.reader.read_xle(file_path)
+            
+            if not df.empty and 'timestamp' in df.columns:
+                first_timestamp = df['timestamp'].min()
+                print(f"      📅 File first reading: {first_timestamp}")
+                return first_timestamp
+            else:
+                print(f"      ⚠️  No timestamp data found in {file_path.name}")
+                return None
+                
+        except Exception as e:
+            print(f"      ⚠️  Could not read timestamps from {file_path.name}: {e}")
+            return None
+    
     def extract_xle_metadata(self, file_path: Path) -> Dict:
         """Extract metadata from XLE file"""
         try:
@@ -868,99 +970,157 @@ class UniversalXLEScanner:
                 
                 print(f"   📄 Processing: {file_path.name}")
                 
-                # Try to match with databases (simplified matching for now)
+                # Enhanced matching with date range validation
                 serial_number = metadata['serial_number']
                 matched = False
+                multiple_matches = []
                 
-                for location_record in self.all_transducer_locations:
-                    if location_record['serial_number'] == serial_number:
-                        # Found a match - this would go to corrected
+                print(f"      🔍 Checking matches for serial: {serial_number}")
+                
+                # Get first timestamp from file data for date validation
+                file_first_timestamp = self.get_file_first_timestamp(file_path)
+                
+                if file_first_timestamp:
+                    # Find all deployments that match serial number AND date range
+                    matching_deployments = self.find_matching_deployments(serial_number, file_first_timestamp)
+                    
+                    if len(matching_deployments) == 1:
+                        # Perfect match - single deployment
+                        location_record = matching_deployments[0]
                         cae_number = location_record.get('cae_number', 'Unknown')
                         project_name = location_record.get('database', 'Unknown')
-                        print(f"      ✅ MATCHED to well: {cae_number} in project: {project_name} (Serial: {serial_number})")
+                        print(f"      ✅ MATCHED to well: {cae_number} in project: {project_name}")
+                        print(f"         📅 Date validated: {file_first_timestamp.date()} within deployment range")
                         
                         # Store matching info for dialog display
                         scan_results['unique_files_list'][i]['match_info'] = {
                             'project': project_name,
-                            'cae_number': cae_number
+                            'cae_number': cae_number,
+                            'match_type': 'single_match'
                         }
-                        
-                        if apply_changes:
-                            # Generate proper filename using database CAE number for consistency
-                            # Format: SerialNumber_CAE_YYYY_MM_DD_To_YYYY_MM_DD.xle
-                            # Use CAE number from database (not original XLE location) to match folder structure
-                            # Keep CAE format simple for filename (allow dashes, just clean filesystem-unsafe chars)
-                            cae_clean = str(cae_number).replace('/', '_').replace('\\', '_').replace(':', '_').replace('*', '_').replace('?', '_').replace('"', '_').replace('<', '_').replace('>', '_').replace('|', '_').strip()
-                            
-                            # Extract actual first and last dates from data points (same as SMOO consolidator)
-                            try:
-                                # Read XLE file to get actual data (not just metadata)
-                                df, _ = self.reader.read_xle(Path(file_path))
-                                
-                                # Get actual first and last dates from data
-                                if not df.empty and 'timestamp' in df.columns:
-                                    first_date = df['timestamp'].min()
-                                    last_date = df['timestamp'].max()
-                                    start_date = first_date.strftime('%Y_%m_%d')
-                                    end_date = last_date.strftime('%Y_%m_%d')
-                                else:
-                                    # Fallback if no data available
-                                    start_date = 'UNKNOWN'
-                                    end_date = 'UNKNOWN'
-                            except Exception as e:
-                                print(f"   ⚠️  Could not extract actual dates from {file_path.name}: {e}")
-                                start_date = 'UNKNOWN'
-                                end_date = 'UNKNOWN'
-                            
-                            # Determine device type and organize by project + device type + case/location
-                            device_type = location_record.get('device_type', 'water_levels')
-                            device_folder = 'barologgers' if device_type == 'barologger' else 'water_levels'
-                            
-                            # Add case/location subfolder for better organization
-                            if device_type == 'barologger':
-                                # For barologgers: use location name (already in cae_number field for baros)
-                                subfolder_name = self.format_folder_name(cae_number)
-                            else:
-                                # For water level transducers: use CAE number
-                                subfolder_name = self.format_folder_name(cae_number)
-                            
-                            # Create organized folder structure: corrected/PROJECT/device_type/CAE_or_LOCATION/
-                            project_dir = self.corrected_dir / project_name / device_folder / subfolder_name
-                            project_dir.mkdir(parents=True, exist_ok=True)
-                            
-                            # Use CORRECT format: Serial_CAE_StartDate_To_EndDate.xle (matches folder structure)
-                            new_name = f"{serial_number}_{cae_clean}_{start_date}_To_{end_date}.xle"
-                            dest_path = project_dir / new_name
-                            
-                            # Attempt file copy with retry logic
-                            copy_result = self.retry_operation(
-                                shutil.copy2, file_path, dest_path,
-                                operation_name=f"Copy {file_path.name} to corrected"
-                            )
-                            
-                            if copy_result is not None:
-                                print(f"      📁 Organized: {project_name}/{device_folder}/{subfolder_name}/")
-                                print(f"      📄 Created: {new_name}")
-                                print(f"      ✅ Using database CAE '{cae_number}' for consistent naming")
-                                
-                                # Record in database with enhanced metadata
-                                try:
-                                    self.db.record_processed_file(
-                                        signature, str(file_path), file_path.name,
-                                        serial_number, metadata['file_size'],
-                                        str(dest_path), 'corrected',
-                                        cae_number, project_name, metadata.get('instrument_type')
-                                    )
-                                    corrected_count += 1
-                                except Exception as db_error:
-                                    print(f"      ⚠️  Database recording failed: {str(db_error)[:100]}")
-                                    # Continue processing even if database fails
-                            else:
-                                print(f"      ❌ Skipped {file_path.name} - all copy attempts failed")
-                                # Continue to next file instead of stopping entire process
-                            
                         matched = True
-                        break
+                        
+                    elif len(matching_deployments) > 1:
+                        # Multiple matches - this needs special handling
+                        print(f"      ⚠️  MULTIPLE MATCHES found for serial {serial_number}:")
+                        for match in matching_deployments:
+                            print(f"         📍 {match['cae_number']} ({match['database']}) - {match['start_date']} to {match['end_date'] or 'current'}")
+                        
+                        # For now, use first match but mark as conflicted
+                        location_record = matching_deployments[0]
+                        cae_number = location_record.get('cae_number', 'Unknown')
+                        project_name = location_record.get('database', 'Unknown')
+                        
+                        # Store matching info with conflict flag
+                        scan_results['unique_files_list'][i]['match_info'] = {
+                            'project': project_name,
+                            'cae_number': cae_number,
+                            'match_type': 'multiple_matches',
+                            'all_matches': matching_deployments
+                        }
+                        matched = True
+                        multiple_matches = matching_deployments
+                        
+                    else:
+                        # No date-validated matches found
+                        print(f"      ❌ No deployment found for serial {serial_number} matching file date {file_first_timestamp.date()}")
+                        print(f"         Available deployments for this serial:")
+                        for location_record in self.all_transducer_locations:
+                            if location_record['serial_number'] == serial_number:
+                                print(f"         📅 {location_record['cae_number']} ({location_record['database']}) - {location_record['start_date']} to {location_record['end_date'] or 'current'}")
+                else:
+                    print(f"      ⚠️  Could not extract timestamp - falling back to serial-only matching")
+                    # Fallback to old logic if we can't get timestamps
+                    for location_record in self.all_transducer_locations:
+                        if location_record['serial_number'] == serial_number:
+                            cae_number = location_record.get('cae_number', 'Unknown')
+                            project_name = location_record.get('database', 'Unknown')
+                            print(f"      ✅ FALLBACK MATCH to well: {cae_number} in project: {project_name} (Serial: {serial_number})")
+                            
+                            scan_results['unique_files_list'][i]['match_info'] = {
+                                'project': project_name,
+                                'cae_number': cae_number,
+                                'match_type': 'fallback_serial_only'
+                            }
+                            matched = True
+                            break
+                
+                if matched and apply_changes:
+                    # Generate proper filename using database CAE number for consistency
+                    # Format: SerialNumber_CAE_YYYY_MM_DD_To_YYYY_MM_DD.xle
+                    # Use CAE number from database (not original XLE location) to match folder structure
+                    # Keep CAE format simple for filename (allow dashes, just clean filesystem-unsafe chars)
+                    cae_clean = str(cae_number).replace('/', '_').replace('\\', '_').replace(':', '_').replace('*', '_').replace('?', '_').replace('"', '_').replace('<', '_').replace('>', '_').replace('|', '_').strip()
+                    
+                    # Extract actual first and last dates from data points (same as SMOO consolidator)
+                    try:
+                        # Read XLE file to get actual data (not just metadata)
+                        df, _ = self.reader.read_xle(Path(file_path))
+                        
+                        # Get actual first and last dates from data
+                        if not df.empty and 'timestamp' in df.columns:
+                            first_date = df['timestamp'].min()
+                            last_date = df['timestamp'].max()
+                            start_date = first_date.strftime('%Y_%m_%d')
+                            end_date = last_date.strftime('%Y_%m_%d')
+                        else:
+                            # Fallback if no data available
+                            start_date = 'UNKNOWN'
+                            end_date = 'UNKNOWN'
+                    except Exception as e:
+                        print(f"   ⚠️  Could not extract actual dates from {file_path.name}: {e}")
+                        start_date = 'UNKNOWN'
+                        end_date = 'UNKNOWN'
+                    
+                    # Determine device type and organize by project + device type + case/location
+                    device_type = location_record.get('device_type', 'water_levels')
+                    device_folder = 'barologgers' if device_type == 'barologger' else 'water_levels'
+                    
+                    # Add case/location subfolder for better organization
+                    if device_type == 'barologger':
+                        # For barologgers: use location name (already in cae_number field for baros)
+                        subfolder_name = self.format_folder_name(cae_number)
+                    else:
+                        # For water level transducers: use CAE number
+                        subfolder_name = self.format_folder_name(cae_number)
+                    
+                    # Create organized folder structure: corrected/PROJECT/device_type/CAE_or_LOCATION/
+                    project_dir = self.corrected_dir / project_name / device_folder / subfolder_name
+                    project_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    # Use CORRECT format: Serial_CAE_StartDate_To_EndDate.xle (matches folder structure)
+                    new_name = f"{serial_number}_{cae_clean}_{start_date}_To_{end_date}.xle"
+                    dest_path = project_dir / new_name
+                    
+                    # Attempt file copy with retry logic
+                    copy_result = self.retry_operation(
+                        shutil.copy2, file_path, dest_path,
+                        operation_name=f"Copy {file_path.name} to corrected"
+                    )
+                    
+                    if copy_result is not None:
+                        print(f"      📁 Organized: {project_name}/{device_folder}/{subfolder_name}/")
+                        print(f"      📄 Created: {new_name}")
+                        print(f"      ✅ Using database CAE '{cae_number}' for consistent naming")
+                        
+                        # Record in database with enhanced metadata
+                        try:
+                            self.db.record_processed_file(
+                                signature, str(file_path), file_path.name,
+                                serial_number, metadata['file_size'],
+                                str(dest_path), 'corrected',
+                                cae_number, project_name, metadata.get('instrument_type')
+                            )
+                            corrected_count += 1
+                        except Exception as db_error:
+                            print(f"      ⚠️  Database recording failed: {str(db_error)[:100]}")
+                            # Continue processing even if database fails
+                    else:
+                        print(f"      ❌ Skipped {file_path.name} - all copy attempts failed")
+                        # Continue to next file instead of stopping entire process
+                
+                matched = True
+                break
                 
                 if not matched:
                     # No match found - goes to unmatched with organized structure  
