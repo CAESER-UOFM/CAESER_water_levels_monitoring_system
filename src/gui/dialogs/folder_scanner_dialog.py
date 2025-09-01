@@ -458,6 +458,10 @@ class FolderScannerDialog(QDialog):
         self.show_file_info_button.clicked.connect(self.show_selected_file_info)
         action_layout.addWidget(self.show_file_info_button)
         
+        self.open_directory_button = QPushButton("📁 Open Directory")
+        self.open_directory_button.clicked.connect(self.open_selected_file_directory)
+        action_layout.addWidget(self.open_directory_button)
+        
         action_layout.addStretch()
         layout.addLayout(action_layout)
         
@@ -478,53 +482,117 @@ class FolderScannerDialog(QDialog):
                 return Path.cwd() / "folder_scan_tracking.db"
     
     def load_database_records(self):
-        """Load all records from the database"""
+        """Load all records from the database and recent scan results"""
         db_path = self.get_database_path()
         
-        if not db_path.exists():
-            self.db_stats_label.setText("❌ Database not found")
-            self.db_table.setRowCount(0)
-            return
+        # Load database records
+        db_records = []
+        if db_path.exists():
+            try:
+                conn = sqlite3.connect(db_path)
+                cursor = conn.cursor()
+                
+                # Get all records with enhanced metadata
+                cursor.execute("""
+                    SELECT 
+                        filename, cae_number, project_name, serial_number, instrument_type,
+                        status, file_size, processing_date, original_path, file_signature
+                    FROM processed_files 
+                    ORDER BY processing_date DESC
+                """)
+                
+                db_records = cursor.fetchall()
+                conn.close()
+                
+            except Exception as e:
+                print(f"Error loading database records: {e}")
         
-        try:
-            conn = sqlite3.connect(db_path)
-            cursor = conn.cursor()
-            
-            # Get all records with enhanced metadata
-            cursor.execute("""
-                SELECT 
-                    filename, cae_number, project_name, serial_number, instrument_type,
-                    status, file_size, processing_date, original_path, file_signature
-                FROM processed_files 
-                ORDER BY processing_date DESC
-            """)
-            
-            records = cursor.fetchall()
-            conn.close()
-            
-            # Store original records for filtering
-            self.all_db_records = records
-            
-            # Populate filter dropdowns with available data
-            self.populate_filter_dropdowns()
-            
-            # Display records
-            self.display_database_records(records)
-            
-            # Update statistics
-            total_records = len(records)
-            corrected_count = len([r for r in records if r[5] == 'corrected'])  # status is at index 5
-            unmatched_count = len([r for r in records if r[5] == 'unmatched'])
-            
-            self.db_stats_label.setText(
-                f"📊 Total: {total_records:,} files | "
-                f"✅ Corrected: {corrected_count:,} | "
-                f"⚠️ Unmatched: {unmatched_count:,}"
-            )
-            
-        except Exception as e:
-            self.db_stats_label.setText(f"❌ Error loading database: {e}")
-            self.db_table.setRowCount(0)
+        # Add recent scan results (including unmatched files from dry runs)
+        recent_records = []
+        if hasattr(self, 'last_scan_results') and self.last_scan_results:
+            recent_records = self.convert_scan_results_to_records(self.last_scan_results)
+        
+        # Combine and deduplicate records (prioritize database records over recent scan results)
+        all_records = db_records.copy()
+        db_signatures = {record[9] for record in db_records}  # signature is at index 9
+        
+        for recent_record in recent_records:
+            if recent_record[9] not in db_signatures:  # If signature not in database
+                all_records.append(recent_record)
+        
+        # Store combined records for filtering
+        self.all_db_records = all_records
+        
+        # Populate filter dropdowns with available data
+        self.populate_filter_dropdowns()
+        
+        # Display records
+        self.display_database_records(all_records)
+        
+        # Update statistics
+        total_records = len(all_records)
+        corrected_count = len([r for r in all_records if r[5] == 'corrected'])  # status is at index 5
+        unmatched_count = len([r for r in all_records if r[5] == 'unmatched'])
+        recent_count = len(recent_records)
+        
+        status_text = f"📊 Total: {total_records:,} files | ✅ Corrected: {corrected_count:,} | ⚠️ Unmatched: {unmatched_count:,}"
+        if recent_count > 0:
+            status_text += f" | 🆕 Recent: {recent_count:,}"
+        
+        self.db_stats_label.setText(status_text)
+    
+    def convert_scan_results_to_records(self, scan_results):
+        """Convert recent scan results to database record format for display"""
+        records = []
+        
+        if not scan_results or 'unique_files_list' not in scan_results:
+            return records
+        
+        from datetime import datetime
+        current_time = datetime.now().isoformat()
+        
+        for file_info in scan_results['unique_files_list']:
+            try:
+                # Extract information from scan results
+                file_path = Path(file_info['file_path'])
+                filename = file_path.name
+                metadata = file_info.get('metadata', {})
+                signature = file_info.get('signature', '')
+                
+                # Determine status and project info from match_info if available
+                match_info = file_info.get('match_info', {})
+                if match_info.get('cae_number') and match_info.get('cae_number') != 'N/A':
+                    status = 'corrected'
+                    cae_number = match_info.get('cae_number', '')
+                    project_name = match_info.get('project', '')
+                else:
+                    status = 'unmatched'  # This is key - mark unmatched files!
+                    cae_number = None
+                    project_name = None
+                
+                # Create database record tuple
+                # Format: filename, cae_number, project_name, serial_number, instrument_type,
+                #         status, file_size, processing_date, original_path, file_signature
+                record = (
+                    filename,                                    # filename
+                    cae_number,                                 # cae_number  
+                    project_name,                               # project_name
+                    metadata.get('serial_number', ''),         # serial_number
+                    metadata.get('instrument_type', ''),       # instrument_type
+                    status,                                     # status (corrected/unmatched)
+                    metadata.get('file_size', 0),              # file_size
+                    current_time,                               # processing_date (recent scan)
+                    str(file_path),                            # original_path
+                    signature                                   # file_signature
+                )
+                
+                records.append(record)
+                
+            except Exception as e:
+                print(f"Error converting scan result: {e}")
+                continue
+        
+        return records
     
     def display_database_records(self, records):
         """Display database records in the table"""
@@ -1030,6 +1098,62 @@ class FolderScannerDialog(QDialog):
         
         QMessageBox.information(self, f"File Info: {filename}", info_text)
 
+    def open_selected_file_directory(self):
+        """Open the directory containing the selected file"""
+        current_row = self.db_table.currentRow()
+        if current_row < 0:
+            QMessageBox.information(self, "Open Directory", "Please select a file first")
+            return
+        
+        # Get file path from table (Path column is at index 10)
+        path_item = self.db_table.item(current_row, 10)
+        if not path_item or not path_item.text().strip():
+            QMessageBox.warning(self, "Open Directory", "No file path available for this record")
+            return
+        
+        file_path = Path(path_item.text().strip())
+        
+        # Determine directory to open
+        if file_path.exists():
+            # If file exists, open its directory
+            directory_to_open = file_path.parent
+        elif file_path.parent.exists():
+            # If file doesn't exist but directory does, open the directory
+            directory_to_open = file_path.parent
+        else:
+            QMessageBox.warning(self, "Open Directory", f"Directory not found: {file_path.parent}")
+            return
+        
+        try:
+            import subprocess
+            import platform
+            
+            system = platform.system()
+            if system == "Windows":
+                # Windows: use explorer with /select to highlight the file if it exists
+                if file_path.exists():
+                    subprocess.run(['explorer', '/select,', str(file_path)], check=True)
+                else:
+                    subprocess.run(['explorer', str(directory_to_open)], check=True)
+            elif system == "Darwin":  # macOS
+                # macOS: use Finder
+                if file_path.exists():
+                    subprocess.run(['open', '-R', str(file_path)], check=True)
+                else:
+                    subprocess.run(['open', str(directory_to_open)], check=True)
+            else:  # Linux and others
+                # Linux: use xdg-open or fallback to file manager
+                subprocess.run(['xdg-open', str(directory_to_open)], check=True)
+                
+            print(f"📁 Opened directory: {directory_to_open}")
+            
+        except subprocess.CalledProcessError as e:
+            QMessageBox.warning(self, "Open Directory", f"Failed to open directory: {e}")
+        except FileNotFoundError:
+            QMessageBox.warning(self, "Open Directory", "File manager not found on this system")
+        except Exception as e:
+            QMessageBox.warning(self, "Open Directory", f"Error opening directory: {e}")
+
     def browse_folder(self):
         """Open folder selection dialog"""
         folder_path = QFileDialog.getExistingDirectory(
@@ -1097,6 +1221,9 @@ class FolderScannerDialog(QDialog):
         # Refresh other tabs
         self.load_scan_history()
         self.update_collection_summary()
+        
+        # Refresh Database Browser to show recent scan results (including unmatched files)
+        self.load_database_records()
         
         # Show completion message
         total_unique = results.get('unique_files', 0)
