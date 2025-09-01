@@ -1142,9 +1142,6 @@ class UniversalXLEScanner:
                         print(f"      ❌ Skipped {file_path.name} - all copy attempts failed")
                         # Continue to next file instead of stopping entire process
                 
-                matched = True
-                break
-                
                 if not matched:
                     # No match found - goes to unmatched with organized structure  
                     print(f"      ❌ UNMATCHED: Serial {serial_number} not found in any database")
