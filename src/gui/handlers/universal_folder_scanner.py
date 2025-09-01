@@ -577,12 +577,35 @@ class UniversalXLEScanner:
             if not deployment_start:
                 print(f"      ⚠️  Missing deployment start date - cannot validate")
                 return False
-                
-            start_date = datetime.strptime(deployment_start, '%Y-%m-%d').date()
+            
+            # Handle both date and datetime formats from database
+            try:
+                # Try datetime format first (2025-01-01T18:30:00 or 2025-01-01 18:30:00)
+                if 'T' in deployment_start:
+                    start_date = datetime.fromisoformat(deployment_start).date()
+                elif ' ' in deployment_start and ':' in deployment_start:
+                    start_date = datetime.strptime(deployment_start, '%Y-%m-%d %H:%M:%S').date()
+                else:
+                    # Just date format (2025-01-01)
+                    start_date = datetime.strptime(deployment_start, '%Y-%m-%d').date()
+            except Exception as e:
+                print(f"      ⚠️  Could not parse start date '{deployment_start}': {e}")
+                return True  # Safer to allow processing if we can't parse
             
             # Parse deployment end date (None means current deployment)
             if deployment_end:
-                end_date = datetime.strptime(deployment_end, '%Y-%m-%d').date()
+                try:
+                    # Handle both date and datetime formats from database
+                    if 'T' in deployment_end:
+                        end_date = datetime.fromisoformat(deployment_end).date()
+                    elif ' ' in deployment_end and ':' in deployment_end:
+                        end_date = datetime.strptime(deployment_end, '%Y-%m-%d %H:%M:%S').date()
+                    else:
+                        # Just date format (2025-01-01)
+                        end_date = datetime.strptime(deployment_end, '%Y-%m-%d').date()
+                except Exception as e:
+                    print(f"      ⚠️  Could not parse end date '{deployment_end}': {e}")
+                    end_date = date.today()  # Safer fallback
             else:
                 # No end date = current deployment, use today
                 end_date = date.today()
