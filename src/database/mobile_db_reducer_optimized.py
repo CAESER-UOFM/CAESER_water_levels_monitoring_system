@@ -55,7 +55,7 @@ class MobileDatabaseReducer:
         logger.info(f"Optimized database created successfully at {self.target_db_path}")
     
     def _create_reduced_wells_table(self, cursor: sqlite3.Cursor):
-        """Create wells table matching Turso optimized schema"""
+        """Create wells table matching Turso optimized schema with current transducer serial"""
         cursor.execute('''
             CREATE TABLE wells (
                 well_number TEXT PRIMARY KEY,
@@ -65,7 +65,8 @@ class MobileDatabaseReducer:
                 aquifer TEXT,
                 well_field TEXT,
                 cluster TEXT,
-                top_of_casing REAL
+                top_of_casing REAL,
+                current_transducer_serial TEXT
             )
         ''')
     
@@ -150,28 +151,34 @@ class MobileDatabaseReducer:
         ''')
     
     def _copy_wells_data(self, source_conn: sqlite3.Connection, target_conn: sqlite3.Connection, well_number: Optional[str]):
-        """Copy wells data with optimized columns matching Turso schema"""
+        """Copy wells data with optimized columns matching Turso schema including current transducer serial"""
         source_cursor = source_conn.cursor()
         target_cursor = target_conn.cursor()
-        
+
         query = '''
-            SELECT well_number, cae_number, latitude, longitude, aquifer, 
-                   well_field, cluster, top_of_casing
-            FROM wells
+            SELECT w.well_number, w.cae_number, w.latitude, w.longitude, w.aquifer,
+                   w.well_field, w.cluster, w.top_of_casing, t.serial_number
+            FROM wells w
+            LEFT JOIN transducers t ON w.well_number = t.well_number
+                AND t.installation_date = (
+                    SELECT MAX(t2.installation_date)
+                    FROM transducers t2
+                    WHERE t2.well_number = w.well_number
+                )
         '''
         params = []
-        
+
         if well_number:
-            query += ' WHERE well_number = ?'
+            query += ' WHERE w.well_number = ?'
             params.append(well_number)
-        
+
         source_cursor.execute(query, params)
         wells_data = source_cursor.fetchall()
-        
+
         target_cursor.executemany('''
             INSERT INTO wells (well_number, cae_number, latitude, longitude, aquifer,
-                             well_field, cluster, top_of_casing)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                             well_field, cluster, top_of_casing, current_transducer_serial)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', wells_data)
         
         logger.info(f"Copied {len(wells_data)} wells")

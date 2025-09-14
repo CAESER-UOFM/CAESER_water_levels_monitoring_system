@@ -21,11 +21,17 @@ import hashlib
 
 # Import vented transducer utilities
 try:
-    from utils.vented_transducer_utils import is_vented_transducer, should_apply_compensation
+    from src.utils.vented_transducer_utils import is_vented_transducer, should_apply_compensation
 except ImportError:
-    # Fallback for standalone execution
-    sys.path.append(str(Path(__file__).parent.parent))
-    from utils.vented_transducer_utils import is_vented_transducer, should_apply_compensation
+    try:
+        # Fallback for relative import
+        from ...utils.vented_transducer_utils import is_vented_transducer, should_apply_compensation
+    except ImportError:
+        # Final fallback - define dummy functions
+        def is_vented_transducer(serial_number):
+            return False
+        def should_apply_compensation(serial_number):
+            return True
 
 # Handle imports that work both in package context and standalone
 try:
