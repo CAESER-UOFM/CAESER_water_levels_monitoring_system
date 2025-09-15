@@ -596,7 +596,7 @@ class UniversalXLEScanner:
                     start_date = datetime.strptime(deployment_start, '%Y-%m-%d').date()
             except Exception as e:
                 print(f"      ⚠️  Could not parse start date '{deployment_start}': {e}")
-                return True  # Safer to allow processing if we can't parse
+                return False  # If we can't parse deployment date, reject the match
             
             # Parse deployment end date (None means current deployment)
             if deployment_end:
@@ -626,8 +626,8 @@ class UniversalXLEScanner:
             
         except Exception as e:
             print(f"      ⚠️  Date validation error: {e}")
-            # If we can't validate dates, assume it's valid (safer for processing)
-            return True
+            # If we can't validate dates, reject the match (safer to be strict)
+            return False
     
     def find_matching_deployments(self, serial_number, file_first_timestamp):
         """
@@ -1058,21 +1058,11 @@ class UniversalXLEScanner:
                             if location_record['serial_number'] == serial_number:
                                 print(f"         📅 {location_record['cae_number']} ({location_record['database']}) - {location_record['start_date']} to {location_record['end_date'] or 'current'}")
                 else:
-                    print(f"      ⚠️  Could not extract timestamp - falling back to serial-only matching")
-                    # Fallback to old logic if we can't get timestamps
-                    for location_record in self.all_transducer_locations:
-                        if location_record['serial_number'] == serial_number:
-                            cae_number = location_record.get('cae_number', 'Unknown')
-                            project_name = location_record.get('database', 'Unknown')
-                            print(f"      ✅ FALLBACK MATCH to well: {cae_number} in project: {project_name} (Serial: {serial_number})")
-                            
-                            scan_results['unique_files_list'][i]['match_info'] = {
-                                'project': project_name,
-                                'cae_number': cae_number,
-                                'match_type': 'fallback_serial_only'
-                            }
-                            matched = True
-                            break
+                    print(f"      ⚠️  Could not extract timestamp - file likely has no data logs")
+                    print(f"      📁 Sending to UNMATCHED: Files without data cannot be date-validated")
+                    # DO NOT fallback to serial-only matching - this causes incorrect assignments
+                    # Files without extractable timestamps (no data logs) should go to unmatched
+                    # This prevents pre-deployment files from being incorrectly matched to wells
                 
                 if matched and apply_changes:
                     # Generate proper filename using database CAE number for consistency
