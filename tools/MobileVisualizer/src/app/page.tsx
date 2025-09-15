@@ -2,25 +2,39 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { DatabaseSelector } from '@/components/DatabaseSelector';
+import { MinimalLoadingScreen } from '@/components/MinimalLoadingScreen';
+import { LazyDatabaseSelector, preloadDatabaseComponents } from '@/components/LazyComponents';
+import { useProgressiveAppLoading } from '@/hooks/useProgressiveAppLoading';
 import type { DatabaseInfo } from '@/types/database';
 
 export default function HomePage() {
   const router = useRouter();
   const [databases, setDatabases] = useState<DatabaseInfo[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [databasesLoading, setDatabasesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Progressive loading hook
+  const {
+    isLoading: appLoading,
+    progress,
+    currentMessage,
+    completeStage,
+    setCustomMessage
+  } = useProgressiveAppLoading();
 
   // Fetch databases from API
   useEffect(() => {
     const fetchDatabases = async () => {
       try {
-        setLoading(true);
+        setDatabasesLoading(true);
+        setCustomMessage('Connecting to database...');
+
         const response = await fetch('/.netlify/functions/databases');
         const data = await response.json();
-        
+
         if (data.success) {
           setDatabases(data.data);
+          completeStage('database');
         } else {
           setError(data.error || 'Failed to fetch databases');
         }
@@ -28,17 +42,42 @@ export default function HomePage() {
         setError('Failed to connect to database');
         console.error('Error fetching databases:', err);
       } finally {
-        setLoading(false);
+        setDatabasesLoading(false);
       }
     };
 
-    fetchDatabases();
-  }, []);
+    // Start database loading after a short delay
+    const timer = setTimeout(() => {
+      fetchDatabases();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [completeStage, setCustomMessage]);
+
+  // Preload database components when database stage is reached
+  useEffect(() => {
+    if (!databasesLoading && !error) {
+      preloadDatabaseComponents();
+      completeStage('charts');
+      completeStage('maps');
+      completeStage('complete');
+    }
+  }, [databasesLoading, error, completeStage]);
 
   const handleDatabaseSelected = useCallback((database: DatabaseInfo) => {
     // Navigate to wells page
     router.push(`/wells/${database.id}`);
   }, [router]);
+
+  // Show minimal loading screen while app is loading
+  if (appLoading) {
+    return (
+      <MinimalLoadingScreen
+        progress={progress}
+        message={currentMessage}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-blue-900">
@@ -89,15 +128,15 @@ export default function HomePage() {
                 Database Connection
               </h2>
               <span className={`text-sm px-3 py-1 rounded-full font-medium ${
-                loading ? 'bg-yellow-900/50 text-yellow-300 border border-yellow-600' :
+                databasesLoading ? 'bg-yellow-900/50 text-yellow-300 border border-yellow-600' :
                 error ? 'bg-red-900/50 text-red-300 border border-red-600' :
                 'bg-green-900/50 text-green-300 border border-green-600'
               }`}>
-                {loading ? 'Connecting...' : error ? 'Error' : 'Connected'}
+                {databasesLoading ? 'Connecting...' : error ? 'Error' : 'Connected'}
               </span>
             </div>
             
-            {loading && (
+            {databasesLoading && (
               <div className="flex items-center space-x-3">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-400"></div>
                 <span className="text-gray-300">Establishing secure connection...</span>
@@ -110,8 +149,8 @@ export default function HomePage() {
               </div>
             )}
             
-            {!loading && !error && (
-              <DatabaseSelector
+            {!databasesLoading && !error && (
+              <LazyDatabaseSelector
                 databases={databases}
                 onDatabaseSelected={handleDatabaseSelected}
               />
