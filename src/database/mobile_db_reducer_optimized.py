@@ -56,6 +56,7 @@ class MobileDatabaseReducer:
     
     def _create_reduced_wells_table(self, cursor: sqlite3.Cursor):
         """Create wells table matching Turso optimized schema with current transducer serial"""
+        logger.info("Creating enhanced wells table with current_transducer_serial column for Turso sync")
         cursor.execute('''
             CREATE TABLE wells (
                 well_number TEXT PRIMARY KEY,
@@ -69,6 +70,7 @@ class MobileDatabaseReducer:
                 current_transducer_serial TEXT
             )
         ''')
+        logger.info("✅ Enhanced wells table created successfully with transducer serial support")
     
     def _create_reduced_water_level_readings_table(self, cursor: sqlite3.Cursor):
         """Create water level readings table matching Turso schema"""
@@ -175,13 +177,26 @@ class MobileDatabaseReducer:
         source_cursor.execute(query, params)
         wells_data = source_cursor.fetchall()
 
+        # Count wells with and without transducers for logging
+        wells_with_transducers = sum(1 for row in wells_data if row[8] is not None)
+        wells_without_transducers = len(wells_data) - wells_with_transducers
+
         target_cursor.executemany('''
             INSERT INTO wells (well_number, cae_number, latitude, longitude, aquifer,
                              well_field, cluster, top_of_casing, current_transducer_serial)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', wells_data)
-        
-        logger.info(f"Copied {len(wells_data)} wells")
+
+        logger.info(f"Copied {len(wells_data)} wells with enhanced transducer serial data")
+        logger.info(f"📊 Wells with current transducers: {wells_with_transducers}")
+        logger.info(f"📊 Wells without transducers (NULL serials): {wells_without_transducers}")
+
+        if wells_with_transducers > 0:
+            # Log a few examples for verification
+            sample_wells_with_transducers = [row for row in wells_data if row[8] is not None][:3]
+            logger.info("🔗 Sample wells with transducers:")
+            for row in sample_wells_with_transducers:
+                logger.info(f"   {row[0]} → Serial: {row[8]}")
     
     def _copy_water_level_data(self, source_conn: sqlite3.Connection, target_conn: sqlite3.Connection, well_number: Optional[str]):
         """Copy water level readings matching Turso schema (reading_date format)"""
