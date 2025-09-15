@@ -37,6 +37,7 @@ root_logger.setLevel(logging.WARNING)  # Root logger level - only explicit logge
 # Allow INFO level for main application startup
 logging.getLogger('__main__').setLevel(logging.INFO)
 logging.getLogger('src.gui.handlers.settings_handler').setLevel(logging.DEBUG)
+logging.getLogger('src.gui.dialogs.field_data_settings_dialog').setLevel(logging.DEBUG)
 logging.getLogger('src.gui.main_window').setLevel(logging.INFO)
 
 # Enable detailed logging for auto-sync debugging

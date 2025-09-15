@@ -572,9 +572,13 @@ class GoogleDriveFieldDataDialog(QDialog):
     
     def save_settings(self):
         """Save service account and field laptop settings"""
+        logger.info("🔧 SAVE_DEBUG: Starting save_settings method...")
+
         try:
             # Validate and save service account settings
             service_account_path = self.service_file_edit.text().strip()
+            logger.info(f"🔧 SAVE_DEBUG: Service account path: '{service_account_path}'")
+
             if service_account_path:
                 if not os.path.exists(service_account_path):
                     reply = QMessageBox.question(
@@ -593,13 +597,19 @@ class GoogleDriveFieldDataDialog(QDialog):
                 logger.info(f"Saved service account path: {service_account_path}")
             
             # Validate all laptop configurations
+            logger.info(f"🔧 SAVE_DEBUG: Found {len(self.laptop_widgets)} laptop widgets to validate")
             valid_laptops = []
-            for laptop_widget in self.laptop_widgets:
+
+            for i, laptop_widget in enumerate(self.laptop_widgets):
                 config = laptop_widget.get_laptop_config()
+                logger.info(f"🔧 SAVE_DEBUG: Laptop {i+1} config: name='{config['name']}', folder_id='{config['folder_id']}'")
+
                 if config['name'] and config['folder_id']:
                     valid_laptops.append(config)
+                    logger.info(f"🔧 SAVE_DEBUG: ✅ Laptop {i+1} ({config['name']}) is valid")
                 elif config['name'] or config['folder_id']:
                     # Partial configuration
+                    logger.warning(f"🔧 SAVE_DEBUG: ❌ Laptop {i+1} has incomplete config")
                     QMessageBox.warning(
                         self,
                         "Incomplete Configuration",
@@ -607,8 +617,13 @@ class GoogleDriveFieldDataDialog(QDialog):
                         "Please provide both name and folder ID, or remove this entry."
                     )
                     return
+                else:
+                    logger.info(f"🔧 SAVE_DEBUG: ⏭️ Laptop {i+1} is empty, skipping")
             
+            logger.info(f"🔧 SAVE_DEBUG: Found {len(valid_laptops)} valid laptop configurations")
+
             if not valid_laptops:
+                logger.warning("🔧 SAVE_DEBUG: ⚠️ No valid laptops found, asking user...")
                 reply = QMessageBox.question(
                     self,
                     "No Laptops Configured",
@@ -618,7 +633,9 @@ class GoogleDriveFieldDataDialog(QDialog):
                     QMessageBox.No
                 )
                 if reply != QMessageBox.Yes:
+                    logger.info("🔧 SAVE_DEBUG: User chose not to continue without laptops")
                     return
+                logger.info("🔧 SAVE_DEBUG: User chose to continue without laptops")
             
             # Check for duplicate names
             names = [laptop['name'] for laptop in valid_laptops]
@@ -631,19 +648,35 @@ class GoogleDriveFieldDataDialog(QDialog):
                 return
             
             # Clear existing laptop settings
+            logger.info("🔧 SAVE_DEBUG: Clearing existing laptop settings (1-10)...")
             for i in range(1, 10):  # Clear up to 10 possible laptops
-                self.settings_handler.set_setting(f"google_drive_laptop_{i}_folder_id", "")
-            
+                setting_key = f"google_drive_laptop_{i}_folder_id"
+                self.settings_handler.set_setting(setting_key, "")
+                logger.debug(f"🔧 SAVE_DEBUG: Cleared {setting_key}")
+
             # Save new configurations
+            logger.info(f"🔧 SAVE_DEBUG: Saving {len(valid_laptops)} new laptop configurations...")
             for i, laptop in enumerate(valid_laptops, 1):
                 setting_key = f"google_drive_laptop_{i}_folder_id"
-                self.settings_handler.set_setting(setting_key, laptop['folder_id'])
-                logger.info(f"Saved {laptop['name']} -> {setting_key}: {laptop['folder_id']}")
-            
+                folder_id = laptop['folder_id']
+
+                logger.info(f"🔧 SAVE_DEBUG: About to save {laptop['name']} -> {setting_key}: {folder_id}")
+                self.settings_handler.set_setting(setting_key, folder_id)
+
+                # Verify it was saved
+                saved_value = self.settings_handler.get_setting(setting_key, "VERIFICATION_FAILED")
+                if saved_value == folder_id:
+                    logger.info(f"🔧 SAVE_DEBUG: ✅ Successfully saved {laptop['name']} -> {setting_key}: {folder_id}")
+                else:
+                    logger.error(f"🔧 SAVE_DEBUG: ❌ SAVE VERIFICATION FAILED for {setting_key}!")
+                    logger.error(f"🔧 SAVE_DEBUG: Expected: '{folder_id}', Got: '{saved_value}'")
+
+            logger.info("🔧 SAVE_DEBUG: All laptop settings saved, showing success dialog...")
+
             # Success message
             service_msg = f"✅ Service Account: {'Configured' if service_account_path else 'Not configured'}"
             laptops_msg = f"✅ Field Laptops: {len(valid_laptops)} configured"
-            
+
             QMessageBox.information(
                 self,
                 "Settings Saved",
@@ -651,6 +684,8 @@ class GoogleDriveFieldDataDialog(QDialog):
                 f"{service_msg}\n"
                 f"{laptops_msg}"
             )
+
+            logger.info("🔧 SAVE_DEBUG: Success dialog shown, save_settings method complete")
             self.accept()
             
         except Exception as e:
