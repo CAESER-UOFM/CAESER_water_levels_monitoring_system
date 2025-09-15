@@ -78,12 +78,23 @@ class TursoUploadWorker(QThread):
                     'type': 'execute',
                     'stmt': {'sql': info['create_sql']}
                 })
-                
+                # Log wells table creation specifically
+                if table_name == 'wells':
+                    logger.warning(f"🚀 SENDING wells table CREATE SQL to Turso: {info['create_sql']}")
+                    print(f"🚀 SENDING wells table CREATE SQL to Turso: {info['create_sql']}")
+
             if create_requests:
+                logger.warning(f"🌐 Sending {len(create_requests)} table creation requests to Turso...")
+                print(f"🌐 Sending {len(create_requests)} table creation requests to Turso...")
                 response = requests.post(api_url, json={'requests': create_requests}, headers=headers)
                 if response.status_code != 200:
+                    logger.warning(f"❌ Turso table creation failed: {response.text}")
+                    print(f"❌ Turso table creation failed: {response.text}")
                     self.finished.emit(False, f"Failed to create tables: {response.text}")
                     return False
+                else:
+                    logger.warning("✅ Turso table creation successful!")
+                    print("✅ Turso table creation successful!")
                     
             return True
             
@@ -408,13 +419,24 @@ class TursoHandlerOptimized:
                 table_names = [row[0] for row in cursor.fetchall()]
                 
                 for table_name in table_names:
-                    cursor.execute(f"SELECT sql FROM sqlite_master WHERE type='table' AND name=?", 
+                    cursor.execute(f"SELECT sql FROM sqlite_master WHERE type='table' AND name=?",
                                  (table_name,))
                     create_sql = cursor.fetchone()[0]
-                    
+
                     cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
                     row_count = cursor.fetchone()[0]
-                    
+
+                    # LOG THE SQL BEING SENT TO TURSO
+                    if table_name == 'wells':
+                        logger.warning(f"🔍 TURSO SQL for wells table: {create_sql}")
+                        print(f"🔍 TURSO SQL for wells table: {create_sql}")
+                        if 'current_transducer_serial' in create_sql:
+                            logger.warning("✅ current_transducer_serial column found in SQL being sent to Turso!")
+                            print("✅ current_transducer_serial column found in SQL being sent to Turso!")
+                        else:
+                            logger.warning("❌ current_transducer_serial column NOT found in SQL being sent to Turso!")
+                            print("❌ current_transducer_serial column NOT found in SQL being sent to Turso!")
+
                     tables[table_name] = {
                         'create_sql': create_sql,
                         'row_count': row_count

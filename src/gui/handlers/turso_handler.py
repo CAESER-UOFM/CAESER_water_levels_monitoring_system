@@ -226,20 +226,31 @@ class TursoHandler:
         try:
             with sqlite3.connect(db_path) as conn:
                 cursor = conn.cursor()
-                
+
                 # Get all tables
                 cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
                 table_names = [row[0] for row in cursor.fetchall()]
-                
+
                 for table_name in table_names:
                     # Get table schema
                     cursor.execute(f"SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
                     create_sql = cursor.fetchone()[0]
-                    
+
                     # Get row count
                     cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
                     row_count = cursor.fetchone()[0]
-                    
+
+                    # LOG THE SQL BEING SENT TO TURSO
+                    if table_name == 'wells':
+                        logger.warning(f"🔍 TURSO SQL for wells table: {create_sql}")
+                        print(f"🔍 TURSO SQL for wells table: {create_sql}")
+                        if 'current_transducer_serial' in create_sql:
+                            logger.warning("✅ current_transducer_serial column found in SQL being sent to Turso!")
+                            print("✅ current_transducer_serial column found in SQL being sent to Turso!")
+                        else:
+                            logger.warning("❌ current_transducer_serial column NOT found in SQL being sent to Turso!")
+                            print("❌ current_transducer_serial column NOT found in SQL being sent to Turso!")
+
                     tables[table_name] = {
                         'create_sql': create_sql,
                         'row_count': row_count
