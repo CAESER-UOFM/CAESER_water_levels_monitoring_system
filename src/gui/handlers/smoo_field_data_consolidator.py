@@ -61,18 +61,26 @@ class HybridFieldDataConsolidator:
         # Timestamp tracking for incremental sync
         self.sync_timestamp_file = os.path.join(self.consolidated_folder, ".last_field_sync_timestamp.json")
         
-        logger.info(f"Multi-Folder Field Data Consolidator initialized:")
+        logger.info(f"🚀 CONSOLIDATOR_INIT: Multi-Folder Field Data Consolidator initialized")
+
+        # Enhanced initialization logging
+        logger.info(f"🚀 CONSOLIDATOR_INIT: Field laptop folders loaded: {len(self.field_laptop_folders)}")
+        logger.info(f"🚀 CONSOLIDATOR_INIT: Legacy solinst folder ID: '{self.solinst_folder_id}'")
+
         if self.field_laptop_folders:
-            logger.info(f"  Found {len(self.field_laptop_folders)} field laptop folders:")
+            logger.info(f"✅ CONSOLIDATOR_INIT: MULTI-FOLDER MODE - Found {len(self.field_laptop_folders)} field laptop folders:")
             for laptop_name, folder_id in self.field_laptop_folders.items():
                 logger.info(f"    {laptop_name}: {folder_id}")
         elif self.solinst_folder_id:
-            logger.info(f"  Legacy single folder mode: {self.solinst_folder_id}")
+            logger.info(f"⚠️ CONSOLIDATOR_INIT: LEGACY SINGLE FOLDER MODE - Using: {self.solinst_folder_id}")
+            logger.info(f"⚠️ CONSOLIDATOR_INIT: Reason: field_laptop_folders is empty ({len(self.field_laptop_folders)} items)")
         else:
-            logger.warning("  No field laptop folders configured!")
-        logger.info(f"  SMOO Consolidated: {self.consolidated_folder}")
-        logger.info(f"  Using YYYY-MM date-based organization (NOT XLE import structure)")
-        logger.info(f"  Timestamp tracking: {self.sync_timestamp_file}")
+            logger.error("❌ CONSOLIDATOR_INIT: NO FOLDERS CONFIGURED AT ALL!")
+            logger.error("❌ CONSOLIDATOR_INIT: Neither multi-folder nor legacy mode available!")
+
+        logger.info(f"📁 CONSOLIDATOR_INIT: SMOO Consolidated target: {self.consolidated_folder}")
+        logger.info(f"📅 CONSOLIDATOR_INIT: Using YYYY-MM date-based organization (NOT XLE import structure)")
+        logger.info(f"⏰ CONSOLIDATOR_INIT: Timestamp tracking file: {self.sync_timestamp_file}")
     
     def check_access(self) -> bool:
         """Check if both Google Drive and SMOO are accessible"""
@@ -181,25 +189,70 @@ class HybridFieldDataConsolidator:
     def _get_field_laptop_folders(self) -> Dict[str, str]:
         """
         Get field laptop folder configurations from settings
-        
+
         Returns:
             Dictionary mapping laptop names to folder IDs
         """
         field_folders = {}
-        
+
+        # COMPREHENSIVE DEBUG: Log all available settings
+        logger.info("🔍 SETTINGS_DEBUG: Starting field laptop folder configuration loading...")
+        logger.info(f"🔍 SETTINGS_DEBUG: Settings handler type: {type(self.settings_handler)}")
+
+        # Try to get all settings to see what's available
+        try:
+            if hasattr(self.settings_handler, 'get_all_settings'):
+                all_settings = self.settings_handler.get_all_settings()
+                logger.info(f"🔍 SETTINGS_DEBUG: Total settings available: {len(all_settings) if all_settings else 'None'}")
+                if all_settings:
+                    laptop_related = {k: v for k, v in all_settings.items() if 'laptop' in k.lower()}
+                    logger.info(f"🔍 SETTINGS_DEBUG: Laptop-related settings found: {laptop_related}")
+            else:
+                logger.info("🔍 SETTINGS_DEBUG: Settings handler doesn't have get_all_settings method")
+        except Exception as e:
+            logger.info(f"🔍 SETTINGS_DEBUG: Could not get all settings: {e}")
+
         # Check for individual laptop folder settings
         laptop_configs = [
             ("Laptop_1", "google_drive_laptop_1_folder_id"),
-            ("Laptop_2", "google_drive_laptop_2_folder_id"), 
+            ("Laptop_2", "google_drive_laptop_2_folder_id"),
             ("Laptop_3", "google_drive_laptop_3_folder_id")
         ]
-        
+
+        logger.info("🔍 SETTINGS_DEBUG: Checking individual laptop folder settings...")
+
         for laptop_name, setting_key in laptop_configs:
-            folder_id = self.settings_handler.get_setting(setting_key, "")
-            if folder_id:
-                field_folders[laptop_name] = folder_id
-                logger.debug(f"Found {laptop_name} folder: {folder_id}")
-        
+            logger.info(f"🔍 SETTINGS_DEBUG: Looking for setting key: '{setting_key}'")
+
+            # Get the raw setting value with detailed debugging
+            try:
+                folder_id = self.settings_handler.get_setting(setting_key, "DEFAULT_NOT_FOUND")
+                logger.info(f"🔍 SETTINGS_DEBUG: Raw value for '{setting_key}': '{folder_id}' (type: {type(folder_id)})")
+
+                # Check if it's the default value
+                if folder_id == "DEFAULT_NOT_FOUND":
+                    logger.warning(f"🔍 SETTINGS_DEBUG: ❌ Setting '{setting_key}' not found in settings!")
+                elif not folder_id or folder_id.strip() == "":
+                    logger.warning(f"🔍 SETTINGS_DEBUG: ❌ Setting '{setting_key}' is empty or whitespace-only!")
+                else:
+                    # Valid folder ID found
+                    folder_id = folder_id.strip()  # Clean whitespace
+                    field_folders[laptop_name] = folder_id
+                    logger.info(f"🔍 SETTINGS_DEBUG: ✅ {laptop_name} configured with folder: {folder_id}")
+
+            except Exception as setting_error:
+                logger.error(f"🔍 SETTINGS_DEBUG: ❌ Error getting setting '{setting_key}': {setting_error}")
+
+        # Final summary
+        logger.info(f"🔍 SETTINGS_DEBUG: Final field_folders result: {field_folders}")
+        logger.info(f"🔍 SETTINGS_DEBUG: Number of laptop folders configured: {len(field_folders)}")
+
+        if not field_folders:
+            logger.warning("🔍 SETTINGS_DEBUG: ❌ NO LAPTOP FOLDERS FOUND! Will fall back to legacy mode.")
+            logger.warning("🔍 SETTINGS_DEBUG: Check if settings dialog is saving properly!")
+        else:
+            logger.info(f"🔍 SETTINGS_DEBUG: ✅ Will use MULTI-FOLDER mode with {len(field_folders)} folders")
+
         return field_folders
     
     def scan_google_drive_solinst(self, incremental: bool = True) -> List[Dict]:
@@ -228,21 +281,33 @@ class HybridFieldDataConsolidator:
             else:
                 logger.info("🔄 FULL_SYNC: Force full sync requested, downloading all files")
             
-            # Determine which folders to scan
+            # Determine which folders to scan - ENHANCED DEBUG
             folders_to_scan = []
-            
+
+            logger.info("🔍 SCAN_DECISION: Determining which folders to scan...")
+            logger.info(f"🔍 SCAN_DECISION: field_laptop_folders has {len(self.field_laptop_folders)} items: {self.field_laptop_folders}")
+            logger.info(f"🔍 SCAN_DECISION: solinst_folder_id value: '{self.solinst_folder_id}'")
+
             if self.field_laptop_folders:
                 # Multi-folder mode: scan all configured laptop folders
+                logger.info(f"✅ SCAN_DECISION: USING MULTI-FOLDER MODE - {len(self.field_laptop_folders)} field laptop folders")
                 logger.info(f"📂 MULTI_FOLDER: Scanning {len(self.field_laptop_folders)} field laptop folders...")
                 for laptop_name, folder_id in self.field_laptop_folders.items():
+                    logger.info(f"📂 MULTI_FOLDER: Adding {laptop_name} with folder ID: {folder_id}")
                     folders_to_scan.append((laptop_name, folder_id))
             elif self.solinst_folder_id:
                 # Legacy single folder mode
-                logger.info("📂 LEGACY_MODE: Scanning single SOLINST folder...")
+                logger.warning(f"⚠️ SCAN_DECISION: FALLING BACK TO LEGACY MODE")
+                logger.warning(f"⚠️ SCAN_DECISION: Reason: field_laptop_folders is empty or falsy: {bool(self.field_laptop_folders)}")
+                logger.info(f"📂 LEGACY_MODE: Scanning single SOLINST folder: {self.solinst_folder_id}")
                 folders_to_scan.append(("Legacy_SOLINST", self.solinst_folder_id))
             else:
-                logger.error("❌ No field laptop folders configured!")
+                logger.error("❌ SCAN_DECISION: NO FOLDERS TO SCAN!")
+                logger.error(f"❌ SCAN_DECISION: field_laptop_folders: {self.field_laptop_folders}")
+                logger.error(f"❌ SCAN_DECISION: solinst_folder_id: '{self.solinst_folder_id}'")
                 return []
+
+            logger.info(f"🔍 SCAN_DECISION: Final folders_to_scan list: {folders_to_scan}")
             
             # Scan each folder and collect files
             all_files = []
