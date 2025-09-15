@@ -199,6 +199,14 @@ class HybridFieldDataConsolidator:
         logger.info("🔍 SETTINGS_DEBUG: Starting field laptop folder configuration loading...")
         logger.info(f"🔍 SETTINGS_DEBUG: Settings handler type: {type(self.settings_handler)}")
 
+        # Check what settings file path is being used
+        if hasattr(self.settings_handler, 'settings_file'):
+            logger.info(f"🔍 SETTINGS_DEBUG: Settings file path: {self.settings_handler.settings_file}")
+        elif hasattr(self.settings_handler, 'config_file'):
+            logger.info(f"🔍 SETTINGS_DEBUG: Config file path: {self.settings_handler.config_file}")
+        else:
+            logger.info("🔍 SETTINGS_DEBUG: Cannot determine settings file path from handler")
+
         # Try to get all settings to see what's available
         try:
             if hasattr(self.settings_handler, 'get_all_settings'):
