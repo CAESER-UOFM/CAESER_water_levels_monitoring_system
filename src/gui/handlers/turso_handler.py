@@ -73,7 +73,7 @@ class TursoHandler:
             QApplication.processEvents()
             
             # Import mobile db reducer
-            from ...database.mobile_db_reducer import MobileDatabaseReducer
+            from ...database.mobile_db_reducer_optimized import MobileDatabaseReducer
             
             # Create temporary file for reduced database
             with tempfile.NamedTemporaryFile(delete=False, suffix='.db') as tmp_file:

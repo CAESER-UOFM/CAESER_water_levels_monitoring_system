@@ -283,7 +283,7 @@ class TursoHandlerOptimized:
             progress_dialog.setValue(10)
             QApplication.processEvents()
             
-            from ...database.mobile_db_reducer import MobileDatabaseReducer
+            from ...database.mobile_db_reducer_optimized import MobileDatabaseReducer
             
             with tempfile.NamedTemporaryFile(delete=False, suffix='.db') as tmp_file:
                 reduced_db_path = tmp_file.name
