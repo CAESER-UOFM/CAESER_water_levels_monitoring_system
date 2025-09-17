@@ -341,40 +341,8 @@ class BarologgerTab(QWidget):
         btn_layout.addWidget(delete_btn)
         btn_layout.addWidget(edit_data_btn)
 
-        # Add Turso sync button when in cloud mode
-        if self._is_cloud_mode():
-            sync_barologgers_btn = QPushButton("🔄 Sync Barologgers")
-            sync_barologgers_btn.setFixedHeight(32)
-            sync_barologgers_btn.clicked.connect(self.sync_barologgers_from_turso)
-            sync_barologgers_btn.setStyleSheet("""
-                QPushButton {
-                    padding: 8px 16px;
-                    border: 1px solid #ccc;
-                    border-radius: 6px;
-                    background-color: #f3e5f5;
-                    color: #7b1fa2;
-                    font-weight: 500;
-                    min-height: 24px;
-                }
-                QPushButton:hover {
-                    background-color: #e1bee7;
-                    border-color: #9c27b0;
-                }
-                QPushButton:pressed {
-                    background-color: #ce93d8;
-                    border-color: #8e24aa;
-                }
-                QPushButton:disabled {
-                    background-color: #f8f9fa;
-                    color: #6c757d;
-                    border-color: #dee2e6;
-                }
-            """)
-            if not (self.turso_sync_handler and self.turso_sync_handler.is_configured()):
-                sync_barologgers_btn.setEnabled(False)
-                sync_barologgers_btn.setToolTip("Turso not configured. Please set turso_loggers_url and turso_loggers_token in settings.")
-
-            btn_layout.addWidget(sync_barologgers_btn)
+        # Store reference to the barologgers button layout for later sync button addition
+        self.barologgers_btn_layout = btn_layout
         
         # Add selection info
         self.selection_info = QLabel("0 barologgers selected")
@@ -823,8 +791,99 @@ class BarologgerTab(QWidget):
             self.refresh_barologger_list(skip_plot_refresh=True)
             # Then refresh the plot separately
             self.refresh_timeline_plot()
+            # Refresh sync buttons based on current database mode
+            self.refresh_turso_sync_buttons()
         except Exception as e:
             logger.error(f"Error refreshing barologger data: {e}")
+
+    def refresh_turso_sync_buttons(self):
+        """Refresh Turso sync buttons based on current database mode"""
+        try:
+            print("🔄 TURSO_SYNC BARO: Refreshing sync buttons after database change")
+            logger.warning("TURSO_SYNC BARO: Refreshing sync buttons after database change")
+
+            # Check if we're in cloud mode now
+            is_cloud = self._is_cloud_mode()
+            print(f"🔄 TURSO_SYNC BARO: Current cloud mode status: {is_cloud}")
+            logger.warning(f"TURSO_SYNC BARO: Current cloud mode status: {is_cloud}")
+
+            if is_cloud:
+                # Add sync button if it doesn't exist
+                self._add_barologgers_sync_button_directly()
+
+        except Exception as e:
+            print(f"❌ TURSO_SYNC BARO: Error refreshing sync buttons: {e}")
+            logger.error(f"Error refreshing Turso sync buttons: {e}")
+
+    def _add_barologgers_sync_button_directly(self):
+        """Add barologgers sync button directly to stored layout"""
+        try:
+            if not hasattr(self, 'barologgers_btn_layout'):
+                print("❌ TURSO_SYNC BARO: barologgers_btn_layout not found")
+                return
+
+            # Check if sync button already exists
+            layout = self.barologgers_btn_layout
+            for i in range(layout.count()):
+                item = layout.itemAt(i)
+                if item and item.widget() and isinstance(item.widget(), QPushButton):
+                    if "Sync Barologgers" in item.widget().text():
+                        print("✅ TURSO_SYNC BARO: Barologgers sync button already exists")
+                        return
+
+            print("🔄 TURSO_SYNC BARO: Creating new barologgers sync button")
+            sync_barologgers_btn = QPushButton("🔄 Sync Barologgers")
+            sync_barologgers_btn.setFixedHeight(32)
+            sync_barologgers_btn.clicked.connect(self.sync_barologgers_from_turso)
+            sync_barologgers_btn.setStyleSheet("""
+                QPushButton {
+                    padding: 8px 16px;
+                    border: 1px solid #ccc;
+                    border-radius: 6px;
+                    background-color: #f3e5f5;
+                    color: #7b1fa2;
+                    font-weight: 500;
+                    min-height: 24px;
+                }
+                QPushButton:hover {
+                    background-color: #e1bee7;
+                    border-color: #9c27b0;
+                }
+                QPushButton:pressed {
+                    background-color: #ce93d8;
+                    border-color: #8e24aa;
+                }
+                QPushButton:disabled {
+                    background-color: #f8f9fa;
+                    color: #6c757d;
+                    border-color: #dee2e6;
+                }
+            """)
+
+            if not (self.turso_sync_handler and self.turso_sync_handler.is_configured()):
+                sync_barologgers_btn.setEnabled(False)
+                sync_barologgers_btn.setToolTip("Turso not configured. Please set turso_loggers_url and turso_loggers_token in settings.")
+
+            # Find the right place to insert - should be before selection_info
+            selection_info_index = -1
+            for i in range(layout.count()):
+                item = layout.itemAt(i)
+                if item and item.widget() and isinstance(item.widget(), QLabel):
+                    if "barologgers selected" in item.widget().text():
+                        selection_info_index = i
+                        break
+
+            if selection_info_index >= 0:
+                layout.insertWidget(selection_info_index, sync_barologgers_btn)
+            else:
+                # Fallback: insert before stretch at the end
+                stretch_index = layout.count() - 1
+                layout.insertWidget(stretch_index, sync_barologgers_btn)
+
+            print("✅ TURSO_SYNC BARO: Successfully added barologgers sync button")
+
+        except Exception as e:
+            print(f"❌ TURSO_SYNC BARO: Error adding barologgers sync button: {e}")
 
     def load_databases(self):
         """This method is no longer needed"""

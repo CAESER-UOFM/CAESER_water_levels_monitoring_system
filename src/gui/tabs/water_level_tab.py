@@ -1023,43 +1023,8 @@ class WaterLevelTab(QWidget):
         btn_layout.addWidget(self.delete_well_btn)
         btn_layout.addWidget(import_well_btn)
 
-        # Add Turso sync button when in cloud mode
-        logger.info(f"TURSO_SYNC: Checking cloud mode for wells sync button - is_cloud_mode: {self._is_cloud_mode()}")
-        if self._is_cloud_mode():
-            logger.info("TURSO_SYNC: Creating 'Sync Wells' button")
-            sync_wells_btn = QPushButton("🔄 Sync Wells")
-            sync_wells_btn.setFixedHeight(32)
-            sync_wells_btn.clicked.connect(self.sync_wells_from_turso)
-            sync_wells_btn.setStyleSheet("""
-                QPushButton {
-                    padding: 8px 16px;
-                    border: 1px solid #ccc;
-                    border-radius: 6px;
-                    background-color: #f3e5f5;
-                    color: #7b1fa2;
-                    font-weight: 500;
-                    min-height: 24px;
-                }
-                QPushButton:hover {
-                    background-color: #e1bee7;
-                    border-color: #9c27b0;
-                }
-                QPushButton:pressed {
-                    background-color: #ce93d8;
-                    border-color: #8e24aa;
-                }
-                QPushButton:disabled {
-                    background-color: #f8f9fa;
-                    color: #6c757d;
-                    border-color: #dee2e6;
-                }
-            """)
-            if not (self.turso_sync_handler and self.turso_sync_handler.is_configured()):
-                sync_wells_btn.setEnabled(False)
-                sync_wells_btn.setToolTip("Turso not configured. Please set turso_loggers_url and turso_loggers_token in settings.")
-
-            btn_layout.addWidget(sync_wells_btn)
-            logger.info("TURSO_SYNC: Successfully added 'Sync Wells' button to layout")
+        # Store reference to the wells button layout for later sync button addition
+        self.wells_btn_layout = btn_layout
 
         btn_layout.addStretch()
     
@@ -1204,43 +1169,8 @@ class WaterLevelTab(QWidget):
         btn_layout.addWidget(delete_btn)
         btn_layout.addWidget(edit_tables_btn)
 
-        # Add Turso sync button when in cloud mode
-        logger.info(f"TURSO_SYNC: Checking cloud mode for transducers sync button - is_cloud_mode: {self._is_cloud_mode()}")
-        if self._is_cloud_mode():
-            logger.info("TURSO_SYNC: Creating 'Sync Loggers' button")
-            sync_transducers_btn = QPushButton("🔄 Sync Loggers")
-            sync_transducers_btn.setFixedHeight(32)
-            sync_transducers_btn.clicked.connect(self.sync_transducers_from_turso)
-            sync_transducers_btn.setStyleSheet("""
-                QPushButton {
-                    padding: 8px 16px;
-                    border: 1px solid #ccc;
-                    border-radius: 6px;
-                    background-color: #f3e5f5;
-                    color: #7b1fa2;
-                    font-weight: 500;
-                    min-height: 24px;
-                }
-                QPushButton:hover {
-                    background-color: #e1bee7;
-                    border-color: #9c27b0;
-                }
-                QPushButton:pressed {
-                    background-color: #ce93d8;
-                    border-color: #8e24aa;
-                }
-                QPushButton:disabled {
-                    background-color: #f8f9fa;
-                    color: #6c757d;
-                    border-color: #dee2e6;
-                }
-            """)
-            if not (self.turso_sync_handler and self.turso_sync_handler.is_configured()):
-                sync_transducers_btn.setEnabled(False)
-                sync_transducers_btn.setToolTip("Turso not configured. Please set turso_loggers_url and turso_loggers_token in settings.")
-
-            btn_layout.addWidget(sync_transducers_btn)
-            logger.info("TURSO_SYNC: Successfully added 'Sync Loggers' button to layout")
+        # Store reference to the transducers button layout for later sync button addition
+        self.transducers_btn_layout = btn_layout
 
         btn_layout.addStretch()
     
@@ -3102,22 +3032,139 @@ class WaterLevelTab(QWidget):
     def refresh_turso_sync_buttons(self):
         """Refresh Turso sync buttons based on current database mode"""
         try:
-            logger.info("TURSO_SYNC: Refreshing sync buttons after database change")
+            print("🔄 TURSO_SYNC: Refreshing sync buttons after database change")
+            logger.warning("TURSO_SYNC: Refreshing sync buttons after database change")
 
             # Check if we're in cloud mode now
             is_cloud = self._is_cloud_mode()
-            logger.info(f"TURSO_SYNC: Current cloud mode status: {is_cloud}")
+            print(f"🔄 TURSO_SYNC: Current cloud mode status: {is_cloud}")
+            logger.warning(f"TURSO_SYNC: Current cloud mode status: {is_cloud}")
 
             if is_cloud:
                 # Add sync buttons if they don't exist
-                self._add_wells_sync_button_if_missing()
-                self._add_transducers_sync_button_if_missing()
+                self._add_wells_sync_button_directly()
+                self._add_transducers_sync_button_directly()
             else:
                 # Remove sync buttons if they exist
                 self._remove_sync_buttons_if_present()
 
         except Exception as e:
+            print(f"❌ TURSO_SYNC: Error refreshing sync buttons: {e}")
             logger.error(f"Error refreshing Turso sync buttons: {e}")
+
+    def _add_wells_sync_button_directly(self):
+        """Add wells sync button directly to stored layout"""
+        try:
+            if not hasattr(self, 'wells_btn_layout'):
+                print("❌ TURSO_SYNC: wells_btn_layout not found")
+                return
+
+            # Check if sync button already exists
+            layout = self.wells_btn_layout
+            for i in range(layout.count()):
+                item = layout.itemAt(i)
+                if item and item.widget() and isinstance(item.widget(), QPushButton):
+                    if "Sync Wells" in item.widget().text():
+                        print("✅ TURSO_SYNC: Wells sync button already exists")
+                        return
+
+            print("🔄 TURSO_SYNC: Creating new wells sync button")
+            sync_wells_btn = QPushButton("🔄 Sync Wells")
+            sync_wells_btn.setFixedHeight(32)
+            sync_wells_btn.clicked.connect(self.sync_wells_from_turso)
+            sync_wells_btn.setStyleSheet("""
+                QPushButton {
+                    padding: 8px 16px;
+                    border: 1px solid #ccc;
+                    border-radius: 6px;
+                    background-color: #f3e5f5;
+                    color: #7b1fa2;
+                    font-weight: 500;
+                    min-height: 24px;
+                }
+                QPushButton:hover {
+                    background-color: #e1bee7;
+                    border-color: #9c27b0;
+                }
+                QPushButton:pressed {
+                    background-color: #ce93d8;
+                    border-color: #8e24aa;
+                }
+                QPushButton:disabled {
+                    background-color: #f8f9fa;
+                    color: #6c757d;
+                    border-color: #dee2e6;
+                }
+            """)
+
+            if not (self.turso_sync_handler and self.turso_sync_handler.is_configured()):
+                sync_wells_btn.setEnabled(False)
+                sync_wells_btn.setToolTip("Turso not configured. Please set turso_loggers_url and turso_loggers_token in settings.")
+
+            # Insert before the stretch at the end
+            stretch_index = layout.count() - 1
+            layout.insertWidget(stretch_index, sync_wells_btn)
+            print("✅ TURSO_SYNC: Successfully added wells sync button")
+
+        except Exception as e:
+            print(f"❌ TURSO_SYNC: Error adding wells sync button: {e}")
+
+    def _add_transducers_sync_button_directly(self):
+        """Add transducers sync button directly to stored layout"""
+        try:
+            if not hasattr(self, 'transducers_btn_layout'):
+                print("❌ TURSO_SYNC: transducers_btn_layout not found")
+                return
+
+            # Check if sync button already exists
+            layout = self.transducers_btn_layout
+            for i in range(layout.count()):
+                item = layout.itemAt(i)
+                if item and item.widget() and isinstance(item.widget(), QPushButton):
+                    if "Sync Loggers" in item.widget().text():
+                        print("✅ TURSO_SYNC: Transducers sync button already exists")
+                        return
+
+            print("🔄 TURSO_SYNC: Creating new transducers sync button")
+            sync_transducers_btn = QPushButton("🔄 Sync Loggers")
+            sync_transducers_btn.setFixedHeight(32)
+            sync_transducers_btn.clicked.connect(self.sync_transducers_from_turso)
+            sync_transducers_btn.setStyleSheet("""
+                QPushButton {
+                    padding: 8px 16px;
+                    border: 1px solid #ccc;
+                    border-radius: 6px;
+                    background-color: #f3e5f5;
+                    color: #7b1fa2;
+                    font-weight: 500;
+                    min-height: 24px;
+                }
+                QPushButton:hover {
+                    background-color: #e1bee7;
+                    border-color: #9c27b0;
+                }
+                QPushButton:pressed {
+                    background-color: #ce93d8;
+                    border-color: #8e24aa;
+                }
+                QPushButton:disabled {
+                    background-color: #f8f9fa;
+                    color: #6c757d;
+                    border-color: #dee2e6;
+                }
+            """)
+
+            if not (self.turso_sync_handler and self.turso_sync_handler.is_configured()):
+                sync_transducers_btn.setEnabled(False)
+                sync_transducers_btn.setToolTip("Turso not configured. Please set turso_loggers_url and turso_loggers_token in settings.")
+
+            # Insert before the stretch at the end
+            stretch_index = layout.count() - 1
+            layout.insertWidget(stretch_index, sync_transducers_btn)
+            print("✅ TURSO_SYNC: Successfully added transducers sync button")
+
+        except Exception as e:
+            print(f"❌ TURSO_SYNC: Error adding transducers sync button: {e}")
 
     def _add_wells_sync_button_if_missing(self):
         """Add wells sync button to wells panel if not already present"""
