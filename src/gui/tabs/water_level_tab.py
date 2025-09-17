@@ -115,7 +115,7 @@ class WaterLevelTab(QWidget):
         # Ensure logger is configured for INFO level output
         logger.setLevel(logging.INFO)
         
-        logger.info("=== WATER_LEVEL_TAB VERSION: temperature-edit-fix-2025-08-19-v4 ===")
+        logger.info("=== WATER_LEVEL_TAB VERSION: turso-integration-2025-09-17-v1 ===")
         logger.info("WATER_LEVEL_TAB: Starting __init__ - tab construction beginning")
         # Initialize core attributes first
         self.db_manager = db_manager
@@ -1018,7 +1018,9 @@ class WaterLevelTab(QWidget):
         btn_layout.addWidget(import_well_btn)
 
         # Add Turso sync button when in cloud mode
+        logger.info(f"TURSO_SYNC: Checking cloud mode for wells sync button - is_cloud_mode: {self._is_cloud_mode()}")
         if self._is_cloud_mode():
+            logger.info("TURSO_SYNC: Creating 'Sync Wells' button")
             sync_wells_btn = QPushButton("🔄 Sync Wells")
             sync_wells_btn.setFixedHeight(32)
             sync_wells_btn.clicked.connect(self.sync_wells_from_turso)
@@ -1051,6 +1053,7 @@ class WaterLevelTab(QWidget):
                 sync_wells_btn.setToolTip("Turso not configured. Please set turso_loggers_url and turso_loggers_token in settings.")
 
             btn_layout.addWidget(sync_wells_btn)
+            logger.info("TURSO_SYNC: Successfully added 'Sync Wells' button to layout")
 
         btn_layout.addStretch()
     
@@ -1196,7 +1199,9 @@ class WaterLevelTab(QWidget):
         btn_layout.addWidget(edit_tables_btn)
 
         # Add Turso sync button when in cloud mode
+        logger.info(f"TURSO_SYNC: Checking cloud mode for transducers sync button - is_cloud_mode: {self._is_cloud_mode()}")
         if self._is_cloud_mode():
+            logger.info("TURSO_SYNC: Creating 'Sync Loggers' button")
             sync_transducers_btn = QPushButton("🔄 Sync Loggers")
             sync_transducers_btn.setFixedHeight(32)
             sync_transducers_btn.clicked.connect(self.sync_transducers_from_turso)
@@ -1229,6 +1234,7 @@ class WaterLevelTab(QWidget):
                 sync_transducers_btn.setToolTip("Turso not configured. Please set turso_loggers_url and turso_loggers_token in settings.")
 
             btn_layout.addWidget(sync_transducers_btn)
+            logger.info("TURSO_SYNC: Successfully added 'Sync Loggers' button to layout")
 
         btn_layout.addStretch()
     
@@ -3078,7 +3084,11 @@ class WaterLevelTab(QWidget):
     def _is_cloud_mode(self) -> bool:
         """Check if the current database is in cloud mode"""
         try:
-            return self.db_manager and getattr(self.db_manager, 'is_cloud_database', False)
+            has_db_manager = self.db_manager is not None
+            is_cloud = getattr(self.db_manager, 'is_cloud_database', False) if has_db_manager else False
+            result = has_db_manager and is_cloud
+            logger.info(f"TURSO_SYNC: _is_cloud_mode check - has_db_manager: {has_db_manager}, is_cloud_database: {is_cloud}, result: {result}")
+            return result
         except Exception as e:
             logger.error(f"Error checking cloud mode: {e}")
             return False

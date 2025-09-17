@@ -69,7 +69,7 @@ class MainWindow(QMainWindow):
         
         # Set up logging
         self.logger = logging.getLogger(__name__)
-        self.logger.info("=== MAIN_WINDOW VERSION: temperature-edit-fix-2025-08-19-v4 ===")
+        self.logger.info("=== MAIN_WINDOW VERSION: turso-integration-2025-09-17-v1 ===")
         
         # Initialize settings handler
         self.settings_handler = SettingsHandler()
