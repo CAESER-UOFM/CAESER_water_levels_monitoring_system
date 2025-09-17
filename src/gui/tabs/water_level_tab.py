@@ -3064,23 +3064,26 @@ class WaterLevelTab(QWidget):
             for i in range(layout.count()):
                 item = layout.itemAt(i)
                 if item and item.widget() and isinstance(item.widget(), QPushButton):
-                    if "Sync Wells" in item.widget().text():
+                    btn_text = item.widget().text()
+                    btn_tooltip = item.widget().toolTip()
+                    if "🔄" == btn_text or "Sync Wells" in btn_tooltip:
                         print("✅ TURSO_SYNC: Wells sync button already exists")
                         return
 
             print("🔄 TURSO_SYNC: Creating new wells sync button")
-            sync_wells_btn = QPushButton("🔄 Sync Wells")
-            sync_wells_btn.setFixedHeight(32)
+            sync_wells_btn = QPushButton("🔄")
+            sync_wells_btn.setFixedSize(32, 32)  # Square icon button
             sync_wells_btn.clicked.connect(self.sync_wells_from_turso)
+            sync_wells_btn.setToolTip("Sync Wells from Turso Cloud Database\n\nThis will update the local wells table with data from the centralized Turso database for the current project.")
             sync_wells_btn.setStyleSheet("""
                 QPushButton {
-                    padding: 8px 16px;
+                    padding: 6px;
                     border: 1px solid #ccc;
                     border-radius: 6px;
                     background-color: #f3e5f5;
                     color: #7b1fa2;
-                    font-weight: 500;
-                    min-height: 24px;
+                    font-weight: bold;
+                    font-size: 14px;
                 }
                 QPushButton:hover {
                     background-color: #e1bee7;
@@ -3097,9 +3100,22 @@ class WaterLevelTab(QWidget):
                 }
             """)
 
-            if not (self.turso_sync_handler and self.turso_sync_handler.is_configured()):
+            # Check if Turso is properly configured
+            has_handler = bool(self.turso_sync_handler)
+            is_configured = has_handler and self.turso_sync_handler.is_configured()
+            print(f"🔍 TURSO_SYNC: Wells button - has_handler: {has_handler}, is_configured: {is_configured}")
+
+            if has_handler:
+                turso_url = self.turso_sync_handler.settings_handler.get_setting("turso_loggers_url", "")
+                turso_token = self.turso_sync_handler.settings_handler.get_setting("turso_loggers_token", "")
+                print(f"🔍 TURSO_SYNC: Wells button - URL exists: {bool(turso_url)}, Token exists: {bool(turso_token)}")
+
+            if not is_configured:
                 sync_wells_btn.setEnabled(False)
-                sync_wells_btn.setToolTip("Turso not configured. Please set turso_loggers_url and turso_loggers_token in settings.")
+                sync_wells_btn.setToolTip("Turso not configured.\n\nPlease set turso_loggers_url and turso_loggers_token in settings to enable sync functionality.")
+            else:
+                sync_wells_btn.setEnabled(True)
+                print("✅ TURSO_SYNC: Wells button enabled - Turso is configured")
 
             # Insert before the stretch at the end
             stretch_index = layout.count() - 1
@@ -3121,23 +3137,26 @@ class WaterLevelTab(QWidget):
             for i in range(layout.count()):
                 item = layout.itemAt(i)
                 if item and item.widget() and isinstance(item.widget(), QPushButton):
-                    if "Sync Loggers" in item.widget().text():
+                    btn_text = item.widget().text()
+                    btn_tooltip = item.widget().toolTip()
+                    if "📊" == btn_text or "Sync Loggers" in btn_tooltip:
                         print("✅ TURSO_SYNC: Transducers sync button already exists")
                         return
 
             print("🔄 TURSO_SYNC: Creating new transducers sync button")
-            sync_transducers_btn = QPushButton("🔄 Sync Loggers")
-            sync_transducers_btn.setFixedHeight(32)
+            sync_transducers_btn = QPushButton("📊")
+            sync_transducers_btn.setFixedSize(32, 32)  # Square icon button
             sync_transducers_btn.clicked.connect(self.sync_transducers_from_turso)
+            sync_transducers_btn.setToolTip("Sync Loggers from Turso Cloud Database\n\nThis will update the local transducers tables with logger and deployment data from the centralized Turso database for the current project.")
             sync_transducers_btn.setStyleSheet("""
                 QPushButton {
-                    padding: 8px 16px;
+                    padding: 6px;
                     border: 1px solid #ccc;
                     border-radius: 6px;
                     background-color: #f3e5f5;
                     color: #7b1fa2;
-                    font-weight: 500;
-                    min-height: 24px;
+                    font-weight: bold;
+                    font-size: 14px;
                 }
                 QPushButton:hover {
                     background-color: #e1bee7;
@@ -3154,9 +3173,17 @@ class WaterLevelTab(QWidget):
                 }
             """)
 
-            if not (self.turso_sync_handler and self.turso_sync_handler.is_configured()):
+            # Check if Turso is properly configured
+            has_handler = bool(self.turso_sync_handler)
+            is_configured = has_handler and self.turso_sync_handler.is_configured()
+            print(f"🔍 TURSO_SYNC: Transducers button - has_handler: {has_handler}, is_configured: {is_configured}")
+
+            if not is_configured:
                 sync_transducers_btn.setEnabled(False)
-                sync_transducers_btn.setToolTip("Turso not configured. Please set turso_loggers_url and turso_loggers_token in settings.")
+                sync_transducers_btn.setToolTip("Turso not configured.\n\nPlease set turso_loggers_url and turso_loggers_token in settings to enable sync functionality.")
+            else:
+                sync_transducers_btn.setEnabled(True)
+                print("✅ TURSO_SYNC: Transducers button enabled - Turso is configured")
 
             # Insert before the stretch at the end
             stretch_index = layout.count() - 1

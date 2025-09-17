@@ -827,23 +827,26 @@ class BarologgerTab(QWidget):
             for i in range(layout.count()):
                 item = layout.itemAt(i)
                 if item and item.widget() and isinstance(item.widget(), QPushButton):
-                    if "Sync Barologgers" in item.widget().text():
+                    btn_text = item.widget().text()
+                    btn_tooltip = item.widget().toolTip()
+                    if "🌡️" == btn_text or "Sync Barologgers" in btn_tooltip:
                         print("✅ TURSO_SYNC BARO: Barologgers sync button already exists")
                         return
 
             print("🔄 TURSO_SYNC BARO: Creating new barologgers sync button")
-            sync_barologgers_btn = QPushButton("🔄 Sync Barologgers")
-            sync_barologgers_btn.setFixedHeight(32)
+            sync_barologgers_btn = QPushButton("🌡️")
+            sync_barologgers_btn.setFixedSize(32, 32)  # Square icon button
             sync_barologgers_btn.clicked.connect(self.sync_barologgers_from_turso)
+            sync_barologgers_btn.setToolTip("Sync Barologgers from Turso Cloud Database\n\nThis will update the local barologgers table with logger and deployment data from the centralized Turso database for the current project.")
             sync_barologgers_btn.setStyleSheet("""
                 QPushButton {
-                    padding: 8px 16px;
+                    padding: 6px;
                     border: 1px solid #ccc;
                     border-radius: 6px;
                     background-color: #f3e5f5;
                     color: #7b1fa2;
-                    font-weight: 500;
-                    min-height: 24px;
+                    font-weight: bold;
+                    font-size: 14px;
                 }
                 QPushButton:hover {
                     background-color: #e1bee7;
@@ -860,9 +863,17 @@ class BarologgerTab(QWidget):
                 }
             """)
 
-            if not (self.turso_sync_handler and self.turso_sync_handler.is_configured()):
+            # Check if Turso is properly configured
+            has_handler = bool(self.turso_sync_handler)
+            is_configured = has_handler and self.turso_sync_handler.is_configured()
+            print(f"🔍 TURSO_SYNC BARO: Barologgers button - has_handler: {has_handler}, is_configured: {is_configured}")
+
+            if not is_configured:
                 sync_barologgers_btn.setEnabled(False)
-                sync_barologgers_btn.setToolTip("Turso not configured. Please set turso_loggers_url and turso_loggers_token in settings.")
+                sync_barologgers_btn.setToolTip("Turso not configured.\n\nPlease set turso_loggers_url and turso_loggers_token in settings to enable sync functionality.")
+            else:
+                sync_barologgers_btn.setEnabled(True)
+                print("✅ TURSO_SYNC BARO: Barologgers button enabled - Turso is configured")
 
             # Find the right place to insert - should be before selection_info
             selection_info_index = -1
