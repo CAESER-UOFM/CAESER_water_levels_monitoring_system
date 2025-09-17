@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
                            QTableWidget, QTableWidgetItem, QFileDialog,
                            QMessageBox, QDialog, QMainWindow, QProgressDialog, QHeaderView, QFrame)
 from PyQt5.QtCore import Qt, QTimer
+from typing import Optional
 from PyQt5.QtGui import QPixmap
 from pathlib import Path
 import sqlite3
@@ -36,6 +37,7 @@ import time
 import logging
 from ..handlers.water_level_folder_handler import WaterLevelFolderProcessor
 from ..handlers.progress_dialog_handler import progress_dialog
+from ..handlers.turso_cloud_sync_handler import TursoCloudSyncHandler
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 
 
@@ -69,6 +71,20 @@ class BarologgerTab(QWidget):
         # Initialize has_master_data but defer checking
         self.has_master_data = False
         logger.debug("__init__: Set has_master_data to False initially")
+
+        # Initialize Turso sync handler
+        try:
+            from ...gui.main_window import MainWindow
+            main_window = parent
+            while main_window and not isinstance(main_window, MainWindow):
+                main_window = main_window.parent()
+            if main_window and hasattr(main_window, 'settings_handler'):
+                self.turso_sync_handler = TursoCloudSyncHandler(self.db_manager, main_window.settings_handler)
+            else:
+                self.turso_sync_handler = None
+        except Exception as e:
+            logger.warning(f"Could not initialize Turso sync handler: {e}")
+            self.turso_sync_handler = None
 
         # Setup UI (build widgets/layout, set up signals)
         self.setup_ui()
@@ -324,6 +340,41 @@ class BarologgerTab(QWidget):
         btn_layout.addWidget(edit_btn)
         btn_layout.addWidget(delete_btn)
         btn_layout.addWidget(edit_data_btn)
+
+        # Add Turso sync button when in cloud mode
+        if self._is_cloud_mode():
+            sync_barologgers_btn = QPushButton("🔄 Sync Barologgers")
+            sync_barologgers_btn.setFixedHeight(32)
+            sync_barologgers_btn.clicked.connect(self.sync_barologgers_from_turso)
+            sync_barologgers_btn.setStyleSheet("""
+                QPushButton {
+                    padding: 8px 16px;
+                    border: 1px solid #ccc;
+                    border-radius: 6px;
+                    background-color: #f3e5f5;
+                    color: #7b1fa2;
+                    font-weight: 500;
+                    min-height: 24px;
+                }
+                QPushButton:hover {
+                    background-color: #e1bee7;
+                    border-color: #9c27b0;
+                }
+                QPushButton:pressed {
+                    background-color: #ce93d8;
+                    border-color: #8e24aa;
+                }
+                QPushButton:disabled {
+                    background-color: #f8f9fa;
+                    color: #6c757d;
+                    border-color: #dee2e6;
+                }
+            """)
+            if not (self.turso_sync_handler and self.turso_sync_handler.is_configured()):
+                sync_barologgers_btn.setEnabled(False)
+                sync_barologgers_btn.setToolTip("Turso not configured. Please set turso_loggers_url and turso_loggers_token in settings.")
+
+            btn_layout.addWidget(sync_barologgers_btn)
         
         # Add selection info
         self.selection_info = QLabel("0 barologgers selected")
@@ -1754,4 +1805,76 @@ class BarologgerTab(QWidget):
         """Update the selection info label"""
         selected_count = len(self.selected_barologgers)
         self.selection_info.setText(f"{selected_count} barologger{'s' if selected_count != 1 else ''} selected")
+
+    def _is_cloud_mode(self) -> bool:
+        """Check if the current database is in cloud mode"""
+        try:
+            return self.db_manager and getattr(self.db_manager, 'is_cloud_database', False)
+        except Exception as e:
+            logger.error(f"Error checking cloud mode: {e}")
+            return False
+
+    def _get_current_project_name(self) -> Optional[str]:
+        """Get the current project name from the database"""
+        try:
+            if not self.db_manager or not self.db_manager.current_db:
+                return None
+
+            # Extract project name from database path
+            db_path = str(self.db_manager.current_db)
+            if 'wlm_' in db_path:
+                # Extract project name from pattern like 'wlm_PROJECT_NAME.db'
+                filename = Path(db_path).stem
+                if filename.startswith('wlm_'):
+                    return filename[4:]  # Remove 'wlm_' prefix
+
+            return None
+        except Exception as e:
+            logger.error(f"Error getting current project name: {e}")
+            return None
+
+    def sync_barologgers_from_turso(self):
+        """Sync barologgers data from Turso to local database"""
+        try:
+            if not self.turso_sync_handler:
+                QMessageBox.warning(self, "Error", "Turso sync handler not available")
+                return
+
+            if not self.turso_sync_handler.is_configured():
+                QMessageBox.warning(
+                    self,
+                    "Configuration Error",
+                    "Turso is not properly configured.\n\n"
+                    "Please set the following in settings:\n"
+                    "- turso_loggers_url\n"
+                    "- turso_loggers_token"
+                )
+                return
+
+            project_name = self._get_current_project_name()
+            if not project_name:
+                QMessageBox.warning(
+                    self,
+                    "Error",
+                    "Could not determine current project name.\n\n"
+                    "Please ensure you have a project database open."
+                )
+                return
+
+            # Start the sync process
+            success = self.turso_sync_handler.sync_project_data(
+                project_name=project_name,
+                sync_types=['loggers'],  # Will sync only barologgers
+                parent_widget=self
+            )
+
+            if success:
+                # Refresh the barologgers table after successful sync
+                QTimer.singleShot(1000, self.refresh_data)
+                logger.info(f"Started barologgers sync from Turso for project: {project_name}")
+
+        except Exception as e:
+            error_msg = f"Error syncing barologgers from Turso: {str(e)}"
+            logger.error(error_msg)
+            QMessageBox.critical(self, "Sync Error", error_msg)
 

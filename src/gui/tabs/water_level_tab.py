@@ -8,7 +8,7 @@ Created on Fri Jan 24 10:14:18 2025
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
                            QPushButton, QLabel, QGroupBox, QTableWidget,
                            QTableWidgetItem, QMessageBox, QComboBox, QDialog, QFileDialog, QApplication, QDateTimeEdit, QDoubleSpinBox, QLineEdit, QTextEdit, QDialogButtonBox, QCheckBox, QHeaderView, QProgressBar, QFrame)
-from PyQt5.QtCore import Qt, QDateTime, QSize, QPoint
+from PyQt5.QtCore import Qt, QDateTime, QSize, QPoint, QTimer
 from PyQt5.QtWidgets import QProgressDialog
 from PyQt5.QtWidgets import QSizePolicy
 
@@ -46,6 +46,7 @@ import time
 from typing import Dict, Optional, List
 import matplotlib.pyplot as plt
 from ..handlers.csv_handler import ManualReadingsCSVHandler
+from ..handlers.turso_cloud_sync_handler import TursoCloudSyncHandler
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QColor
 from PyQt5.QtWidgets import QStyleOptionViewItem
 from datetime import datetime, timedelta
@@ -130,6 +131,19 @@ class WaterLevelTab(QWidget):
             self.db_manager.current_db if self.db_manager else None,
             self.db_manager
         )
+        # Initialize Turso sync handler
+        try:
+            from ...gui.main_window import MainWindow
+            main_window = parent
+            while main_window and not isinstance(main_window, MainWindow):
+                main_window = main_window.parent()
+            if main_window and hasattr(main_window, 'settings_handler'):
+                self.turso_sync_handler = TursoCloudSyncHandler(self.db_manager, main_window.settings_handler)
+            else:
+                self.turso_sync_handler = None
+        except Exception as e:
+            logger.warning(f"Could not initialize Turso sync handler: {e}")
+            self.turso_sync_handler = None
         
         # Initialize plot components
         self.figure = Figure(figsize=(10, 6))  # Increased from (8, 4)
@@ -1002,6 +1016,42 @@ class WaterLevelTab(QWidget):
         btn_layout.addWidget(self.edit_well_btn)
         btn_layout.addWidget(self.delete_well_btn)
         btn_layout.addWidget(import_well_btn)
+
+        # Add Turso sync button when in cloud mode
+        if self._is_cloud_mode():
+            sync_wells_btn = QPushButton("🔄 Sync Wells")
+            sync_wells_btn.setFixedHeight(32)
+            sync_wells_btn.clicked.connect(self.sync_wells_from_turso)
+            sync_wells_btn.setStyleSheet("""
+                QPushButton {
+                    padding: 8px 16px;
+                    border: 1px solid #ccc;
+                    border-radius: 6px;
+                    background-color: #f3e5f5;
+                    color: #7b1fa2;
+                    font-weight: 500;
+                    min-height: 24px;
+                }
+                QPushButton:hover {
+                    background-color: #e1bee7;
+                    border-color: #9c27b0;
+                }
+                QPushButton:pressed {
+                    background-color: #ce93d8;
+                    border-color: #8e24aa;
+                }
+                QPushButton:disabled {
+                    background-color: #f8f9fa;
+                    color: #6c757d;
+                    border-color: #dee2e6;
+                }
+            """)
+            if not (self.turso_sync_handler and self.turso_sync_handler.is_configured()):
+                sync_wells_btn.setEnabled(False)
+                sync_wells_btn.setToolTip("Turso not configured. Please set turso_loggers_url and turso_loggers_token in settings.")
+
+            btn_layout.addWidget(sync_wells_btn)
+
         btn_layout.addStretch()
     
         layout.addLayout(btn_layout)
@@ -1144,6 +1194,42 @@ class WaterLevelTab(QWidget):
         # Rem        oved         btn_layout.addWidget(location_btn)
         btn_layout.addWidget(delete_btn)
         btn_layout.addWidget(edit_tables_btn)
+
+        # Add Turso sync button when in cloud mode
+        if self._is_cloud_mode():
+            sync_transducers_btn = QPushButton("🔄 Sync Loggers")
+            sync_transducers_btn.setFixedHeight(32)
+            sync_transducers_btn.clicked.connect(self.sync_transducers_from_turso)
+            sync_transducers_btn.setStyleSheet("""
+                QPushButton {
+                    padding: 8px 16px;
+                    border: 1px solid #ccc;
+                    border-radius: 6px;
+                    background-color: #f3e5f5;
+                    color: #7b1fa2;
+                    font-weight: 500;
+                    min-height: 24px;
+                }
+                QPushButton:hover {
+                    background-color: #e1bee7;
+                    border-color: #9c27b0;
+                }
+                QPushButton:pressed {
+                    background-color: #ce93d8;
+                    border-color: #8e24aa;
+                }
+                QPushButton:disabled {
+                    background-color: #f8f9fa;
+                    color: #6c757d;
+                    border-color: #dee2e6;
+                }
+            """)
+            if not (self.turso_sync_handler and self.turso_sync_handler.is_configured()):
+                sync_transducers_btn.setEnabled(False)
+                sync_transducers_btn.setToolTip("Turso not configured. Please set turso_loggers_url and turso_loggers_token in settings.")
+
+            btn_layout.addWidget(sync_transducers_btn)
+
         btn_layout.addStretch()
     
         transducer_layout.addLayout(btn_layout)
@@ -2988,3 +3074,120 @@ class WaterLevelTab(QWidget):
         except Exception as e:
             logger.error(f"Error querying data for well {well_number}: {e}")
             return pd.DataFrame()
+
+    def _is_cloud_mode(self) -> bool:
+        """Check if the current database is in cloud mode"""
+        try:
+            return self.db_manager and getattr(self.db_manager, 'is_cloud_database', False)
+        except Exception as e:
+            logger.error(f"Error checking cloud mode: {e}")
+            return False
+
+    def _get_current_project_name(self) -> Optional[str]:
+        """Get the current project name from the database"""
+        try:
+            if not self.db_manager or not self.db_manager.current_db:
+                return None
+
+            # Extract project name from database path
+            db_path = str(self.db_manager.current_db)
+            if 'wlm_' in db_path:
+                # Extract project name from pattern like 'wlm_PROJECT_NAME.db'
+                filename = Path(db_path).stem
+                if filename.startswith('wlm_'):
+                    return filename[4:]  # Remove 'wlm_' prefix
+
+            return None
+        except Exception as e:
+            logger.error(f"Error getting current project name: {e}")
+            return None
+
+    def sync_wells_from_turso(self):
+        """Sync wells data from Turso to local database"""
+        try:
+            if not self.turso_sync_handler:
+                QMessageBox.warning(self, "Error", "Turso sync handler not available")
+                return
+
+            if not self.turso_sync_handler.is_configured():
+                QMessageBox.warning(
+                    self,
+                    "Configuration Error",
+                    "Turso is not properly configured.\n\n"
+                    "Please set the following in settings:\n"
+                    "- turso_loggers_url\n"
+                    "- turso_loggers_token"
+                )
+                return
+
+            project_name = self._get_current_project_name()
+            if not project_name:
+                QMessageBox.warning(
+                    self,
+                    "Error",
+                    "Could not determine current project name.\n\n"
+                    "Please ensure you have a project database open."
+                )
+                return
+
+            # Start the sync process
+            success = self.turso_sync_handler.sync_project_data(
+                project_name=project_name,
+                sync_types=['wells'],
+                parent_widget=self
+            )
+
+            if success:
+                # Refresh the wells table after successful sync
+                QTimer.singleShot(1000, self.refresh_wells_table)
+                logger.info(f"Started wells sync from Turso for project: {project_name}")
+
+        except Exception as e:
+            error_msg = f"Error syncing wells from Turso: {str(e)}"
+            logger.error(error_msg)
+            QMessageBox.critical(self, "Sync Error", error_msg)
+
+    def sync_transducers_from_turso(self):
+        """Sync transducers/loggers data from Turso to local database"""
+        try:
+            if not self.turso_sync_handler:
+                QMessageBox.warning(self, "Error", "Turso sync handler not available")
+                return
+
+            if not self.turso_sync_handler.is_configured():
+                QMessageBox.warning(
+                    self,
+                    "Configuration Error",
+                    "Turso is not properly configured.\n\n"
+                    "Please set the following in settings:\n"
+                    "- turso_loggers_url\n"
+                    "- turso_loggers_token"
+                )
+                return
+
+            project_name = self._get_current_project_name()
+            if not project_name:
+                QMessageBox.warning(
+                    self,
+                    "Error",
+                    "Could not determine current project name.\n\n"
+                    "Please ensure you have a project database open."
+                )
+                return
+
+            # Start the sync process
+            success = self.turso_sync_handler.sync_project_data(
+                project_name=project_name,
+                sync_types=['loggers'],
+                parent_widget=self
+            )
+
+            if success:
+                # Refresh both tables after successful sync
+                QTimer.singleShot(1000, self.refresh_transducers_table)
+                logger.info(f"Started loggers sync from Turso for project: {project_name}")
+
+        except Exception as e:
+            error_msg = f"Error syncing loggers from Turso: {str(e)}"
+            logger.error(error_msg)
+            QMessageBox.critical(self, "Sync Error", error_msg)
