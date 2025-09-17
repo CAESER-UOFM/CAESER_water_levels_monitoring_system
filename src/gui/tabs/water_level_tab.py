@@ -131,19 +131,24 @@ class WaterLevelTab(QWidget):
             self.db_manager.current_db if self.db_manager else None,
             self.db_manager
         )
-        # Initialize Turso sync handler
+        # Initialize Turso sync handler - will be created when database loads
+        self.turso_sync_handler = None
+        self.main_window = None
+
+        # Find main window for later use
         try:
             from ...gui.main_window import MainWindow
             main_window = parent
             while main_window and not isinstance(main_window, MainWindow):
                 main_window = main_window.parent()
             if main_window and hasattr(main_window, 'settings_handler'):
-                self.turso_sync_handler = TursoCloudSyncHandler(self.db_manager, main_window.settings_handler)
+                self.main_window = main_window
+                print(f"🔍 TURSO_SYNC INIT: Found main window with settings_handler")
             else:
-                self.turso_sync_handler = None
+                print(f"❌ TURSO_SYNC INIT: Could not find main window or settings_handler")
         except Exception as e:
-            logger.warning(f"Could not initialize Turso sync handler: {e}")
-            self.turso_sync_handler = None
+            logger.warning(f"Could not find main window during init: {e}")
+            print(f"❌ TURSO_SYNC INIT: Exception finding main window: {e}")
         
         # Initialize plot components
         self.figure = Figure(figsize=(10, 6))  # Increased from (8, 4)
@@ -3034,6 +3039,14 @@ class WaterLevelTab(QWidget):
         try:
             print("🔄 TURSO_SYNC: Refreshing sync buttons after database change")
             logger.warning("TURSO_SYNC: Refreshing sync buttons after database change")
+
+            # Initialize Turso sync handler if not already created
+            if not self.turso_sync_handler and self.main_window and self.db_manager:
+                try:
+                    self.turso_sync_handler = TursoCloudSyncHandler(self.db_manager, self.main_window.settings_handler)
+                    print("✅ TURSO_SYNC: Created sync handler during refresh")
+                except Exception as e:
+                    print(f"❌ TURSO_SYNC: Failed to create sync handler: {e}")
 
             # Check if we're in cloud mode now
             is_cloud = self._is_cloud_mode()

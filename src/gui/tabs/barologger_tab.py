@@ -72,19 +72,24 @@ class BarologgerTab(QWidget):
         self.has_master_data = False
         logger.debug("__init__: Set has_master_data to False initially")
 
-        # Initialize Turso sync handler
+        # Initialize Turso sync handler - will be created when database loads
+        self.turso_sync_handler = None
+        self.main_window = None
+
+        # Find main window for later use
         try:
             from ...gui.main_window import MainWindow
             main_window = parent
             while main_window and not isinstance(main_window, MainWindow):
                 main_window = main_window.parent()
             if main_window and hasattr(main_window, 'settings_handler'):
-                self.turso_sync_handler = TursoCloudSyncHandler(self.db_manager, main_window.settings_handler)
+                self.main_window = main_window
+                print(f"🔍 TURSO_SYNC BARO INIT: Found main window with settings_handler")
             else:
-                self.turso_sync_handler = None
+                print(f"❌ TURSO_SYNC BARO INIT: Could not find main window or settings_handler")
         except Exception as e:
-            logger.warning(f"Could not initialize Turso sync handler: {e}")
-            self.turso_sync_handler = None
+            logger.warning(f"Could not find main window during init: {e}")
+            print(f"❌ TURSO_SYNC BARO INIT: Exception finding main window: {e}")
 
         # Setup UI (build widgets/layout, set up signals)
         self.setup_ui()
@@ -801,6 +806,14 @@ class BarologgerTab(QWidget):
         try:
             print("🔄 TURSO_SYNC BARO: Refreshing sync buttons after database change")
             logger.warning("TURSO_SYNC BARO: Refreshing sync buttons after database change")
+
+            # Initialize Turso sync handler if not already created
+            if not self.turso_sync_handler and self.main_window and self.db_manager:
+                try:
+                    self.turso_sync_handler = TursoCloudSyncHandler(self.db_manager, self.main_window.settings_handler)
+                    print("✅ TURSO_SYNC BARO: Created sync handler during refresh")
+                except Exception as e:
+                    print(f"❌ TURSO_SYNC BARO: Failed to create sync handler: {e}")
 
             # Check if we're in cloud mode now
             is_cloud = self._is_cloud_mode()
