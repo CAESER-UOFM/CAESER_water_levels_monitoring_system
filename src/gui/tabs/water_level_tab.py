@@ -3122,15 +3122,34 @@ class WaterLevelTab(QWidget):
     def _add_wells_sync_button_if_missing(self):
         """Add wells sync button to wells panel if not already present"""
         try:
-            # Find the wells panel button layout
+            # Debug: List all groupboxes to understand structure
+            all_groupboxes = self.findChildren(QGroupBox)
+            logger.info(f"TURSO_SYNC: Found {len(all_groupboxes)} groupboxes with titles: {[box.title() for box in all_groupboxes]}")
+
+            # Find the wells panel button layout - try multiple possible titles
             wells_groupbox = None
+            possible_titles = ["Wells", "Well Management", "Wells Management", ""]
             for child in self.findChildren(QGroupBox):
-                if child.title() == "Wells":
+                if child.title() in possible_titles:
+                    logger.info(f"TURSO_SYNC: Found wells groupbox with title: '{child.title()}'")
                     wells_groupbox = child
                     break
 
             if not wells_groupbox:
                 logger.warning("TURSO_SYNC: Could not find wells groupbox")
+                # Try alternative approach - find by button content
+                logger.info("TURSO_SYNC: Trying alternative approach - looking for 'Add Well' button")
+                for button in self.findChildren(QPushButton):
+                    if "Add Well" in button.text():
+                        wells_groupbox = button.parent()
+                        while wells_groupbox and not isinstance(wells_groupbox, QGroupBox):
+                            wells_groupbox = wells_groupbox.parent()
+                        if wells_groupbox:
+                            logger.info(f"TURSO_SYNC: Found wells groupbox via 'Add Well' button: '{wells_groupbox.title()}'")
+                            break
+
+            if not wells_groupbox:
+                logger.warning("TURSO_SYNC: Still could not find wells groupbox")
                 return
 
             # Look for existing sync button
@@ -3187,15 +3206,30 @@ class WaterLevelTab(QWidget):
     def _add_transducers_sync_button_if_missing(self):
         """Add transducers sync button to transducers panel if not already present"""
         try:
-            # Find the transducers panel button layout
+            # Find the transducers panel button layout - try multiple possible titles
             transducers_groupbox = None
+            possible_titles = ["Transducers", "Transducer Data", "Transducer Management", ""]
             for child in self.findChildren(QGroupBox):
-                if child.title() == "Transducers":
+                if child.title() in possible_titles:
+                    logger.info(f"TURSO_SYNC: Found transducers groupbox with title: '{child.title()}'")
                     transducers_groupbox = child
                     break
 
             if not transducers_groupbox:
                 logger.warning("TURSO_SYNC: Could not find transducers groupbox")
+                # Try alternative approach - find by button content
+                logger.info("TURSO_SYNC: Trying alternative approach - looking for 'Add Transducer' button")
+                for button in self.findChildren(QPushButton):
+                    if "Add Transducer" in button.text():
+                        transducers_groupbox = button.parent()
+                        while transducers_groupbox and not isinstance(transducers_groupbox, QGroupBox):
+                            transducers_groupbox = transducers_groupbox.parent()
+                        if transducers_groupbox:
+                            logger.info(f"TURSO_SYNC: Found transducers groupbox via 'Add Transducer' button: '{transducers_groupbox.title()}'")
+                            break
+
+            if not transducers_groupbox:
+                logger.warning("TURSO_SYNC: Still could not find transducers groupbox")
                 return
 
             # Look for existing sync button
