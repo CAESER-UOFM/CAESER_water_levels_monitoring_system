@@ -3163,10 +3163,20 @@ class WaterLevelTab(QWidget):
                     return
 
             # Find the button layout and add sync button
-            for layout_item in wells_groupbox.findChildren(QHBoxLayout):
+            all_layouts = wells_groupbox.findChildren(QHBoxLayout)
+            print(f"🔍 TURSO_SYNC DEBUG: Found {len(all_layouts)} QHBoxLayouts in wells groupbox")
+            logger.warning(f"TURSO_SYNC: Found {len(all_layouts)} QHBoxLayouts in wells groupbox")
+
+            for i, layout_item in enumerate(all_layouts):
+                layout_buttons = layout_item.findChildren(QPushButton)
+                button_texts = [btn.text() for btn in layout_buttons]
+                print(f"🔍 TURSO_SYNC DEBUG: Layout {i} has buttons: {button_texts}")
+                logger.warning(f"TURSO_SYNC: Layout {i} has buttons: {button_texts}")
+
                 # Look for layout with other well management buttons
-                if any("Add Well" in btn.text() for btn in layout_item.findChildren(QPushButton)):
-                    logger.info("TURSO_SYNC: Adding Wells sync button to existing layout")
+                if any("Add Well" in btn.text() for btn in layout_buttons):
+                    print("🔍 TURSO_SYNC DEBUG: Adding Wells sync button to existing layout")
+                    logger.warning("TURSO_SYNC: Adding Wells sync button to existing layout")
 
                     sync_wells_btn = QPushButton("🔄 Sync Wells")
                     sync_wells_btn.setFixedHeight(32)
@@ -3201,7 +3211,8 @@ class WaterLevelTab(QWidget):
                         sync_wells_btn.setToolTip("Turso not configured. Please set turso_loggers_url and turso_loggers_token in settings.")
 
                     layout_item.addWidget(sync_wells_btn)
-                    logger.info("TURSO_SYNC: Successfully added Wells sync button dynamically")
+                    print("🔍 TURSO_SYNC DEBUG: Successfully added Wells sync button dynamically")
+                    logger.warning("TURSO_SYNC: Successfully added Wells sync button dynamically")
                     break
 
         except Exception as e:
