@@ -239,7 +239,10 @@ class WaterLevelTab(QWidget):
             # Update the plot if wells are selected
             if self.wells_table.selectedItems():
                 self.update_plot()
-                
+
+            # Refresh Turso sync buttons based on current database mode
+            self.refresh_turso_sync_buttons()
+
             return True
         except Exception as e:
             logger.error(f"Error refreshing water level data: {e}")
