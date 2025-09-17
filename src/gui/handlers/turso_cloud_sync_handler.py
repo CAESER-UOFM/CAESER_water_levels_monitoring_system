@@ -83,9 +83,10 @@ class TursoCloudSyncWorker(QThread):
         """Sync wells data from Turso to local database"""
         try:
             # Query wells from Turso filtered by current project
+            # Using actual field names from schema analysis
             query = f"""
-                SELECT well_number, zone, latitude, longitude, elevation, well_depth,
-                       transducer_serial, project_name, notes, status
+                SELECT well_number, well_name, project_name, latitude, longitude, elevation,
+                       well_depth, installation_date, well_type, well_status, location_notes
                 FROM wells
                 WHERE project_name = '{self.project_name}'
             """
@@ -98,26 +99,23 @@ class TursoCloudSyncWorker(QThread):
             with self.db_manager.get_db_connection() as conn:
                 cursor = conn.cursor()
 
-                # Delete existing wells for this project
-                cursor.execute("DELETE FROM wells WHERE well_number LIKE ?", (f"{self.project_name}%",))
+                # Delete existing wells for this project (filter by project in well_number pattern)
+                cursor.execute("DELETE FROM wells WHERE well_number IN (SELECT well_number FROM wells WHERE well_number LIKE ?)", (f"%{self.project_name}%",))
 
-                # Insert wells from Turso
+                # Insert wells from Turso using actual local database schema
                 for well in turso_wells:
                     cursor.execute("""
-                        INSERT INTO wells (well_number, zone, latitude, longitude, elevation,
-                                         well_depth, transducer_serial, project_name, notes, status)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO wells (well_number, latitude, longitude, top_of_casing,
+                                         parking_instructions, access_requirements, safety_notes)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
                     """, (
                         well.get('well_number'),
-                        well.get('zone'),
                         well.get('latitude'),
                         well.get('longitude'),
-                        well.get('elevation'),
-                        well.get('well_depth'),
-                        well.get('transducer_serial'),
-                        well.get('project_name'),
-                        well.get('notes'),
-                        well.get('status', 'active')
+                        well.get('elevation'),  # Map elevation to top_of_casing
+                        f"Project: {well.get('project_name', '')}",  # Store project in parking_instructions
+                        well.get('well_name', ''),  # Store well_name in access_requirements
+                        well.get('location_notes', '')  # Store notes in safety_notes
                     ))
 
                 conn.commit()
@@ -136,22 +134,23 @@ class TursoCloudSyncWorker(QThread):
         """Sync loggers data from Turso to local transducers and barologgers tables"""
         try:
             # Query loggers from Turso filtered by current project
+            # Using actual field names from schema analysis
             query = f"""
-                SELECT serial_number, logger_type, model, project_name, location_name,
-                       deployment_date, retrieval_date, latitude, longitude, elevation,
+                SELECT serial_number, instrument_type, model, project, location,
+                       start_time, end_time, latitude, longitude, elevation,
                        deployment_depth, deployed_by, deployment_notes, retrieval_notes,
-                       equipment_status, calibration_date, last_maintenance, status
+                       equipment_status, calibration_date, last_maintenance, active
                 FROM loggers
-                WHERE project_name = '{self.project_name}' AND status = 'active'
+                WHERE project = '{self.project_name}' AND active = 1
             """
 
             turso_loggers = self._execute_turso_query(api_url, token, query)
             if turso_loggers is None:
                 return False
 
-            # Separate loggers by type
-            transducers = [l for l in turso_loggers if l.get('logger_type') == 'transducer']
-            barologgers = [l for l in turso_loggers if l.get('logger_type') == 'barologger']
+            # Separate loggers by type using correct field name
+            transducers = [l for l in turso_loggers if l.get('instrument_type') == 'transducer']
+            barologgers = [l for l in turso_loggers if l.get('instrument_type') == 'barologger']
 
             with self.db_manager.get_db_connection() as conn:
                 cursor = conn.cursor()
@@ -181,36 +180,42 @@ class TursoCloudSyncWorker(QThread):
     def _sync_transducers(self, cursor, transducers: List[Dict]) -> bool:
         """Sync transducers and transducer_locations tables"""
         try:
-            # Clear existing transducers for this project
+            # Clear existing transducers for this project (filter by project pattern in locations)
             cursor.execute("""
                 DELETE FROM transducers
                 WHERE serial_number IN (
                     SELECT DISTINCT transducer_serial
                     FROM transducer_locations
-                    WHERE well_number LIKE ?
+                    WHERE well_number IN (
+                        SELECT well_number FROM wells WHERE project_name = ?
+                    )
                 )
-            """, (f"{self.project_name}%",))
+            """, (self.project_name,))
 
             cursor.execute("""
                 DELETE FROM transducer_locations
-                WHERE well_number LIKE ?
-            """, (f"{self.project_name}%",))
+                WHERE well_number IN (
+                    SELECT well_number FROM wells WHERE project_name = ?
+                )
+            """, (self.project_name,))
 
             for transducer in transducers:
                 serial_number = transducer.get('serial_number')
 
-                # Insert into transducers table
+                # Insert into transducers table (handle NULL model)
+                model = transducer.get('model') or 'Unknown'
+
                 cursor.execute("""
                     INSERT OR REPLACE INTO transducers (serial_number, model, calibration_date, last_maintenance)
                     VALUES (?, ?, ?, ?)
                 """, (
                     serial_number,
-                    transducer.get('model'),
+                    model,
                     transducer.get('calibration_date'),
                     transducer.get('last_maintenance')
                 ))
 
-                # Insert into transducer_locations table
+                # Insert into transducer_locations table using correct field names
                 cursor.execute("""
                     INSERT INTO transducer_locations (
                         transducer_serial, well_number, start_date, end_date,
@@ -219,9 +224,9 @@ class TursoCloudSyncWorker(QThread):
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     serial_number,
-                    transducer.get('location_name'),  # This should be well_number
-                    transducer.get('deployment_date'),
-                    transducer.get('retrieval_date'),
+                    transducer.get('location'),  # Using 'location' field from Turso
+                    transducer.get('start_time'),  # Using 'start_time' not 'deployment_date'
+                    transducer.get('end_time'),    # Using 'end_time' not 'retrieval_date'
                     transducer.get('latitude'),
                     transducer.get('longitude'),
                     transducer.get('elevation'),
@@ -229,7 +234,7 @@ class TursoCloudSyncWorker(QThread):
                     transducer.get('deployed_by'),
                     transducer.get('deployment_notes'),
                     transducer.get('retrieval_notes'),
-                    transducer.get('equipment_status', 'active')
+                    transducer.get('equipment_status', 'working')
                 ))
 
             self.stats['transducers_synced'] = len(transducers)
@@ -255,28 +260,30 @@ class TursoCloudSyncWorker(QThread):
                     FROM barologger_locations
                     WHERE location_name LIKE ?
                 )
-            """, (f"{self.project_name}%",))
+            """, (f"%{self.project_name}%",))
 
             cursor.execute("""
                 DELETE FROM barologger_locations
                 WHERE location_name LIKE ?
-            """, (f"{self.project_name}%",))
+            """, (f"%{self.project_name}%",))
 
             for barologger in barologgers:
                 serial_number = barologger.get('serial_number')
 
-                # Insert into barologgers table
+                # Insert into barologgers table (handle NULL model)
+                model = barologger.get('model') or 'Unknown'
+
                 cursor.execute("""
                     INSERT OR REPLACE INTO barologgers (serial_number, model, calibration_date, last_maintenance)
                     VALUES (?, ?, ?, ?)
                 """, (
                     serial_number,
-                    barologger.get('model'),
+                    model,
                     barologger.get('calibration_date'),
                     barologger.get('last_maintenance')
                 ))
 
-                # Insert into barologger_locations table
+                # Insert into barologger_locations table using correct field names
                 cursor.execute("""
                     INSERT INTO barologger_locations (
                         barologger_serial, location_name, start_date, end_date,
@@ -285,16 +292,16 @@ class TursoCloudSyncWorker(QThread):
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     serial_number,
-                    barologger.get('location_name'),
-                    barologger.get('deployment_date'),
-                    barologger.get('retrieval_date'),
+                    barologger.get('location'),     # Using 'location' field from Turso
+                    barologger.get('start_time'),   # Using 'start_time' not 'deployment_date'
+                    barologger.get('end_time'),     # Using 'end_time' not 'retrieval_date'
                     barologger.get('latitude'),
                     barologger.get('longitude'),
                     barologger.get('elevation'),
                     barologger.get('deployed_by'),
                     barologger.get('deployment_notes'),
                     barologger.get('retrieval_notes'),
-                    barologger.get('equipment_status', 'active')
+                    barologger.get('equipment_status', 'working')
                 ))
 
             self.stats['barologgers_synced'] = len(barologgers)
@@ -343,17 +350,26 @@ class TursoCloudSyncWorker(QThread):
                 logger.error(f"Turso query error: {error_msg}")
                 return None
 
-            # Extract rows and columns
+            # Extract rows and columns from new API format
             response_data = first_result.get('response', {})
-            columns = [col.get('name', '') for col in response_data.get('cols', [])]
-            rows = response_data.get('rows', [])
+            result_data = response_data.get('result', {})
+            columns = [col.get('name', '') for col in result_data.get('cols', [])]
+            rows = result_data.get('rows', [])
 
-            # Convert to list of dictionaries
+            # Convert to list of dictionaries handling new cell format
             records = []
             for row in rows:
                 record = {}
-                for i, value in enumerate(row):
+                for i, cell in enumerate(row):
                     if i < len(columns):
+                        # Handle new Turso API format where cells have type and value
+                        if isinstance(cell, dict):
+                            if cell.get('type') == 'null':
+                                value = None
+                            else:
+                                value = cell.get('value')
+                        else:
+                            value = cell
                         record[columns[i]] = value
                 records.append(record)
 
