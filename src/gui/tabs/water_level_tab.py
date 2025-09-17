@@ -281,7 +281,10 @@ class WaterLevelTab(QWidget):
             
             # Clear selection
             self.wells_table.clearSelection()
-            
+
+            # Refresh Turso sync buttons based on new database mode
+            self.refresh_turso_sync_buttons()
+
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to refresh data: {str(e)}")
     
@@ -3092,6 +3095,168 @@ class WaterLevelTab(QWidget):
         except Exception as e:
             logger.error(f"Error checking cloud mode: {e}")
             return False
+
+    def refresh_turso_sync_buttons(self):
+        """Refresh Turso sync buttons based on current database mode"""
+        try:
+            logger.info("TURSO_SYNC: Refreshing sync buttons after database change")
+
+            # Check if we're in cloud mode now
+            is_cloud = self._is_cloud_mode()
+            logger.info(f"TURSO_SYNC: Current cloud mode status: {is_cloud}")
+
+            if is_cloud:
+                # Add sync buttons if they don't exist
+                self._add_wells_sync_button_if_missing()
+                self._add_transducers_sync_button_if_missing()
+            else:
+                # Remove sync buttons if they exist
+                self._remove_sync_buttons_if_present()
+
+        except Exception as e:
+            logger.error(f"Error refreshing Turso sync buttons: {e}")
+
+    def _add_wells_sync_button_if_missing(self):
+        """Add wells sync button to wells panel if not already present"""
+        try:
+            # Find the wells panel button layout
+            wells_groupbox = None
+            for child in self.findChildren(QGroupBox):
+                if child.title() == "Wells":
+                    wells_groupbox = child
+                    break
+
+            if not wells_groupbox:
+                logger.warning("TURSO_SYNC: Could not find wells groupbox")
+                return
+
+            # Look for existing sync button
+            for button in wells_groupbox.findChildren(QPushButton):
+                if "Sync Wells" in button.text():
+                    logger.info("TURSO_SYNC: Wells sync button already exists")
+                    return
+
+            # Find the button layout and add sync button
+            for layout_item in wells_groupbox.findChildren(QHBoxLayout):
+                # Look for layout with other well management buttons
+                if any("Add Well" in btn.text() for btn in layout_item.findChildren(QPushButton)):
+                    logger.info("TURSO_SYNC: Adding Wells sync button to existing layout")
+
+                    sync_wells_btn = QPushButton("🔄 Sync Wells")
+                    sync_wells_btn.setFixedHeight(32)
+                    sync_wells_btn.clicked.connect(self.sync_wells_from_turso)
+                    sync_wells_btn.setStyleSheet("""
+                        QPushButton {
+                            padding: 8px 16px;
+                            border: 1px solid #ccc;
+                            border-radius: 6px;
+                            background-color: #f3e5f5;
+                            color: #7b1fa2;
+                            font-weight: 500;
+                            min-height: 24px;
+                        }
+                        QPushButton:hover {
+                            background-color: #e1bee7;
+                            border-color: #9c27b0;
+                        }
+                        QPushButton:pressed {
+                            background-color: #ce93d8;
+                            border-color: #8e24aa;
+                        }
+                        QPushButton:disabled {
+                            background-color: #f8f9fa;
+                            color: #6c757d;
+                            border-color: #dee2e6;
+                        }
+                    """)
+
+                    if not (self.turso_sync_handler and self.turso_sync_handler.is_configured()):
+                        sync_wells_btn.setEnabled(False)
+                        sync_wells_btn.setToolTip("Turso not configured. Please set turso_loggers_url and turso_loggers_token in settings.")
+
+                    layout_item.addWidget(sync_wells_btn)
+                    logger.info("TURSO_SYNC: Successfully added Wells sync button dynamically")
+                    break
+
+        except Exception as e:
+            logger.error(f"Error adding wells sync button: {e}")
+
+    def _add_transducers_sync_button_if_missing(self):
+        """Add transducers sync button to transducers panel if not already present"""
+        try:
+            # Find the transducers panel button layout
+            transducers_groupbox = None
+            for child in self.findChildren(QGroupBox):
+                if child.title() == "Transducers":
+                    transducers_groupbox = child
+                    break
+
+            if not transducers_groupbox:
+                logger.warning("TURSO_SYNC: Could not find transducers groupbox")
+                return
+
+            # Look for existing sync button
+            for button in transducers_groupbox.findChildren(QPushButton):
+                if "Sync Loggers" in button.text():
+                    logger.info("TURSO_SYNC: Transducers sync button already exists")
+                    return
+
+            # Find the button layout and add sync button
+            for layout_item in transducers_groupbox.findChildren(QHBoxLayout):
+                # Look for layout with other transducer management buttons
+                if any("Add Transducer" in btn.text() for btn in layout_item.findChildren(QPushButton)):
+                    logger.info("TURSO_SYNC: Adding Transducers sync button to existing layout")
+
+                    sync_transducers_btn = QPushButton("🔄 Sync Loggers")
+                    sync_transducers_btn.setFixedHeight(32)
+                    sync_transducers_btn.clicked.connect(self.sync_transducers_from_turso)
+                    sync_transducers_btn.setStyleSheet("""
+                        QPushButton {
+                            padding: 8px 16px;
+                            border: 1px solid #ccc;
+                            border-radius: 6px;
+                            background-color: #f3e5f5;
+                            color: #7b1fa2;
+                            font-weight: 500;
+                            min-height: 24px;
+                        }
+                        QPushButton:hover {
+                            background-color: #e1bee7;
+                            border-color: #9c27b0;
+                        }
+                        QPushButton:pressed {
+                            background-color: #ce93d8;
+                            border-color: #8e24aa;
+                        }
+                        QPushButton:disabled {
+                            background-color: #f8f9fa;
+                            color: #6c757d;
+                            border-color: #dee2e6;
+                        }
+                    """)
+
+                    if not (self.turso_sync_handler and self.turso_sync_handler.is_configured()):
+                        sync_transducers_btn.setEnabled(False)
+                        sync_transducers_btn.setToolTip("Turso not configured. Please set turso_loggers_url and turso_loggers_token in settings.")
+
+                    layout_item.addWidget(sync_transducers_btn)
+                    logger.info("TURSO_SYNC: Successfully added Transducers sync button dynamically")
+                    break
+
+        except Exception as e:
+            logger.error(f"Error adding transducers sync button: {e}")
+
+    def _remove_sync_buttons_if_present(self):
+        """Remove Turso sync buttons if database is not in cloud mode"""
+        try:
+            # Find and remove sync buttons
+            for button in self.findChildren(QPushButton):
+                if "Sync Wells" in button.text() or "Sync Loggers" in button.text():
+                    logger.info(f"TURSO_SYNC: Removing sync button: {button.text()}")
+                    button.setParent(None)
+                    button.deleteLater()
+        except Exception as e:
+            logger.error(f"Error removing sync buttons: {e}")
 
     def _get_current_project_name(self) -> Optional[str]:
         """Get the current project name from the database"""
