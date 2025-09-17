@@ -3124,28 +3124,32 @@ class WaterLevelTab(QWidget):
         try:
             # Debug: List all groupboxes to understand structure
             all_groupboxes = self.findChildren(QGroupBox)
-            logger.info(f"TURSO_SYNC: Found {len(all_groupboxes)} groupboxes with titles: {[box.title() for box in all_groupboxes]}")
+            print(f"🔍 TURSO_SYNC DEBUG: Found {len(all_groupboxes)} groupboxes with titles: {[box.title() for box in all_groupboxes]}")
+            logger.warning(f"TURSO_SYNC: Found {len(all_groupboxes)} groupboxes with titles: {[box.title() for box in all_groupboxes]}")
 
             # Find the wells panel button layout - try multiple possible titles
             wells_groupbox = None
             possible_titles = ["Wells", "Well Management", "Wells Management", ""]
             for child in self.findChildren(QGroupBox):
                 if child.title() in possible_titles:
-                    logger.info(f"TURSO_SYNC: Found wells groupbox with title: '{child.title()}'")
+                    print(f"🔍 TURSO_SYNC DEBUG: Found wells groupbox with title: '{child.title()}'")
+                    logger.warning(f"TURSO_SYNC: Found wells groupbox with title: '{child.title()}'")
                     wells_groupbox = child
                     break
 
             if not wells_groupbox:
                 logger.warning("TURSO_SYNC: Could not find wells groupbox")
                 # Try alternative approach - find by button content
-                logger.info("TURSO_SYNC: Trying alternative approach - looking for 'Add Well' button")
+                print("🔍 TURSO_SYNC DEBUG: Trying alternative approach - looking for 'Add Well' button")
+                logger.warning("TURSO_SYNC: Trying alternative approach - looking for 'Add Well' button")
                 for button in self.findChildren(QPushButton):
                     if "Add Well" in button.text():
                         wells_groupbox = button.parent()
                         while wells_groupbox and not isinstance(wells_groupbox, QGroupBox):
                             wells_groupbox = wells_groupbox.parent()
                         if wells_groupbox:
-                            logger.info(f"TURSO_SYNC: Found wells groupbox via 'Add Well' button: '{wells_groupbox.title()}'")
+                            print(f"🔍 TURSO_SYNC DEBUG: Found wells groupbox via 'Add Well' button: '{wells_groupbox.title()}'")
+                            logger.warning(f"TURSO_SYNC: Found wells groupbox via 'Add Well' button: '{wells_groupbox.title()}'")
                             break
 
             if not wells_groupbox:
