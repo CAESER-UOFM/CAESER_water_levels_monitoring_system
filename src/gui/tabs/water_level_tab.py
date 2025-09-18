@@ -139,16 +139,34 @@ class WaterLevelTab(QWidget):
         try:
             from ...gui.main_window import MainWindow
             main_window = parent
+            print(f"🔍 TURSO_SYNC INIT: Starting search, parent type: {type(parent).__name__}")
+
+            # Walk up the parent chain
+            level = 0
             while main_window and not isinstance(main_window, MainWindow):
+                print(f"🔍 TURSO_SYNC INIT: Level {level} - type: {type(main_window).__name__}")
                 main_window = main_window.parent()
+                level += 1
+                if level > 10:  # Prevent infinite loop
+                    print(f"❌ TURSO_SYNC INIT: Too many parent levels, stopping search")
+                    break
+
+            if main_window:
+                print(f"🔍 TURSO_SYNC INIT: Found MainWindow type: {type(main_window).__name__}")
+                print(f"🔍 TURSO_SYNC INIT: Has settings_handler: {hasattr(main_window, 'settings_handler')}")
+                if hasattr(main_window, 'settings_handler'):
+                    print(f"🔍 TURSO_SYNC INIT: settings_handler type: {type(main_window.settings_handler).__name__}")
+
             if main_window and hasattr(main_window, 'settings_handler'):
                 self.main_window = main_window
-                print(f"🔍 TURSO_SYNC INIT: Found main window with settings_handler")
+                print(f"✅ TURSO_SYNC INIT: Successfully stored main window reference")
             else:
+                self.main_window = None
                 print(f"❌ TURSO_SYNC INIT: Could not find main window or settings_handler")
         except Exception as e:
             logger.warning(f"Could not find main window during init: {e}")
             print(f"❌ TURSO_SYNC INIT: Exception finding main window: {e}")
+            self.main_window = None
         
         # Initialize plot components
         self.figure = Figure(figsize=(10, 6))  # Increased from (8, 4)
@@ -3041,12 +3059,20 @@ class WaterLevelTab(QWidget):
             logger.warning("TURSO_SYNC: Refreshing sync buttons after database change")
 
             # Initialize Turso sync handler if not already created
-            if not self.turso_sync_handler and self.main_window and self.db_manager:
-                try:
-                    self.turso_sync_handler = TursoCloudSyncHandler(self.db_manager, self.main_window.settings_handler)
-                    print("✅ TURSO_SYNC: Created sync handler during refresh")
-                except Exception as e:
-                    print(f"❌ TURSO_SYNC: Failed to create sync handler: {e}")
+            print(f"🔍 TURSO_SYNC: Handler creation check - handler exists: {bool(self.turso_sync_handler)}, main_window: {bool(self.main_window)}, db_manager: {bool(self.db_manager)}")
+
+            if not self.turso_sync_handler:
+                if self.main_window and self.db_manager:
+                    try:
+                        print(f"🔍 TURSO_SYNC: Attempting to create handler with settings_handler: {bool(hasattr(self.main_window, 'settings_handler'))}")
+                        self.turso_sync_handler = TursoCloudSyncHandler(self.db_manager, self.main_window.settings_handler)
+                        print("✅ TURSO_SYNC: Created sync handler during refresh")
+                    except Exception as e:
+                        print(f"❌ TURSO_SYNC: Failed to create sync handler: {e}")
+                        import traceback
+                        traceback.print_exc()
+                else:
+                    print(f"❌ TURSO_SYNC: Cannot create handler - missing requirements")
 
             # Check if we're in cloud mode now
             is_cloud = self._is_cloud_mode()
