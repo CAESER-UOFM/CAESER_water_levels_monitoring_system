@@ -3152,12 +3152,12 @@ class WaterLevelTab(QWidget):
                 if item and item.widget() and isinstance(item.widget(), QPushButton):
                     btn_text = item.widget().text()
                     btn_tooltip = item.widget().toolTip()
-                    if "📊" == btn_text or "Sync Loggers" in btn_tooltip:
+                    if "🔄" == btn_text or "Sync Loggers" in btn_tooltip:
                         print("✅ TURSO_SYNC: Transducers sync button already exists")
                         return
 
             print("🔄 TURSO_SYNC: Creating new transducers sync button")
-            sync_transducers_btn = QPushButton("📊")
+            sync_transducers_btn = QPushButton("🔄")
             sync_transducers_btn.setFixedSize(32, 32)  # Square icon button
             sync_transducers_btn.clicked.connect(self.sync_transducers_from_turso)
             sync_transducers_btn.setToolTip("Sync Loggers from Turso Cloud Database\n\nThis will update the local transducers tables with logger and deployment data from the centralized Turso database for the current project.")

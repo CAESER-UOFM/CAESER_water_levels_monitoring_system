@@ -842,12 +842,12 @@ class BarologgerTab(QWidget):
                 if item and item.widget() and isinstance(item.widget(), QPushButton):
                     btn_text = item.widget().text()
                     btn_tooltip = item.widget().toolTip()
-                    if "🌡️" == btn_text or "Sync Barologgers" in btn_tooltip:
+                    if "🔄" == btn_text or "Sync Barologgers" in btn_tooltip:
                         print("✅ TURSO_SYNC BARO: Barologgers sync button already exists")
                         return
 
             print("🔄 TURSO_SYNC BARO: Creating new barologgers sync button")
-            sync_barologgers_btn = QPushButton("🌡️")
+            sync_barologgers_btn = QPushButton("🔄")
             sync_barologgers_btn.setFixedSize(32, 32)  # Square icon button
             sync_barologgers_btn.clicked.connect(self.sync_barologgers_from_turso)
             sync_barologgers_btn.setToolTip("Sync Barologgers from Turso Cloud Database\n\nThis will update the local barologgers table with logger and deployment data from the centralized Turso database for the current project.")
